@@ -1,0 +1,278 @@
+/* Modern Color Scheme with Light/Dark Contrast */
+* {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    margin: 0;
+    background-color: #f5f7fa;
+    color: #2d3436;
+}
+
+.header {
+    text-align: center;
+    padding: 50px 30px;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: #ecf0f1;
+    border-bottom: 4px solid #4CAF50;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+    perspective: 1000px;
+}
+
+.header::before, .header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, 
+              rgba(76, 175, 80, 0.15) 0%, 
+              rgba(76, 175, 80, 0) 50%);
+    animation: shine 6s infinite;
+    mix-blend-mode: overlay;
+}
+
+.header::after {
+    background: linear-gradient(-45deg, 
+              rgba(255,255,255,0.1) 0%, 
+              rgba(255,255,255,0) 50%);
+    animation: shine 8s infinite 2s;
+}
+
+@keyframes shine {
+    0% { transform: translateX(-100%) skewX(-15deg); }
+    100% { transform: translateX(100%) skewX(-15deg); }
+}
+
+.header-content {
+    position: relative;
+    z-index: 2;
+    transform-style: preserve-3d;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotateX(5deg); }
+    50% { transform: translateY(-10px) rotateX(5deg); }
+}
+
+.header h1 {
+    font-size: 3.5rem;
+    margin-bottom: 15px;
+    color: #4CAF50;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 3px 3px 8px rgba(0,0,0,0.4);
+    animation: pulse 2s infinite alternate, 
+               colorShift 8s infinite alternate;
+    display: inline-block;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+@keyframes colorShift {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(20deg); }
+}
+
+.header h2 {
+    font-size: 1.8rem;
+    color: #ecf0f1;
+    font-weight: 300;
+    letter-spacing: 2px;
+    animation: fadeIn 1.5s ease-out, 
+               floatText 4s ease-in-out infinite;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+}
+
+@keyframes floatText {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.header h3 {
+    font-size: 1.4rem;
+    color: #bdc3c7;
+    animation: slideUp 1s ease-out, 
+               fadeInOut 6s infinite;
+    margin-top: 10px;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+.header hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, 
+              transparent, 
+              rgba(76, 175, 80, 0.5), 
+              transparent);
+    margin: 20px auto;
+    width: 60%;
+    animation: expand 2s ease-out;
+}
+
+@keyframes expand {
+    from { width: 0; opacity: 0; }
+    to { width: 60%; opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.main {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #f5f7fa;
+}
+
+.left-section {
+    width: 60%;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: overlay;
+ }
+
+.right-section {
+    width: 40%;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #e9ecef;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+}
+
+/* Slideshow styles */
+.slideshow-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    background-color: rgba(44, 62, 80, 0.7);
+    border-radius: 10px;
+}
+
+.quote-slide q {
+    font-size: 28px;
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.6;
+    color: #ecf0f1;
+    padding: 20px;
+    display: block;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+}
+
+/* Enhanced Button Styles with N° 045 Design */
+.login-buttons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 40px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 700px;
+    padding: 30px;
+    margin: 0 auto;
+}
+
+.login-btn {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0 auto;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.login-btn-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    /* Cross-browser backdrop filter */
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.2),
+                0 10px 20px -5px rgba(0,0,0,0.3);
+    transform: translateZ(20px);
+    transition: all 0.3s ease;
+}
+
+.login-btn-label {
+    position: absolute;
+    top: -28px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    background: rgba(0,0,0,0.6);
+    padding: 5px 12px;
+    border-radius: 20px;
+    /* Cross-browser backdrop filter */
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.login-btn:hover {
+    transform: translateY(-5px) scale(1.05); /* Scale effect */
+    background: rgba(255, 255, 255, 0.2); /* Slightly change background color */
+}
+
+.login-btn:hover .login-btn-icon {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2),
+                inset 0 0 0 1px rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.15);
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.quote-slide {
+    animation: fadeIn 0.8s ease-out;
+}

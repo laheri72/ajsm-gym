@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTracker - Home</title>
+    <link rel="stylesheet" href="new-styles.css">
+     <link rel="icon" href="images/favicon.png" type="image/png">
+
+    <style>
+        @media (max-width: 768px) {
+    .main {
+        flex-direction: column;
+    }
+
+    .left-section, .right-section {
+        width: 100%;
+        height: 50vh; /* Half screen height each */
+    }
+
+    .login-form {
+        max-width: 90%;
+        margin: auto;
+        padding: 20px;
+        transform: translateY(0);
+    }
+}
+.login-btn-live {
+    position: absolute;
+    top: -70px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: #fff;
+    font-weight: bold;
+    font-size: 18px;
+    background: rgba(255, 0, 64, 0.75);
+    padding: 6px 16px;
+    border-radius: 50px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    box-shadow:
+        0 0 8px rgba(255, 0, 64, 0.8),
+        0 0 12px rgba(255, 0, 64, 0.4),
+        0 0 20px rgba(255, 0, 64, 0.2);
+    animation: pulseLive 1.8s infinite ease-in-out;
+    z-index: 2;
+}
+
+@keyframes pulseLive {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(255, 0, 64, 0.8),
+      0 0 12px rgba(255, 0, 64, 0.4),
+      0 0 20px rgba(255, 0, 64, 0.2);
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(255, 0, 64, 1),
+      0 0 24px rgba(255, 0, 64, 0.6),
+      0 0 36px rgba(255, 0, 64, 0.4);
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>FitTracker</h1> 
+            <h2>Track your fitness journey</h2>
+            <hr>
+            <h3>Al Jamea Tus Saifiyah (Marol) Gymnasium</h3>
+            <hr>
+        </div>
+    </header>
+    <div class="main">
+        <div class="left-section">
+            <div class="slideshow-container">
+                <div class="quote-slide fade">
+                    <q>The only bad workout is the one that didn't happen</q>
+                </div>
+                <div class="quote-slide fade">
+                    <q>Discipline is choosing between what you want now and what you want most</q>
+                </div>
+                <div class="quote-slide fade">
+                    <q>Success starts with self-discipline</q>
+                </div>
+            </div>
+        </div>
+        <div class="right-section">
+            <div class="login-buttons">
+                <button class="login-btn"  onclick="window.location.href='test-login.html'">
+                        <span class="login-btn-live">LIVE</span>
+                        <span class="login-btn-label">Fitness Test</span>
+                    <img src="images/fitness test.jpg" class="login-btn-icon" alt="Student">
+                </button>
+                 <button class="login-btn"  onclick="window.location.href='talabat-login.html'">
+                    
+                        <span class="login-btn-label"> Student Login</span>
+                    <img src="images/young-man-strong-at-gym-flat-illustration-vector.jpg" class="login-btn-icon" alt="Student">
+                </button>
+                <button class="login-btn" onclick="window.location.href='trainer-login.html'">
+                    <span class="login-btn-label">Trainer Login</span>
+                    <img src="images/OIP.jpeg" class="login-btn-icon" alt="Trainer">
+                </button>
+                 <button class="login-btn" onclick="window.location.href='staff-login.html'">
+                    <span class="login-btn-label">Staff Login</span>
+                    <img src="images/Untitled (1).jpg" class="login-btn-icon" alt="Staff">
+                </button>
+
+                <button class="login-btn" onclick="window.location.href='blog.html'">
+                    <span class="login-btn-label">Blog</span>
+                    <img src="images/Gemini_Generated_Image_yv9lgyyv9lgyyv9l.jpeg" class="login-btn-icon" alt="Blog">
+                </button>
+            </div>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(to right,  #2c3e50 0%, #34495e 100%); color: #ffffff; text-align: center; padding: 20px; position: relative; bottom: 0; width: 100%;">
+        <p>Copyrights @WebDev Community, Raudat-al-Ikhwan 2025</p>
+    </footer>
+    <script src="new-site.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talabat Login - FitTracker</title>
+  <link rel="stylesheet" href="style1.css">
+   <link rel="icon" href="images/favicon.png" type="image/png">
+  <style>
+    /* RESET */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden; /* Prevent scroll */
+      font-family: Arial, sans-serif;
+    }
+
+    /* HEADER */
+    .header {
+      width: 100%;
+      background: #34495e;
+      color: white;
+      text-align: center;
+      padding: 20px 0;
+      position: relative;
+      z-index: 10;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+    .header h2 {
+      margin: 5px 0 0 0;
+      font-size: 1.2rem;
+      font-weight: normal;
+    }
+
+    a {
+  text-decoration: none;
+  color: #ffffff;
+  font-family: sans-serif;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 300;
+  background: #0dc0d4;
+  padding: 8px 10px;
+  border-radius: 30px;
+  box-shadow: 0 0 15px transparent;
+  transition: 0.5s ease-in-out;
+}
+
+a:hover {
+  background: #00f2ff;
+  box-shadow: 0 0 15px #00f2ff;
+}
+
+    /* MAIN */
+    .main {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 100px); /* subtract header height */
+      overflow: hidden;
+    }
+
+    /* BACKGROUND IMAGE */
+    .background-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+
+    /* LOGIN FORM */
+    .login-form {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      z-index: 2;
+      width: 320px;
+    }
+
+    .login-form h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: #34495e;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .login-btn:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <h1>Talabat Login</h1>
+    <h2>Access GYM Portal</h2>
+    <p><a href="homepage.html">Return To Main Page</a></p>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <img class="background-image" src="images/ChatGPT Image Apr 29, 2025, 04_11_28 PM.png" alt="Gym background">
+
+    <div class="login-form">
+      <h3>Login</h3>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    // 🔄 Toast while processing
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true
+    });
+
+    Toast.fire({
+        icon: 'info',
+        title: '🔃 Authenticating...'
+    });
+
+    try {
+        const response = await fetch('/api/student-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tr: username, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            Toast.fire({
+                icon: 'success',
+                title: '✅ Login successful'
+            });
+
+            setTimeout(() => {
+                window.location.href = '/student-dashboard.html';
+            }, 700);
+        } else {
+            Swal.fire('Login Failed', data.message || 'Invalid TR or password.', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        Swal.fire('Error', 'Server error. Please try again later.', 'error');
+    }
+});
+</script>
+
+
+
+</body>
+</html>

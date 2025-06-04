@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Staff Dashboard - FitTracker</title>
+    <link rel="icon" href="images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      
+        :root {
+            --primary: #4CAF50;
+            --secondary: #3e8e41;
+            --success: #4CAF50;
+            --danger: #f44336;
+            --light: #f5f7fa;
+            --dark: #2d3436;
+            --gray: #95a5a6;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--light);
+            font-family: 'Poppins', sans-serif;
+            color: black;
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar a {
+            color: var(--gray);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            cursor: pointer;
+            color: black;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: var(--primary);
+            background: rgba(67, 97, 238, 0.1);
+        }
+
+        thead select {
+    background-color: #2c2c2c; /* Dark background for closed select */
+    color: white; /* White text inside */
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 14px;
+    appearance: none; /* Optional: for custom arrow */
+  }
+
+  /* Style the dropdown list (the options inside) */
+  thead select option {
+    background-color: #2c2c2c; /* Dark background inside dropdown */
+    color: white; /* White text inside options */
+  }
+
+        .content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        thead select {
+        background-color: white;
+        color: black;
+        border: 1px solid #ccc;
+        padding: 2px;
+        font-size: 14px;
+        }
+
+          thead select {
+    background-color: #2c2c2c; /* Dark background for closed select */
+    color: white; /* White text inside */
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 14px;
+    appearance: none; /* Optional: for custom arrow */
+  }
+
+  /* Style the dropdown list (the options inside) */
+  thead select option {
+    background-color: #2c2c2c; /* Dark background inside dropdown */
+    color: white; /* White text inside options */
+  }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            transition: all 0.3s;
+            color: black;
+        }
+
+        select.form-control {
+            color: #000;
+            background-color: white;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 16px 12px;
+            appearance: none;
+        }
+
+        select.form-control option {
+            color: #000;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #ccc;
+  padding: 5px;
+}
+
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: black;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        thead {
+          background-color: var(--primary);
+        }
+
+        thead th {
+          color: white;
+        }
+
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            color: black;
+        }
+
+        th {
+            background: var(--primary);
+            color: black;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(67, 97, 238, 0.05);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+
+        .attendance-summary {
+            margin-top: 1rem;
+            font-weight: 600;
+            color: var(--primary);
+            background-color: #e0f7e9;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            animation: fadeInSlide 1s ease forwards;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        @keyframes fadeInSlide {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: black;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn:hover {
+            background: var(--secondary);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5);
+        }
+
+        .navbar a {
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: var(--primary);
+            background: rgba(67, 97, 238, 0.15);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+            transform: scale(1.05);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+      <div class="navbar">
+        <a href="#" class="active" id="tab-entry">Student Entry</a>
+        <a href="#" id="tab-record">Student Record</a>
+        <a href="#" id="tab-Progress">Track Progress</a>
+        <a href="#" id="tab-test">Fitness Test</a>
+        <a href="#" id="tab-attendance">Attendance Summary</a>
+        <a href="#" id="logoutLink">Logout</a>
+
+
+
+      </div>
+      <div class="content">
+        <section id="student-entry" class="card">
+          <h2>Student Entry</h2>
+          <h2 id="welcomeText"></h2>
+          <form id="studentEntryForm">
+            <div class="form-group">
+              <label for="trNo">Tr No</label>
+              <input type="text" id="trNo" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="studentName">Name</label>
+              <input type="text" id="studentName" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="darajah">Darajah</label>
+              <select id="darajah" class="form-control" required>
+                <option value="" disabled selected>Select Darajah</option>
+                <option value="Class 5 AM">Class 5 AM</option>
+                <option value="Class 5 BM">Class 5 BM</option>
+                <option value="Class 6 AM">Class 6 AM</option>
+                <option value="Class 6 BM">Class 6 BM</option>
+                <option value="Class 7 AM">Class 7 AM</option>
+                <option value="Class 7 BM">Class 7 BM</option>
+                <option value="Class 8 AM">Class 8 AM</option>
+                <option value="Class 9 AM">Class 9 AM</option>
+                <option value="Class 10 AM">Class 10 AM</option>
+                <option value="Class 11 AM">Class 11 AM</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="goal">Preferred Goal</label>
+              <select id="goal" class="form-control" required>
+                <option value="" disabled selected>Select Goal</option>
+                <option value="Muscle Gain">Muscle Gain</option>
+                <option value="Fat Loss">Fat Loss</option>
+                <option value="Increase Fitness Level">Increase Fitness Level</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="slot">Slot</label>
+              <select id="slot" class="form-control" required>
+                <option value="" disabled selected>Select Slot</option>
+                <option value="3:20-4:00">3:20pm</option>
+                <option value="4:00-4:40">4:00pm</option>
+                <option value="4:40-5:20">4:40pm</option>
+                <option value="5:20-6:00">5:20pm</option>
+                <option value="6:00-6:40">6:00pm</option>
+
+              </select>
+            </div>
+            <button type="submit" class="btn">Add Student</button>
+          </form>
+  
+          <div class="form-group" style="margin-top: 2rem;">
+            <label for="csvFile">Bulk Import CSV</label>
+            <input type="file" id="csvFile" accept=".csv" class="form-control" />
+            <button type="button" id="importCsvBtn" class="btn" style="margin-top: 0.5rem;">Import CSV</button>
+            <div id="importStatus" style="margin-top: 0.5rem; font-weight: 600;"></div>
+          </div>
+        </section>
+  
+        <!-- <section id="" class="card" style="display:none;">
+          <div class="container mt-5">
+          <h2>Student Record</h2>
+          <button id="exportBtn" class="btn btn-success mt-2">Export to Excel</button>
+          <table id="workout-summary-table" class="table table-striped table-bordered" style="width:100%">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>TR</th>
+                <th>Name</th>
+                <th>Machine</th>
+                <th>Type</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          
+        </div>
+        </section> -->
+
+
+
+        <section id="progress-tab" class="card" style="display:none;">
+  <div class="container mt-5">
+    <h2>📅 All Training Plans</h2>
+    <button id="exportTrainingPlansBtn" class="btn btn-success mb-3">Export to Excel</button>
+
+    <div style="overflow-x: auto;">
+      <table id="training-plans-table" class="table table-striped table-bordered nowrap" style="width:100%">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>TR</th>
+            <th>Body Parts</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+
+
+        <section id="student-record" class="card" style="display:none;">
+          <h2>Student Record</h2>
+          <table id="studentTable">
+            <thead>
+              <tr>
+                <th>Tr No</th>
+                <th>Name</th>
+                <th>Darajah</th>
+                <th>Preferred Goal</th>
+                <th>Slot</th>
+                <th>Delete</th> 
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
+
+
+
+
+        
+        <section id="test-record" class="card" style="display:none;">
+            <div class="container mt-5">
+    <h2>🧪 All Fitness Test Records</h2>
+    <button id="exportTestRecordsBtn" class="btn btn-success mb-3">Export to Excel</button>
+
+
+    <!-- Scrollable wrapper -->
+    <div style="overflow-x: auto;">
+      <table id="test-records-table" class="table table-striped table-bordered nowrap" style="width:100%">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>TR</th>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Weight</th>
+            <th>Height</th>
+            <th>Waist</th>
+            <th>Hips</th>
+            <th>Neck</th>
+            <th>BMI</th>
+            <th>BMI Status</th>
+            <th>Body Fat %</th>
+            <th>BMR</th>
+            <th>Calorie Intake</th>
+            <th>VO₂ Max</th>
+            <th>Total</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+        </section>
+
+        <section id="attendance-summary" class="card" style="display:none;">
+          <h2>Weekly Attendance</h2>
+          <div class="form-group">
+            <label for="weekSelect">Select Week</label>
+            <select id="weekSelect" class="form-control" required>
+              <option value="" disabled selected>Loading Weeks...</option>
+            </select>
+            
+            <button class="btn" id="loadAttendanceBtn" style="margin-top: 0.5rem;">Load Attendance</button>
+          </div>
+        
+            <!-- Export Button -->
+            <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
+
+            <!-- Attendance Table -->
+        <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
+          <thead>
+            <tr>
+              <th>Tr No</th>
+              <th>Name</th>
+              <th>Monday</th>
+              <th>Tuesday</th>
+              <th>Wednesday</th>
+              <th>Thursday</th>
+              <th>Friday</th>
+              <th>Saturday</th>
+              <th>Sunday</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        </section>
+        
+        
+      </div>
+    </div>  
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+    <script>
+async function validateStaffSession() {
+  try {
+    const res = await fetch('/api/session-user', {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    const data = await res.json();
+
+    if (!data.success || !data.user) {
+      window.location.href = 'Forbidden.html';
+      return;
+    }
+
+    const { Branch, Gender } = data.user;
+
+    // Update welcome text
+    document.getElementById('welcomeText').innerText =
+      `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
+
+    // Store branch and gender in localStorage for reuse
+    localStorage.setItem('branch', Branch);
+    localStorage.setItem('gender', Gender);
+
+    // Update Darajah options dynamically based on Gender
+    updateDarajahOptionsBasedOnGender(Gender);
+
+  } catch (err) {
+    console.error('Failed to validate session:', err);
+    window.location.href = 'Forbidden.html';
+  }
+}
+
+// Function to update Darajah select options based on Gender
+function updateDarajahOptionsBasedOnGender(gender) {
+  if (!gender) return;
+
+  const isFemale = gender.toLowerCase() === 'female';
+
+  const darajahSelect = document.getElementById('darajah');
+
+  if (!darajahSelect) return;
+
+  const maleOptions = [
+    "Class 5 AM",
+    "Class 5 BM",
+    "Class 6 AM",
+    "Class 6 BM",
+    "Class 7 AM",
+    "Class 7 BM",
+    "Class 8 AM",
+    "Class 9 AM",
+    "Class 10 AM",
+    "Class 11 AM"
+  ];
+
+  // Clear existing options
+  darajahSelect.innerHTML = '';
+  darajahSelect.appendChild(new Option("Select Darajah", "", true, true));
+  darajahSelect.options[0].disabled = true;
+
+  maleOptions.forEach(optionText => {
+    let displayText = optionText;
+    if (isFemale) {
+      displayText = displayText.replace('AM', 'AF').replace('BM', 'BF');
+    }
+    darajahSelect.appendChild(new Option(displayText, displayText));
+  });
+}
+
+validateStaffSession();
+
+//.........................................................................................................................
+
+      // Add student
+      document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        
+        const payload = {
+          TR: document.getElementById('trNo').value.trim(), 
+          Name: document.getElementById('studentName').value,
+          Darajah: document.getElementById('darajah').value,
+          Goal: document.getElementById('goal').value,
+          Slot: document.getElementById('slot').value
+        };
+  
+        const res = await fetch('/api/add-student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // ✅ Important
+          body: JSON.stringify(payload),
+          
+        });
+  
+        const data = await res.json();
+        if (res.ok) alert('Student Added!');
+        else alert('Error: ' + data.error);
+      });
+  
+//-----------------------------------------------------------------------------------------------------------------------------
+async function loadStudentRecords() {
+  try {
+    const res = await fetch('/api/students', {
+      method: 'GET',
+      credentials: 'include' // ✅ Required to send session cookie
+    });
+
+const response = await res.json();
+
+if (!response.success || !Array.isArray(response.data)) {
+  console.error('❌ Invalid response:', response);
+  alert('Failed to fetch students. Please check session or server.');
+  return;
+}
+
+const students = response.data;  // Only one declaration now
+const contentType = res.headers.get('content-type');
+
+
+    if (!contentType || !contentType.includes('application/json')) {
+      const html = await res.text();
+      console.error('❌ Expected JSON, got HTML instead:', html);
+      alert('Unexpected response. Are you logged in as staff?');
+      return;
+    }
+
+    // const students = await res.json();
+
+    if (!Array.isArray(students)) {
+      console.error('❌ Expected array of students, got:', students);
+      alert('Invalid response from server. Please check session or server logs.');
+      return;
+    }
+
+    // ✅ Continue rendering the table
+    const table = document.querySelector('#studentTable');
+    const tbody = table.querySelector('tbody');
+    const thead = table.querySelector('thead');
+    tbody.innerHTML = '';
+
+    // ➕ Add filter row if not already present
+    if (!thead.querySelector('.filter-row')) {
+      const filterRow = document.createElement('tr');
+      filterRow.classList.add('filter-row');
+
+      ['TR', 'Name', 'Darajah', 'Goal', 'Slot', 'Action'].forEach(col => {
+        const th = document.createElement('th');
+        if (col === 'Darajah' || col === 'Slot') {
+          th.innerHTML = `<select data-column="${col}" style="width: 100%;">
+            <option value="">All ${col}</option>
+          </select>`;
+        }
+        filterRow.appendChild(th);
+      });
+
+      thead.appendChild(filterRow);
+
+      // 🔁 Populate dropdowns
+      populateDropdowns(students);
+
+      // 🎯 Attach filter logic
+      thead.querySelectorAll('select').forEach(select => {
+        select.addEventListener('change', () => applyFilters(students));
+      });
+    }
+
+    // 🧱 Render student rows
+    renderTableRows(students);
+
+    // 📆 Load attendance per student
+    attachAttendanceLoader();
+
+  } catch (err) {
+    console.error('❌ loadStudentRecords error:', err);
+    alert('Error loading students. Please try again or check console.');
+  }
+}
+
+
+function populateDropdowns(students) {
+  const darajahSet = new Set();
+  const slotSet = new Set();
+
+  students.forEach(s => {
+    darajahSet.add(s.Darajah);
+    slotSet.add(s.Slot);
+  });
+
+  const darajahSelect = document.querySelector('select[data-column="Darajah"]');
+  const slotSelect = document.querySelector('select[data-column="Slot"]');
+
+  darajahSet.forEach(d => {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = d;
+    darajahSelect.appendChild(option);
+  });
+
+  slotSet.forEach(s => {
+    const option = document.createElement('option');
+    option.value = s;
+    option.textContent = s;
+    slotSelect.appendChild(option);
+  });
+}
+
+function renderTableRows(students) {
+  const tbody = document.querySelector('#studentTable tbody');
+  tbody.innerHTML = '';
+
+  students.forEach(s => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${s.TR}</td>
+      <td>${s.Name}</td>
+      <td>${s.Darajah}</td>
+      <td>${s.Goal}</td>
+      <td>${s.Slot}</td>
+      <td><button class="delete-btn" data-tr="${s.TR}">❌</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  attachDeleteHandlers(); // Re-attach delete handlers after rendering
+}
+
+function applyFilters(students) {
+  const darajahValue = document.querySelector('select[data-column="Darajah"]').value;
+  const slotValue = document.querySelector('select[data-column="Slot"]').value;
+
+  const filteredStudents = students.filter(s => {
+    return (darajahValue === '' || s.Darajah === darajahValue) &&
+           (slotValue === '' || s.Slot === slotValue);
+  });
+
+  renderTableRows(filteredStudents);
+}
+
+function attachDeleteHandlers() {
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const tr = button.dataset.tr;
+      if (!confirm(`Are you sure you want to delete TR ${tr}?`)) return;
+
+      fetch(`/api/delete-student/${tr}`, {
+        method: 'DELETE',
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+          loadStudentRecords();
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Failed to delete. Server error.');
+        });
+    });
+  });
+}
+
+function attachAttendanceLoader() {
+  const btn = document.getElementById('loadAttendanceBtn');
+  if (!btn.dataset.bound) {
+    btn.addEventListener('click', async () => {
+      const weekId = document.getElementById('weekSelect').value;
+      if (!weekId) return alert('Please select a week');
+
+      const res = await fetch(`/api/weekly-attendance/${weekId}`);
+      const data = await res.json();
+
+      const tbody = document.querySelector('#attendanceTable tbody');
+      tbody.innerHTML = '';
+
+      data.forEach(student => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${student.TR}</td>
+          <td>${student.Name}</td>
+          ${renderAttendanceCell(student.Monday)}
+          ${renderAttendanceCell(student.Tuesday)}
+          ${renderAttendanceCell(student.Wednesday)}
+          ${renderAttendanceCell(student.Thursday)}
+          ${renderAttendanceCell(student.Friday)}
+          ${renderAttendanceCell(student.Saturday)}
+          ${renderAttendanceCell(student.Sunday)}
+        `;
+        tbody.appendChild(row);
+      });
+    });
+    btn.dataset.bound = 'true';
+  }
+
+  // Export to Excel
+  const exportBtn = document.getElementById('exportAttendanceBtn');
+  exportBtn.addEventListener('click', () => {
+    const rows = [];
+    const headers = Array.from(document.querySelectorAll('#attendanceTable thead th')).map(th => th.innerText);
+    rows.push(headers);
+
+    document.querySelectorAll('#attendanceTable tbody tr').forEach(tr => {
+      const cells = Array.from(tr.children).map(td => td.innerText.trim());
+      rows.push(cells);
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+    XLSX.writeFile(workbook, "Weekly_Attendance.xlsx");
+  });
+}
+
+// Helper for color-coded attendance
+function renderAttendanceCell(value) {
+  if (value === 'Present') {
+    return `<td style="color: green; font-weight: bold;">Present</td>`;
+  } else if (value === 'Absent') {
+    return `<td style="color: red; font-weight: bold;">Absent</td>`;
+  } else {
+    return `<td></td>`;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', attachAttendanceLoader);
+
+
+  function formatDate(dateString) {
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
+function loadWeeks() {
+    fetch('/api/weeks')
+        .then(res => res.json())
+        .then(data => {
+            const weekSelect = document.getElementById('weekSelect');
+            weekSelect.innerHTML = '<option value="" disabled selected>Select Week</option>'; // Reset dropdown
+
+            if (data.success && data.weeks.length > 0) {
+                data.weeks.forEach(week => {
+                    const option = document.createElement('option');
+                    option.value = week.WeekID;
+
+                    // Format dates directly, without adding time
+                    const startFormatted = formatDate(week.WeekStartDate);
+                    const endFormatted = formatDate(week.WeekEndDate);
+
+                    option.text = `Week ${week.WeekID} (${startFormatted} → ${endFormatted})`;
+
+                    weekSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load weeks:', err);
+        });
+}
+
+// Call this when page loads
+window.onload = function() {
+    loadWeeks();
+};
+  
+      // CSV Import
+      document.getElementById('importCsvBtn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('csvFile');
+        const file = fileInput.files[0];
+        if (!file) return alert('Please choose a CSV file');
+  
+        const formData = new FormData();
+        formData.append('csv', file);
+  
+        const res = await fetch('/api/import-csv', {
+          method: 'POST',
+          body: formData
+        });
+  
+        const result = await res.json();
+        document.getElementById('importStatus').textContent = res.ok
+          ? 'Import successful!'
+          : 'Error importing CSV: ' + result.error;
+  
+        loadStudentRecords();
+      });
+
+      //....................................................................................................
+
+//       document.addEventListener('DOMContentLoaded', async () => {
+//   const table = $('#workout-summary-table').DataTable({
+//     ajax: function (data, callback, settings) {
+//       fetch('/api/all-workout-logs', {
+//         method: 'GET',
+//         credentials: 'include' // ✅ Important to include cookies/session
+//       })
+//       .then(res => res.json())
+//       .then(json => callback({ data: json.data }))
+//       .catch(err => {
+//         console.error('Error fetching workout logs:', err);
+//         callback({ data: [] }); // Fallback to empty data on error
+//       });
+//     },
+//     columns: [
+//       { data: 'LogDate' },
+//       { data: 'TR' },
+//       { data: 'Name' },
+//       { data: 'MachineName' },
+//       { data: 'TypeName' },
+//       { data: 'Value' }
+//     ],
+//     order: [[0, 'desc']],
+//     pageLength: 25
+//   });
+
+//   document.getElementById('exportBtn').addEventListener('click', () => {
+//     const data = table.rows({ search: 'applied' }).data().toArray();
+//     const worksheet = XLSX.utils.json_to_sheet(data);
+//     const workbook = XLSX.utils.book_new();
+//     XLSX.utils.book_append_sheet(workbook, worksheet, "WorkoutLogs");
+//     XLSX.writeFile(workbook, "Workout_Logs.xlsx");
+//   });
+// });
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize DataTable for fitness test records
+  const testRecordsTable = $('#test-records-table').DataTable({
+    ajax: function (data, callback, settings) {
+      fetch('/api/all-test-records', {
+        method: 'GET',
+        credentials: 'include' // send cookies/session info
+      })
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) {
+          callback({ data: json.data });
+        } else {
+          callback({ data: [] });
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching test records:', err);
+        callback({ data: [] });
+      });
+    },
+columns: [
+  { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+  { data: 'TR' },
+  { data: 'Name' },
+  { data: 'Age', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'Weight', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'Height', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Waist', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Hips', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Neck', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'BMI', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'BMIStatus' },
+  { data: 'BodyFat', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'BMR', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'CalorieIntake', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'VO2Max', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Total', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Grade' }
+]
+,
+    order: [[0, 'desc']],
+    pageLength: 25
+  });
+
+  // Export button functionality
+  document.getElementById('exportTestRecordsBtn').addEventListener('click', () => {
+    const data = testRecordsTable.rows({ search: 'applied' }).data().toArray();
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "TestRecords");
+    XLSX.writeFile(workbook, "Fitness_Test_Records.xlsx");
+  });
+});
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const trainingPlansTable = $('#training-plans-table').DataTable({
+    ajax: function (data, callback, settings) {
+      fetch('/api/all-training-plans', {
+        method: 'GET',
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.success) {
+            callback({ data: json.data });
+          } else {
+            callback({ data: [] });
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching training plans:', err);
+          callback({ data: [] });
+        });
+    },
+    columns: [
+      { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+      { data: 'TR' },
+      { data: 'BodyParts' }
+    ],
+    order: [[0, 'desc']],
+    pageLength: 25
+  });
+
+  document.getElementById('exportTrainingPlansBtn').addEventListener('click', () => {
+    const data = trainingPlansTable.rows({ search: 'applied' }).data().toArray();
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'TrainingPlans');
+    XLSX.writeFile(workbook, 'Training_Plans.xlsx');
+  });
+});
+
+
+      //---------------------------------------------------------------------------------------------------
+  
+      // Trigger record load when dashboard loads
+      document.getElementById('tab-record').addEventListener('click', () => {
+        document.getElementById('student-entry').style.display = 'none';
+        document.getElementById('attendance-summary').style.display = 'none';
+         document.getElementById('progress-tab').style.display = 'none';
+          document.getElementById('test-record').style.display = 'none';
+        document.getElementById('student-record').style.display = 'block';
+        loadStudentRecords();
+      });
+  
+      document.getElementById('tab-entry').addEventListener('click', () => {
+        document.getElementById('student-record').style.display = 'none';
+        document.getElementById('attendance-summary').style.display = 'none';
+         document.getElementById('progress-tab').style.display = 'none';
+          document.getElementById('test-record').style.display = 'none';
+        document.getElementById('student-entry').style.display = 'block';
+      });
+
+      document.getElementById('tab-Progress').addEventListener('click', () => {
+  document.getElementById('student-record').style.display = 'none';
+  document.getElementById('student-entry').style.display = 'none';
+  document.getElementById('attendance-summary').style.display = 'none';
+   document.getElementById('test-record').style.display = 'none';
+  document.getElementById('progress-tab').style.display = 'block';
+});
+
+      document.getElementById('tab-test').addEventListener('click', () => {
+  document.getElementById('student-record').style.display = 'none';
+  document.getElementById('student-entry').style.display = 'none';
+  document.getElementById('attendance-summary').style.display = 'none';
+  document.getElementById('progress-tab').style.display = 'none';
+  document.getElementById('test-record').style.display = 'block';
+});
+
+
+
+      document.getElementById('tab-attendance').addEventListener('click', () => {
+      document.getElementById('student-record').style.display = 'none';
+      document.getElementById('student-entry').style.display = 'none';
+      document.getElementById('progress-tab').style.display = 'none';
+       document.getElementById('test-record').style.display = 'none';
+      document.getElementById('attendance-summary').style.display = 'block';
+});
+
+
+
+//-------------------------------------------------------------------------------------------------
+
+
+
+document.getElementById('logoutLink').addEventListener('click', function (e) {
+    e.preventDefault();
+
+    fetch('/api/logout', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            localStorage.clear(); // Clear any client-side data
+            window.location.href = 'homepage.html'; // Redirect to login/home
+        } else {
+            alert('Logout failed.');
+        }
+    })
+    .catch(err => {
+        console.error('Logout error:', err);
+    });
+});
+
+    </script>
+  </body>
+  
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Access Denied</title>
+    <link rel="icon" href="images/favicon.png" type="image/png">
+    <style>
+        body {
+            background-color: #f8d7da;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        h1 {
+            color: #721c24;
+            font-size: 48px;
+        }
+        p {
+            color: #721c24;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #721c24;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #501218;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>403 Forbidden</h1>
+    <p>Oops! You don't have permission to access this page.</p>
+    <button onclick="goHome()">Go to Home</button>
+
+    <script>
+        // If someone tries to directly open this Forbidden.html
+        const staffUser = localStorage.getItem('staffUser');
+        const trainerUser = localStorage.getItem('trainerUser');
+        const studentUser = localStorage.getItem('studentUser');
+
+        if (staffUser || trainerUser || studentUser) {
+            // Someone is logged in — maybe they clicked by mistake — go back
+            window.history.back();
+        }
+
+        // Otherwise stay here and allow Go Home
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+</body>
+</html>
