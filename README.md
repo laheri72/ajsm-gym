@@ -4,7 +4,6 @@
 > A project by **Raudat ul Ikhwaan**,  
 > under the University of **Al Jamea Tus Saifiyah**, Marol Campus.
 ### 🔹 Developed by
-- Mulla Husain Bh Dewas
   - Mulla Idris Bh Laheri
      - Mulla Abizer Bh Dewas
 
