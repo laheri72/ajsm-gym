@@ -1,0 +1,29 @@
+{
+  "name": "webdev-raudat-al-ikhwan",
+  "version": "1.0.0",
+  "description": "> A project by **Raudat ul Ikhwaan**,  \r > under the University of **Al Jamea Tus Saifiyah**, Marol Campus.\r ### 🔹 Developed by\r - Mulla Husain Bh Dewas\r   - Mulla Idris Bh Laheri\r      - Mulla Abizer Bh Dewas",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laheri72/WebDev-Raudat-al-Ikhwan.git"
+  },
+  "author": "Mulla Idris Bh Laheri",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/laheri72/WebDev-Raudat-al-Ikhwan/issues"
+  },
+  "homepage": "https://github.com/laheri72/WebDev-Raudat-al-Ikhwan#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "express": "^4.18.2",
+    "express-session": "^1.18.1",
+    "mssql": "^9.0.0",
+    "multer": "^2.0.0",
+    "xlsx": "^0.18.5"
+  }
+}
