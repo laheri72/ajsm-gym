@@ -335,25 +335,6 @@ input[type="text"], input[type="number"], select {
                 <br>
                 <br>
 
-                <a href="#" id="tab-workout-records" class="btn" style="margin-top:1.5rem; background-color: teal;">View Workout Records</a>
-
-                <section id="workout-records" class="card" style="display:none; padding: 1rem;">
-                    <h2>Workout Records</h2>
-                
-                    <table id="workoutRecordsTable" class="table table-striped table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Machine</th>
-                                <th>Type</th>
-                                <th>Value</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </section>
-                
-
                 
                 
                 <a href="#" id="tab-daily-attendance" class="btn" style="display:inline-block; margin-top:1.5rem;">Today's Attendance</a>
@@ -656,52 +637,6 @@ document.getElementById('tr-input').addEventListener('keydown', function(event) 
     }
 });
 
-
-
-
-//------------------------------------------------------------------------------
-
-async function loadWorkoutRecords() {
-    const tr = document.getElementById('tr-input').value;
-
-    if (!tr) {
-        alert('Please enter TR first!');
-        return;
-    }
-
-    try {
-        const res = await fetch(`/api/workout-records/${tr}`);
-        const result = await res.json();
-
-        const tableBody = document.querySelector('#workoutRecordsTable tbody');
-        tableBody.innerHTML = ''; // Clear previous rows
-
-        if (result.success && result.data.length > 0) {
-            result.data.forEach(record => {
-                const row = `
-                    <tr>
-                        <td>${new Date(record.LogDate).toLocaleDateString()}</td>
-                        <td>${record.MachineName}</td>
-                        <td>${record.TypeName}</td>
-                        <td>${record.Value}</td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No workout records found</td></tr>';
-        }
-    } catch (err) {
-        console.error('Error loading workout records:', err);
-        alert('Failed to load workout records');
-    }
-}
-
-// When button is clicked
-document.getElementById('tab-workout-records').addEventListener('click', () => {
-    document.getElementById('workout-records').style.display = 'block';
-    loadWorkoutRecords();
-});
 
 
 //-------------------------------------------------------------------------------
