@@ -409,7 +409,9 @@
 
 
         <section id="student-record" class="card" style="display:none;">
+          <div class="container mt-5">
           <h2>Student Record</h2>
+          <div style="overflow-x: auto;">
           <table id="studentTable">
             <thead>
               <tr>
@@ -423,6 +425,8 @@
             </thead>
             <tbody></tbody>
           </table>
+          </div>
+          </div>
         </section>
 
 
@@ -466,6 +470,7 @@
         </section>
 
         <section id="attendance-summary" class="card" style="display:none;">
+          <div class="container mt-5">
           <h2>Weekly Attendance</h2>
           <div class="form-group">
             <label for="weekSelect">Select Week</label>
@@ -480,6 +485,7 @@
             <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
 
             <!-- Attendance Table -->
+             <div style="overflow-x: auto;">
         <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
           <thead>
             <tr>
@@ -496,6 +502,8 @@
           </thead>
           <tbody></tbody>
         </table>
+        </div>
+        </div>
 
         </section>
         
