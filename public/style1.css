@@ -7,13 +7,16 @@
 body {
     margin: 0;
     background-color: #f5f7fa;
-    color: #2d3436;
 }
 
 .header {
     text-align: center;
-    padding: 50px 30px;
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    padding: 40px 20px;
+    background-image: url("images/ChatGPT\ Image\ Apr\ 29\,\ 2025\,\ 04_11_28\ PM.png"); /* make sure the path is correct */
+    background-size: cover;         /* fill entire area */
+    background-position: center;    /* center the image */
+    background-repeat: no-repeat;
+    background-attachment: fixed;   /* optional: creates a parallax feel */
     color: #ecf0f1;
     border-bottom: 4px solid #4CAF50;
     box-shadow: 0 4px 30px rgba(0,0,0,0.3);

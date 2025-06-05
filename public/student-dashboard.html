@@ -29,6 +29,7 @@
             background-color: var(--light);
             font-family: 'Poppins', sans-serif;
             color: black;
+            overflow-x: hidden;
         }
 
         .dashboard {
@@ -37,24 +38,53 @@
             min-height: 100vh;
         }
 
-        .navbar {
-            background: white;
-            padding: 1rem;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+        @keyframes neon-border {
+  0%, 100% {
+    border-image: linear-gradient(90deg, #00f0ff, #ff00f0, #00f0ff) 1;
+    box-shadow:
+      0 0 8px #0ff,
+      0 0 16px #f0f,
+      0 0 24px #0ff;
+    transform: scale(1);
+  }
+  50% {
+    border-image: linear-gradient(90deg, #ff00f0, #00f0ff, #ff00f0) 1;
+    box-shadow:
+      0 0 16px #0ff,
+      0 0 32px #f0f,
+      0 0 48px #0ff;
+    transform: scale(1.02);
+  }
+}
+
+.navbar {
+  background: #111; /* dark background for better neon effect */
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  border: 3px solid;
+  border-image: linear-gradient(90deg, #00f0ff, #ff00f0, #00f0ff) 1;
+  border-radius: 12px;
+  animation: neon-border 3s ease-in-out infinite;
+  box-shadow:
+    0 0 8px #0ff,
+    0 0 16px #f0f,
+    0 0 24px #0ff;
+  transition: transform 0.3s ease;
+}
+
 
         .navbar a {
-            color: var(--gray);
+            color: #0ff;
+            text-shadow: 0 0 6px #0ff;
             text-decoration: none;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             font-weight: 500;
             transition: all 0.3s;
             cursor: pointer;
-            color: black;
+            color: white;
         }
 
         .navbar a:hover,
@@ -248,7 +278,7 @@
             border-radius: 8px;
         }
         .goal-ribbon {
-            background: #4CAF50;
+            background: linear-gradient(to right, #2d3436, #8e2de2);
             color: white;
             text-align: center;
             padding: 12px 20px;
@@ -416,6 +446,13 @@ button:disabled {
 .day-wrapper {
   flex: 1 1 280px;
   max-width: 300px;
+  display: flex;
+  flex-direction: column;
+   background: linear-gradient(135deg, #3a3897 50%, #2c2a72 50%, #1a1a4e 100%);
+  border-radius: 16px;
+  padding: 15px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  transition: transform 0.2s ease-in-out;
 }
 
 
@@ -428,6 +465,7 @@ button:disabled {
   font-size: 1.1rem;
    text-align: center;
   color: #333;
+  color: white;
   margin-bottom: 8px;
 }
 
@@ -484,7 +522,7 @@ button:disabled {
       </div>
         <br>
        
-    <section class="student-info" style="background-color: rgb(46, 162, 158)">
+    <section class="student-info">
         <div class="info-item">Slot: <span id="studentSlot"></span></div>
         <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
         <div class="info-item">TR: <span id="studentTR"></span></div>
