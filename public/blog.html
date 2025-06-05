@@ -1,109 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitTracker - Blog</title>
-    <link rel="stylesheet" href="new-styles.css">
-   <link rel="icon" href="images/favicon.png" type="image/png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTracker - Blog</title>
+  <link rel="icon" href="images/favicon.png" type="image/png" />
+
+  <!-- Bootstrap & SweetAlert -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
-    /* RESET */
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
-      overflow: hidden; /* Prevent scroll */
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      background: url('images/Gemini_Generated_Image_yv9lgyyv9lgyyv9l.jpeg') no-repeat center center fixed;
+      background-size: cover;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    /* HEADER */
+    .overlay {
+      background-color: rgba(255, 255, 255, 0.85);
+      min-height: 100vh;
+    }
+
     .header {
       width: 100%;
-      background: #34495e;
+      background: rgba(52, 73, 94, 0.9);
       color: white;
       text-align: center;
-      padding: 20px 0;
-      position: relative;
-      z-index: 10;
+      padding: 30px 10px;
     }
+
     .header h1 {
+      font-size: 2.5rem;
       margin: 0;
-      font-size: 2rem;
-    }
-    .header h2 {
-      margin: 5px 0 0 0;
-      font-size: 1.2rem;
-      font-weight: normal;
     }
 
-    a {
-  text-decoration: none;
-  color: #ffffff;
-  font-family: sans-serif;
-  text-transform: uppercase;
-  font-size: 12px;
-  font-weight: 300;
-  background: #0dc0d4;
-  padding: 8px 10px;
-  border-radius: 30px;
-  box-shadow: 0 0 15px transparent;
-  transition: 0.5s ease-in-out;
-}
+    .header h2, .header h3 {
+      margin: 8px 0;
+      font-weight: 300;
+    }
 
-a:hover {
-  background: #00f2ff;
-  box-shadow: 0 0 15px #00f2ff;
-}
+    .main {
+      padding: 40px 20px;
+    }
 
-  /* BACKGROUND IMAGE */
-  .background-image {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .blog-post {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .blog-post h2 {
+      font-size: 1.6rem;
+      color: #2c3e50;
+    }
+
+    .post-date {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 10px;
+    }
+
+    .read-more {
+      margin-top: 10px;
+      border: none;
+      background-color: #0dc0d4;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .read-more:hover {
+      background-color: #00bcd4;
+      box-shadow: 0 0 10px #00f2ff;
+    }
+
+    .newsletter-section {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    iframe {
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 10;
+      max-width: 900px;
+      height: 600px;
+      margin: auto;
+      display: block;
     }
 
+    .back-home {
+      display: inline-block;
+      margin-top: 20px;
+      text-decoration: none;
+      color: #fff;
+      background: #2ecc71;
+      padding: 10px 20px;
+      border-radius: 30px;
+      transition: 0.3s;
+    }
+
+    .back-home:hover {
+      background: #27ae60;
+      box-shadow: 0 0 12px #27ae60;
+    }
+            .navbar {
+            background: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar a {
+            color: var(--gray);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            cursor: pointer;
+            color: black;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: var(--primary);
+            background: rgba(67, 97, 238, 0.1);
+        }
+                .navbar a {
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .navbar a:hover,
+        .navbar a.active {
+            color: var(--primary);
+            background: rgba(67, 97, 238, 0.15);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+            transform: scale(1.05);
+            border-radius: 8px;
+        }
+                .content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
   </style>
 </head>
 
 <body>
-    <header class="header">
-        <h1>FitTracker</h1>
-        <h2>Fitness Blog</h2><hr>
-        <h3>Al Jamea Tus Saifiyah (Marol) Gymnasium</h3><hr>
-        <p><a href="homepage.html">Return To Main Page</a></p>
-    </header>
-  <!-- MAIN CONTENT -->
-  <div class="main">
-    <img class="background-image" src="images/Gemini_Generated_Image_yv9lgyyv9lgyyv9l.jpeg" alt="Gym background">
-    <div class="blog-content">
-        <article class="blog-post">
-            <h2>5 Tips for Better Workout Recovery</h2>
-            <p class="post-date">Posted on June 15, 2023</p>
-            <p>Proper recovery is just as important as the workout itself. Learn how to optimize your recovery time...</p>
-            <button class="read-more">Read More</button>
-        </article>
+  <!-- Header -->
+  <div class="header">
+    <h1>FitTracker</h1>
+    <h2>Fitness Blog</h2>
+    <h3>Al Jamea Tus Saifiyah (Marol) Gymnasium</h3>
+    <a class="back-home" href="homepage.html">← Return To Main Page</a>
+  </div>
 
-        <article class="blog-post">
-            <h2>Nutrition for Muscle Growth</h2>
-            <p class="post-date">Posted on June 8, 2023</p>
-            <p>What you eat plays a crucial role in your fitness journey. Discover the best foods for muscle building...</p>
-            <button class="read-more">Read More</button>
-        </article>
 
-        <article class="blog-post">
-            <h2>New Gym Equipment Arrival</h2>
-            <p class="post-date">Posted on June 1, 2023</p>
-            <p>We've added new state-of-the-art equipment to our facility. Come check out these exciting additions...</p>
-            <button class="read-more">Read More</button>
-        </article>
+          <div class="dashboard">
+            <div class="navbar">
+        <a href="#" class="active" id="Newsletter-main">NewsLetter</a>
+        <a href="#" id="blogs-main">Blogs</a>
 
-        <a href="site.html" class="home-link">← Back to Home</a>
-    </div>
+      </div>
 
+       <div class="content">
+
+
+
+                    <!-- Newsletter -->
+      <section class="newsletter-section" id="newsletter-low">
+          <div class="overlay">
+    <main class="main container">
+        <h2>📰 Monthly Newsletter</h2>
+        <p>Explore our latest updates and fitness insights in a beautiful flipbook:</p>
+        <iframe src="https://heyzine.com/flip-book/dbf1603872.html" allowfullscreen loading="lazy"></iframe>
+        </main>
+        </div>
+      </section>
+
+
+
+
+
+      <section class="blog-header" id="blogs-low" style="display: none;">
+          <!-- Overlay for readability -->
+        <div class="overlay">
+          <main class="main container">
+            <!-- Blog Posts -->
+            <div class="blog-post">
+              <h2>5 Tips for Better Workout Recovery</h2>
+              <p class="post-date">Posted on June 15, 2023</p>
+              <p>Proper recovery is just as important as the workout itself. Learn how to optimize your recovery time...</p>
+          <button class="read-more" onclick="window.location.href='https://www.muscleandfitness.com/workouts/workout-tips/10-best-ways-recover-after-tough-workout/'" target="_blank">
+          Read More
+        </button>
+
+            </div>
+
+            <div class="blog-post">
+              <h2>Nutrition for Muscle Growth</h2>
+              <p class="post-date">Posted on June 8, 2023</p>
+              <p>What you eat plays a crucial role in your fitness journey. Discover the best foods for muscle building...</p>
+                        <button class="read-more" onclick="window.location.href='https://www.americansportandfitness.com/blogs/fitness-blog/nutrition-for-building-muscle-a-complete-guide'" target="_blank">
+              Read More
+            </button>
+            </div>
+
+            <div class="blog-post">
+              <h2>New Gym Equipment Arrival</h2>
+              <p class="post-date">Posted on June 1, 2023</p>
+              <p>We've added new state-of-the-art equipment to our facility. Come check out these exciting additions...</p>
+              <button class="read-more">Read More</button>
+            </div>
+
+
+
+        </main>
+      </div>
+    </section>
+
+
+
+
+
+  </div>
+</div>
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // SweetAlert2 welcome message (optional)
+    window.onload = () => {
+      Swal.fire({
+        title: 'Welcome to FitTracker Blog!',
+        text: 'Stay updated with our fitness insights 🏋️',
+        icon: 'info',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true
+      });
+    };
+
+//--------------------------------------------------------------------------------------
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const newsletterBtn = document.getElementById('Newsletter-main');
+    const blogsBtn = document.getElementById('blogs-main');
+    const blogsSection = document.getElementById('blogs-low');
+    const newsletterSection = document.getElementById('newsletter-low');
+
+    // Button click for newsletter
+    newsletterBtn.addEventListener('click', () => {
+      blogsSection.style.display = 'none';
+      newsletterSection.style.display = 'block';
+    });
+
+    // Button click for blogs
+    blogsBtn.addEventListener('click', () => {
+      newsletterSection.style.display = 'none';
+      blogsSection.style.display = 'block';
+    });
+  });
+  </script>
 </body>
 </html>
