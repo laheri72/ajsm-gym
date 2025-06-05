@@ -8,7 +8,7 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const port = 10000;
+const port = process.env.PORT || 10000;
 const session = require('express-session');
 
 
@@ -1243,6 +1243,6 @@ app.get('/api/testrecords/:tr', async (req, res) => {
 
 
 // Start server
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${port}`);
 });
