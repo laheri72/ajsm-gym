@@ -722,91 +722,9 @@ app.get('/api/logout', (req, res) => {
 
 
 //-----------------------------------------------------------------------------------------------------------------------------
-app.post('/api/workout-log', async (req, res) => {
-    const { TR, tr, machineID, value } = req.body;
-    const studentTR = TR || tr;
-
-    try {
-        const pool = await sql.connect(config);
-
-        await pool.request()
-            .input('TR', sql.Int, studentTR)
-            .input('MachineID', sql.Int, machineID)
-            .input('Value', sql.Int, value)
-            .query(`
-                INSERT INTO WorkoutLog (TR, MachineID, Value, LogDate)
-                VALUES (@TR, @MachineID, @Value, GETDATE())
-            `);
-
-        // ✅ Add `success: true` to response
-        res.status(200).json({ success: true, message: '✅ Workout log added successfully' });
-
-    } catch (err) {
-        console.error('❌ Workout log insert error:', err);
-        res.status(500).json({ success: false, message: '❌ Internal server error' });
-    }
-});
 
 
-app.get('/api/workout-log/:tr', async (req, res) => {
-    const { tr } = req.params;
-  
-    try {
-      await sql.connect(config);
-      const request = new sql.Request();
-  
-      request.input('TR', sql.Int, parseInt(tr)); 
-  
-      const result = await request.query(`
-        SELECT 
-          WL.LogDate,
-          M.MachineName,
-          M.TypeName,
-          WL.Value
-        FROM WorkoutLog WL  
-        JOIN Machines M ON WL.MachineID = M.MachineID
-        WHERE WL.TR = @TR
-        ORDER BY WL.LogDate DESC
-      `);
-  
-      res.json({ success: true, data: result.recordset });
-    } catch (err) {
-      console.error('Error fetching workout log:', err);
-      res.status(500).json({ success: false, message: 'Server error' });
-    }
-  });
 
-  
-app.get('/api/all-workout-logs', async (req, res) => {
-    const { Branch, Gender } = req.session.user;
-
-    try {
-        await sql.connect(config);
-
-        const result = await new sql.Request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(10), Gender)
-            .query(`
-                SELECT 
-                    WL.LogDate,
-                    WL.TR,
-                    M.Name,
-                    MACH.MachineName,
-                    MACH.TypeName,
-                    WL.Value
-                FROM WorkoutLog WL
-                JOIN Master M ON WL.TR = M.TR
-                JOIN Machines MACH ON WL.MachineID = MACH.MachineID
-                WHERE M.Branch = @Branch AND M.Gender = @Gender
-                ORDER BY WL.LogDate DESC
-            `);
-
-        res.json({ success: true, data: result.recordset });
-    } catch (err) {
-        console.error('Error fetching all workout logs:', err.message);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
 
 
 app.get('/api/all-test-records', async (req, res) => {
@@ -1076,32 +994,6 @@ app.get('/api/all-training-plans', async (req, res) => {
 
 
 
-app.get('/api/workout-records/:tr', async (req, res) => {
-    const { tr } = req.params;
-
-    try {
-        await sql.connect(config);
-        const request = new sql.Request();
-        request.input('TR', sql.Int, tr);
-
-        const result = await request.query(`
-            SELECT 
-                WL.LogDate,
-                M.MachineName,
-                M.TypeName,
-                WL.Value
-            FROM WorkoutLog WL
-            INNER JOIN Machines M ON WL.MachineID = M.MachineID
-            WHERE WL.TR = @TR
-            ORDER BY WL.LogDate DESC
-        `);
-
-        res.json({ success: true, data: result.recordset });
-    } catch (err) {
-        console.error('Error fetching workout records:', err.message);
-        res.status(500).json({ success: false, message: 'Failed to fetch workout records' });
-    }
-});
 
 
 //-----------------------------------------------------------------------------------------------------------------------
