@@ -406,25 +406,18 @@ button:disabled {
 .styled-plan-table tr:nth-child(even) {
   background-color: #fafafa;
 }
-   .planner {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+.planner {
+  display: flex;
+  flex-wrap: wrap;
   gap: 20px;
-  max-width: 1000px;
   justify-content: center;
-  margin: auto;
   padding: 0 15px;
 }
-
 .day-wrapper {
-  display: flex;
-  flex-direction: column;
-  background: #f9f9f9;
-  border-radius: 16px;
-  padding: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  transition: transform 0.2s ease-in-out;
+  flex: 1 1 280px;
+  max-width: 300px;
 }
+
 
 .day-wrapper:hover {
   transform: translateY(-3px);
@@ -433,6 +426,7 @@ button:disabled {
 .day-name {
   font-weight: 600;
   font-size: 1.1rem;
+   text-align: center;
   color: #333;
   margin-bottom: 8px;
 }
@@ -620,7 +614,7 @@ button:disabled {
                       🔁 Cardio (Fat burn & endurance)
                     </button>
                   </h2>
-                  <div id="collapseCardio" class="accordion-collapse collapse show" aria-labelledby="headingCardio" data-bs-parent="#workoutAccordion">
+                  <div id="collapseCardio" class="accordion-collapse collapse " aria-labelledby="headingCardio" data-bs-parent="#workoutAccordion">
                     <div class="accordion-body p-0">
                       <table class="table table-bordered mb-0">
                         <thead class="table-light">
@@ -1180,7 +1174,7 @@ window.addEventListener('DOMContentLoaded', loadStudentPlans);
 
 
     // Also update the basic area (for fallback)
-    // document.getElementById('tipArea').innerHTML = html;
+    document.getElementById('tipArea').innerHTML = html;
     // document.getElementById('tips-low').style.display = 'block';
   }
 
