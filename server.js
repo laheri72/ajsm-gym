@@ -1,5 +1,5 @@
 // Import required modules
-require('dotenv').config();
+
 const express = require('express');
 const sql = require('mssql');
 const router = express.Router();
@@ -23,7 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: process.env.SESSION_SECRET,  // ✅ now pulled from Render env
+  secret: jamea1446@GYM!SecreT2025,  // ✅ now pulled from Render env
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -33,10 +33,10 @@ app.use(session({
 }));
 
 const config = {
-    user: process.env.SQL_USER,
-    password: process.env.SQL_PASSWORD,
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DB,
+    user: idris5687,
+    password: idris5253,
+    server: fittracker.mssql.somee.com,
+    database: fittracker,
     options: {
         encrypt: true,               // Required for some remote SQL servers
         trustServerCertificate: true // As specified in your connection string
