@@ -1,4 +1,5 @@
 // Import required modules
+require('dotenv').config();
 const express = require('express');
 const sql = require('mssql');
 const router = express.Router();
@@ -7,11 +8,11 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
-const app = express();
-const port = process.env.PORT || 10000;
 const session = require('express-session');
+const app = express();
 
-
+// Set up the port
+const port = process.env.PORT || 10000;
 
 // Middleware
 app.use(cors({
@@ -22,7 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'jamea1446',  // 🔒 change this to something strong
+  secret: process.env.SESSION_SECRET,  // ✅ now pulled from Render env
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -32,10 +33,10 @@ app.use(session({
 }));
 
 const config = {
-    user: 'idris5687',
-    password: 'idris5253',
-    server: 'fittracker.mssql.somee.com',
-    database: 'fittracker',
+    user: process.env.SQL_USER,
+    password: process.env.SQL_PASSWORD,
+    server: process.env.SQL_SERVER,
+    database: process.env.SQL_DB,
     options: {
         encrypt: true,               // Required for some remote SQL servers
         trustServerCertificate: true // As specified in your connection string
