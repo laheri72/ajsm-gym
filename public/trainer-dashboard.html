@@ -287,6 +287,7 @@ input[type="text"], input[type="number"], select {
                 </div>
                 <div class="card">
                    <h1> <p id="slotInfo" style="margin-top: 1rem; font-weight: bold; display: none; text-align: center;"></p></h1>
+                   <h3> <p id="goalinfo" style="margin-top: 1rem; font-weight: bold; display: none; text-align: center;"></p></h3>
                 </div>
 
                 <div class="card" id="workoutEntryForm" style="display:none;">
@@ -413,12 +414,14 @@ validateTrainerSession();
 async function checkTR() {
     const tr = document.getElementById('tr-input').value;
     const slotInfo = document.getElementById('slotInfo');
+    const goalInfo = document.getElementById('goalinfo');
     const submitButton = document.getElementById('submitButton'); // Reference to submit button
 
     if (!tr) {
         // If TR is empty, hide the submit button and return
         submitButton.style.display = 'none';
         slotInfo.style.display = 'none'; // Hide slot info
+        goalInfo.style.display = 'none'; // Hide goal info
         workoutEntryForm.style.display = 'none'; // Hide workout entry form
         return;
     }
@@ -434,6 +437,7 @@ async function checkTR() {
             confirmButtonColor: '#d33'
         });
         slotInfo.style.display = 'none';
+        goalInfo.style.display = 'none'; // Hide goal info
         submitButton.style.display = 'none';  // Hide submit button
         workoutEntryForm.style.display = 'none'; // Hide workout entry form
        
@@ -452,6 +456,8 @@ async function checkTR() {
     // Show Slot info
     slotInfo.style.display = 'block';
     slotInfo.innerHTML = `Slot: ${data.data.Slot}`;
+    goalInfo.style.display = 'block';
+    goalInfo.innerHTML = `Goal: ${data.data.Goal}`;
     submitButton.style.display = 'inline-block'; // Show the submit button
     workoutEntryForm.style.display = 'block'; // Show workout entry form
     const TR = document.getElementById("tr-input").value.trim();
@@ -592,6 +598,7 @@ document.getElementById("attendanceForm").addEventListener("submit", async funct
         }).then(() => {
             document.getElementById("attendanceForm").reset();
             document.getElementById("slotInfo").style.display = 'none';
+            document.getElementById("goalinfo").style.display = 'none';
             document.getElementById("workoutEntryForm").style.display = 'none';
             location.reload();
         });
