@@ -1,19 +1,24 @@
 /* Modern Color Scheme with Light/Dark Contrast */
 * {
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Times New Roman', Times, serif;
 }
 
 body {
     margin: 0;
     background-color: #f5f7fa;
-    color: #2d3436;
 }
+
 
 .header {
     text-align: center;
-    padding: 20px;
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    padding: 40px 20px;
+    background-image: url("images/gym_scene_converted.jpg"); /* make sure the path is correct */
+    background-size: cover;         /* fill entire area */
+    background-position: center;    /* center the image */
+    background-repeat: no-repeat;
+    background-attachment: fixed;   /* optional: creates a parallax feel */
+    height: 400px;                  /* adjust as per image height */
     color: #ecf0f1;
     border-bottom: 4px solid #4CAF50;
     box-shadow: 0 4px 30px rgba(0,0,0,0.3);
@@ -152,7 +157,9 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background-size: cover;
+    background-image: url("images/gym\ final.jpg"); /* path to your image */
+    background-size: cover    ;      /* stretches to fill screen */
+    background-repeat: no-repeat;
     background-position: center;
     background-blend-mode: overlay;
  }
@@ -164,7 +171,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: #e9ecef;
+    background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
     box-shadow: -5px 0 15px rgba(0,0,0,0.1);
 }
 
