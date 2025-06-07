@@ -1239,7 +1239,8 @@ app.get('/api/testrecords/:tr', async (req, res) => {
 });
 
 
-
+// code for install anything via terminal 
+// Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 
 
