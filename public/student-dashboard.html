@@ -1456,45 +1456,6 @@ async function loadWeeklyPlan() {
 window.addEventListener('DOMContentLoaded', loadWeeklyPlan);
 
 
-function showApplyLastWeekButton() {
-  document.getElementById('applyLastWeekBtn').style.display = 'block';
-}
-
-async function applyLastWeekPlan() {
-  try {
-    const res = await fetch('/api/student/apply-last-week', {
-      method: 'POST',
-      credentials: 'include'
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Applied!',
-        text: 'Last week’s plan copied to this week.',
-        timer: 2000,
-        showConfirmButton: false
-      });
-      loadWorkoutPlan();
-    } else {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Could not apply',
-        text: data.message || 'Something went wrong.',
-      });
-    }
-
-  } catch (err) {
-    console.error('Apply last week failed:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Network Error',
-      text: 'Could not apply last week’s plan.',
-    });
-  }
-}
 
 
 async function applyLastWeeksPlan() {
