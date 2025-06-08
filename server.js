@@ -642,54 +642,115 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
 
 
 
+// app.post('/api/get-or-create-week', async (req, res) => {
+//     try {
+//         const { WeekStartDate, WeekEndDate } = req.body;
+
+//         if (!WeekStartDate || !WeekEndDate) {
+//             return res.status(400).json({ error: 'WeekStartDate and WeekEndDate are required' });
+//         }
+
+//         // Query to check if the week already exists in the AttendanceWeek table
+//         const request = new sql.Request();
+//         request.input('WeekStartDate', sql.Date, WeekStartDate);
+//         request.input('WeekEndDate', sql.Date, WeekEndDate);
+        
+//         const result = await request.query(`
+//             SELECT * FROM AttendanceWeek 
+//             WHERE NOT (WeekEndDate <= @WeekStartDate OR WeekStartDate >= @WeekEndDate)
+//         `);
+
+//         // If the week does not exist, create a new week
+//         if (result.recordset.length === 0) {
+//             const insertRequest = new sql.Request();
+//             insertRequest.input('WeekStartDate', sql.Date, WeekStartDate);
+//             insertRequest.input('WeekEndDate', sql.Date, WeekEndDate);
+
+//             await insertRequest.query(`
+//                 INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
+//                 VALUES (@WeekStartDate, @WeekEndDate)
+//             `);
+
+//             const newWeekResult = await insertRequest.query(`
+//                 SELECT TOP 1 WeekID FROM AttendanceWeek 
+//                 WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
+//                 ORDER BY WeekID ASC
+//             `);
+
+//             // Return WeekID after creating a new week
+//             return res.json({ message: 'Week created', WeekID: newWeekResult.recordset[0].WeekID });
+//         }
+
+//         // If the week exists, return the existing WeekID
+//         const week = result.recordset[0];
+//         return res.json({ WeekID: week.WeekID });
+
+//     } catch (err) {
+//         console.error('Error creating/fetching week:', err);
+//         res.status(500).json({ error: 'Failed to fetch or create week' });
+//     }
+// });
+
+
 app.post('/api/get-or-create-week', async (req, res) => {
     try {
-        const { WeekStartDate, WeekEndDate } = req.body;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize time
 
-        if (!WeekStartDate || !WeekEndDate) {
-            return res.status(400).json({ error: 'WeekStartDate and WeekEndDate are required' });
-        }
-
-        // Query to check if the week already exists in the AttendanceWeek table
         const request = new sql.Request();
-        request.input('WeekStartDate', sql.Date, WeekStartDate);
-        request.input('WeekEndDate', sql.Date, WeekEndDate);
-        
+        request.input('Today', sql.Date, today);
+
+        // STEP 1: Check if today falls inside any existing week
         const result = await request.query(`
             SELECT * FROM AttendanceWeek 
-            WHERE NOT (WeekEndDate <= @WeekStartDate OR WeekStartDate >= @WeekEndDate)
+            WHERE @Today BETWEEN WeekStartDate AND WeekEndDate
         `);
 
-        // If the week does not exist, create a new week
-        if (result.recordset.length === 0) {
-            const insertRequest = new sql.Request();
-            insertRequest.input('WeekStartDate', sql.Date, WeekStartDate);
-            insertRequest.input('WeekEndDate', sql.Date, WeekEndDate);
-
-            await insertRequest.query(`
-                INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
-                VALUES (@WeekStartDate, @WeekEndDate)
-            `);
-
-            const newWeekResult = await insertRequest.query(`
-                SELECT TOP 1 WeekID FROM AttendanceWeek 
-                WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
-                ORDER BY WeekID ASC
-            `);
-
-            // Return WeekID after creating a new week
-            return res.json({ message: 'Week created', WeekID: newWeekResult.recordset[0].WeekID });
+        if (result.recordset.length > 0) {
+            // Week already exists for today
+            return res.json({ WeekID: result.recordset[0].WeekID });
         }
 
-        // If the week exists, return the existing WeekID
-        const week = result.recordset[0];
-        return res.json({ WeekID: week.WeekID });
+        // STEP 2: Today is not in any week — calculate next Monday
+        let monday = new Date(today);
+        const day = monday.getDay(); // 0 (Sun) to 6 (Sat)
+
+        if (day === 0) {
+            // If Sunday, move to next day (Monday)
+            monday.setDate(monday.getDate() + 1);
+        } else {
+            // Else go to next Monday
+            monday.setDate(monday.getDate() + (8 - day));
+        }
+
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6); // End of week
+
+        // STEP 3: Insert new week
+        const insertRequest = new sql.Request();
+        insertRequest.input('WeekStartDate', sql.Date, monday);
+        insertRequest.input('WeekEndDate', sql.Date, sunday);
+
+        await insertRequest.query(`
+            INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
+            VALUES (@WeekStartDate, @WeekEndDate)
+        `);
+
+        const newWeekResult = await insertRequest.query(`
+            SELECT TOP 1 WeekID FROM AttendanceWeek 
+            WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
+            ORDER BY WeekID DESC
+        `);
+
+        return res.json({ message: 'New week created', WeekID: newWeekResult.recordset[0].WeekID });
 
     } catch (err) {
         console.error('Error creating/fetching week:', err);
         res.status(500).json({ error: 'Failed to fetch or create week' });
     }
 });
+
+
 
 
 app.get('/api/session-user', (req, res) => {
