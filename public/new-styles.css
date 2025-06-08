@@ -68,14 +68,14 @@ body {
 .header h1 {
     font-size: 3.5rem;
     margin-bottom: 15px;
-    color: #4CAF50;
+    color: #00FFEA !important;
     text-transform: uppercase;
     letter-spacing: 4px;
     text-shadow: 3px 3px 8px rgba(0,0,0,0.4);
     animation: pulse 2s infinite alternate, 
                colorShift 8s infinite alternate;
     display: inline-block;
-    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    background: linear-gradient(90deg, #00FFEA, #9B59B6);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -88,7 +88,7 @@ body {
 
 .header h2 {
     font-size: 1.8rem;
-    color: #ecf0f1;
+    color: #00FFEA;
     font-weight: 300;
     letter-spacing: 2px;
     animation: fadeIn 1.5s ease-out, 
@@ -103,7 +103,7 @@ body {
 
 .header h3 {
     font-size: 1.4rem;
-    color: #bdc3c7;
+    color: #FFB84D;
     animation: slideUp 1s ease-out, 
                fadeInOut 6s infinite;
     margin-top: 10px;
