@@ -540,11 +540,21 @@ document.getElementById("attendanceForm").addEventListener("submit", async funct
     const selectedOptions = Array.from(document.getElementById("bodyParts").selectedOptions).map(opt => opt.value);
 
     try {
-        const today = new Date();
-        const weekStart = new Date(today);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
+            const today = new Date();
+            const weekStart = new Date(today);
+
+            // 👇 Calculate the number of days to subtract to get Monday
+            const currentDay = weekStart.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
+            const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay; 
+            weekStart.setDate(weekStart.getDate() + diffToMonday); // Shift to Monday
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6); // Sunday
+
+            // 🔃 Format in YYYY-MM-DD
+            const formattedStart = weekStart.toISOString().split('T')[0];
+            const formattedEnd = weekEnd.toISOString().split('T')[0];
+
 
         const weekResponse = await fetch('/api/get-or-create-week', {
             method: 'POST',

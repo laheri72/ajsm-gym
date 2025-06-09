@@ -122,11 +122,27 @@ app.delete('/api/delete-student/:TR', async (req, res) => {
     }
 });
 
+
 app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
     const { weekId, tr } = req.params;
 
     try {
         await sql.connect(config);
+
+        // Get week start date
+        const weekQuery = await new sql.Request()
+            .input('WeekID', sql.Int, weekId)
+            .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
+
+        if (weekQuery.recordset.length === 0) {
+            return res.status(404).json({ error: 'Week not found' });
+        }
+
+        const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Get attendance for the student
         const result = await new sql.Request()
             .input('WeekID', sql.Int, weekId)
             .input('TR', sql.Int, tr)
@@ -141,27 +157,27 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
                 WHERE M.TR = @TR
             `);
 
-        const map = new Map();
+        const record = {
+            TR: tr,
+            Name: '',
+            WeekStartDate: startDate,
+            Monday: '',
+            Tuesday: '',
+            Wednesday: '',
+            Thursday: '',
+            Friday: '',
+            Saturday: '',
+            Sunday: ''
+        };
 
         for (let row of result.recordset) {
-            const { TR, Name, DayName } = row;
-            if (!map.has(TR)) {
-                map.set(TR, {
-                    TR,
-                    Name,
-                    Monday: '',
-                    Tuesday: '',
-                    Wednesday: '',
-                    Thursday: '',
-                    Friday: '',
-                    Saturday: '',
-                    Sunday: ''
-                });
+            record.Name = row.Name;
+            if (row.DayName) {
+                record[row.DayName] = '✅';
             }
-            if (DayName) map.get(TR)[DayName] = '✅';
         }
 
-        res.json([...map.values()]);
+        res.json([record]);
     } catch (err) {
         console.error('Error fetching student attendance:', err.message);
         res.status(500).json({ error: 'Failed to fetch student attendance' });
@@ -642,113 +658,113 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
 
 
 
-// app.post('/api/get-or-create-week', async (req, res) => {
-//     try {
-//         const { WeekStartDate, WeekEndDate } = req.body;
-
-//         if (!WeekStartDate || !WeekEndDate) {
-//             return res.status(400).json({ error: 'WeekStartDate and WeekEndDate are required' });
-//         }
-
-//         // Query to check if the week already exists in the AttendanceWeek table
-//         const request = new sql.Request();
-//         request.input('WeekStartDate', sql.Date, WeekStartDate);
-//         request.input('WeekEndDate', sql.Date, WeekEndDate);
-        
-//         const result = await request.query(`
-//             SELECT * FROM AttendanceWeek 
-//             WHERE NOT (WeekEndDate <= @WeekStartDate OR WeekStartDate >= @WeekEndDate)
-//         `);
-
-//         // If the week does not exist, create a new week
-//         if (result.recordset.length === 0) {
-//             const insertRequest = new sql.Request();
-//             insertRequest.input('WeekStartDate', sql.Date, WeekStartDate);
-//             insertRequest.input('WeekEndDate', sql.Date, WeekEndDate);
-
-//             await insertRequest.query(`
-//                 INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
-//                 VALUES (@WeekStartDate, @WeekEndDate)
-//             `);
-
-//             const newWeekResult = await insertRequest.query(`
-//                 SELECT TOP 1 WeekID FROM AttendanceWeek 
-//                 WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
-//                 ORDER BY WeekID ASC
-//             `);
-
-//             // Return WeekID after creating a new week
-//             return res.json({ message: 'Week created', WeekID: newWeekResult.recordset[0].WeekID });
-//         }
-
-//         // If the week exists, return the existing WeekID
-//         const week = result.recordset[0];
-//         return res.json({ WeekID: week.WeekID });
-
-//     } catch (err) {
-//         console.error('Error creating/fetching week:', err);
-//         res.status(500).json({ error: 'Failed to fetch or create week' });
-//     }
-// });
-
-
 app.post('/api/get-or-create-week', async (req, res) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Normalize time
+        const { WeekStartDate, WeekEndDate } = req.body;
+
+        if (!WeekStartDate || !WeekEndDate) {
+            return res.status(400).json({ error: 'WeekStartDate and WeekEndDate are required' });
+        }
 
         const request = new sql.Request();
-        request.input('Today', sql.Date, today);
+        const todayStr = new Date().toISOString().split('T')[0];
+        request.input('Today', sql.Date, todayStr);
 
-        // STEP 1: Check if today falls inside any existing week
-        const result = await request.query(`
-            SELECT * FROM AttendanceWeek 
+        // ✅ Get the most recent week that contains today
+        const existingWeek = await request.query(`
+            SELECT TOP 1 WeekID FROM AttendanceWeek 
             WHERE @Today BETWEEN WeekStartDate AND WeekEndDate
+            ORDER BY WeekID DESC
         `);
 
-        if (result.recordset.length > 0) {
-            // Week already exists for today
-            return res.json({ WeekID: result.recordset[0].WeekID });
+        if (existingWeek.recordset.length > 0) {
+            return res.json({ WeekID: existingWeek.recordset[0].WeekID });
         }
 
-        // STEP 2: Today is not in any week — calculate next Monday
-        let monday = new Date(today);
-        const day = monday.getDay(); // 0 (Sun) to 6 (Sat)
-
-        if (day === 0) {
-            // If Sunday, move to next day (Monday)
-            monday.setDate(monday.getDate() + 1);
-        } else {
-            // Else go to next Monday
-            monday.setDate(monday.getDate() + (8 - day));
-        }
-
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6); // End of week
-
-        // STEP 3: Insert new week
+        // 🚀 Week doesn't exist — insert it
         const insertRequest = new sql.Request();
-        insertRequest.input('WeekStartDate', sql.Date, monday);
-        insertRequest.input('WeekEndDate', sql.Date, sunday);
+        insertRequest.input('WeekStartDate', sql.Date, WeekStartDate);
+        insertRequest.input('WeekEndDate', sql.Date, WeekEndDate);
 
         await insertRequest.query(`
             INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
             VALUES (@WeekStartDate, @WeekEndDate)
         `);
 
+        // 🔁 Get the newly inserted week's WeekID
         const newWeekResult = await insertRequest.query(`
             SELECT TOP 1 WeekID FROM AttendanceWeek 
             WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
             ORDER BY WeekID DESC
         `);
 
-        return res.json({ message: 'New week created', WeekID: newWeekResult.recordset[0].WeekID });
+        return res.json({ message: '✅ Week created', WeekID: newWeekResult.recordset[0].WeekID });
 
     } catch (err) {
-        console.error('Error creating/fetching week:', err);
+        console.error('❌ Error creating/fetching week:', err);
         res.status(500).json({ error: 'Failed to fetch or create week' });
     }
 });
+
+
+
+// app.post('/api/get-or-create-week', async (req, res) => {
+//     try {
+//         const today = new Date();
+//         today.setHours(0, 0, 0, 0); // Normalize time
+
+//         const request = new sql.Request();
+//         request.input('Today', sql.Date, today);
+
+//         // STEP 1: Check if today falls inside any existing week
+//         const result = await request.query(`
+//             SELECT * FROM AttendanceWeek 
+//             WHERE @Today BETWEEN WeekStartDate AND WeekEndDate
+//         `);
+
+//         if (result.recordset.length > 0) {
+//             // Week already exists for today
+//             return res.json({ WeekID: result.recordset[0].WeekID });
+//         }
+
+//         // STEP 2: Today is not in any week — calculate next Monday
+//         let monday = new Date(today);
+//         const day = monday.getDay(); // 0 (Sun) to 6 (Sat)
+
+//         if (day === 0) {
+//             // If Sunday, move to next day (Monday)
+//             monday.setDate(monday.getDate() + 1);
+//         } else {
+//             // Else go to next Monday
+//             monday.setDate(monday.getDate() + (8 - day));
+//         }
+
+//         const sunday = new Date(monday);
+//         sunday.setDate(monday.getDate() + 6); // End of week
+
+//         // STEP 3: Insert new week
+//         const insertRequest = new sql.Request();
+//         insertRequest.input('WeekStartDate', sql.Date, monday);
+//         insertRequest.input('WeekEndDate', sql.Date, sunday);
+
+//         await insertRequest.query(`
+//             INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
+//             VALUES (@WeekStartDate, @WeekEndDate)
+//         `);
+
+//         const newWeekResult = await insertRequest.query(`
+//             SELECT TOP 1 WeekID FROM AttendanceWeek 
+//             WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
+//             ORDER BY WeekID DESC
+//         `);
+
+//         return res.json({ message: 'New week created', WeekID: newWeekResult.recordset[0].WeekID });
+
+//     } catch (err) {
+//         console.error('Error creating/fetching week:', err);
+//         res.status(500).json({ error: 'Failed to fetch or create week' });
+//     }
+// });
 
 
 
@@ -1217,6 +1233,149 @@ app.get('/api/students', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch students' });
   }
 });
+
+
+
+
+//-------------------------------------------------------------------------------------------
+
+
+app.get('/api/attendance-record/:tr/:date', async (req, res) => {
+  const { tr, date } = req.params;
+  const { Branch, Gender } = req.session.user;
+
+  if (!Branch || !Gender) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    await sql.connect(config);
+    const request = new sql.Request();
+
+    request.input('TR', sql.Int, tr);
+    request.input('Branch', sql.NVarChar(50), Branch);
+    request.input('Gender', sql.NVarChar(10), Gender);
+    request.input('Date', sql.Date, date);
+
+    // Query attendance for the TR and date (match CreatedAt date only, ignore time)
+    const result = await request.query(`
+      SELECT AttendanceID, TR, WeekID, IsPresent, CreatedAt, Branch, Gender
+      FROM Attendance
+      WHERE TR = @TR 
+        AND Branch = @Branch 
+        AND Gender = @Gender
+        AND CAST(CreatedAt AS DATE) = @Date
+    `);
+
+    if (result.recordset.length > 0) {
+      // Found attendance record, return it
+      return res.json({ success: true, record: result.recordset[0] });
+    } else {
+      // No attendance record found → treat as Absent with no AttendanceID (new record)
+      return res.json({
+        success: true,
+        record: {
+          AttendanceID: null,
+          TR: parseInt(tr),
+          WeekID: null,
+          IsPresent: false,
+          CreatedAt: date,
+          Branch,
+          Gender
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching attendance record:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch attendance' });
+  }
+});
+
+
+
+
+
+app.put('/api/attendance-record', async (req, res) => {
+  const { AttendanceID, TR, WeekID, IsPresent, CreatedAt } = req.body;
+  const { Branch, Gender } = req.session.user;
+
+  if (!Branch || !Gender) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  if (!TR || !CreatedAt || typeof IsPresent !== 'boolean') {
+    return res.status(400).json({ success: false, error: 'Missing or invalid parameters' });
+  }
+
+  // Validate CreatedAt date is within 7 days (attendance editable window)
+  const createdDate = new Date(CreatedAt);
+  const now = new Date();
+  const diffTime = now - createdDate;
+  const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+  if (diffDays > 7) {
+    return res.status(403).json({ success: false, error: 'Attendance can only be edited within 7 days' });
+  }
+
+  try {
+    await sql.connect(config);
+    const request = new sql.Request();
+
+    if (AttendanceID) {
+      // UPDATE existing attendance
+      request.input('AttendanceID', sql.Int, AttendanceID);
+      request.input('IsPresent', sql.Bit, IsPresent);
+
+      const updateResult = await request.query(`
+        UPDATE Attendance
+        SET IsPresent = @IsPresent
+        WHERE AttendanceID = @AttendanceID
+      `);
+
+      return res.json({ success: true, message: 'Attendance updated successfully' });
+    } else {
+      // INSERT new attendance record
+      // We need WeekID - if not provided, try to calculate from CreatedAt date
+      let weekId = WeekID;
+      if (!weekId) {
+        // Optional: fetch WeekID from AttendanceWeek based on CreatedAt
+        const weekResult = await new sql.Request()
+          .input('Date', sql.Date, CreatedAt)
+          .query(`
+            SELECT TOP 1 WeekID FROM AttendanceWeek
+            WHERE @Date BETWEEN WeekStartDate AND WeekEndDate
+          `);
+
+        if (weekResult.recordset.length === 0) {
+          return res.status(400).json({ success: false, error: 'Week not found for given date' });
+        }
+        weekId = weekResult.recordset[0].WeekID;
+      }
+
+      const insertRequest = new sql.Request();
+      insertRequest.input('TR', sql.Int, TR);
+      insertRequest.input('WeekID', sql.Int, weekId);
+      insertRequest.input('IsPresent', sql.Bit, IsPresent);
+      insertRequest.input('CreatedAt', sql.DateTime, CreatedAt);
+      insertRequest.input('Branch', sql.NVarChar(50), Branch);
+      insertRequest.input('Gender', sql.NVarChar(10), Gender);
+
+      const insertResult = await insertRequest.query(`
+        INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, Branch, Gender)
+        VALUES (@TR, @WeekID, @IsPresent, @CreatedAt, @Branch, @Gender)
+      `);
+
+      return res.json({ success: true, message: 'Attendance inserted successfully' });
+    }
+  } catch (err) {
+    console.error('Error updating attendance:', err);
+    return res.status(500).json({ success: false, error: 'Failed to update attendance' });
+  }
+});
+
+
+
+
 
 //-------------------------------------------------------------------------------------------
 //--------------------------------- FITNESS TEST --------------------------------------------
