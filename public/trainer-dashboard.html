@@ -373,11 +373,12 @@ async function validateTrainerSession() {
       return;
     }
 
-    const { Branch, Gender } = data.user;
+    const { Branch, Gender, Role } = data.user;
 
     // Save to localStorage if needed for conditional UI
     localStorage.setItem('Branch', Branch);
     localStorage.setItem('Gender', Gender);
+    localStorage.setItem('Role', Role);
 
     // Optional: Display welcome message
     document.getElementById('welcomeText').innerText = `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;

@@ -56,7 +56,10 @@
         .navbar a:hover,
         .navbar a.active {
             color: var(--primary);
-            background: rgba(67, 97, 238, 0.1);
+             background: rgba(67, 97, 238, 0.15);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+            transform: scale(1.05);
+            border-radius: 8px;
         }
 
         thead select {
@@ -278,23 +281,18 @@
             font-weight: 600;
         }
 
-        .navbar a:hover,
-        .navbar a.active {
-            color: var(--primary);
-            background: rgba(67, 97, 238, 0.15);
-            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-            transform: scale(1.05);
-            border-radius: 8px;
-        }
+        
+
     </style>
 </head>
 <body>
     <div class="dashboard">
       <div class="navbar">
-        <a href="#" class="active" id="tab-entry">Student Entry</a>
+        <a href="#" id="tab-entry">Student Entry</a>
+        <a href="#" id="tab-admin" style="display: none;">👑 Role Management</a>
         <a href="#" id="tab-record">Student Record</a>
         <a href="#" id="tab-Progress">Track Progress</a>
-        <a href="#" id="tab-test">Fitness Test</a>
+        <a href="#" id="tab-test" style="display: none;">Fitness Test</a>
         <a href="#" id="tab-attendance">Attendance Summary</a>
         <a href="#" id="logoutLink">Logout</a>
 
@@ -362,27 +360,6 @@
           </div>
         </section>
   
-        <!-- <section id="" class="card" style="display:none;">
-          <div class="container mt-5">
-          <h2>Student Record</h2>
-          <button id="exportBtn" class="btn btn-success mt-2">Export to Excel</button>
-          <table id="workout-summary-table" class="table table-striped table-bordered" style="width:100%">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>TR</th>
-                <th>Name</th>
-                <th>Machine</th>
-                <th>Type</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          
-        </div>
-        </section> -->
-
 
 
         <section id="progress-tab" class="card" style="display:none;">
@@ -405,7 +382,48 @@
   </div>
 </section>
 
+<!-- ----------------------------------------------------------------------------------------------------------------------------- -->
 
+ <section id="Admin-base" style="display: none; padding: 20px;">
+  <h2>👑 Role Management Panel</h2>
+  <p id="adminBranchInfo">
+  Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch only.
+</p>
+
+
+
+  <!-- Table (read-only) -->
+  <table id="adminUserTable" border="1" cellspacing="0" cellpadding="5">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Gender</th>
+        <th>Role</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Add New User -->
+  <h3>Add New User</h3>
+  <form id="adminAddForm">
+    <input type="text" placeholder="Username" id="newUsername" required />
+    <input type="text" placeholder="Password" id="newPassword" required />
+    <select id="newGender">
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+    <select id="newRole">
+      <option value="Trainer">Trainer</option>
+      <option value="Staff">Staff</option>
+    </select>
+    <button type="submit">Add User</button>
+  </form>
+</section>
+
+
+
+<!-- -------------------------------------------------------------------------------------------------------------------------------- -->
 
 
         <section id="student-record" class="card" style="display:none;">
@@ -528,7 +546,10 @@
           </div>
         
             <!-- Export Button -->
+            <div class="d-flex justify-content-end">
             <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
+          </div>
+
 
             <!-- Attendance Table -->
              <div style="overflow-x: auto;">
@@ -559,6 +580,8 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   
     <script>
 async function validateStaffSession() {
@@ -575,18 +598,58 @@ async function validateStaffSession() {
       return;
     }
 
-    const { Branch, Gender } = data.user;
+    const { Branch, Gender, Role } = data.user;
+
+      // Show/hide Admin tab using ID now
+      const adminTab = document.getElementById('tab-admin');
+
+      if (Role === 'Admin') {
+        document.getElementById('tab-admin').style.display = 'inline-block';
+
+        // 🔥 Set it as active tab immediately
+        setActiveTab('tab-admin');
+
+        // 🔥 Show the admin section
+        document.getElementById('Admin-base').style.display = 'block';
+      } else {
+        document.getElementById('tab-admin').style.display = 'none';
+
+        // Hide admin section if somehow visible
+        document.getElementById('Admin-base').style.display = 'none';
+      }
+
+    if (Role === 'Trainer') {
+      window.location.href = 'Forbidden.html';
+      return;
+    }
 
     // Update welcome text
     document.getElementById('welcomeText').innerText =
       `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
 
+      // Show "Fitness Test" tab only if Branch = Marol and Gender = Male
+      const fitnessTab = document.getElementById('tab-test');
+      if (Branch === 'Marol' && Gender === 'Male') {
+        fitnessTab.style.display = 'inline-block';
+      } else {
+        fitnessTab.style.display = 'none';  // Just for extra safety
+      }
+
+
     // Store branch and gender in localStorage for reuse
     localStorage.setItem('branch', Branch);
+      // 🔵 Update the paragraph inside admin panel with branch name
+     const adminInfoPara = document.getElementById('branch-name');
+    if (adminInfoPara && Branch) {
+      adminInfoPara.innerText = Branch;
+    }
+
+
     localStorage.setItem('gender', Gender);
 
     // Update Darajah options dynamically based on Gender
     updateDarajahOptionsBasedOnGender(Gender);
+    
 
   } catch (err) {
     console.error('Failed to validate session:', err);
@@ -621,7 +684,7 @@ function updateDarajahOptionsBasedOnGender(gender) {
   darajahSelect.innerHTML = '';
   darajahSelect.appendChild(new Option("Select Darajah", "", true, true));
   darajahSelect.options[0].disabled = true;
-
+   
   maleOptions.forEach(optionText => {
     let displayText = optionText;
     if (isFemale) {
@@ -631,7 +694,23 @@ function updateDarajahOptionsBasedOnGender(gender) {
   });
 }
 
-validateStaffSession();
+document.addEventListener('DOMContentLoaded', () => {
+  validateStaffSession();
+});
+
+function setActiveTab(tabIdToActivate) {
+  // Remove active class from all navbar links
+  document.querySelectorAll('.navbar a').forEach(tab => {
+    tab.classList.remove('active');
+  });
+
+  // Add active class to the current one
+  const targetTab = document.getElementById(tabIdToActivate);
+  if (targetTab) {
+    targetTab.classList.add('active');
+  }
+}
+
 
 //.........................................................................................................................
 
@@ -955,13 +1034,17 @@ let currentDate = null;
 
 document.getElementById('fetchAttendanceBtn').addEventListener('click', async () => {
   const tr = document.getElementById('editTR').value.trim();
-  const date = document.getElementById('editDate').value;  // yyyy-mm-dd string
+  const date = document.getElementById('editDate').value;
   const statusField = document.getElementById('currentStatus');
   const editor = document.getElementById('attendanceEditor');
   const message = document.getElementById('editMessage');
 
   if (!tr || !date) {
-    return alert('Please enter TR and Date');
+    return Swal.fire({
+      icon: 'warning',
+      title: 'Missing Data',
+      text: 'Please enter both TR and Date.'
+    });
   }
 
   try {
@@ -969,11 +1052,17 @@ document.getElementById('fetchAttendanceBtn').addEventListener('click', async ()
     const data = await res.json();
 
     if (!data.success) {
+      console.error('❌ API Error:', data.error);
       editor.style.display = 'none';
-      return alert(data.error || 'No attendance found');
+      message.textContent = `❌ ${data.error}`;
+      return Swal.fire({
+        icon: 'error',
+        title: 'Unauthorized',
+        text: data.error
+      });
     }
 
-    currentAttendanceId = data.record.AttendanceID;  // can be null for new record
+    currentAttendanceId = data.record.AttendanceID;
     currentTR = tr;
     currentDate = date;
 
@@ -981,25 +1070,50 @@ document.getElementById('fetchAttendanceBtn').addEventListener('click', async ()
     document.getElementById('isPresentToggle').value = data.record.IsPresent ? 'true' : 'false';
     editor.style.display = 'block';
     message.textContent = '';
+
+    // If no AttendanceID, it's a fresh record (absent by default)
+    if (!data.record.AttendanceID) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No Attendance Record',
+        text: 'Student found, but no attendance record for the selected date. Treated as Absent.'
+      });
+    } else {
+      Swal.fire({
+        icon: 'success',
+        title: 'Record Loaded',
+        text: `Attendance found for TR ${tr} on ${date}.`
+      });
+    }
+
   } catch (err) {
-    console.error('Fetch error:', err);
-    alert('Failed to fetch record');
+    console.error('❌ Fetch error:', err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Fetch Failed',
+      text: 'Failed to fetch attendance record. Please check console for details.'
+    });
   }
 });
 
+
+
 document.getElementById('updateAttendanceBtn').addEventListener('click', async () => {
   if (!currentTR || !currentDate) {
-    return alert('Please fetch an attendance record first');
+    return Swal.fire({
+      icon: 'warning',
+      title: 'Missing Data',
+      text: 'Please fetch an attendance record first.'
+    });
   }
 
   const isPresent = document.getElementById('isPresentToggle').value === 'true';
   const message = document.getElementById('editMessage');
 
-  // Prepare payload for upsert
   const payload = {
-    AttendanceID: currentAttendanceId, // can be null for insert
+    AttendanceID: currentAttendanceId,  // null if insert
     TR: parseInt(currentTR, 10),
-    CreatedAt: currentDate,  // keep as 'yyyy-mm-dd' so backend treats as local date
+    CreatedAt: currentDate,
     IsPresent: isPresent
   };
 
@@ -1014,14 +1128,37 @@ document.getElementById('updateAttendanceBtn').addEventListener('click', async (
 
     if (result.success) {
       message.textContent = '✅ Attendance updated successfully';
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Updated!',
+        text: 'Attendance has been updated successfully.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      window.location.reload(); // 🔁 Reload the page after success
+
     } else {
       message.textContent = `❌ Error: ${result.error || 'Unknown error'}`;
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: result.error || 'Something went wrong.'
+      });
     }
+
   } catch (err) {
     console.error('Update error:', err);
     message.textContent = '❌ Failed to update attendance';
+    Swal.fire({
+      icon: 'error',
+      title: 'Server Error',
+      text: 'Could not connect to the server.'
+    });
   }
 });
+
 
 
 
@@ -1122,6 +1259,75 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+//---------------------------------------------------------------------------------------------------
+
+async function loadAdminUsers() {
+  try {
+    const branch = localStorage.getItem('branch'); // Get branch from local storage
+    const res = await fetch(`/api/admin/users/${branch}`);
+    const data = await res.json();
+
+    const tableBody = document.querySelector('#adminUserTable tbody');
+    tableBody.innerHTML = ''; // Clear old rows
+
+    data.forEach(user => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${user.Username}</td>
+        <td>${user.Gender}</td>
+        <td>${user.Role}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+  } catch (err) {
+    console.error('Failed to load users:', err);
+  }
+}
+
+
+
+async function deleteUser(username) {
+  if (!confirm(`Are you sure you want to permanently delete ${username}?`)) return;
+
+  const res = await fetch(`/api/admin/delete-user/${username}`, {
+    method: 'DELETE'
+  });
+
+  const data = await res.json();
+  if (data.success) loadAdminUsers();
+  else alert('Deletion failed');
+}
+
+document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const branch = localStorage.getItem('branch');
+  const newUser = {
+    username: document.getElementById('newUsername').value,
+    password: document.getElementById('newPassword').value,
+    gender: document.getElementById('newGender').value,
+    role: document.getElementById('newRole').value,
+    branch
+  };
+
+  const res = await fetch('/api/admin/add-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newUser)
+  });
+
+  const data = await res.json();
+  if (data.success) {
+    loadAdminUsers();
+    e.target.reset();
+  } else {
+    alert('Failed to add user');
+  }
+});
+
+
+
+
 
       //---------------------------------------------------------------------------------------------------
   
@@ -1131,6 +1337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('attendance-summary').style.display = 'none';
          document.getElementById('progress-tab').style.display = 'none';
           document.getElementById('test-record').style.display = 'none';
+          document.getElementById('Admin-base').style.display = 'none';
         document.getElementById('student-record').style.display = 'block';
         loadStudentRecords();
       });
@@ -1140,14 +1347,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('attendance-summary').style.display = 'none';
          document.getElementById('progress-tab').style.display = 'none';
           document.getElementById('test-record').style.display = 'none';
+          document.getElementById('Admin-base').style.display = 'none';
         document.getElementById('student-entry').style.display = 'block';
       });
+
+
 
       document.getElementById('tab-Progress').addEventListener('click', () => {
   document.getElementById('student-record').style.display = 'none';
   document.getElementById('student-entry').style.display = 'none';
   document.getElementById('attendance-summary').style.display = 'none';
    document.getElementById('test-record').style.display = 'none';
+   document.getElementById('Admin-base').style.display = 'none';
   document.getElementById('progress-tab').style.display = 'block';
 });
 
@@ -1155,6 +1366,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('student-record').style.display = 'none';
   document.getElementById('student-entry').style.display = 'none';
   document.getElementById('attendance-summary').style.display = 'none';
+  document.getElementById('Admin-base').style.display = 'none';
   document.getElementById('progress-tab').style.display = 'none';
   document.getElementById('test-record').style.display = 'block';
 });
@@ -1165,10 +1377,22 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('student-record').style.display = 'none';
       document.getElementById('student-entry').style.display = 'none';
       document.getElementById('progress-tab').style.display = 'none';
+      document.getElementById('Admin-base').style.display = 'none';
        document.getElementById('test-record').style.display = 'none';
       document.getElementById('attendance-summary').style.display = 'block';
 });
 
+document.getElementById('tab-admin').addEventListener('click', () => {
+  setActiveTab('tab-admin');
+  document.getElementById('student-record').style.display = 'none';
+  document.getElementById('student-entry').style.display = 'none';
+  document.getElementById('attendance-summary').style.display = 'none';
+  document.getElementById('progress-tab').style.display = 'none';
+  document.getElementById('test-record').style.display = 'none';
+  document.getElementById('Admin-base').style.display = 'block';
+
+  loadAdminUsers(); // Optional: reload user list when clicked
+});
 
 
 //-------------------------------------------------------------------------------------------------

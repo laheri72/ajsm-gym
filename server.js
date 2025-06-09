@@ -360,6 +360,57 @@ app.get('/api/student-session', (req, res) => {
 
 
 
+app.get('/api/session-user', (req, res) => {
+  if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender || !req.session.user.Role) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  res.json({
+    success: true,
+    user: req.session.user
+  });
+});
+
+
+
+app.post('/api/trainer-login', async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    await sql.connect(config);
+    const request = new sql.Request();
+    request.input('Username', sql.NVarChar(50), username);
+    request.input('Password', sql.NVarChar(50), password);
+
+    const result = await request.query(`
+      SELECT Username, Branch, Gender, Role FROM PassBank
+      WHERE Username = @Username AND Password = @Password
+    `);
+
+    if (result.recordset.length === 1) {
+      const { Username, Branch, Gender, Role } = result.recordset[0];
+
+      if (Role !== 'Trainer') {
+        return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
+      }
+
+      req.session.user = { Username, Branch, Gender, Role };
+
+      return res.json({ success: true, role: Role });
+
+    } else {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+  } catch (err) {
+    console.error('Trainer login error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
+
+
 
 app.post('/api/staff-login', async (req, res) => {
   const { username, password } = req.body;
@@ -371,27 +422,23 @@ app.post('/api/staff-login', async (req, res) => {
     request.input('Password', sql.NVarChar(50), password);
 
     const result = await request.query(`
-      SELECT Username, Branch, Gender FROM PassBank
+      SELECT Username, Branch, Gender, Role FROM PassBank
       WHERE Username = @Username AND Password = @Password
     `);
 
     if (result.recordset.length === 1) {
-      const { Username, Branch, Gender } = result.recordset[0]; // ✅ Destructured here
+      const { Username, Branch, Gender, Role } = result.recordset[0];
 
-      // ✅ Use those directly (DO NOT use undefined "user")
-      req.session.user = {
-        Username,
-        Branch,
-        Gender
-      };
+      if (Role === 'Trainer') {
+        return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
+      }
 
-        // ✅ Debug log to confirm session is set
-        //   console.log('Logged-in staff session:', req.session.user);
+      req.session.user = { Username, Branch, Gender, Role };
 
+      return res.json({ success: true, role: Role });
 
-      res.json({ success: true });
     } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
   } catch (err) {
     console.error('Staff login error:', err);
@@ -399,6 +446,54 @@ app.post('/api/staff-login', async (req, res) => {
   }
 });
 
+
+// ------------------------------------------------------------------------------------------------------
+
+
+
+// GET all users of admin's branch
+app.get('/api/admin/users/:branch', async (req, res) => {
+  const branch = req.params.branch;
+  try {
+    await sql.connect(config);
+    const result = await sql.query`SELECT Username, Gender, Role FROM PassBank WHERE Branch = ${branch}`;
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ADD a new user
+app.post('/api/admin/add-user', async (req, res) => {
+  const { username, password, gender, role, branch } = req.body;
+  try {
+    await sql.connect(config);
+    await sql.query`
+      INSERT INTO PassBank (Username, Password, Gender, Role, Branch)
+      VALUES (${username}, ${password}, ${gender}, ${role}, ${branch})
+    `;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Add user failed' });
+  }
+});
+
+
+
+// DELETE a user
+app.delete('/api/admin/delete-user/:username', async (req, res) => {
+  const username = req.params.username;
+  try {
+    await sql.connect(config);
+    await sql.query`DELETE FROM PassBank WHERE Username = ${username}`;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+
+//---------------------------------------------------------------------------------------------------------------
 
 
 
@@ -769,16 +864,6 @@ app.post('/api/get-or-create-week', async (req, res) => {
 
 
 
-app.get('/api/session-user', (req, res) => {
-  if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  res.json({
-    success: true,
-    user: req.session.user
-  });
-});
 
 app.get('/api/current-tr', (req, res) => {
     if (!req.session.currentTR) {
@@ -803,9 +888,14 @@ app.get('/api/logout', (req, res) => {
 
 
 
-
-
 app.get('/api/all-test-records', async (req, res) => {
+  const { Branch, Gender } = req.session.user || {};
+
+  // Allow only Marol Male staff to access
+  if (Branch !== 'Marol' || Gender !== 'Male') {
+    return res.status(403).json({ success: false, message: 'Access denied: Not authorized' });
+  }
+
   try {
     await sql.connect(config);
 
@@ -839,6 +929,7 @@ app.get('/api/all-test-records', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 //--------------------------------------------------------------------------------------------------------
 app.post('/save-workout-plan', async (req, res) => {
@@ -1245,7 +1336,7 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
   const { Branch, Gender } = req.session.user;
 
   if (!Branch || !Gender) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
+    return res.status(401).json({ success: false, error: 'Unauthorized: Session missing branch or gender' });
   }
 
   try {
@@ -1257,7 +1348,16 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
     request.input('Gender', sql.NVarChar(10), Gender);
     request.input('Date', sql.Date, date);
 
-    // Query attendance for the TR and date (match CreatedAt date only, ignore time)
+    // Check if student exists in Master table under same Branch + Gender
+    const studentCheck = await request.query(`
+      SELECT * FROM Master WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
+    `);
+
+    if (studentCheck.recordset.length === 0) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: TR not found in your branch/gender' });
+    }
+
+    // Now fetch Attendance record (if any) for that date
     const result = await request.query(`
       SELECT AttendanceID, TR, WeekID, IsPresent, CreatedAt, Branch, Gender
       FROM Attendance
@@ -1268,10 +1368,9 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
     `);
 
     if (result.recordset.length > 0) {
-      // Found attendance record, return it
       return res.json({ success: true, record: result.recordset[0] });
     } else {
-      // No attendance record found → treat as Absent with no AttendanceID (new record)
+      // No record found (treat as Absent, but valid student)
       return res.json({
         success: true,
         record: {
@@ -1290,7 +1389,6 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch attendance' });
   }
 });
-
 
 
 

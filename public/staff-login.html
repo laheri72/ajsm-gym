@@ -202,6 +202,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             localStorage.setItem('staffUser', data.username);
             localStorage.setItem('branch', data.Branch);
             localStorage.setItem('gender', data.Gender);
+            localStorage.setItem('role', data.role);
+
 
             // Optional: second toast for success (or skip)
             Toast.fire({
