@@ -289,7 +289,7 @@
     <div class="dashboard">
       <div class="navbar">
         <a href="#" id="tab-entry">Student Entry</a>
-        <a href="#" id="tab-admin" style="display: none;">👑 Role Management</a>
+        <a href="#" id="tab-admin" style="display: none;">👑 Admin Panel</a>
         <a href="#" id="tab-record">Student Record</a>
         <a href="#" id="tab-Progress">Track Progress</a>
         <a href="#" id="tab-test" style="display: none;">Fitness Test</a>
@@ -385,6 +385,45 @@
 <!-- ----------------------------------------------------------------------------------------------------------------------------- -->
 
  <section id="Admin-base" style="display: none; padding: 20px;">
+
+                      <section id="edit-attendance" class="card mt-4 p-3">
+          <h2> Attendance Module</h2>
+
+          <div class="row mb-2">
+            <div class="col-md-3">
+              <label for="editTR">TR Number</label>
+              <input type="number" class="form-control" id="editTR" required>
+            </div>
+            <div class="col-md-3">
+              <label for="editDate">Date</label>
+              <input type="date" class="form-control" id="editDate" required>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
+            </div>
+          </div>
+
+          <div id="attendanceEditor" style="display: none;">
+            <div class="row mb-2">
+              <div class="col-md-3">
+                <label>Current Status</label>
+                <input type="text" class="form-control" id="currentStatus" readonly>
+              </div>
+              <div class="col-md-3">
+                <label for="isPresentToggle">Mark as</label>
+                <select class="form-control" id="isPresentToggle">
+                  <option value="true">Present</option>
+                  <option value="false">Absent</option>
+                </select>
+              </div>
+              <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-success w-100" id="updateAttendanceBtn">Update Attendance</button>
+              </div>
+            </div>
+           <h3> <p id="editMessage" class="text-info"></p></h3>
+          </div>
+        </section>
+        <section class="card mt-4 p-3">
   <h2>👑 Role Management Panel</h2>
   <p id="adminBranchInfo">
   Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch only.
@@ -399,6 +438,7 @@
         <th>Username</th>
         <th>Gender</th>
         <th>Role</th>
+         <th>Action</th> 
       </tr>
     </thead>
     <tbody></tbody>
@@ -417,8 +457,9 @@
       <option value="Trainer">Trainer</option>
       <option value="Staff">Staff</option>
     </select>
-    <button type="submit">Add User</button>
+    <button type="submit" class="btn btn-success mb-3">Add User</button>
   </form>
+  </section>
 </section>
 
 
@@ -488,50 +529,6 @@
                 </section>
 
                 <section id="attendance-summary" class="card" style="display:none;">
-
-
-                    <section id="edit-attendance" class="card mt-4 p-3">
-          <h3>Edit Student Attendance</h3>
-
-          <div class="row mb-2">
-            <div class="col-md-3">
-              <label for="editTR">TR Number</label>
-              <input type="number" class="form-control" id="editTR" required>
-            </div>
-            <div class="col-md-3">
-              <label for="editDate">Date</label>
-              <input type="date" class="form-control" id="editDate" required>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
-            </div>
-          </div>
-
-          <div id="attendanceEditor" style="display: none;">
-            <div class="row mb-2">
-              <div class="col-md-3">
-                <label>Current Status</label>
-                <input type="text" class="form-control" id="currentStatus" readonly>
-              </div>
-              <div class="col-md-3">
-                <label for="isPresentToggle">Mark as</label>
-                <select class="form-control" id="isPresentToggle">
-                  <option value="true">Present</option>
-                  <option value="false">Absent</option>
-                </select>
-              </div>
-              <div class="col-md-3 d-flex align-items-end">
-                <button class="btn btn-success w-100" id="updateAttendanceBtn">Update Attendance</button>
-              </div>
-            </div>
-            <p id="editMessage" class="text-info"></p>
-          </div>
-        </section>
-
-
-
-
-
 
 
           <div class="container mt-5">
@@ -1260,10 +1257,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 //---------------------------------------------------------------------------------------------------
-
 async function loadAdminUsers() {
   try {
-    const branch = localStorage.getItem('branch'); // Get branch from local storage
+    const branch = localStorage.getItem('branch');
     const res = await fetch(`/api/admin/users/${branch}`);
     const data = await res.json();
 
@@ -1276,6 +1272,12 @@ async function loadAdminUsers() {
         <td>${user.Username}</td>
         <td>${user.Gender}</td>
         <td>${user.Role}</td>
+        <td>
+          <button style="background-color: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"
+            onclick="deleteUser('${user.Username}')">
+            Delete
+          </button>
+        </td>
       `;
       tableBody.appendChild(row);
     });
