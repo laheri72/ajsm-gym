@@ -9,6 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 
     <style>
@@ -323,6 +326,23 @@
     color: #000;
     border: 2px solid #f9a825;
 }
+/* Gradient Progress Bar */
+.bg-gradient {
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  color: #fff;
+  font-weight: bold;
+}
+
+/* Card shadow & rounded */
+#progressSection {
+  border-radius: 15px;
+  background: #ffffff;
+}
+
+#progressChart {
+  max-height: 250px;
+}
+
 
     </style>
 </head>
@@ -337,16 +357,15 @@
 
       </div>
       <div class="content">
+
+        
+
+        
+
         <section id="student-fit" class="card">
  <div class="container">
         <h2>Fitness Test</h2>
 
-        <!-- TR Entry
-        <div class="mb-4">
-            <label for="trInput" class="form-label">Enter Your TR Number:</label>
-            <input type="number" id="trInput" class="form-control w-25 d-inline" />
-            <button onclick="fetchStudentInfo()" class="btn btn-primary">Search</button>
-        </div> -->
 
         <!-- Student Info -->
         <div id="studentInfo" class="mb-4 hidden">
@@ -449,6 +468,9 @@
     </div>
 <hr />
 <div id="historycard" style="display: none;">
+
+
+
 <h3 class="mt-5">📜 Test History</h3>
 <table class="table table-bordered table-hover" id="historyTable" >
     <thead class="table-dark">
@@ -465,6 +487,35 @@
     <tbody id="historyBody"></tbody>
 </table>
 </div>
+
+<!-- Fitness Progress Section -->
+<div id="progressSection" class="card shadow-lg p-4 mt-4 hidden">
+  <h3 class="mb-3">🎯 Fitness Progress</h3>
+  
+  <!-- Goal Input -->
+  <div class="input-group mb-3">
+    <input type="number" id="goalInput" class="form-control" placeholder="Enter your goal score..." />
+    <button id="saveGoalBtn" type="button" class="btn btn-success">Save Goal</button>
+  </div>
+
+  <!-- Progress Bar -->
+  <div id="progressWrapper" class="hidden mb-4">
+    <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden; background: #eee;">
+      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-gradient" 
+           role="progressbar" style="width: 0%; transition: width 1s ease;">
+        0%
+      </div>
+    </div>
+    <p class="mt-2 fw-bold text-center" id="progressText"></p>
+  </div>
+
+  <!-- Trend Chart -->
+  <div class="card mt-3 p-3">
+    <h5 class="mb-2">📊 Progress Trend</h5>
+    <canvas id="progressChart" height="150"></canvas>
+  </div>
+</div>
+
         </section>
   
 
@@ -507,9 +558,11 @@ async function validateStudentSession() {
 
     // Reset all UI
     clearFitnessResults();
-    document.getElementById("saveWarning").textContent = '⚠️ You can only save your result once. Be careful before submitting! Reload if Error Occurs.';
-    document.getElementById("saveWarning").style.color = 'red';
+    document.getElementById("saveWarning").textContent = 'ℹ️ Please submit accurate details. One record allowed per week.';
+    document.getElementById("saveWarning").style.color = 'blue';
     document.getElementById("saveBtn").style.display = 'inline-block';
+    document.getElementById("saveBtn").disabled = false; // initial state, will be refined in loadTestHistory
+
     document.getElementById("studentInfo").classList.add("hidden");
     document.getElementById("fitnessForm").classList.add("hidden");
 
@@ -567,9 +620,11 @@ async function validateStudentSession() {
 
         document.getElementById("studentInfo").classList.remove("hidden");
         document.getElementById("historycard").style.display = "block";
-        document.getElementById("saveBtn").style.display = "none";
-        document.getElementById("saveWarning").textContent = '✅ Your result is already saved. You can review it below.';
-        document.getElementById("saveWarning").style.color = 'green';
+        document.getElementById("saveBtn").style.display = 'inline-block';
+        document.getElementById("saveBtn").disabled = false; // will be checked by loadTestHistory
+        document.getElementById("saveWarning").textContent = 'ℹ️ Records found. You may add a new one if 7 days have passed.';
+        document.getElementById("saveWarning").style.color = 'blue';
+
 
         await loadTestHistory(tr);
 
@@ -766,9 +821,100 @@ function generateReport() {
 
 //----------------------------------------------------------------------------------------------------
 
-function saveRecord() {
+// function saveRecord() {
 
-        const currentTR = localStorage.getItem('currentTR');
+//         const currentTR = localStorage.getItem('currentTR');
+//     if (!currentTR) {
+//         Swal.fire('Session Expired', 'Please log in again to save your record.', 'error');
+//         window.location.href = 'Forbidden.html';
+//         return;
+//     }
+
+//     const saveBtn = document.getElementById("saveBtn");
+//     saveBtn.disabled = true;
+
+
+
+
+//     if (!studentData || !calculated) {
+//         Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
+//         return;
+//     }
+
+//     const requiredChecks = [
+//         { name: 'TR', value: studentData.TR },
+//         { name: 'DOB', value: studentData.DOB },
+//         { name: 'Age', value: studentData.Age },
+//         { name: 'Weight', value: calculated.Weight },
+//         { name: 'Height', value: calculated.Height },
+//         { name: 'Waist', value: calculated.Waist },
+//         { name: 'Hips', value: calculated.Hips },
+//         { name: 'Neck', value: calculated.Neck },
+//         { name: 'BMI', value: calculated.BMI },
+//         { name: 'BMIStatus', value: calculated.BMIStatus },
+//         { name: 'BodyFat', value: calculated.BodyFat },
+//         { name: 'BMR', value: calculated.BMR },
+//         { name: 'CalorieIntake', value: calculated.CalorieIntake },
+//         { name: 'VO2Max', value: calculated.VO2Max },
+//         { name: 'Total', value: calculated.Total },
+//         { name: 'Grade', value: calculated.Grade },
+//     ];
+
+//     for (const field of requiredChecks) {
+//         if (field.name === 'VO2Max' && (field.value === "N/A" || field.value === null || field.value === undefined || field.value === '')) {
+//             Swal.fire('Invalid VO2Max', 'Please provide a valid pulse rate to calculate VO2 Max.', 'error');
+//             return;
+//         }
+//         if (field.value === null || field.value === undefined || field.value === '') {
+//             Swal.fire('Missing Field', `Please fill the field: ${field.name}`, 'error');
+//             return;
+//         }
+//     }
+
+//     const body = {
+//         TR: studentData.TR,
+//         DOB: studentData.DOB,
+//         Age: studentData.Age,
+//         Weight: calculated.Weight,
+//         Height: calculated.Height,
+//         Waist: calculated.Waist,
+//         Hips: calculated.Hips,
+//         Neck: calculated.Neck,
+//         BMI: parseFloat(calculated.BMI),
+//         BMIStatus: calculated.BMIStatus,
+//         BodyFat: parseFloat(calculated.BodyFat),
+//         BMR: parseFloat(calculated.BMR),
+//         CalorieIntake: parseFloat(calculated.CalorieIntake),
+//         VO2Max: parseFloat(calculated.VO2Max),
+//         Total: parseFloat(calculated.Total),
+//         Grade: calculated.Grade
+//     };
+
+//     fetch('/api/testrecords', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify(body)
+//     })
+//     .then(res => res.json())
+//     .then(data => {
+//         Swal.fire({
+//             title: '🎉 Fitness Test Saved!',
+//             text: 'Your result has been saved successfully.',
+//             icon: 'success',
+//             confirmButtonText: 'OK'
+//         }).then(() => {
+//             location.reload(); // Reload to reflect changes
+//         });
+//     })
+//     .catch(err => {
+//         console.error("Save failed", err);
+//         Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
+//     });
+// }
+
+
+async function saveRecord() {
+    const currentTR = localStorage.getItem('currentTR');
     if (!currentTR) {
         Swal.fire('Session Expired', 'Please log in again to save your record.', 'error');
         window.location.href = 'Forbidden.html';
@@ -777,9 +923,6 @@ function saveRecord() {
 
     const saveBtn = document.getElementById("saveBtn");
     saveBtn.disabled = true;
-
-
-
 
     if (!studentData || !calculated) {
         Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
@@ -835,30 +978,100 @@ function saveRecord() {
         Grade: calculated.Grade
     };
 
-    fetch('/api/testrecords', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    })
-    .then(res => res.json())
-    .then(data => {
-        Swal.fire({
-            title: '🎉 Fitness Test Saved!',
-            text: 'Your result has been saved successfully.',
-            icon: 'success',
-            confirmButtonText: 'OK'
-        }).then(() => {
-            location.reload(); // Reload to reflect changes
-        });
-    })
-    .catch(err => {
-        console.error("Save failed", err);
-        Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
+    // 🔹 Confirmation SweetAlert before actual save
+    Swal.fire({
+        title: 'Confirm Submission',
+        html: `
+            <p>Please confirm your details before submitting:</p>
+            <ul style="text-align:left">
+                <li><b>Weight:</b> ${body.Weight} kg</li>
+                <li><b>Height:</b> ${body.Height} cm</li>
+                <li><b>BMI:</b> ${body.BMI.toFixed(2)} (${body.BMIStatus})</li>
+                <li><b>Body Fat %:</b> ${body.BodyFat.toFixed(2)}</li>
+                <li><b>BMR:</b> ${body.BMR.toFixed(1)}</li>
+                <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
+                <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
+                <li><b>Grade:</b> ${body.Grade}</li>
+            </ul>
+            <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Submit',
+        cancelButtonText: 'Review Again',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/api/testrecords', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    Swal.fire('Save Failed', data.error, 'error');
+                } else {
+                    // 🔹 Calculate next allowed submission date
+                    const nextDate = new Date();
+                    nextDate.setDate(nextDate.getDate() + 7);
+
+                    Swal.fire({
+                        title: '🎉 Fitness Test Saved!',
+                        html: `Your result has been saved successfully.<br>
+                               <b>Next submission allowed on:</b> ${nextDate.toLocaleDateString()}`,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        location.reload(); // Reload to reflect changes
+                    });
+                }
+            })
+            .catch(err => {
+                console.error("Save failed", err);
+                Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
+            });
+        } else {
+            saveBtn.disabled = false; // re-enable if cancelled
+        }
     });
 }
 
 
+
 //---------------------------------------------------------------------------------------------------------------
+
+// async function loadTestHistory(tr) {
+//     try {
+//         const response = await fetch(`/api/testrecords/${tr}`);
+//         const records = await response.json();
+//         const tbody = document.getElementById('historyBody');
+//         tbody.innerHTML = '';
+
+//         // Hide Save button if already recorded
+//         if (records.length > 0) {
+//             document.getElementById('saveBtn').style.display = 'none';
+//             document.getElementById('saveWarning').textContent = '✅ Fitness Test already recorded. Come again Later';
+//             document.getElementById('saveWarning').style.color = 'green';
+//         }
+
+//         records.forEach(record => {
+//             const row = document.createElement('tr');
+//             row.innerHTML = `
+//                 <td>${new Date(record.DOB).toLocaleDateString()}</td>
+//                 <td>${record.BMI.toFixed(2)}</td>
+//                 <td>${record.BodyFat.toFixed(2)}</td>
+//                 <td>${record.BMR.toFixed(1)}</td>
+//                 <td>${record.VO2Max ? record.VO2Max.toFixed(1) : 'N/A'}</td>
+//                 <td>${record.Total.toFixed(1)}</td>
+//                 <td><strong>${record.Grade}</strong></td>
+//             `;
+//             tbody.appendChild(row);
+//         });
+//     } catch (err) {
+//         console.error("Error loading test history", err);
+//     }
+// }
 
 async function loadTestHistory(tr) {
     try {
@@ -867,17 +1080,43 @@ async function loadTestHistory(tr) {
         const tbody = document.getElementById('historyBody');
         tbody.innerHTML = '';
 
-        // Hide Save button if already recorded
         if (records.length > 0) {
-            document.getElementById('saveBtn').style.display = 'none';
-            document.getElementById('saveWarning').textContent = '✅ Fitness Test already recorded. Come again Later';
-            document.getElementById('saveWarning').style.color = 'green';
+            // Get latest record
+            const latest = new Date(records[0].CreatedAt);
+            const now = new Date();
+            const diffDays = Math.floor((now - latest) / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 7) {
+                // Block saving if less than 7 days
+                document.getElementById('saveBtn').disabled = true;
+                document.getElementById('saveBtn').style.opacity = "0.5";
+                document.getElementById('saveWarning').textContent =
+                    `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
+                document.getElementById('saveWarning').style.color = 'orange';
+            } else {
+                // Allow save
+                document.getElementById('saveBtn').disabled = false;
+                document.getElementById('saveBtn').style.opacity = "1";
+                document.getElementById('saveWarning').textContent =
+                    '✅ You can save a new record now.';
+                document.getElementById('saveWarning').style.color = 'green';
+            }
+        } else {
+            // No record yet → first time user
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('saveBtn').style.opacity = "1";
+            document.getElementById('saveWarning').textContent =
+                '⚠️ First attempt. Please submit carefully.';
+            document.getElementById('saveWarning').style.color = 'red';
         }
 
+        
+
+        // Build history table
         records.forEach(record => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${new Date(record.DOB).toLocaleDateString()}</td>
+                <td>${new Date(record.CreatedAt).toLocaleDateString()}</td>
                 <td>${record.BMI.toFixed(2)}</td>
                 <td>${record.BodyFat.toFixed(2)}</td>
                 <td>${record.BMR.toFixed(1)}</td>
@@ -887,9 +1126,113 @@ async function loadTestHistory(tr) {
             `;
             tbody.appendChild(row);
         });
+    renderProgressBar(records);
+
     } catch (err) {
         console.error("Error loading test history", err);
     }
+
+    
+}
+
+
+
+
+document.getElementById("saveGoalBtn").addEventListener("click", (e) => {
+    e.preventDefault(); // stop refresh
+
+    const goal = parseFloat(document.getElementById("goalInput").value);
+    if (!goal || goal <= 0) {
+        Swal.fire('Invalid Goal', 'Please enter a valid number greater than 0.', 'error');
+        return;
+    }
+
+    localStorage.setItem("fitnessGoal", goal);
+    Swal.fire('Goal Saved ✅', `Your goal is set to ${goal}`, 'success');
+
+    // // optional: re-render progress bar instead of reload
+    // renderProgressBar(lastRecords); 
+});
+
+
+function renderProgressBar(records) {
+    const goal = parseFloat(localStorage.getItem("fitnessGoal"));
+
+    // Handle no goal
+    if (!goal) {
+        document.getElementById("progressSection").classList.remove("hidden");
+        document.getElementById("progressWrapper").classList.add("hidden");
+        return;
+    }
+
+    // Extract values (even if only one record exists)
+    const firstTotal = parseFloat(records[records.length - 1].Total); // oldest
+    const latestTotal = parseFloat(records[0].Total); // newest
+
+    let progress = ((latestTotal - firstTotal) / (goal - firstTotal)) * 100;
+    progress = Math.max(0, Math.min(progress, 100));
+
+    // Show progress UI
+    document.getElementById("progressSection").classList.remove("hidden");
+    document.getElementById("progressWrapper").classList.remove("hidden");
+
+    const bar = document.getElementById("progressBar");
+    bar.style.width = progress + "%";
+    bar.textContent = progress.toFixed(1) + "%";
+
+    const text = `Start: ${firstTotal} → Current: ${latestTotal} → Goal: ${goal}`;
+    let motivation = "";
+    if (progress < 30) motivation = "Keep pushing 💪";
+    else if (progress < 70) motivation = "Nice work 🚀";
+    else if (progress < 100) motivation = "Almost there 🔥";
+    else motivation = "Goal achieved 🎉";
+
+    document.getElementById("progressText").textContent = text + " | " + motivation;
+
+    // ---- Chart.js Trend Line ----
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    if (window.progressChart && typeof window.progressChart.destroy === "function") {
+    window.progressChart.destroy();
+}
+
+
+    // Build labels and data (prepend "Start" = 0)
+    const labels = ["Start", ...records.map(r => new Date(r.CreatedAt).toLocaleDateString()).reverse()];
+    const dataPoints = [0, ...records.map(r => parseFloat(r.Total)).reverse()];
+
+    window.progressChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Fitness Score',
+                data: dataPoints,
+                borderColor: '#4facfe',
+                backgroundColor: 'rgba(79,172,254,0.2)',
+                borderWidth: 3,
+                pointRadius: 5,
+                pointBackgroundColor: '#00f2fe',
+                tension: 0.3
+            }, {
+                label: 'Goal',
+                data: Array(dataPoints.length).fill(goal),
+                borderColor: '#ff6a00',
+                borderDash: [5, 5],
+                borderWidth: 2,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                y: { beginAtZero: false }
+            }
+        }
+    });
 }
 
 
