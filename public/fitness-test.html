@@ -342,6 +342,11 @@
 #progressChart {
   max-height: 250px;
 }
+#progressBar {
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  color: white;
+  font-weight: bold;
+}
 
 
     </style>
@@ -498,15 +503,28 @@
     <button id="saveGoalBtn" type="button" class="btn btn-success">Save Goal</button>
   </div>
 
-  <!-- Progress Bar -->
+  <!-- Total Score Progress Bar -->
   <div id="progressWrapper" class="hidden mb-4">
+    <h6>Total Fitness Progress</h6>
     <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden; background: #eee;">
-      <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-gradient" 
-           role="progressbar" style="width: 0%; transition: width 1s ease;">
+      <div id="progressBar" 
+        class="progress-bar progress-bar-striped progress-bar-animated"
+        role="progressbar" style="width: 0%; transition: width 1s ease;">
         0%
       </div>
     </div>
     <p class="mt-2 fw-bold text-center" id="progressText"></p>
+  </div>
+
+  <!-- BMI Progress Bar -->
+  <div id="bmiProgressWrapper" class="hidden mb-4">
+    <h6>BMI Progress (WHO Range)</h6>
+    <div class="progress" style="height: 20px; border-radius: 15px;">
+      <div id="bmiProgressBar" class="progress-bar" role="progressbar" style="width:0%">
+        0%
+      </div>
+    </div>
+    <p class="mt-2 fw-bold text-center" id="bmiProgressText"></p>
   </div>
 
   <!-- Trend Chart -->
@@ -1073,6 +1091,141 @@ async function saveRecord() {
 //     }
 // }
 
+function renderProgressBar(records) {
+    const goal = parseFloat(localStorage.getItem("fitnessGoal"));
+
+    if (!goal || records.length === 0) {
+        document.getElementById("progressSection").classList.remove("hidden");
+        document.getElementById("progressWrapper").classList.add("hidden");
+        return;
+    }
+
+    const firstTotal = parseFloat(records[records.length - 1].Total); // oldest
+    const latestTotal = parseFloat(records[0].Total); // newest
+
+    // --- Primary Progress (Total score, higher = better) ---
+    let progress = ((latestTotal - firstTotal) / (goal - firstTotal)) * 100;
+
+    // clamp but also detect regression
+    let regression = false;
+    if (progress < 0) {
+        regression = true;
+        progress = Math.abs(progress); // show magnitude even if backward
+    }
+    progress = Math.min(progress, 100);
+
+    // Show UI
+    document.getElementById("progressSection").classList.remove("hidden");
+    document.getElementById("progressWrapper").classList.remove("hidden");
+
+    const bar = document.getElementById("progressBar");
+    bar.className = "progress-bar progress-bar-striped progress-bar-animated";
+    bar.style.width = progress + "%";
+    bar.textContent = regression ? `-${progress.toFixed(1)}%` : `${progress.toFixed(1)}%`;
+
+    if (regression) {
+        bar.classList.add("bg-danger");
+    } else if (progress < 30) {
+        bar.classList.add("bg-danger");
+    } else if (progress < 70) {
+        bar.classList.add("bg-warning");
+    } else {
+        bar.classList.add("bg-success");
+    }
+
+    const text = `Start: ${firstTotal} → Current: ${latestTotal} → Goal: ${goal}`;
+    document.getElementById("progressText").textContent = regression
+        ? text + " | ⚠️ Regression observed"
+        : text;
+
+    // --- Secondary Progress (BMI toward WHO range) ---
+    if (records[0].BMI) {
+        const latestBMI = parseFloat(records[0].BMI);
+        const minHealthy = 18.5, maxHealthy = 24.9;
+
+        let bmiProgress = 0, bmiDirection = "";
+
+        if (latestBMI < minHealthy) {
+            // underweight → goal = 18.5
+            bmiProgress = ((latestBMI - 15) / (18.5 - 15)) * 100; // assuming 15 as practical min
+            bmiDirection = "Underweight → gain needed";
+        } else if (latestBMI > maxHealthy) {
+            // overweight → goal = 24.9
+            bmiProgress = ((30 - latestBMI) / (30 - 24.9)) * 100; // assuming 30 as practical max
+            bmiDirection = "Overweight → loss needed";
+        } else {
+            bmiProgress = 100;
+            bmiDirection = "Within healthy BMI ✅";
+        }
+
+        bmiProgress = Math.max(0, Math.min(bmiProgress, 100));
+
+        // render BMI bar dynamically (if you add HTML slot for it)
+        const bmiWrapper = document.getElementById("bmiProgressWrapper");
+        if (bmiWrapper) {
+            bmiWrapper.classList.remove("hidden");
+            const bmiBar = document.getElementById("bmiProgressBar");
+            bmiBar.className = "progress-bar progress-bar-striped";
+            bmiBar.style.width = bmiProgress + "%";
+            bmiBar.textContent = bmiProgress.toFixed(1) + "%";
+
+            if (bmiProgress < 30) bmiBar.classList.add("bg-danger");
+            else if (bmiProgress < 70) bmiBar.classList.add("bg-warning");
+            else bmiBar.classList.add("bg-success");
+
+            document.getElementById("bmiProgressText").textContent =
+                `BMI: ${latestBMI.toFixed(1)} (${bmiDirection})`;
+        }
+    }
+
+    // ---- Chart.js Trend Line (unchanged) ----
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    if (window.progressChart && typeof window.progressChart.destroy === "function") {
+        window.progressChart.destroy();
+    }
+
+    const labels = records.map(r => new Date(r.CreatedAt).toLocaleDateString()).reverse();
+    const dataPoints = records.map(r => parseFloat(r.Total)).reverse();
+
+    window.progressChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Fitness Score',
+                    data: dataPoints,
+                    borderColor: '#4facfe',
+                    backgroundColor: 'rgba(79,172,254,0.2)',
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#00f2fe',
+                    tension: 0.3
+                },
+                {
+                    label: 'Goal',
+                    data: Array(dataPoints.length).fill(goal),
+                    borderColor: '#ff6a00',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: { y: { beginAtZero: false } }
+        }
+    });
+}
+
+
+
+
 async function loadTestHistory(tr) {
     try {
         const response = await fetch(`/api/testrecords/${tr}`);
@@ -1138,8 +1291,17 @@ async function loadTestHistory(tr) {
 
 
 
+// On page load, set input value if goal exists
+document.addEventListener("DOMContentLoaded", () => {
+    const savedGoal = localStorage.getItem("fitnessGoal");
+    if (savedGoal) {
+        document.getElementById("goalInput").value = savedGoal;
+    }
+});
+
+// Save goal
 document.getElementById("saveGoalBtn").addEventListener("click", (e) => {
-    e.preventDefault(); // stop refresh
+    e.preventDefault();
 
     const goal = parseFloat(document.getElementById("goalInput").value);
     if (!goal || goal <= 0) {
@@ -1148,92 +1310,36 @@ document.getElementById("saveGoalBtn").addEventListener("click", (e) => {
     }
 
     localStorage.setItem("fitnessGoal", goal);
-    Swal.fire('Goal Saved ✅', `Your goal is set to ${goal}`, 'success');
-
-    // // optional: re-render progress bar instead of reload
-    // renderProgressBar(lastRecords); 
+    Swal.fire('Goal Saved ✅', `Your goal is set to ${goal}`, 'success')
+    .then(() => {
+        // ✅ Reload only after user clicks OK
+        location.reload();
+    });
 });
 
 
-function renderProgressBar(records) {
-    const goal = parseFloat(localStorage.getItem("fitnessGoal"));
+function toNum(x) {
+  const v = parseFloat(x);
+  return Number.isFinite(v) ? v : null;
+}
 
-    // Handle no goal
-    if (!goal) {
-        document.getElementById("progressSection").classList.remove("hidden");
-        document.getElementById("progressWrapper").classList.add("hidden");
-        return;
-    }
+function computeProgress(start, current, goal) {
+  // Guard invalid numbers
+  if ([start, current, goal].some(v => v === null)) return null;
 
-    // Extract values (even if only one record exists)
-    const firstTotal = parseFloat(records[records.length - 1].Total); // oldest
-    const latestTotal = parseFloat(records[0].Total); // newest
+  // If start == goal: already “at goal” at the beginning
+  if (start === goal) {
+    return current === goal ? 100 : 0; // cap to 0/100 to avoid div-by-zero weirdness
+  }
 
-    let progress = ((latestTotal - firstTotal) / (goal - firstTotal)) * 100;
-    progress = Math.max(0, Math.min(progress, 100));
-
-    // Show progress UI
-    document.getElementById("progressSection").classList.remove("hidden");
-    document.getElementById("progressWrapper").classList.remove("hidden");
-
-    const bar = document.getElementById("progressBar");
-    bar.style.width = progress + "%";
-    bar.textContent = progress.toFixed(1) + "%";
-
-    const text = `Start: ${firstTotal} → Current: ${latestTotal} → Goal: ${goal}`;
-    let motivation = "";
-    if (progress < 30) motivation = "Keep pushing 💪";
-    else if (progress < 70) motivation = "Nice work 🚀";
-    else if (progress < 100) motivation = "Almost there 🔥";
-    else motivation = "Goal achieved 🎉";
-
-    document.getElementById("progressText").textContent = text + " | " + motivation;
-
-    // ---- Chart.js Trend Line ----
-    const ctx = document.getElementById('progressChart').getContext('2d');
-    if (window.progressChart && typeof window.progressChart.destroy === "function") {
-    window.progressChart.destroy();
+  // Linear progress along the line from start -> goal (direction-aware)
+  const fraction = (current - start) / (goal - start);
+  return Math.max(0, Math.min(100, fraction * 100)); // clamp 0..100 (overshoot becomes 100)
 }
 
 
-    // Build labels and data (prepend "Start" = 0)
-    const labels = ["Start", ...records.map(r => new Date(r.CreatedAt).toLocaleDateString()).reverse()];
-    const dataPoints = [0, ...records.map(r => parseFloat(r.Total)).reverse()];
 
-    window.progressChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Fitness Score',
-                data: dataPoints,
-                borderColor: '#4facfe',
-                backgroundColor: 'rgba(79,172,254,0.2)',
-                borderWidth: 3,
-                pointRadius: 5,
-                pointBackgroundColor: '#00f2fe',
-                tension: 0.3
-            }, {
-                label: 'Goal',
-                data: Array(dataPoints.length).fill(goal),
-                borderColor: '#ff6a00',
-                borderDash: [5, 5],
-                borderWidth: 2,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'top' },
-                tooltip: { mode: 'index', intersect: false }
-            },
-            scales: {
-                y: { beginAtZero: false }
-            }
-        }
-    });
-}
+
 
 
   //----------------------------------------------------------------------------------------------------------------
