@@ -508,7 +508,7 @@
     <h6>Total Fitness Progress</h6>
     <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden; background: #eee;">
       <div id="progressBar" 
-        class="progress-bar progress-bar-striped progress-bar-animated"
+        class="progress-bar"
         role="progressbar" style="width: 0%; transition: width 1s ease;">
         0%
       </div>
@@ -1119,7 +1119,7 @@ function renderProgressBar(records) {
     document.getElementById("progressWrapper").classList.remove("hidden");
 
     const bar = document.getElementById("progressBar");
-    bar.className = "progress-bar progress-bar-striped progress-bar-animated";
+    bar.className = "progress-bar";
     bar.style.width = progress + "%";
     bar.textContent = regression ? `-${progress.toFixed(1)}%` : `${progress.toFixed(1)}%`;
 
@@ -1165,7 +1165,7 @@ function renderProgressBar(records) {
         if (bmiWrapper) {
             bmiWrapper.classList.remove("hidden");
             const bmiBar = document.getElementById("bmiProgressBar");
-            bmiBar.className = "progress-bar progress-bar-striped";
+            bmiBar.className = "progress-bar";
             bmiBar.style.width = bmiProgress + "%";
             bmiBar.textContent = bmiProgress.toFixed(1) + "%";
 
