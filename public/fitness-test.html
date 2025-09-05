@@ -839,96 +839,7 @@ function generateReport() {
 
 //----------------------------------------------------------------------------------------------------
 
-// function saveRecord() {
 
-//         const currentTR = localStorage.getItem('currentTR');
-//     if (!currentTR) {
-//         Swal.fire('Session Expired', 'Please log in again to save your record.', 'error');
-//         window.location.href = 'Forbidden.html';
-//         return;
-//     }
-
-//     const saveBtn = document.getElementById("saveBtn");
-//     saveBtn.disabled = true;
-
-
-
-
-//     if (!studentData || !calculated) {
-//         Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
-//         return;
-//     }
-
-//     const requiredChecks = [
-//         { name: 'TR', value: studentData.TR },
-//         { name: 'DOB', value: studentData.DOB },
-//         { name: 'Age', value: studentData.Age },
-//         { name: 'Weight', value: calculated.Weight },
-//         { name: 'Height', value: calculated.Height },
-//         { name: 'Waist', value: calculated.Waist },
-//         { name: 'Hips', value: calculated.Hips },
-//         { name: 'Neck', value: calculated.Neck },
-//         { name: 'BMI', value: calculated.BMI },
-//         { name: 'BMIStatus', value: calculated.BMIStatus },
-//         { name: 'BodyFat', value: calculated.BodyFat },
-//         { name: 'BMR', value: calculated.BMR },
-//         { name: 'CalorieIntake', value: calculated.CalorieIntake },
-//         { name: 'VO2Max', value: calculated.VO2Max },
-//         { name: 'Total', value: calculated.Total },
-//         { name: 'Grade', value: calculated.Grade },
-//     ];
-
-//     for (const field of requiredChecks) {
-//         if (field.name === 'VO2Max' && (field.value === "N/A" || field.value === null || field.value === undefined || field.value === '')) {
-//             Swal.fire('Invalid VO2Max', 'Please provide a valid pulse rate to calculate VO2 Max.', 'error');
-//             return;
-//         }
-//         if (field.value === null || field.value === undefined || field.value === '') {
-//             Swal.fire('Missing Field', `Please fill the field: ${field.name}`, 'error');
-//             return;
-//         }
-//     }
-
-//     const body = {
-//         TR: studentData.TR,
-//         DOB: studentData.DOB,
-//         Age: studentData.Age,
-//         Weight: calculated.Weight,
-//         Height: calculated.Height,
-//         Waist: calculated.Waist,
-//         Hips: calculated.Hips,
-//         Neck: calculated.Neck,
-//         BMI: parseFloat(calculated.BMI),
-//         BMIStatus: calculated.BMIStatus,
-//         BodyFat: parseFloat(calculated.BodyFat),
-//         BMR: parseFloat(calculated.BMR),
-//         CalorieIntake: parseFloat(calculated.CalorieIntake),
-//         VO2Max: parseFloat(calculated.VO2Max),
-//         Total: parseFloat(calculated.Total),
-//         Grade: calculated.Grade
-//     };
-
-//     fetch('/api/testrecords', {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify(body)
-//     })
-//     .then(res => res.json())
-//     .then(data => {
-//         Swal.fire({
-//             title: '🎉 Fitness Test Saved!',
-//             text: 'Your result has been saved successfully.',
-//             icon: 'success',
-//             confirmButtonText: 'OK'
-//         }).then(() => {
-//             location.reload(); // Reload to reflect changes
-//         });
-//     })
-//     .catch(err => {
-//         console.error("Save failed", err);
-//         Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
-//     });
-// }
 
 
 async function saveRecord() {
@@ -1059,37 +970,7 @@ async function saveRecord() {
 
 //---------------------------------------------------------------------------------------------------------------
 
-// async function loadTestHistory(tr) {
-//     try {
-//         const response = await fetch(`/api/testrecords/${tr}`);
-//         const records = await response.json();
-//         const tbody = document.getElementById('historyBody');
-//         tbody.innerHTML = '';
 
-//         // Hide Save button if already recorded
-//         if (records.length > 0) {
-//             document.getElementById('saveBtn').style.display = 'none';
-//             document.getElementById('saveWarning').textContent = '✅ Fitness Test already recorded. Come again Later';
-//             document.getElementById('saveWarning').style.color = 'green';
-//         }
-
-//         records.forEach(record => {
-//             const row = document.createElement('tr');
-//             row.innerHTML = `
-//                 <td>${new Date(record.DOB).toLocaleDateString()}</td>
-//                 <td>${record.BMI.toFixed(2)}</td>
-//                 <td>${record.BodyFat.toFixed(2)}</td>
-//                 <td>${record.BMR.toFixed(1)}</td>
-//                 <td>${record.VO2Max ? record.VO2Max.toFixed(1) : 'N/A'}</td>
-//                 <td>${record.Total.toFixed(1)}</td>
-//                 <td><strong>${record.Grade}</strong></td>
-//             `;
-//             tbody.appendChild(row);
-//         });
-//     } catch (err) {
-//         console.error("Error loading test history", err);
-//     }
-// }
 
 function renderProgressBar(records) {
     const goal = parseFloat(localStorage.getItem("fitnessGoal"));
@@ -1225,13 +1106,15 @@ function renderProgressBar(records) {
 
 
 
-
 async function loadTestHistory(tr) {
     try {
         const response = await fetch(`/api/testrecords/${tr}`);
         const records = await response.json();
         const tbody = document.getElementById('historyBody');
         tbody.innerHTML = '';
+
+        const saveBtn = document.getElementById('saveBtn');
+        const saveWarning = document.getElementById('saveWarning');
 
         if (records.length > 0) {
             // Get latest record
@@ -1240,30 +1123,23 @@ async function loadTestHistory(tr) {
             const diffDays = Math.floor((now - latest) / (1000 * 60 * 60 * 24));
 
             if (diffDays < 7) {
-                // Block saving if less than 7 days
-                document.getElementById('saveBtn').disabled = true;
-                document.getElementById('saveBtn').style.opacity = "0.5";
-                document.getElementById('saveWarning').textContent =
+                // Hide button if less than 7 days
+                saveBtn.style.display = "none";
+                saveWarning.textContent =
                     `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
-                document.getElementById('saveWarning').style.color = 'orange';
+                saveWarning.style.color = 'orange';
             } else {
-                // Allow save
-                document.getElementById('saveBtn').disabled = false;
-                document.getElementById('saveBtn').style.opacity = "1";
-                document.getElementById('saveWarning').textContent =
-                    '✅ You can save a new record now.';
-                document.getElementById('saveWarning').style.color = 'green';
+                // Show button
+                saveBtn.style.display = "inline-block";
+                saveWarning.textContent = '✅ You can save a new record now.';
+                saveWarning.style.color = 'green';
             }
         } else {
             // No record yet → first time user
-            document.getElementById('saveBtn').disabled = false;
-            document.getElementById('saveBtn').style.opacity = "1";
-            document.getElementById('saveWarning').textContent =
-                '⚠️ First attempt. Please submit carefully.';
-            document.getElementById('saveWarning').style.color = 'red';
+            saveBtn.style.display = "inline-block";
+            saveWarning.textContent = '⚠️ First attempt. Please submit carefully.';
+            saveWarning.style.color = 'red';
         }
-
-        
 
         // Build history table
         records.forEach(record => {
@@ -1279,14 +1155,14 @@ async function loadTestHistory(tr) {
             `;
             tbody.appendChild(row);
         });
-    renderProgressBar(records);
+
+        renderProgressBar(records);
 
     } catch (err) {
         console.error("Error loading test history", err);
     }
-
-    
 }
+
 
 
 
