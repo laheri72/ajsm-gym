@@ -103,24 +103,54 @@ app.post('/api/add-student', async (req, res) => {
 
 
 
-app.delete('/api/delete-student/:TR', async (req, res) => {
-    const { TR } = req.params;
+// app.delete('/api/delete-student/:TR', async (req, res) => {
+//     const { TR } = req.params;
 
-    if (!TR) {
-        return res.status(400).json({ error: 'TR is required' });
-    }
+//     if (!TR) {
+//         return res.status(400).json({ error: 'TR is required' });
+//     }
 
-    try {
-        await sql.connect(config);
-        const request = new sql.Request();
-        request.input('TR', sql.Int, TR);
-        await request.query('DELETE FROM Master WHERE TR = @TR');
-        res.json({ message: 'Student deleted successfully' });
-    } catch (err) {
-        console.error('Error deleting student:', err.message);
-        res.status(500).json({ error: 'Failed to delete student' });
-    }
+//     try {
+//         await sql.connect(config);
+//         const request = new sql.Request();
+//         request.input('TR', sql.Int, TR);
+//         await request.query('DELETE FROM Master WHERE TR = @TR');
+//         res.json({ message: 'Student deleted successfully' });
+//     } catch (err) {
+//         console.error('Error deleting student:', err.message);
+//         res.status(500).json({ error: 'Failed to delete student' });
+//     }
+// });
+
+
+app.put('/api/students/status/:TR', async (req, res) => {
+  const { TR } = req.params;
+  const { Status } = req.body; // 'Active' or 'Inactive'
+
+  if (!TR || !Status) {
+    return res.status(400).json({ error: 'TR and Status are required' });
+  }
+
+  try {
+    await sql.connect(config);
+    const request = new sql.Request();
+    request.input('TR', sql.Int, TR);
+    request.input('Status', sql.NVarChar(20), Status);
+
+    await request.query(`
+      UPDATE Master
+      SET Status = @Status
+      WHERE TR = @TR
+    `);
+
+    res.json({ success: true, message: `Student marked as ${Status}` });
+  } catch (err) {
+    console.error('Error updating student status:', err.message);
+    res.status(500).json({ error: 'Failed to update student status' });
+  }
 });
+
+
 
 
 app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
@@ -259,10 +289,11 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
                 FROM Master M
                 LEFT JOIN Attendance A 
                     ON M.TR = A.TR AND A.WeekID = @WeekID AND A.IsPresent = 1
-                WHERE M.Branch = @Branch AND M.Gender = @Gender
+                WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active' 
+
             `);
 
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const resultMap = new Map();
 
         // Initialize map with all students
@@ -320,10 +351,18 @@ app.post('/api/student-login', async (req, res) => {
     await sql.connect(config);
     const result = await new sql.Request()
       .input('TR', sql.Int, tr)
-      .query('SELECT Name, Branch, Gender FROM Master WHERE TR = @TR');
+      .query(`
+        SELECT Name, Branch, Gender, Status 
+        FROM Master 
+        WHERE TR = @TR
+      `);
 
     if (result.recordset.length > 0) {
       const student = result.recordset[0];
+
+      if (student.Status !== 'Active') {
+        return res.json({ success: false, message: 'Your account is inactive. Please contact admin.' });
+      }
 
       // ✅ Set session
       req.session.user = {
@@ -1294,28 +1333,27 @@ app.post('/api/import-csv', upload.single('csv'), async (req, res) => {
 
 
 app.get('/api/students', async (req, res) => {
-//   console.log('Session user:', req.session.user);
-
   if (!req.session.user) {
     return res.status(401).json({ error: 'User session missing' });
   }
 
- const { Branch: branch, Gender: gender } = req.session.user;  // ✅ correctly reads and renames
+  const { Branch, Gender } = req.session.user;
 
-
-  if (!branch || !gender) {
+  if (!Branch || !Gender) {
     return res.status(400).json({ error: 'Branch or Gender missing in session user' });
   }
 
   try {
     await sql.connect(config);
     const request = new sql.Request();
-    request.input('Branch', sql.NVarChar(50), branch);
-    request.input('Gender', sql.NVarChar(10), gender);
+    request.input('Branch', sql.NVarChar(50), Branch);
+    request.input('Gender', sql.NVarChar(10), Gender);
 
     const result = await request.query(`
       SELECT * FROM Master
-      WHERE Branch = @Branch AND Gender = @Gender
+      WHERE Branch = @Branch
+        AND Gender = @Gender
+        AND Status = 'Active'
     `);
 
     res.json({ success: true, data: result.recordset });
@@ -1325,6 +1363,44 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
+
+
+app.get('/api/students/inactive', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'User session missing' });
+  }
+
+  const { Branch: branch, Role } = req.session.user;
+
+  try {
+    await sql.connect(config);
+    const request = new sql.Request();
+    request.input('Branch', sql.NVarChar(50), branch);
+
+    let query = `
+      SELECT * FROM Master
+      WHERE Branch = @Branch AND Status = 'Inactive'
+    `;
+
+    // For staff → still restrict by gender
+    if (Role === 'Staff') {
+      request.input('Gender', sql.NVarChar(10), req.session.user.Gender);
+      query = `
+        SELECT * FROM Master
+        WHERE Branch = @Branch 
+          AND Gender = @Gender
+          AND Status = 'Inactive'
+      `;
+    }
+
+    const result = await request.query(query);
+    res.json({ success: true, data: result.recordset });
+
+  } catch (err) {
+    console.error('Error fetching inactive students:', err);
+    res.status(500).json({ error: 'Failed to fetch inactive students' });
+  }
+});
 
 
 

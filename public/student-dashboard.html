@@ -609,7 +609,6 @@ td iframe {
                 <th>Thursday</th>
                 <th>Friday</th>
                 <th>Saturday</th>
-                <th>Sunday</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -1092,7 +1091,7 @@ function loadAttendance() {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0); // ✅ Remove time from today
                 const weekStartDate = new Date(student.WeekStartDate); // ✅ Now we have actual start date
-                const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
                 let presentDays = 0;
 

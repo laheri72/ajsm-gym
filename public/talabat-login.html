@@ -151,13 +151,13 @@ a:hover {
       <h3>Login</h3>
       <form id="loginForm">
         <div class="form-group">
-          <label for="username">Username</label>
+          <label for="username">TR Number </label>
           <input type="text" id="username" required>
         </div>
-        <div class="form-group">
+        <!-- <div class="form-group">
           <label for="password">Password</label>
           <input type="password" id="password" required>
-        </div>
+        </div> -->
         <button type="submit" class="login-btn">Login</button>
       </form>
     </div>
@@ -169,7 +169,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     e.preventDefault();
 
     const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
+    // const password = document.getElementById('password').value.trim();
 
     // 🔄 Toast while processing
     const Toast = Swal.mixin({
@@ -189,7 +189,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const response = await fetch('/api/student-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tr: username, password })
+            body: JSON.stringify({ tr: username})
         });
 
         const data = await response.json();

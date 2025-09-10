@@ -460,33 +460,56 @@
     <button type="submit" class="btn btn-success mb-3">Add User</button>
   </form>
   </section>
+
+
+  <section id="inactive-student-record" class="card">
+  <div class="container mt-5">
+    <h2>Inactive Students (Admin View)</h2>
+    <div style="overflow-x: auto;">
+      <table id="inactiveStudentTable">
+        <thead>
+          <tr>
+            <th>Tr No</th>
+            <th>Name</th>
+            <th>Darajah</th>
+            <th>Preferred Goal</th>
+            <th>Slot</th>
+            <th>Activate</th> 
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 </section>
 
 
 
 <!-- -------------------------------------------------------------------------------------------------------------------------------- -->
 
-
         <section id="student-record" class="card" style="display:none;">
           <div class="container mt-5">
-          <h2>Student Record</h2>
-          <div style="overflow-x: auto;">
-          <table id="studentTable">
-            <thead>
-              <tr>
-                <th>Tr No</th>
-                <th>Name</th>
-                <th>Darajah</th>
-                <th>Preferred Goal</th>
-                <th>Slot</th>
-                <th>Delete</th> 
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          </div>
+            <h2>Active Students (Staff View)</h2>
+            <div style="overflow-x: auto;">
+              <table id="studentTable">
+                <thead>
+                  <tr>
+                    <th>Tr No</th>
+                    <th>Name</th>
+                    <th>Darajah</th>
+                    <th>Preferred Goal</th>
+                    <th>Slot</th>
+                    <th>Deactivate</th> 
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
         </section>
+
 
 
 
@@ -561,7 +584,6 @@
               <th>Thursday</th>
               <th>Friday</th>
               <th>Saturday</th>
-              <th>Sunday</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -739,82 +761,113 @@ function setActiveTab(tabIdToActivate) {
       });
   
 //-----------------------------------------------------------------------------------------------------------------------------
+
 async function loadStudentRecords() {
   try {
-    const res = await fetch('/api/students', {
-      method: 'GET',
-      credentials: 'include' // ✅ Required to send session cookie
-    });
+    const res = await fetch('/api/students', { method: 'GET', credentials: 'include' });
+    const response = await res.json();
 
-const response = await res.json();
-
-if (!response.success || !Array.isArray(response.data)) {
-  console.error('❌ Invalid response:', response);
-  alert('Failed to fetch students. Please check session or server.');
-  return;
-}
-
-const students = response.data;  // Only one declaration now
-const contentType = res.headers.get('content-type');
-
-
-    if (!contentType || !contentType.includes('application/json')) {
-      const html = await res.text();
-      console.error('❌ Expected JSON, got HTML instead:', html);
-      alert('Unexpected response. Are you logged in as staff?');
+    if (!response.success || !Array.isArray(response.data)) {
+      console.error('❌ Invalid response:', response);
+      alert('Failed to fetch students.');
       return;
     }
 
-    // const students = await res.json();
+    const students = response.data;
 
-    if (!Array.isArray(students)) {
-      console.error('❌ Expected array of students, got:', students);
-      alert('Invalid response from server. Please check session or server logs.');
-      return;
-    }
-
-    // ✅ Continue rendering the table
-    const table = document.querySelector('#studentTable');
-    const tbody = table.querySelector('tbody');
-    const thead = table.querySelector('thead');
-    tbody.innerHTML = '';
-
-    // ➕ Add filter row if not already present
-    if (!thead.querySelector('.filter-row')) {
-      const filterRow = document.createElement('tr');
-      filterRow.classList.add('filter-row');
-
-      ['TR', 'Name', 'Darajah', 'Goal', 'Slot', 'Action'].forEach(col => {
-        const th = document.createElement('th');
-        if (col === 'Darajah' || col === 'Slot') {
-          th.innerHTML = `<select data-column="${col}" style="width: 100%;">
-            <option value="">All ${col}</option>
-          </select>`;
-        }
-        filterRow.appendChild(th);
-      });
-
-      thead.appendChild(filterRow);
-
-      // 🔁 Populate dropdowns
-      populateDropdowns(students);
-
-      // 🎯 Attach filter logic
-      thead.querySelectorAll('select').forEach(select => {
-        select.addEventListener('change', () => applyFilters(students));
-      });
-    }
-
-    // 🧱 Render student rows
+    // Render rows
     renderTableRows(students);
 
-    // 📆 Load attendance per student
-    attachAttendanceLoader();
+    // Setup filters
+    setupFilters(students);
 
   } catch (err) {
     console.error('❌ loadStudentRecords error:', err);
-    alert('Error loading students. Please try again or check console.');
+    alert('Error loading students.');
   }
+}
+
+function renderTableRows(students) {
+  const tbody = document.querySelector('#studentTable tbody');
+  tbody.innerHTML = '';
+
+  students.forEach(s => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${s.TR}</td>
+      <td>${s.Name}</td>
+      <td>${s.Darajah}</td>
+      <td>${s.Goal}</td>
+      <td>${s.Slot}</td>
+      <td><button class="deactivate-btn" data-tr="${s.TR}">🚫 Deactivate</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  attachDeactivateHandlers();
+}
+
+function setupFilters(students) {
+  const thead = document.querySelector('#studentTable thead');
+  if (thead.querySelector('.filter-row')) return;
+
+  const filterRow = document.createElement('tr');
+  filterRow.classList.add('filter-row');
+
+  ['TR', 'Name', 'Darajah', 'Goal', 'Slot', 'Action'].forEach(col => {
+    const th = document.createElement('th');
+    if (col === 'Darajah' || col === 'Slot') {
+      th.innerHTML = `<select data-column="${col}" style="width: 100%;">
+        <option value="">All ${col}</option>
+      </select>`;
+    }
+    filterRow.appendChild(th);
+  });
+
+  thead.appendChild(filterRow);
+
+  // Populate filters
+  populateDropdowns(students);
+
+  // Add change event
+  thead.querySelectorAll('select').forEach(select => {
+    select.addEventListener('change', () => applyFilters(students));
+  });
+}
+
+function applyFilters(students) {
+  const darajahValue = document.querySelector('select[data-column="Darajah"]').value;
+  const slotValue = document.querySelector('select[data-column="Slot"]').value;
+
+  const filtered = students.filter(s =>
+    (darajahValue === '' || s.Darajah === darajahValue) &&
+    (slotValue === '' || s.Slot === slotValue)
+  );
+
+  renderTableRows(filtered);
+}
+
+function attachDeactivateHandlers() {
+  document.querySelectorAll('.deactivate-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const tr = button.dataset.tr;
+      if (!confirm(`Deactivate student TR ${tr}?`)) return;
+
+      try {
+        const res = await fetch(`/api/students/status/${tr}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ Status: 'Inactive' })
+        });
+        const data = await res.json();
+        alert(data.message || 'Student updated.');
+        loadStudentRecords();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to update student.');
+      }
+    });
+  });
 }
 
 
@@ -845,8 +898,33 @@ function populateDropdowns(students) {
   });
 }
 
-function renderTableRows(students) {
-  const tbody = document.querySelector('#studentTable tbody');
+
+//----------------------------------------------------------------------------------------------------------
+
+
+async function loadInactiveStudents() {
+  try {
+    const res = await fetch('/api/students/inactive', { method: 'GET', credentials: 'include' });
+    const response = await res.json();
+
+    if (!response.success || !Array.isArray(response.data)) {
+      console.error('❌ Invalid response:', response);
+      alert('Failed to fetch inactive students.');
+      return;
+    }
+
+    const students = response.data;
+
+    renderInactiveRows(students);
+
+  } catch (err) {
+    console.error('❌ loadInactiveStudents error:', err);
+    alert('Error loading inactive students.');
+  }
+}
+
+function renderInactiveRows(students) {
+  const tbody = document.querySelector('#inactiveStudentTable tbody');
   tbody.innerHTML = '';
 
   students.forEach(s => {
@@ -857,47 +935,41 @@ function renderTableRows(students) {
       <td>${s.Darajah}</td>
       <td>${s.Goal}</td>
       <td>${s.Slot}</td>
-      <td><button class="delete-btn" data-tr="${s.TR}">❌</button></td>
+      <td><button class="activate-btn" data-tr="${s.TR}">✅ Activate</button></td>
     `;
     tbody.appendChild(row);
   });
 
-  attachDeleteHandlers(); // Re-attach delete handlers after rendering
+  attachActivateHandlers();
 }
 
-function applyFilters(students) {
-  const darajahValue = document.querySelector('select[data-column="Darajah"]').value;
-  const slotValue = document.querySelector('select[data-column="Slot"]').value;
-
-  const filteredStudents = students.filter(s => {
-    return (darajahValue === '' || s.Darajah === darajahValue) &&
-           (slotValue === '' || s.Slot === slotValue);
-  });
-
-  renderTableRows(filteredStudents);
-}
-
-function attachDeleteHandlers() {
-  document.querySelectorAll('.delete-btn').forEach(button => {
+function attachActivateHandlers() {
+  document.querySelectorAll('.activate-btn').forEach(button => {
     button.addEventListener('click', async () => {
       const tr = button.dataset.tr;
-      if (!confirm(`Are you sure you want to delete TR ${tr}?`)) return;
+      if (!confirm(`Activate student TR ${tr}?`)) return;
 
-      fetch(`/api/delete-student/${tr}`, {
-        method: 'DELETE',
-      })
-        .then(res => res.json())
-        .then(data => {
-          alert(data.message);
-          loadStudentRecords();
-        })
-        .catch(err => {
-          console.error(err);
-          alert('Failed to delete. Server error.');
+      try {
+        const res = await fetch(`/api/students/status/${tr}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ Status: 'Active' })
         });
+        const data = await res.json();
+        alert(data.message || 'Student updated.');
+        loadInactiveStudents();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to update student.');
+      }
     });
   });
 }
+
+
+
+
+
 
 //----------------------------------------------------------------------------------------------------------
 
@@ -925,7 +997,6 @@ function attachAttendanceLoader() {
           ${renderAttendanceCell(student.Thursday)}
           ${renderAttendanceCell(student.Friday)}
           ${renderAttendanceCell(student.Saturday)}
-          ${renderAttendanceCell(student.Sunday)}
         `;
         tbody.appendChild(row);
       });
@@ -1003,6 +1074,9 @@ window.onload = function() {
     loadWeeks();
 };
   
+
+//---------------------------------------------------------------------------------------------------
+
       // CSV Import
       document.getElementById('importCsvBtn').addEventListener('click', async () => {
         const fileInput = document.getElementById('csvFile');
@@ -1396,6 +1470,7 @@ document.getElementById('tab-admin').addEventListener('click', () => {
   document.getElementById('Admin-base').style.display = 'block';
 
   loadAdminUsers(); // Optional: reload user list when clicked
+  loadInactiveStudents(); // Load inactive students when admin tab is clicked
 });
 
 
