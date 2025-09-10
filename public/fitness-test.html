@@ -485,7 +485,7 @@
             <th>Body Fat %</th>
             <th>BMR</th>
             <th>VO₂ Max</th>
-            <th>Total</th>
+            <th>Score</th>
             <th>Grade</th>
         </tr>
     </thead>
@@ -496,7 +496,10 @@
 <!-- Fitness Progress Section -->
 <div id="progressSection" class="card shadow-lg p-4 mt-4 hidden">
   <h3 class="mb-3">🎯 Fitness Progress</h3>
-  
+  <h4 class="mb-3">Set Your Goals</h4>
+    <p>Set a target <b>Score</b> to visualize your fitness progress over time.</p> 
+    <p>💡 Tip: Aiming for a score of 70+ is a great way to stay fit and healthy!</p>
+        <br>
   <!-- Goal Input -->
   <div class="input-group mb-3">
     <input type="number" id="goalInput" class="form-control" placeholder="Enter your goal score..." />
@@ -505,7 +508,7 @@
 
   <!-- Total Score Progress Bar -->
   <div id="progressWrapper" class="hidden mb-4">
-    <h6>Total Fitness Progress</h6>
+    <h6>Fitness Progress By Score</h6>
     <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden; background: #eee;">
       <div id="progressBar" 
         class="progress-bar"
@@ -518,7 +521,7 @@
 
   <!-- BMI Progress Bar -->
   <div id="bmiProgressWrapper" class="hidden mb-4">
-    <h6>BMI Progress (WHO Range)</h6>
+    <h6>BMI Progress</h6>
     <div class="progress" style="height: 20px; border-radius: 15px;">
       <div id="bmiProgressBar" class="progress-bar" role="progressbar" style="width:0%">
         0%
