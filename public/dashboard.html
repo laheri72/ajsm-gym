@@ -602,6 +602,7 @@ async function validateStaffSession() {
 
       if (Role === 'Admin') {
         document.getElementById('tab-admin').style.display = 'inline-block';
+        document.getElementById('student-entry').style.display = 'none';
 
         // 🔥 Set it as active tab immediately
         setActiveTab('tab-admin');
@@ -610,6 +611,7 @@ async function validateStaffSession() {
         document.getElementById('Admin-base').style.display = 'block';
       } else {
         document.getElementById('tab-admin').style.display = 'none';
+        document.getElementById('student-entry').style.display = 'block';
 
         // Hide admin section if somehow visible
         document.getElementById('Admin-base').style.display = 'none';
