@@ -288,9 +288,9 @@
 <body>
     <div class="dashboard">
       <div class="navbar">
-        <a href="#" id="tab-entry">Student Entry</a>
+        <a href="#" id="tab-entry">Slot Entry</a>
         <a href="#" id="tab-admin" style="display: none;">👑 Admin Panel</a>
-        <a href="#" id="tab-record">Student Record</a>
+        <a href="#" id="tab-record">Active Students</a>
         <a href="#" id="tab-Progress">Track Progress</a>
         <a href="#" id="tab-test" style="display: none;">Fitness Test</a>
         <a href="#" id="tab-attendance">Attendance Summary</a>
@@ -300,64 +300,120 @@
 
       </div>
       <div class="content">
-        <section id="student-entry" class="card">
-          <h2>Student Entry</h2>
-          <h2 id="welcomeText"></h2>
-          <form id="studentEntryForm">
-            <div class="form-group">
-              <label for="trNo">Tr No</label>
-              <input type="text" id="trNo" class="form-control" required />
-            </div>
-            <div class="form-group">
-              <label for="studentName">Name</label>
-              <input type="text" id="studentName" class="form-control" required />
-            </div>
-            <div class="form-group">
-              <label for="darajah">Darajah</label>
-              <select id="darajah" class="form-control" required>
-                <option value="" disabled selected>Select Darajah</option>
-                <option value="Class 5 AM">Class 5 AM</option>
-                <option value="Class 5 BM">Class 5 BM</option>
-                <option value="Class 6 AM">Class 6 AM</option>
-                <option value="Class 6 BM">Class 6 BM</option>
-                <option value="Class 7 AM">Class 7 AM</option>
-                <option value="Class 7 BM">Class 7 BM</option>
-                <option value="Class 8 AM">Class 8 AM</option>
-                <option value="Class 9 AM">Class 9 AM</option>
-                <option value="Class 10 AM">Class 10 AM</option>
-                <option value="Class 11 AM">Class 11 AM</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="goal">Preferred Goal</label>
-              <select id="goal" class="form-control" required>
-                <option value="" disabled selected>Select Goal</option>
-                <option value="Muscle Gain">Muscle Gain</option>
-                <option value="Fat Loss">Fat Loss</option>
-                <option value="Increase Fitness Level">Increase Fitness Level</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="slot">Slot</label>
-              <select id="slot" class="form-control" required>
-                <option value="" disabled selected>Select Slot</option>
-                <option value="3:20-4:00">3:20pm</option>
-                <option value="4:00-4:40">4:00pm</option>
-                <option value="4:40-5:20">4:40pm</option>
-                <option value="5:20-6:00">5:20pm</option>
-                <option value="6:00-6:40">6:00pm</option>
 
-              </select>
-            </div>
-            <button type="submit" class="btn">Add Student</button>
-          </form>
-  
+
+        <section id="student-entry" class="card">
+          <h2>Student Entry - waiting list</h2>
+          <h2 id="welcomeText"></h2>
+
+              <form id="studentEntryForm">
+                <div class="form-group">
+                  <label for="trNo">Tr No</label>
+                  <input type="text" id="trNo" class="form-control" required />
+                </div>
+                <div class="form-group">
+                  <label for="studentName">Name</label>
+                  <input type="text" id="studentName" class="form-control" required />
+                </div>
+                <div class="form-group">
+                  <label for="darajah">Darajah</label>
+                  <select id="darajah" class="form-control" required>
+                    <option value="" disabled selected>Select Darajah</option>
+                    <option value="Class 5 AM">Class 5 AM</option>
+                    <option value="Class 5 BM">Class 5 BM</option>
+                    <option value="Class 6 AM">Class 6 AM</option>
+                    <option value="Class 6 BM">Class 6 BM</option>
+                    <option value="Class 7 AM">Class 7 AM</option>
+                    <option value="Class 7 BM">Class 7 BM</option>
+                    <option value="Class 8 AM">Class 8 AM</option>
+                    <option value="Class 9 AM">Class 9 AM</option>
+                    <option value="Class 10 AM">Class 10 AM</option>
+                    <option value="Class 11 AM">Class 11 AM</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="goal">Preferred Goal</label>
+                  <select id="goal" class="form-control" required>
+                    <option value="" disabled selected>Select Goal</option>
+                    <option value="Muscle Gain">Muscle Gain</option>
+                    <option value="Fat Loss">Fat Loss</option>
+                    <option value="Increase Fitness Level">Increase Fitness Level</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn">Add Student</button>
+              </form>
+
+<!--   
           <div class="form-group" style="margin-top: 2rem;">
             <label for="csvFile">Bulk Import CSV</label>
             <input type="file" id="csvFile" accept=".csv" class="form-control" />
             <button type="button" id="importCsvBtn" class="btn" style="margin-top: 0.5rem;">Import CSV</button>
             <div id="importStatus" style="margin-top: 0.5rem; font-weight: 600;"></div>
-          </div>
+          </div> -->
+          <br />
+
+          <section id="waiting-list" class="card">
+            <h2>Waiting List</h2>
+
+            <div style="overflow-x:auto;">
+              <table id="waitingListTable">
+                <thead>
+                  <tr>
+                    <th>Waiting ID</th>
+                    <th>TR</th>
+                    <th>Name</th>
+                    <th>Darajah</th>
+                    <th>Goal</th>
+                    <th>Added On</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Filled dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <br />
+
+
+            <section id="slot-management" class="card">
+                    <h2>Slot Management</h2>
+
+                    <!-- Create New Slot Form -->
+                    <form id="createSlotForm">
+                      <div class="form-group">
+                        <label for="slotName">Slot Name / Time</label>
+                        <input type="text" id="slot" class="form-control" placeholder="e.g., 4:00-4:40 PM" required />
+                      </div>
+                      <div class="form-group">
+                        <label for="maxCapacity">Max Capacity</label>
+                        <input type="number" id="maxCapacity" class="form-control" min="1" required />
+                      </div>
+                      <button type="submit" class="btn">Create Slot</button>
+                    </form>
+
+                    <!-- Existing Slots Table -->
+                    <div style="margin-top: 2rem; overflow-x:auto;">
+                      <table id="slotTable">
+                        <thead>
+                          <tr>
+                            <th>Slot ID</th>
+                            <th>Slot Name</th>
+                            <th>Max Capacity</th>
+                            <th>Assigned</th>
+                            <th>Available</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- Filled dynamically -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+
         </section>
   
 
@@ -646,7 +702,8 @@ async function validateStaffSession() {
 
     // Update welcome text
     document.getElementById('welcomeText').innerText =
-      `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
+      `${Branch.toUpperCase()} ( ${Gender.toUpperCase()} )
+       Logged as  ${Role}`;
 
       // Show "Fitness Test" tab only if Branch = Marol and Gender = Male
       const fitnessTab = document.getElementById('tab-test');
@@ -735,30 +792,285 @@ function setActiveTab(tabIdToActivate) {
 
 //.........................................................................................................................
 
-      // Add student
-      document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        
-        const payload = {
-          TR: document.getElementById('trNo').value.trim(), 
-          Name: document.getElementById('studentName').value,
-          Darajah: document.getElementById('darajah').value,
-          Goal: document.getElementById('goal').value,
-          Slot: document.getElementById('slot').value
-        };
+let cachedSlots = null;
+
+async function getSlots() {
+  if (cachedSlots) return cachedSlots; // reuse cache
+
+  const res = await fetch('/api/slots');
+  const data = await res.json();
+  const slots = data.slots || data;
+
+  if (!Array.isArray(slots)) {
+    console.error("Slots API did not return array:", data);
+    return [];
+  }
+
+  cachedSlots = slots;
+  return cachedSlots;
+}
+
+
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+
+// Add student
+document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
+  event.preventDefault();
   
-        const res = await fetch('/api/add-student', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include', // ✅ Important
-          body: JSON.stringify(payload),
-          
+  const payload = {
+    TR: document.getElementById('trNo').value.trim(), 
+    Name: document.getElementById('studentName').value,
+    Darajah: document.getElementById('darajah').value,
+    Goal: document.getElementById('goal').value
+  };
+
+  const res = await fetch('/api/add-student', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (res.ok && data.success) {
+    alert('Student added to Waiting List!');
+    // loadWaitingList(); // refresh table
+    location.reload(); // simpler way to refresh everything
+    document.getElementById('studentEntryForm').reset();
+  } else {
+    alert('Error: ' + data.message);
+  }
+});
+
+
+async function loadWaitingList() {
+  const tableBody = document.querySelector("#waitingListTable tbody");
+  tableBody.innerHTML = "<tr><td colspan='7'>Loading...</td></tr>";
+
+  try {
+    const res = await fetch("/api/waiting-list");
+const students = await res.json();
+if (students.length === 0) {
+  tableBody.innerHTML = "<tr><td colspan='7'>No students in waiting list</td></tr>";
+  return;
+}
+
+    tableBody.innerHTML = "";
+    students.forEach(stu => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${stu.WaitingID}</td>
+        <td>${stu.TR}</td>
+        <td>${stu.Name}</td>
+        <td>${stu.Darajah}</td>
+        <td>${stu.Goal}</td>
+        <td>${new Date(stu.RequestedAt).toLocaleString()}</td>
+        <td>
+          <select class="assign-slot-dropdown" data-id="${stu.WaitingID}">
+            <option value="" disabled selected>Select Slot</option>
+          </select>
+          <button class="btn assign-btn" data-id="${stu.WaitingID}">Assign</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+
+    // Load slots for each dropdown
+    const dropdowns = document.querySelectorAll(".assign-slot-dropdown");
+    const slots = await getSlots();
+
+      if (!Array.isArray(slots)) {
+        console.error("Slots API did not return an array:", data);
+        tableBody.innerHTML = "<tr><td colspan='7'>Error loading slots</td></tr>";
+        return;
+      }
+
+      dropdowns.forEach(dd => {
+        slots.forEach(slot => {
+          const option = document.createElement("option");
+          option.value = slot.SlotID;
+          option.textContent = `${slot.SlotName} (${slot.AvailableSeats} seats left)`;
+          if (slot.AvailableSeats <= 0) option.disabled = true;
+          dd.appendChild(option);
         });
-  
-        const data = await res.json();
-        if (res.ok) alert('Student Added!');
-        else alert('Error: ' + data.error);
       });
+
+
+    // Add click handler for Assign buttons
+    document.querySelectorAll(".assign-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const waitingID = btn.dataset.id;
+        const slotDropdown = document.querySelector(`.assign-slot-dropdown[data-id='${waitingID}']`);
+        const SlotID = slotDropdown.value;
+
+        if (!SlotID) {
+          alert("Please select a slot first!");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/assign-student-slot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ WaitingID: parseInt(waitingID), SlotID: parseInt(SlotID) })
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            alert("Student assigned to slot!");
+            // loadWaitingList(); // refresh table
+            // loadSlotTable();  // refresh slot availability
+            // loadSlots();      // refresh slot dropdowns
+            location.reload(); // simpler way to refresh everything
+          } else {
+            alert("Error: " + data.message);
+          }
+        } catch (err) {
+          console.error("Assign student error:", err);
+          alert("Failed to assign student");
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error("Error loading waiting list:", err);
+    tableBody.innerHTML = "<tr><td colspan='7'>Error loading list</td></tr>";
+  }
+}
+
+
+// // Call on page load
+// document.addEventListener("DOMContentLoaded", loadWaitingList);
+
+
+
+
+// Load slots into <select>
+async function loadSlots() {
+  try {
+      const slots = await getSlots();  // ✅ cached now
+
+    const slotSelect = document.getElementById('slot');
+    if (!slotSelect) return;
+
+    slotSelect.innerHTML = '<option value="" disabled selected>Select Slot</option>';
+
+    slots.forEach(s => {
+      const option = document.createElement('option');
+      option.value = s.SlotID;
+      option.textContent = `${s.SlotName} (${s.AvailableSeats} left)`;
+      if (s.AvailableSeats <= 0) option.disabled = true;
+      slotSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error('Error loading slots:', err);
+  }
+}
+
+// document.addEventListener('DOMContentLoaded', loadSlots);
+
+// Load slots into table
+async function loadSlotTable() {
+  const tbody = document.querySelector('#slotTable tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+
+  try {
+     const slots = await getSlots();   // ✅ cached now
+
+    if (slots.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6">No slots created yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    slots.forEach(slot => {
+      const assignedCount = (slot.MaxCapacity || 0) - (slot.AvailableSeats || 0);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${slot.SlotID}</td>
+        <td>${slot.SlotName}</td>
+        <td>${slot.MaxCapacity}</td>
+        <td>${assignedCount}</td>
+        <td>${slot.AvailableSeats || 0}</td>
+        <td><button onclick="deleteSlot(${slot.SlotID})">Delete</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error('Error loading slots:', err);
+    tbody.innerHTML = '<tr><td colspan="6">Error loading slots</td></tr>';
+  }
+}
+
+
+// // Call on page load
+// document.addEventListener('DOMContentLoaded', () => {
+//   loadSlots();
+//   loadSlotTable();
+// });
+
+// Handle new slot creation
+document.getElementById('createSlotForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const payload = {
+    SlotName: document.getElementById('slot').value.trim(),
+    MaxCapacity: parseInt(document.getElementById('maxCapacity').value, 10)
+  };
+
+  try {
+    const res = await fetch('/api/slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert('Slot created!');
+      this.reset();
+      loadSlotTable();
+    } else {
+      alert('Error: ' + data.error);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Failed to create slot');
+  }
+});
+
+// Delete slot
+async function deleteSlot(slotId) {
+  if (!confirm('Are you sure you want to delete this slot?')) return;
+
+  try {
+    const res = await fetch(`/api/slots/${slotId}`, { method: 'DELETE' });
+    if (res.ok) {
+      alert('Slot deleted');
+      loadSlotTable();
+    } else {
+      const data = await res.json();
+      alert('Error: ' + data.error);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Failed to delete slot');
+  }
+}
+
+// // Load on page ready
+// document.addEventListener('DOMContentLoaded', loadSlotTable);
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadWaitingList();
+  await loadSlots();
+  await loadSlotTable();
+});
+
   
 //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -798,7 +1110,7 @@ function renderTableRows(students) {
       <td>${s.Name}</td>
       <td>${s.Darajah}</td>
       <td>${s.Goal}</td>
-      <td>${s.Slot}</td>
+      <td>${s.SlotName || '-'}</td>
       <td><button class="deactivate-btn" data-tr="${s.TR}">🚫 Deactivate</button></td>
     `;
     tbody.appendChild(row);
@@ -814,9 +1126,9 @@ function setupFilters(students) {
   const filterRow = document.createElement('tr');
   filterRow.classList.add('filter-row');
 
-  ['TR', 'Name', 'Darajah', 'Goal', 'Slot', 'Action'].forEach(col => {
+  ['TR', 'Name', 'Darajah', 'Goal', 'SlotName', 'Action'].forEach(col => {
     const th = document.createElement('th');
-    if (col === 'Darajah' || col === 'Slot') {
+    if (col === 'Darajah' || col === 'SlotName') {
       th.innerHTML = `<select data-column="${col}" style="width: 100%;">
         <option value="">All ${col}</option>
       </select>`;
@@ -837,11 +1149,11 @@ function setupFilters(students) {
 
 function applyFilters(students) {
   const darajahValue = document.querySelector('select[data-column="Darajah"]').value;
-  const slotValue = document.querySelector('select[data-column="Slot"]').value;
+  const slotValue = document.querySelector('select[data-column="SlotName"]').value;
 
   const filtered = students.filter(s =>
     (darajahValue === '' || s.Darajah === darajahValue) &&
-    (slotValue === '' || s.Slot === slotValue)
+    (slotValue === '' || s.SlotName === slotValue)
   );
 
   renderTableRows(filtered);
@@ -877,11 +1189,11 @@ function populateDropdowns(students) {
 
   students.forEach(s => {
     darajahSet.add(s.Darajah);
-    slotSet.add(s.Slot);
+    slotSet.add(s.SlotName);
   });
 
   const darajahSelect = document.querySelector('select[data-column="Darajah"]');
-  const slotSelect = document.querySelector('select[data-column="Slot"]');
+  const slotSelect = document.querySelector('select[data-column="SlotName"]');
 
   darajahSet.forEach(d => {
     const option = document.createElement('option');
@@ -934,7 +1246,7 @@ function renderInactiveRows(students) {
       <td>${s.Name}</td>
       <td>${s.Darajah}</td>
       <td>${s.Goal}</td>
-      <td>${s.Slot}</td>
+      <td>${s.SlotName || '-'}</td>
       <td><button class="activate-btn" data-tr="${s.TR}">✅ Activate</button></td>
     `;
     tbody.appendChild(row);
@@ -1077,27 +1389,27 @@ window.onload = function() {
 
 //---------------------------------------------------------------------------------------------------
 
-      // CSV Import
-      document.getElementById('importCsvBtn').addEventListener('click', async () => {
-        const fileInput = document.getElementById('csvFile');
-        const file = fileInput.files[0];
-        if (!file) return alert('Please choose a CSV file');
+      // // CSV Import
+      // document.getElementById('importCsvBtn').addEventListener('click', async () => {
+      //   const fileInput = document.getElementById('csvFile');
+      //   const file = fileInput.files[0];
+      //   if (!file) return alert('Please choose a CSV file');
   
-        const formData = new FormData();
-        formData.append('csv', file);
+      //   const formData = new FormData();
+      //   formData.append('csv', file);
   
-        const res = await fetch('/api/import-csv', {
-          method: 'POST',
-          body: formData
-        });
+      //   const res = await fetch('/api/import-csv', {
+      //     method: 'POST',
+      //     body: formData
+      //   });
   
-        const result = await res.json();
-        document.getElementById('importStatus').textContent = res.ok
-          ? 'Import successful!'
-          : 'Error importing CSV: ' + result.error;
+      //   const result = await res.json();
+      //   document.getElementById('importStatus').textContent = res.ok
+      //     ? 'Import successful!'
+      //     : 'Error importing CSV: ' + result.error;
   
-        loadStudentRecords();
-      });
+      //   loadStudentRecords();
+      // });
 
 //....................................................................................................
 

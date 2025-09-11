@@ -63,44 +63,247 @@ sql.connect(config)
 
 
 
-// ➕ Add Student
+// // ➕ Add Student
+// app.post('/api/add-student', async (req, res) => {
+//   const { TR, Name, Darajah, Goal, Slot } = req.body;
+
+//   // ✅ Step 1: Ensure staff is logged in
+//   if (!req.session.user) {
+//     return res.status(403).json({ error: 'Unauthorized' });
+//   }
+
+//   // ✅ Step 2: Extract Branch and Gender (case-sensitive!)
+//   const { Branch, Gender } = req.session.user;
+
+//   try {
+//     await sql.connect(config);
+//     const request = new sql.Request();
+
+//     request.input('TR', sql.NVarChar(50), TR);
+//     request.input('Name', sql.NVarChar(100), Name);
+//     request.input('Darajah', sql.NVarChar(50), Darajah);
+//     request.input('Goal', sql.NVarChar(100), Goal);
+//     request.input('Slot', sql.NVarChar(50), Slot);
+//     request.input('Branch', sql.NVarChar(50), Branch); // 👈 fixed casing
+//     request.input('Gender', sql.NVarChar(10), Gender); // 👈 fixed casing
+
+//     await request.query(`
+//       INSERT INTO Master (TR, Name, Darajah, Goal, Slot, Branch, Gender)
+//       VALUES (@TR, @Name, @Darajah, @Goal, @Slot, @Branch, @Gender)
+//     `);
+
+//     res.json({ success: true, message: 'Student added successfully' });
+
+//   } catch (err) {
+//     console.error('Add student error:', err);
+//     res.status(500).json({ error: 'Failed to add student' });
+//   }
+// });
+
+
+// ➕ Add Student (always goes to WaitingList)
 app.post('/api/add-student', async (req, res) => {
-  const { TR, Name, Darajah, Goal, Slot } = req.body;
-
-  // ✅ Step 1: Ensure staff is logged in
-  if (!req.session.user) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-
-  // ✅ Step 2: Extract Branch and Gender (case-sensitive!)
-  const { Branch, Gender } = req.session.user;
+  const { TR, Name, Darajah, Goal } = req.body;
+  const { Branch, Gender } = req.session.user; // staff session
 
   try {
     await sql.connect(config);
-    const request = new sql.Request();
 
-    request.input('TR', sql.NVarChar(50), TR);
-    request.input('Name', sql.NVarChar(100), Name);
-    request.input('Darajah', sql.NVarChar(50), Darajah);
-    request.input('Goal', sql.NVarChar(100), Goal);
-    request.input('Slot', sql.NVarChar(50), Slot);
-    request.input('Branch', sql.NVarChar(50), Branch); // 👈 fixed casing
-    request.input('Gender', sql.NVarChar(10), Gender); // 👈 fixed casing
+    await new sql.Request()
+      .input('TR', sql.Int, TR)
+      .input('Name', sql.NVarChar(100), Name)
+      .input('Darajah', sql.NVarChar(50), Darajah)
+      .input('Goal', sql.NVarChar(100), Goal)
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .query(`
+        INSERT INTO WaitingList (TR, Name, Darajah, Goal, Branch, Gender)
+        VALUES (@TR, @Name, @Darajah, @Goal, @Branch, @Gender)
+      `);
 
-    await request.query(`
-      INSERT INTO Master (TR, Name, Darajah, Goal, Slot, Branch, Gender)
-      VALUES (@TR, @Name, @Darajah, @Goal, @Slot, @Branch, @Gender)
-    `);
-
-    res.json({ success: true, message: 'Student added successfully' });
-
+    res.json({ success: true, message: 'Student added to Waiting List.' });
   } catch (err) {
     console.error('Add student error:', err);
-    res.status(500).json({ error: 'Failed to add student' });
+    res.status(500).json({ success: false, message: 'Failed to add student' });
   }
 });
 
 
+app.get('/api/waiting-list', async (req, res) => {
+  try {
+    // Ensure user is logged in
+    if (!req.session.user) {
+      return res.status(401).json({ error: "Unauthorized: No session user" });
+    }
+
+    const { Branch, Gender } = req.session.user;
+
+    await sql.connect(config);
+    const result = await new sql.Request()
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .query(`
+        SELECT WL.WaitingID, WL.TR, WL.Name, WL.Darajah, WL.Goal, WL.RequestedAt
+        FROM WaitingList WL
+        WHERE WL.Branch = @Branch AND WL.Gender = @Gender
+        ORDER BY WL.RequestedAt ASC
+      `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error("Error fetching waiting list:", err);
+    res.status(500).json({ error: "Failed to load waiting list" });
+  }
+});
+
+
+
+// ➕ Assign WaitingList Student to a Slot
+app.post('/api/assign-student-slot', async (req, res) => {
+  const { WaitingID, SlotID } = req.body;
+  const { Branch, Gender } = req.session.user;
+
+  try {
+    await sql.connect(config);
+
+    // 1️⃣ Fetch student from WaitingList
+    const studentRes = await new sql.Request()
+      .input('WaitingID', sql.Int, WaitingID)
+      .query(`SELECT * FROM WaitingList WHERE WaitingID=@WaitingID`);
+    
+    if (!studentRes.recordset.length)
+      return res.status(404).json({ success: false, message: "Student not found" });
+    
+    const stu = studentRes.recordset[0];
+
+    // 2️⃣ Insert into Master
+    await new sql.Request()
+      .input('TR', sql.Int, stu.TR)
+      .input('Name', sql.NVarChar(100), stu.Name)
+      .input('Darajah', sql.NVarChar(50), stu.Darajah)
+      .input('Goal', sql.NVarChar(100), stu.Goal)
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .input('SlotID', sql.Int, SlotID)
+      .query(`
+        INSERT INTO Master (TR, Name, Darajah, Goal, Branch, Gender, SlotID, Status)
+        VALUES (@TR, @Name, @Darajah, @Goal, @Branch, @Gender, @SlotID, 'Active')
+      `);
+
+    // 3️⃣ Remove from WaitingList
+    await new sql.Request()
+      .input('WaitingID', sql.Int, WaitingID)
+      .query(`DELETE FROM WaitingList WHERE WaitingID=@WaitingID`);
+
+    res.json({ success: true, message: "Student assigned to slot" });
+
+  } catch (err) {
+    console.error("Assign student error:", err);
+    res.status(500).json({ success: false, message: "Failed to assign student" });
+  }
+});
+
+
+
+// -----------------------------------------------------------------------------------------------------------------------
+
+app.post('/api/slots', async (req, res) => {
+  const { SlotName, MaxCapacity } = req.body;
+  const { Branch, Gender } = req.session.user; // from staff session
+
+  try {
+    await sql.connect(config);
+    const result = await new sql.Request()
+      .input('SlotName', sql.NVarChar(50), SlotName)
+      .input('MaxCapacity', sql.Int, MaxCapacity)
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .query(`
+        INSERT INTO Slots (SlotName, MaxCapacity, Branch, Gender) 
+        VALUES (@SlotName, @MaxCapacity, @Branch, @Gender)
+      `);
+
+    res.json({ success: true, message: 'Slot created successfully' });
+  } catch (err) {
+    console.error('Create slot error:', err);
+    res.status(500).json({ success: false, message: 'Failed to create slot' });
+  }
+});
+
+
+app.get('/api/slots', async (req, res) => {
+  const { Branch, Gender } = req.session.user;
+
+  try {
+    await sql.connect(config);
+    const result = await new sql.Request()
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .query(`
+        SELECT s.SlotID, s.SlotName, s.MaxCapacity,
+          (s.MaxCapacity - COUNT(m.TR)) AS AvailableSeats
+        FROM Slots s
+        LEFT JOIN Master m ON s.SlotID = m.SlotID AND m.Status = 'Active'
+        WHERE s.Branch = @Branch AND s.Gender = @Gender AND s.IsActive = 1
+        GROUP BY s.SlotID, s.SlotName, s.MaxCapacity
+        ORDER BY s.SlotName
+      `);
+
+    res.json({ success: true, slots: result.recordset });
+  } catch (err) {
+    console.error('Get slots error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch slots' });
+  }
+});
+
+
+app.put('/api/slots/:id', async (req, res) => {
+  const { SlotName, MaxCapacity } = req.body;
+  const SlotID = req.params.id;
+
+  try {
+    await sql.connect(config);
+    await new sql.Request()
+      .input('SlotID', sql.Int, SlotID)
+      .input('SlotName', sql.NVarChar(50), SlotName)
+      .input('MaxCapacity', sql.Int, MaxCapacity)
+      .query(`
+        UPDATE Slots 
+        SET SlotName = @SlotName, MaxCapacity = @MaxCapacity
+        WHERE SlotID = @SlotID
+        WHERE @MaxCapacity >= (SELECT COUNT(*) FROM Master WHERE SlotID=@SlotID AND Status='Active')
+
+      `);
+
+    res.json({ success: true, message: 'Slot updated successfully' });
+  } catch (err) {
+    console.error('Update slot error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update slot' });
+  }
+});
+
+
+app.delete('/api/slots/:id', async (req, res) => {
+  const SlotID = req.params.id;
+
+  try {
+    await sql.connect(config);
+    await new sql.Request()
+      .input('SlotID', sql.Int, SlotID)
+      .query(`UPDATE Slots SET IsActive = 0 WHERE SlotID = @SlotID`);
+
+    res.json({ success: true, message: 'Slot deactivated successfully' });
+  } catch (err) {
+    console.error('Delete slot error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete slot' });
+  }
+});
+
+
+
+
+
+//--------------------------------------------------------------------------------------------------------------------------
 
 
 // app.delete('/api/delete-student/:TR', async (req, res) => {
@@ -757,6 +960,7 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
         // ✅ Step 2: Check for valid student with Status = 'Active' and matching branch/gender
         const result = await request.query(`
             SELECT * FROM Master
+            LEFT JOIN Slots s ON m.SlotID = s.SlotID
             WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender
         `);
 
@@ -1331,7 +1535,6 @@ app.post('/api/import-csv', upload.single('csv'), async (req, res) => {
         });
 });
 
-
 app.get('/api/students', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: 'User session missing' });
@@ -1350,10 +1553,21 @@ app.get('/api/students', async (req, res) => {
     request.input('Gender', sql.NVarChar(10), Gender);
 
     const result = await request.query(`
-      SELECT * FROM Master
-      WHERE Branch = @Branch
-        AND Gender = @Gender
-        AND Status = 'Active'
+      SELECT 
+        m.TR,
+        m.Name,
+        m.Darajah,
+        m.Goal,
+        m.Status,
+        m.Gender,
+        m.Branch,
+        m.SlotID,
+        s.SlotName
+      FROM Master m
+      LEFT JOIN Slots s ON m.SlotID = s.SlotID
+      WHERE m.Branch = @Branch
+        AND m.Gender = @Gender
+        AND m.Status = 'Active'
     `);
 
     res.json({ success: true, data: result.recordset });
@@ -1378,18 +1592,22 @@ app.get('/api/students/inactive', async (req, res) => {
     request.input('Branch', sql.NVarChar(50), branch);
 
     let query = `
-      SELECT * FROM Master
-      WHERE Branch = @Branch AND Status = 'Inactive'
+      SELECT m.*, s.SlotName 
+      FROM Master m
+      LEFT JOIN Slots s ON m.SlotID = s.SlotID
+      WHERE m.Branch = @Branch AND m.Status = 'Inactive'
     `;
 
     // For staff → still restrict by gender
     if (Role === 'Staff') {
       request.input('Gender', sql.NVarChar(10), req.session.user.Gender);
       query = `
-        SELECT * FROM Master
-        WHERE Branch = @Branch 
-          AND Gender = @Gender
-          AND Status = 'Inactive'
+        SELECT m.*, s.SlotName 
+        FROM Master m
+        LEFT JOIN Slots s ON m.SlotID = s.SlotID
+        WHERE m.Branch = @Branch 
+          AND m.Gender = @Gender
+          AND m.Status = 'Inactive'
       `;
     }
 
@@ -1426,7 +1644,7 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
 
     // Check if student exists in Master table under same Branch + Gender
     const studentCheck = await request.query(`
-      SELECT * FROM Master WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
+      SELECT * FROM Master  LEFT JOIN Slots s ON m.SlotID = s.SlotID WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
     `);
 
     if (studentCheck.recordset.length === 0) {
