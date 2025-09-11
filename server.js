@@ -1575,29 +1575,47 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
     request.input('Gender', sql.NVarChar(10), Gender);
     request.input('Date', sql.Date, date);
 
-    // Check if student exists in Master table under same Branch + Gender
+    // Check if student exists
     const studentCheck = await request.query(`
-      SELECT * FROM Master  LEFT JOIN Slots s ON m.SlotID = s.SlotID WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
+      SELECT 
+        m.TR,
+        m.Name,
+        m.Branch,
+        m.Gender,
+        m.SlotID,
+        s.SlotName
+      FROM Master m
+      LEFT JOIN Slots s ON m.SlotID = s.SlotID
+      WHERE m.TR = @TR 
+        AND m.Branch = @Branch 
+        AND m.Gender = @Gender
     `);
 
     if (studentCheck.recordset.length === 0) {
       return res.status(401).json({ success: false, error: 'Unauthorized: TR not found in your branch/gender' });
     }
 
-    // Now fetch Attendance record (if any) for that date
+    // Fetch Attendance record
     const result = await request.query(`
-      SELECT AttendanceID, TR, WeekID, IsPresent, CreatedAt, Branch, Gender
-      FROM Attendance
-      WHERE TR = @TR 
-        AND Branch = @Branch 
-        AND Gender = @Gender
-        AND CAST(CreatedAt AS DATE) = @Date
+      SELECT 
+        a.AttendanceID, 
+        a.TR, 
+        a.WeekID, 
+        a.IsPresent, 
+        a.CreatedAt, 
+        a.Branch, 
+        a.Gender
+      FROM Attendance a
+      WHERE a.TR = @TR 
+        AND a.Branch = @Branch 
+        AND a.Gender = @Gender
+        AND CAST(a.CreatedAt AS DATE) = @Date
     `);
 
     if (result.recordset.length > 0) {
       return res.json({ success: true, record: result.recordset[0] });
     } else {
-      // No record found (treat as Absent, but valid student)
+      // No record found → Absent
       return res.json({
         success: true,
         record: {

@@ -1697,6 +1697,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize DataTable for fitness test records
   const testRecordsTable = $('#test-records-table').DataTable({
     ajax: function (data, callback, settings) {
+      responsive: true,
       fetch('/api/all-test-records', {
         method: 'GET',
         credentials: 'include' // send cookies/session info
