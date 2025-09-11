@@ -63,44 +63,6 @@ sql.connect(config)
 
 
 
-// // ➕ Add Student
-// app.post('/api/add-student', async (req, res) => {
-//   const { TR, Name, Darajah, Goal, Slot } = req.body;
-
-//   // ✅ Step 1: Ensure staff is logged in
-//   if (!req.session.user) {
-//     return res.status(403).json({ error: 'Unauthorized' });
-//   }
-
-//   // ✅ Step 2: Extract Branch and Gender (case-sensitive!)
-//   const { Branch, Gender } = req.session.user;
-
-//   try {
-//     await sql.connect(config);
-//     const request = new sql.Request();
-
-//     request.input('TR', sql.NVarChar(50), TR);
-//     request.input('Name', sql.NVarChar(100), Name);
-//     request.input('Darajah', sql.NVarChar(50), Darajah);
-//     request.input('Goal', sql.NVarChar(100), Goal);
-//     request.input('Slot', sql.NVarChar(50), Slot);
-//     request.input('Branch', sql.NVarChar(50), Branch); // 👈 fixed casing
-//     request.input('Gender', sql.NVarChar(10), Gender); // 👈 fixed casing
-
-//     await request.query(`
-//       INSERT INTO Master (TR, Name, Darajah, Goal, Slot, Branch, Gender)
-//       VALUES (@TR, @Name, @Darajah, @Goal, @Slot, @Branch, @Gender)
-//     `);
-
-//     res.json({ success: true, message: 'Student added successfully' });
-
-//   } catch (err) {
-//     console.error('Add student error:', err);
-//     res.status(500).json({ error: 'Failed to add student' });
-//   }
-// });
-
-
 // ➕ Add Student (always goes to WaitingList)
 app.post('/api/add-student', async (req, res) => {
   const { TR, Name, Darajah, Goal } = req.body;
@@ -300,30 +262,36 @@ app.delete('/api/slots/:id', async (req, res) => {
 });
 
 
+// Update student's slot
+app.put('/api/change-student-slot', async (req, res) => {
+  const { TR, SlotID } = req.body;
 
+  if (!TR || !SlotID) {
+    return res.status(400).json({ success: false, message: 'TR and SlotID required' });
+  }
+
+  try {
+    await sql.connect(config);
+    const request = new sql.Request();
+    request.input('TR', sql.Int, TR);
+    request.input('SlotID', sql.Int, SlotID);
+
+    await request.query(`
+      UPDATE Master
+      SET SlotID = @SlotID
+      WHERE TR = @TR
+    `);
+
+    res.json({ success: true, message: 'Slot updated successfully!' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-
-// app.delete('/api/delete-student/:TR', async (req, res) => {
-//     const { TR } = req.params;
-
-//     if (!TR) {
-//         return res.status(400).json({ error: 'TR is required' });
-//     }
-
-//     try {
-//         await sql.connect(config);
-//         const request = new sql.Request();
-//         request.input('TR', sql.Int, TR);
-//         await request.query('DELETE FROM Master WHERE TR = @TR');
-//         res.json({ message: 'Student deleted successfully' });
-//     } catch (err) {
-//         console.error('Error deleting student:', err.message);
-//         res.status(500).json({ error: 'Failed to delete student' });
-//     }
-// });
 
 
 app.put('/api/students/status/:TR', async (req, res) => {
@@ -1050,66 +1018,6 @@ app.post('/api/get-or-create-week', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch or create week' });
     }
 });
-
-
-
-// app.post('/api/get-or-create-week', async (req, res) => {
-//     try {
-//         const today = new Date();
-//         today.setHours(0, 0, 0, 0); // Normalize time
-
-//         const request = new sql.Request();
-//         request.input('Today', sql.Date, today);
-
-//         // STEP 1: Check if today falls inside any existing week
-//         const result = await request.query(`
-//             SELECT * FROM AttendanceWeek 
-//             WHERE @Today BETWEEN WeekStartDate AND WeekEndDate
-//         `);
-
-//         if (result.recordset.length > 0) {
-//             // Week already exists for today
-//             return res.json({ WeekID: result.recordset[0].WeekID });
-//         }
-
-//         // STEP 2: Today is not in any week — calculate next Monday
-//         let monday = new Date(today);
-//         const day = monday.getDay(); // 0 (Sun) to 6 (Sat)
-
-//         if (day === 0) {
-//             // If Sunday, move to next day (Monday)
-//             monday.setDate(monday.getDate() + 1);
-//         } else {
-//             // Else go to next Monday
-//             monday.setDate(monday.getDate() + (8 - day));
-//         }
-
-//         const sunday = new Date(monday);
-//         sunday.setDate(monday.getDate() + 6); // End of week
-
-//         // STEP 3: Insert new week
-//         const insertRequest = new sql.Request();
-//         insertRequest.input('WeekStartDate', sql.Date, monday);
-//         insertRequest.input('WeekEndDate', sql.Date, sunday);
-
-//         await insertRequest.query(`
-//             INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
-//             VALUES (@WeekStartDate, @WeekEndDate)
-//         `);
-
-//         const newWeekResult = await insertRequest.query(`
-//             SELECT TOP 1 WeekID FROM AttendanceWeek 
-//             WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
-//             ORDER BY WeekID DESC
-//         `);
-
-//         return res.json({ message: 'New week created', WeekID: newWeekResult.recordset[0].WeekID });
-
-//     } catch (err) {
-//         console.error('Error creating/fetching week:', err);
-//         res.status(500).json({ error: 'Failed to fetch or create week' });
-//     }
-// });
 
 
 

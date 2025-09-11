@@ -557,7 +557,7 @@
                     <th>Darajah</th>
                     <th>Preferred Goal</th>
                     <th>Slot</th>
-                    <th>Deactivate</th> 
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -565,6 +565,7 @@
             </div>
           </div>
         </section>
+
 
 
 
@@ -1099,25 +1100,107 @@ async function loadStudentRecords() {
   }
 }
 
-function renderTableRows(students) {
+async function renderTableRows(students) {
   const tbody = document.querySelector('#studentTable tbody');
   tbody.innerHTML = '';
 
+  // Fetch slots once to populate dropdowns for editing
+  let slotData = [];
+  try {
+    const slotRes = await fetch('/api/slots');
+    const slotJson = await slotRes.json();
+    slotData = slotJson.slots || [];
+  } catch (err) {
+    console.error('Error fetching slots for dropdown:', err);
+  }
+
   students.forEach(s => {
     const row = document.createElement('tr');
+
+    // Determine slot display
+    const slotDisplay = s.SlotName ? s.SlotName : 'No slot assigned';
+
     row.innerHTML = `
       <td>${s.TR}</td>
       <td>${s.Name}</td>
       <td>${s.Darajah}</td>
       <td>${s.Goal}</td>
-      <td>${s.SlotName || '-'}</td>
+      <td class="slot-cell">
+        <span class="slot-text">${slotDisplay}</span>
+        <button class="edit-slot-btn" data-tr="${s.TR}">✏️</button>
+      </td>
       <td><button class="deactivate-btn" data-tr="${s.TR}">🚫 Deactivate</button></td>
     `;
     tbody.appendChild(row);
   });
 
   attachDeactivateHandlers();
+  attachSlotEditHandlers(slotData);
 }
+
+function attachSlotEditHandlers(slotData) {
+  document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tr = btn.dataset.tr;
+      const slotCell = btn.closest('td.slot-cell');
+
+      // Prevent multiple dropdowns
+      if (slotCell.querySelector('select')) return;
+
+      const currentText = slotCell.querySelector('.slot-text').innerText;
+
+      // Create dropdown
+      const select = document.createElement('select');
+      select.innerHTML = slotData.map(slot => `
+        <option value="${slot.SlotID}" ${slot.SlotName === currentText ? 'selected' : ''}>
+          ${slot.SlotName} (${slot.AvailableSeats || 0} left)
+        </option>
+      `).join('');
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '💾';
+      saveBtn.style.marginLeft = '5px';
+
+      // Clear text and append dropdown + save
+      slotCell.innerHTML = '';
+      slotCell.appendChild(select);
+      slotCell.appendChild(saveBtn);
+
+      saveBtn.addEventListener('click', async () => {
+        const newSlotID = parseInt(select.value);
+
+        if (!newSlotID) {
+          alert('Please select a valid slot.');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/change-student-slot', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ TR: parseInt(tr), SlotID: newSlotID })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            // Update text
+            const slotName = slotData.find(s => s.SlotID === newSlotID)?.SlotName || 'Unknown';
+            slotCell.innerHTML = `<span class="slot-text">${slotName}</span> <button class="edit-slot-btn" data-tr="${tr}">✏️</button>`;
+            attachSlotEditHandlers(slotData); // Reattach for new button
+            alert('Slot updated successfully!');
+            loadStudentRecords(); // Optional: refresh table for updated available seats
+          } else {
+            alert('Error updating slot: ' + data.message);
+          }
+        } catch (err) {
+          console.error('Slot update error:', err);
+          alert('Failed to update slot.');
+        }
+      });
+    });
+  });
+}
+
 
 function setupFilters(students) {
   const thead = document.querySelector('#studentTable thead');
@@ -1181,6 +1264,7 @@ function attachDeactivateHandlers() {
     });
   });
 }
+
 
 
 function populateDropdowns(students) {
