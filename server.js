@@ -276,6 +276,24 @@ app.put('/api/change-student-slot', async (req, res) => {
     request.input('TR', sql.Int, TR);
     request.input('SlotID', sql.Int, SlotID);
 
+    // 🔹 Check capacity first
+    const capacityCheck = await request.query(`
+      SELECT s.MaxCapacity, 
+             (SELECT COUNT(*) FROM Master WHERE SlotID = s.SlotID AND Status = 'Active') AS Assigned
+      FROM Slots s
+      WHERE s.SlotID = @SlotID
+    `);
+
+    if (capacityCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Slot not found' });
+    }
+
+    const { MaxCapacity, Assigned } = capacityCheck.recordset[0];
+    if (Assigned >= MaxCapacity) {
+      return res.json({ success: false, message: 'Slot is full! Cannot assign more students.' });
+    }
+
+    // 🔹 Update student's slot
     await request.query(`
       UPDATE Master
       SET SlotID = @SlotID

@@ -1149,10 +1149,12 @@ function attachSlotEditHandlers(slotData) {
 
       const currentText = slotCell.querySelector('.slot-text').innerText;
 
-      // Create dropdown
+      // Create dropdown with disabled full slots
       const select = document.createElement('select');
       select.innerHTML = slotData.map(slot => `
-        <option value="${slot.SlotID}" ${slot.SlotName === currentText ? 'selected' : ''}>
+        <option value="${slot.SlotID}" 
+                ${slot.SlotName === currentText ? 'selected' : ''} 
+                ${slot.AvailableSeats <= 0 && slot.SlotName !== currentText ? 'disabled' : ''}>
           ${slot.SlotName} (${slot.AvailableSeats || 0} left)
         </option>
       `).join('');
@@ -1188,7 +1190,7 @@ function attachSlotEditHandlers(slotData) {
             slotCell.innerHTML = `<span class="slot-text">${slotName}</span> <button class="edit-slot-btn" data-tr="${tr}">✏️</button>`;
             attachSlotEditHandlers(slotData); // Reattach for new button
             alert('Slot updated successfully!');
-            loadStudentRecords(); // Optional: refresh table for updated available seats
+            loadStudentRecords(); // refresh for updated available seats
           } else {
             alert('Error updating slot: ' + data.message);
           }
@@ -1200,6 +1202,7 @@ function attachSlotEditHandlers(slotData) {
     });
   });
 }
+
 
 
 function setupFilters(students) {
