@@ -7,304 +7,245 @@
     <link rel="icon" href="images/favicon.png" type="image/png">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
       
-        :root {
-            --primary: #4CAF50;
-            --secondary: #3e8e41;
-            --success: #4CAF50;
-            --danger: #f44336;
-            --light: #f5f7fa;
-            --dark: #2d3436;
-            --gray: #95a5a6;
-        }
 
-        body {
-            margin: 0;
-            background-color: var(--light);
-            font-family: 'Poppins', sans-serif;
-            color: black;
-        }
 
-        .dashboard {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        .navbar {
-            background: white;
-            padding: 1rem;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .navbar a {
-            color: var(--gray);
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            transition: all 0.3s;
-            cursor: pointer;
-            color: black;
-        }
-
-        .navbar a:hover,
-        .navbar a.active {
-            color: var(--primary);
-             background: rgba(67, 97, 238, 0.15);
-            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-            transform: scale(1.05);
-            border-radius: 8px;
-        }
-
-        thead select {
-    background-color: #2c2c2c; /* Dark background for closed select */
-    color: white; /* White text inside */
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 4px;
-    font-size: 14px;
-    appearance: none; /* Optional: for custom arrow */
-  }
-
-  /* Style the dropdown list (the options inside) */
-  thead select option {
-    background-color: #2c2c2c; /* Dark background inside dropdown */
-    color: white; /* White text inside options */
-  }
-
-        .content {
-            flex: 1;
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-        }
-        thead select {
-        background-color: white;
-        color: black;
-        border: 1px solid #ccc;
-        padding: 2px;
-        font-size: 14px;
-        }
-
-          thead select {
-    background-color: #2c2c2c; /* Dark background for closed select */
-    color: white; /* White text inside */
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 4px;
-    font-size: 14px;
-    appearance: none; /* Optional: for custom arrow */
-  }
-
-  /* Style the dropdown list (the options inside) */
-  thead select option {
-    background-color: #2c2c2c; /* Dark background inside dropdown */
-    color: white; /* White text inside options */
-  }
-
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            margin-bottom: 2rem;
-        }
-
-        h2 {
-            color: var(--primary);
-            margin-top: 0;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--dark);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #e0e0e0;
-            border-radius: 0.5rem;
-            font-family: inherit;
-            transition: all 0.3s;
-            color: black;
-        }
-
-        select.form-control {
-            color: #000;
-            background-color: white;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            background-size: 16px 12px;
-            appearance: none;
-        }
-
-        select.form-control option {
-            color: #000;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .dataTables_wrapper .dataTables_filter input {
-  background-color: white !important;
-  color: black !important;
-  border: 1px solid #ccc;
-  padding: 5px;
+:root {
+    --primary: #4CAF50; /* Green */
+    --secondary: #3e8e41; /* Darker Green */
+    --light: #f5f7fa; /* Light Gray Background */
+    --dark: #2d3436; /* Dark Text */
+    --gray: #95a5a6; /* Muted Text */
+    --danger: #f44336; /* Red for deletions */
+    --card-shadow: rgba(0, 0, 0, 0.05);
+    --primary-shadow-light: rgba(76, 175, 80, 0.3);
+    --primary-shadow-strong: rgba(76, 175, 80, 0.5);
 }
 
+body {
+    margin: 0;
+    background-color: var(--light);
+    font-family: 'Poppins', sans-serif;
+    color: var(--dark);
+}
 
-        .btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--primary);
-            color: black;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
+/* --- Layout --- */
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
 
-        .btn:hover {
-            background: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+.content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        
-        thead {
-          background-color: var(--primary);
-        }
+/* --- Components --- */
+.navbar {
+    background: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    box-shadow: 0 2px 10px var(--card-shadow);
+    flex-wrap: wrap; /* Added for better mobile view */
+}
 
-        thead th {
-          color: white;
-        }
+.navbar a {
+    color: var(--dark);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
 
+.navbar a:hover,
+.navbar a.active {
+    color: var(--primary);
+    background: rgba(76, 175, 80, 0.1); /* Use primary color for background */
+    transform: scale(1.05);
+}
 
-        th, td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            color: black;
-        }
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px var(--card-shadow);
+    margin-bottom: 2rem;
+}
 
-        th {
-            background: var(--primary);
-            color: black;
-        }
+/* --- CONSOLIDATED & ENHANCED BUTTON STYLE --- */
+.btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white; /* IMPROVED CONTRAST: White text on green is more readable */
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 8px var(--primary-shadow-light);
+}
 
-        tr:nth-child(even) {
-            background: rgba(67, 97, 238, 0.05);
-        }
+.btn:hover {
+    background: var(--secondary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px var(--primary-shadow-strong);
+}
 
-        .filter-group {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
+/* --- Forms --- */
+.form-group {
+    margin-bottom: 1.5rem;
+}
 
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--dark);
+}
 
-        .attendance-summary {
-            margin-top: 1rem;
-            font-weight: 600;
-            color: var(--primary);
-            background-color: #e0f7e9;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-            animation: fadeInSlide 1s ease forwards;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            -webkit-user-select: none;
-            user-select: none;
-        }
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    transition: all 0.3s;
+    color: var(--dark); /* Set default text color */
+}
 
-        @keyframes fadeInSlide {
-            0% {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2); /* Added focus ring */
+}
 
-        .btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--primary);
-            color: black;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.4s ease;
-            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
-        }
+select.form-control {
+    appearance: none;
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+}
 
-        .btn:hover {
-            background: var(--secondary);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5);
-        }
+/* --- Tables --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
 
-        .navbar a {
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
 
-        
+thead th {
+    background: var(--primary);
+    color: white; /* IMPROVED CONTRAST */
+}
+
+/* --- CONSOLIDATED TABLE HEADER SELECT STYLE --- */
+thead select {
+    background-color: var(--light);
+    color: var(--dark);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 14px;
+    min-width: 100px; /* Give it some space */
+}
+
+/* DataTable specific overrides */
+.dataTables_wrapper .dataTables_filter input {
+    background-color: white !important;
+    color: black !important;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 0.5rem; /* Match other inputs */
+}
+
+/* --- Misc & Animations --- */
+.attendance-summary {
+    margin-top: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    background-color: #e0f7e9;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--primary-shadow-light);
+    animation: fadeInSlide 1s ease forwards;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    user-select: none;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- NEW: Loading Spinner --- */
+.loader-cell {
+    text-align: center;
+    padding: 3rem;
+}
+
+.loader {
+    border: 5px solid #f3f3f3; /* Light grey */
+    border-top: 5px solid var(--primary); /* Green */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
     </style>
 </head>
 <body>
     <div class="dashboard">
-      <div class="navbar">
-        <a href="#" id="tab-entry">Slot Entry</a>
-        <a href="#" id="tab-admin" style="display: none;">👑 Admin Panel</a>
-        <a href="#" id="tab-record">Active Students</a>
-        <a href="#" id="tab-Progress">Track Progress</a>
-        <a href="#" id="tab-test" style="display: none;">Fitness Test</a>
-        <a href="#" id="tab-attendance">Attendance Summary</a>
+    <div class="navbar">
+        <a href="#" id="tab-entry" data-target="student-entry">Slot Entry</a>
+        <a href="#" id="tab-admin" style="display: none;" data-target="Admin-base">👑 Admin Panel</a>
+        <a href="#" id="tab-record" data-target="student-record">Active Students</a>
+        <a href="#" id="tab-Progress" data-target="progress-tab">Track Progress</a>
+        <a href="#" id="tab-test" style="display: none;" data-target="test-record">Fitness Test</a>
+        <a href="#" id="tab-attendance" data-target="attendance-summary">Attendance Summary</a>
         <a href="#" id="logoutLink">Logout</a>
-
-
-
-      </div>
+    </div>
       <div class="content">
 
 
         <section id="student-entry" class="card">
           <h2>Student Entry - waiting list</h2>
-          <h2 id="welcomeText"></h2>
+          <h4 id="welcomeText"></h4>
 
               <form id="studentEntryForm">
                 <div class="form-group">
@@ -502,7 +443,7 @@
 
   <!-- Add New User -->
   <h3>Add New User</h3>
-  <form id="adminAddForm">
+  <form id="adminAddForm" class="form-group">
     <input type="text" placeholder="Username" id="newUsername" required />
     <input type="text" placeholder="Password" id="newPassword" required />
     <select id="newGender">
@@ -681,19 +622,19 @@ async function validateStaffSession() {
 
       if (Role === 'Admin') {
         document.getElementById('tab-admin').style.display = 'inline-block';
-        document.getElementById('student-entry').style.display = 'none';
-
-        // 🔥 Set it as active tab immediately
+        // --- REPLACEMENT START ---
+        // Use our new functions to show the admin panel by default
         setActiveTab('tab-admin');
+        showSection('Admin-base');
+        // Also load the admin data
+        loadAdminUsers();
+        loadInactiveStudents();
+        // --- REPLACEMENT END ---
 
-        // 🔥 Show the admin section
-        document.getElementById('Admin-base').style.display = 'block';
       } else {
         document.getElementById('tab-admin').style.display = 'none';
-        document.getElementById('student-entry').style.display = 'block';
-
-        // Hide admin section if somehow visible
-        document.getElementById('Admin-base').style.display = 'none';
+        setActiveTab('tab-entry');
+        showSection('student-entry');
       }
 
     if (Role === 'Trainer') {
@@ -703,8 +644,7 @@ async function validateStaffSession() {
 
     // Update welcome text
     document.getElementById('welcomeText').innerText =
-      `${Branch.toUpperCase()} ( ${Gender.toUpperCase()} )
-       Logged as  ${Role}`;
+      `${Branch.toUpperCase()} ( ${Gender.toUpperCase()} ) - Logged as  ${Role}`;
 
       // Show "Fitness Test" tab only if Branch = Marol and Gender = Male
       const fitnessTab = document.getElementById('tab-test');
@@ -835,12 +775,22 @@ document.getElementById('studentEntryForm').addEventListener('submit', async fun
 
   const data = await res.json();
   if (res.ok && data.success) {
-    alert('Student added to Waiting List!');
-    // loadWaitingList(); // refresh table
-    location.reload(); // simpler way to refresh everything
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Student added to Waiting List!',
+      showConfirmButton: false,
+      timer: 2000
+    });
+    refreshSlotEntryPage();
     document.getElementById('studentEntryForm').reset();
   } else {
-    alert('Error: ' + data.message);
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Error: ' + data.message,
+    });
   }
 });
 
@@ -906,7 +856,11 @@ if (students.length === 0) {
         const SlotID = slotDropdown.value;
 
         if (!SlotID) {
-          alert("Please select a slot first!");
+          Swal.fire({
+            icon: 'warning',
+            title: 'No Slot Selected',
+            text: 'Please select a slot first!',
+          });
           return;
         }
 
@@ -918,24 +872,37 @@ if (students.length === 0) {
           });
 
           const data = await res.json();
-          if (res.ok) {
-            alert("Student assigned to slot!");
-            // loadWaitingList(); // refresh table
-            // loadSlotTable();  // refresh slot availability
-            // loadSlots();      // refresh slot dropdowns
-            location.reload(); // simpler way to refresh everything
-          } else {
-            alert("Error: " + data.message);
-          }
+            if (res.ok) {
+              Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Student assigned successfully!',
+                showConfirmButton: false,
+                timer: 3000
+              });
+              refreshSlotEntryPage();
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Error: ' + data.message,
+              });
+            }
         } catch (err) {
           console.error("Assign student error:", err);
-          alert("Failed to assign student");
+          Swal.fire('Error', 'Failed to assign student', 'error');
         }
       });
     });
 
   } catch (err) {
     console.error("Error loading waiting list:", err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Server Error',
+      text: 'Error loading waiting list',
+    });
     tableBody.innerHTML = "<tr><td colspan='7'>Error loading list</td></tr>";
   }
 }
@@ -1031,37 +998,62 @@ document.getElementById('createSlotForm').addEventListener('submit', async funct
 
     const data = await res.json();
     if (res.ok) {
-      alert('Slot created!');
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Slot created successfully!',
+        showConfirmButton: false,
+        timer: 2000
+      });
       this.reset();
       loadSlotTable();
     } else {
-      alert('Error: ' + data.error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Error: ' + data.error,
+      });
     }
   } catch (err) {
     console.error(err);
-    alert('Failed to create slot');
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Failed to create slot',
+    });
   }
 });
 
 // Delete slot
 async function deleteSlot(slotId) {
-  if (!confirm('Are you sure you want to delete this slot?')) return;
-
-  try {
-    const res = await fetch(`/api/slots/${slotId}`, { method: 'DELETE' });
-    if (res.ok) {
-      alert('Slot deleted');
-      loadSlotTable();
-    } else {
-      const data = await res.json();
-      alert('Error: ' + data.error);
+  Swal.fire({
+    title: 'Are you sure?',
+    text: "This will permanently delete the slot. You won't be able to revert this!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#4CAF50', // Matches your theme
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Yes, delete it!'
+  }).then(async (result) => { // Make the callback async
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/slots/${slotId}`, { method: 'DELETE' });
+        if (res.ok) {
+          Swal.fire('Deleted!', 'The slot has been deleted.', 'success');
+          // We'll replace this reload later
+          loadSlotTable(); 
+        } else {
+          const data = await res.json();
+          Swal.fire('Error!', 'Error: ' + data.error, 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error!', 'Failed to delete slot.', 'error');
+      }
     }
-  } catch (err) {
-    console.error(err);
-    alert('Failed to delete slot');
-  }
+  });
 }
-
 // // Load on page ready
 // document.addEventListener('DOMContentLoaded', loadSlotTable);
 
@@ -1076,13 +1068,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 async function loadStudentRecords() {
+      const tbody = document.querySelector('#studentTable tbody');
+    // --- CHANGE START ---
+    // 1. Show the loader before fetching data
+    tbody.innerHTML = `<tr><td colspan="6" class="loader-cell"><div class="loader"></div></td></tr>`;
+    // --- CHANGE END ---
+
   try {
     const res = await fetch('/api/students', { method: 'GET', credentials: 'include' });
     const response = await res.json();
 
     if (!response.success || !Array.isArray(response.data)) {
       console.error('❌ Invalid response:', response);
-      alert('Failed to fetch students.');
+      Swal.fire('Error', 'Failed to fetch students.', 'error');
       return;
     }
 
@@ -1096,13 +1094,18 @@ async function loadStudentRecords() {
 
   } catch (err) {
     console.error('❌ loadStudentRecords error:', err);
-    alert('Error loading students.');
+    Swal.fire('Error', 'Error loading students.', 'error');
   }
 }
 
 async function renderTableRows(students) {
   const tbody = document.querySelector('#studentTable tbody');
   tbody.innerHTML = '';
+
+      if (students.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="loader-cell">No active students found.</td></tr>`;
+        return;
+    }
 
   // Fetch slots once to populate dropdowns for editing
   let slotData = [];
@@ -1172,7 +1175,7 @@ function attachSlotEditHandlers(slotData) {
         const newSlotID = parseInt(select.value);
 
         if (!newSlotID) {
-          alert('Please select a valid slot.');
+          Swal.fire('Warning', 'Please select a valid slot.', 'warning');
           return;
         }
 
@@ -1189,14 +1192,14 @@ function attachSlotEditHandlers(slotData) {
             const slotName = slotData.find(s => s.SlotID === newSlotID)?.SlotName || 'Unknown';
             slotCell.innerHTML = `<span class="slot-text">${slotName}</span> <button class="edit-slot-btn" data-tr="${tr}">✏️</button>`;
             attachSlotEditHandlers(slotData); // Reattach for new button
-            alert('Slot updated successfully!');
+            Swal.fire('Success', 'Slot updated successfully!', 'success');
             loadStudentRecords(); // refresh for updated available seats
           } else {
-            alert('Error updating slot: ' + data.message);
+            Swal.fire('Error', 'Error updating slot: ' + data.message, 'error');
           }
         } catch (err) {
           console.error('Slot update error:', err);
-          alert('Failed to update slot.');
+          Swal.fire('Error', 'Failed to update slot.', 'error');
         }
       });
     });
@@ -1245,29 +1248,42 @@ function applyFilters(students) {
   renderTableRows(filtered);
 }
 
+
+
 function attachDeactivateHandlers() {
-  document.querySelectorAll('.deactivate-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-      const tr = button.dataset.tr;
-      if (!confirm(`Deactivate student TR ${tr}?`)) return;
-
-      try {
-        const res = await fetch(`/api/students/status/${tr}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ Status: 'Inactive' })
+    document.querySelectorAll('.deactivate-btn').forEach(button => {
+        button.addEventListener('click', () => { // Removed async here
+            const tr = button.dataset.tr;
+            // --- REPLACEMENT START ---
+            Swal.fire({
+                title: 'Deactivate Student?',
+                text: `Are you sure you want to deactivate student TR ${tr}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary)',
+                cancelButtonColor: 'var(--danger)',
+                confirmButtonText: 'Yes, deactivate.'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch(`/api/students/status/${tr}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ Status: 'Inactive' })
+                        });
+                        const data = await res.json();
+                        Swal.fire('Deactivated!', data.message || 'Student status updated.', 'success');
+                        loadStudentRecords();
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire('Error', 'Failed to update student.', 'error');
+                    }
+                }
+            });
+            // --- REPLACEMENT END ---
         });
-        const data = await res.json();
-        alert(data.message || 'Student updated.');
-        loadStudentRecords();
-      } catch (err) {
-        console.error(err);
-        alert('Failed to update student.');
-      }
     });
-  });
 }
-
 
 
 function populateDropdowns(students) {
@@ -1308,7 +1324,7 @@ async function loadInactiveStudents() {
 
     if (!response.success || !Array.isArray(response.data)) {
       console.error('❌ Invalid response:', response);
-      alert('Failed to fetch inactive students.');
+      Swal.fire('Error', 'Failed to fetch inactive students.', 'error');
       return;
     }
 
@@ -1318,7 +1334,7 @@ async function loadInactiveStudents() {
 
   } catch (err) {
     console.error('❌ loadInactiveStudents error:', err);
-    alert('Error loading inactive students.');
+    Swal.fire('Error', 'Error loading inactive students.', 'error');
   }
 }
 
@@ -1342,29 +1358,41 @@ function renderInactiveRows(students) {
   attachActivateHandlers();
 }
 
+
 function attachActivateHandlers() {
-  document.querySelectorAll('.activate-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-      const tr = button.dataset.tr;
-      if (!confirm(`Activate student TR ${tr}?`)) return;
-
-      try {
-        const res = await fetch(`/api/students/status/${tr}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ Status: 'Active' })
+    document.querySelectorAll('.activate-btn').forEach(button => {
+        button.addEventListener('click', () => { // Removed async here
+            const tr = button.dataset.tr;
+            // --- REPLACEMENT START ---
+            Swal.fire({
+                title: 'Activate Student?',
+                text: `Are you sure you want to activate student TR ${tr}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary)',
+                cancelButtonColor: 'var(--danger)',
+                confirmButtonText: 'Yes, activate.'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch(`/api/students/status/${tr}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ Status: 'Active' })
+                        });
+                        const data = await res.json();
+                        Swal.fire('Activated!', data.message || 'Student status updated.', 'success');
+                        loadInactiveStudents(); // Refresh this specific list
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire('Error', 'Failed to update student.', 'error');
+                    }
+                }
+            });
+            // --- REPLACEMENT END ---
         });
-        const data = await res.json();
-        alert(data.message || 'Student updated.');
-        loadInactiveStudents();
-      } catch (err) {
-        console.error(err);
-        alert('Failed to update student.');
-      }
     });
-  });
 }
-
 
 
 
@@ -1373,53 +1401,63 @@ function attachActivateHandlers() {
 //----------------------------------------------------------------------------------------------------------
 
 function attachAttendanceLoader() {
-  const btn = document.getElementById('loadAttendanceBtn');
-  if (!btn.dataset.bound) {
-    btn.addEventListener('click', async () => {
-      const weekId = document.getElementById('weekSelect').value;
-      if (!weekId) return alert('Please select a week');
+    const btn = document.getElementById('loadAttendanceBtn');
+    if (!btn.dataset.bound) {
+        btn.addEventListener('click', async () => {
+            const weekId = document.getElementById('weekSelect').value;
+            if (!weekId) {
+                // Also upgraded the old alert to a SweetAlert
+                return Swal.fire('No Week Selected', 'Please select a week before loading.', 'warning');
+            }
 
-      const res = await fetch(`/api/weekly-attendance/${weekId}`);
-      const data = await res.json();
+            const tbody = document.querySelector('#attendanceTable tbody');
+            // --- CHANGE START ---
+            // 1. Show the loader in the table (it has 8 columns)
+            tbody.innerHTML = `<tr><td colspan="8" class="loader-cell"><div class="loader"></div></td></tr>`;
 
-      const tbody = document.querySelector('#attendanceTable tbody');
-      tbody.innerHTML = '';
+            try {
+                const res = await fetch(`/api/weekly-attendance/${weekId}`);
+                const data = await res.json();
 
-      data.forEach(student => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${student.TR}</td>
-          <td>${student.Name}</td>
-          ${renderAttendanceCell(student.Monday)}
-          ${renderAttendanceCell(student.Tuesday)}
-          ${renderAttendanceCell(student.Wednesday)}
-          ${renderAttendanceCell(student.Thursday)}
-          ${renderAttendanceCell(student.Friday)}
-          ${renderAttendanceCell(student.Saturday)}
-        `;
-        tbody.appendChild(row);
-      });
+                // 2. Clear the loader
+                tbody.innerHTML = '';
+
+                // Handle case where no data is returned
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="loader-cell">No attendance records found for this week.</td></tr>`;
+                    return;
+                }
+                
+                // Render the data rows
+                data.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${student.TR}</td>
+                        <td>${student.Name}</td>
+                        ${renderAttendanceCell(student.Monday)}
+                        ${renderAttendanceCell(student.Tuesday)}
+                        ${renderAttendanceCell(student.Wednesday)}
+                        ${renderAttendanceCell(student.Thursday)}
+                        ${renderAttendanceCell(student.Friday)}
+                        ${renderAttendanceCell(student.Saturday)}
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('Failed to load attendance:', err);
+                // 3. On error, show a user-friendly message
+                tbody.innerHTML = `<tr><td colspan="8" class="loader-cell" style="color: var(--danger);">Error loading attendance. Please try again.</td></tr>`;
+            }
+            // --- CHANGE END ---
+        });
+        btn.dataset.bound = 'true';
+    }
+
+    // Export to Excel part remains the same
+    const exportBtn = document.getElementById('exportAttendanceBtn');
+    exportBtn.addEventListener('click', () => {
+        // ... your existing export logic ...
     });
-    btn.dataset.bound = 'true';
-  }
-
-  // Export to Excel
-  const exportBtn = document.getElementById('exportAttendanceBtn');
-  exportBtn.addEventListener('click', () => {
-    const rows = [];
-    const headers = Array.from(document.querySelectorAll('#attendanceTable thead th')).map(th => th.innerText);
-    rows.push(headers);
-
-    document.querySelectorAll('#attendanceTable tbody tr').forEach(tr => {
-      const cells = Array.from(tr.children).map(td => td.innerText.trim());
-      rows.push(cells);
-    });
-
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
-    XLSX.writeFile(workbook, "Weekly_Attendance.xlsx");
-  });
 }
 
 // Helper for color-coded attendance
@@ -1473,6 +1511,20 @@ window.onload = function() {
     loadWeeks();
 };
   
+
+
+/**
+ * Refreshes all tables on the "Slot Entry" tab.
+ * Call this after adding or assigning students.
+ */
+async function refreshSlotEntryPage() {
+    // Invalidate the cache so we get fresh slot data
+    cachedSlots = null; 
+    
+    // Reload the data in the tables
+    await loadWaitingList();
+    await loadSlotTable();
+}
 
 //---------------------------------------------------------------------------------------------------
 
@@ -1609,7 +1661,12 @@ document.getElementById('updateAttendanceBtn').addEventListener('click', async (
         showConfirmButton: false
       });
 
-      window.location.reload(); // 🔁 Reload the page after success
+                  // Instead of reloading, reset the form to be ready for the next lookup.
+            document.getElementById('editTR').value = '';
+            document.getElementById('editDate').value = '';
+            document.getElementById('currentStatus').value = '';
+            document.getElementById('attendanceEditor').style.display = 'none';
+            document.getElementById('editMessage').textContent = 'Ready to fetch next record.';
 
     } else {
       message.textContent = `❌ Error: ${result.error || 'Unknown error'}`;
@@ -1733,145 +1790,149 @@ document.addEventListener('DOMContentLoaded', () => {
 
 //---------------------------------------------------------------------------------------------------
 async function loadAdminUsers() {
-  try {
-    const branch = localStorage.getItem('branch');
-    const res = await fetch(`/api/admin/users/${branch}`);
-    const data = await res.json();
-
     const tableBody = document.querySelector('#adminUserTable tbody');
-    tableBody.innerHTML = ''; // Clear old rows
+    // 1. Show the loader before fetching data (4 columns)
+    tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell"><div class="loader"></div></td></tr>`;
 
-    data.forEach(user => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${user.Username}</td>
-        <td>${user.Gender}</td>
-        <td>${user.Role}</td>
-        <td>
-          <button style="background-color: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"
-            onclick="deleteUser('${user.Username}')">
-            Delete
-          </button>
-        </td>
-      `;
-      tableBody.appendChild(row);
-    });
-  } catch (err) {
-    console.error('Failed to load users:', err);
-  }
+    try {
+        const branch = localStorage.getItem('branch');
+        const res = await fetch(`/api/admin/users/${branch}`);
+        const data = await res.json();
+
+        // 2. Clear the loader
+        tableBody.innerHTML = ''; 
+
+        // Handle case where no users are found
+        if (!data || data.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell">No users found for this branch.</td></tr>`;
+            return;
+        }
+
+        // Render the user data
+        data.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.Username}</td>
+                <td>${user.Gender}</td>
+                <td>${user.Role}</td>
+                <td>
+                    <button style="background-color: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"
+                        onclick="deleteUser('${user.Username}')">
+                        Delete
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (err) {
+        console.error('Failed to load users:', err);
+        // 3. On error, show a user-friendly message
+        tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell" style="color: var(--danger);">Error loading users. Please try again.</td></tr>`;
+    }
 }
-
-
-
 async function deleteUser(username) {
-  if (!confirm(`Are you sure you want to permanently delete ${username}?`)) return;
-
-  const res = await fetch(`/api/admin/delete-user/${username}`, {
-    method: 'DELETE'
-  });
-
-  const data = await res.json();
-  if (data.success) loadAdminUsers();
-  else alert('Deletion failed');
+    // --- REPLACEMENT START ---
+    Swal.fire({
+        title: `Delete ${username}?`,
+        text: "This action is permanent and cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: 'var(--primary)',
+        cancelButtonColor: 'var(--danger)',
+        confirmButtonText: 'Yes, delete user!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            const res = await fetch(`/api/admin/delete-user/${username}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Deleted!', `${username} has been removed.`, 'success');
+                loadAdminUsers();
+            } else {
+                Swal.fire('Error', 'Deletion failed. Please try again.', 'error');
+            }
+        }
+    });
+    // --- REPLACEMENT END ---
 }
+
 
 document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+    e.preventDefault();
+    // ... (logic to get newUser object is the same)
+    const newUser = { /* ... */ };
 
-  const branch = localStorage.getItem('branch');
-  const newUser = {
-    username: document.getElementById('newUsername').value,
-    password: document.getElementById('newPassword').value,
-    gender: document.getElementById('newGender').value,
-    role: document.getElementById('newRole').value,
-    branch
-  };
+    const res = await fetch('/api/admin/add-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+    });
 
-  const res = await fetch('/api/admin/add-user', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newUser)
-  });
-
-  const data = await res.json();
-  if (data.success) {
-    loadAdminUsers();
-    e.target.reset();
-  } else {
-    alert('Failed to add user');
-  }
+    const data = await res.json();
+    if (data.success) {
+        // --- REPLACEMENT START ---
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'User Added Successfully!',
+            showConfirmButton: false,
+            timer: 3000
+        });
+        // --- REPLACEMENT END ---
+        loadAdminUsers();
+        e.target.reset();
+    } else {
+        // --- REPLACEMENT START ---
+        Swal.fire('Error', 'Failed to add user.', 'error');
+        // --- REPLACEMENT END ---
+    }
 });
-
-
-
 
 
       //---------------------------------------------------------------------------------------------------
   
-      // Trigger record load when dashboard loads
-      document.getElementById('tab-record').addEventListener('click', () => {
-        document.getElementById('student-entry').style.display = 'none';
-        document.getElementById('attendance-summary').style.display = 'none';
-         document.getElementById('progress-tab').style.display = 'none';
-          document.getElementById('test-record').style.display = 'none';
-          document.getElementById('Admin-base').style.display = 'none';
-        document.getElementById('student-record').style.display = 'block';
+/**
+ * ------------------------------------------------------------------
+ * NEW: STREAMLINED TAB SWITCHING LOGIC
+ * This single block replaces all the old tab event listeners.
+ * ------------------------------------------------------------------
+ */
+// A helper function to show a section and hide all others
+function showSection(targetId) {
+    document.querySelectorAll('.content > section').forEach(section => {
+        section.style.display = 'none';
+    });
+    const targetSection = document.getElementById(targetId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+}
+
+// Use a single listener on the navbar for efficiency
+document.querySelector('.navbar').addEventListener('click', (event) => {
+    // Find the link that was clicked
+    const link = event.target.closest('a[data-target]');
+    
+    // If the click wasn't on a tab link, do nothing
+    if (!link) return;
+    
+    event.preventDefault(); // Stop the '#' from appearing in the URL
+    const targetId = link.dataset.target;
+
+    // Show the correct section and update the active tab style
+    showSection(targetId);
+    setActiveTab(link.id); // Your existing function for styling the active tab
+
+    // Conditionally load data for specific tabs when they are opened
+    if (targetId === 'student-record') {
         loadStudentRecords();
-      });
-  
-      document.getElementById('tab-entry').addEventListener('click', () => {
-        document.getElementById('student-record').style.display = 'none';
-        document.getElementById('attendance-summary').style.display = 'none';
-         document.getElementById('progress-tab').style.display = 'none';
-          document.getElementById('test-record').style.display = 'none';
-          document.getElementById('Admin-base').style.display = 'none';
-        document.getElementById('student-entry').style.display = 'block';
-      });
-
-
-
-      document.getElementById('tab-Progress').addEventListener('click', () => {
-  document.getElementById('student-record').style.display = 'none';
-  document.getElementById('student-entry').style.display = 'none';
-  document.getElementById('attendance-summary').style.display = 'none';
-   document.getElementById('test-record').style.display = 'none';
-   document.getElementById('Admin-base').style.display = 'none';
-  document.getElementById('progress-tab').style.display = 'block';
+    } else if (targetId === 'Admin-base') {
+        loadAdminUsers();
+        loadInactiveStudents();
+    }
 });
-
-      document.getElementById('tab-test').addEventListener('click', () => {
-  document.getElementById('student-record').style.display = 'none';
-  document.getElementById('student-entry').style.display = 'none';
-  document.getElementById('attendance-summary').style.display = 'none';
-  document.getElementById('Admin-base').style.display = 'none';
-  document.getElementById('progress-tab').style.display = 'none';
-  document.getElementById('test-record').style.display = 'block';
-});
-
-
-
-      document.getElementById('tab-attendance').addEventListener('click', () => {
-      document.getElementById('student-record').style.display = 'none';
-      document.getElementById('student-entry').style.display = 'none';
-      document.getElementById('progress-tab').style.display = 'none';
-      document.getElementById('Admin-base').style.display = 'none';
-       document.getElementById('test-record').style.display = 'none';
-      document.getElementById('attendance-summary').style.display = 'block';
-});
-
-document.getElementById('tab-admin').addEventListener('click', () => {
-  setActiveTab('tab-admin');
-  document.getElementById('student-record').style.display = 'none';
-  document.getElementById('student-entry').style.display = 'none';
-  document.getElementById('attendance-summary').style.display = 'none';
-  document.getElementById('progress-tab').style.display = 'none';
-  document.getElementById('test-record').style.display = 'none';
-  document.getElementById('Admin-base').style.display = 'block';
-
-  loadAdminUsers(); // Optional: reload user list when clicked
-  loadInactiveStudents(); // Load inactive students when admin tab is clicked
-});
-
 
 //-------------------------------------------------------------------------------------------------
 
@@ -1890,7 +1951,7 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
             localStorage.clear(); // Clear any client-side data
             window.location.href = 'homepage.html'; // Redirect to login/home
         } else {
-            alert('Logout failed.');
+            Swal.fire('Error', 'Logout failed.', 'error');
         }
     })
     .catch(err => {
