@@ -1047,18 +1047,25 @@ async function getStudentSession() {
       method: 'GET',
       credentials: 'include' // ✅ Include cookies here too
     })
-      .then(res => res.json())
+      .then(res => res.json()) 
       .then(data => {
         if (data.success) {
-          document.getElementById('studentSlot').innerText = data.student.Slot;
-          document.getElementById('studentDarajah').innerText = data.student.Darajah;
-          document.getElementById('studentGoal').innerText = `🎯 Goal: ${data.student.Goal}`;
+          const stu = data.student;
+
+          document.getElementById('studentSlot').innerText =
+            stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
+
+          document.getElementById('studentDarajah').innerText = stu.Darajah;
+          document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
           document.getElementById('studentTR').innerText = studentTR;
-          loadTip(data.student.Goal);
+
+          loadTip(stu.Goal);
         } else {
           alert('Student info not found.');
         }
       });
+
+
 
   } catch (err) {
     console.error('Error fetching student session:', err);

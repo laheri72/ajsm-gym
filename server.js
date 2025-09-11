@@ -438,23 +438,33 @@ app.get('/api/weeks', async (req, res) => {
 });
 
 app.get('/api/student-info/:tr', async (req, res) => {
-    const { tr } = req.params;
+  const { tr } = req.params;
 
-    try {
-        await sql.connect(config);
-        const result = await new sql.Request()
-            .input('TR', sql.Int, tr)
-            .query('SELECT Name, Slot, Darajah, Goal FROM Master WHERE TR = @TR');
+  try {
+    await sql.connect(config);
+    const result = await new sql.Request()
+      .input('TR', sql.Int, tr)
+      .query(`
+        SELECT 
+          M.Name, 
+          M.Darajah, 
+          M.Goal, 
+          M.SlotID, 
+          S.SlotName
+        FROM Master M
+        LEFT JOIN Slots S ON M.SlotID = S.SlotID
+        WHERE M.TR = @TR
+      `);
 
-        if (result.recordset.length > 0) {
-            res.json({ success: true, student: result.recordset[0] });
-        } else {
-            res.json({ success: false, message: 'Student not found' });
-        }
-    } catch (err) {
-        console.error('Error fetching student info:', err.message);
-        res.status(500).json({ success: false, message: 'Server error' });
+    if (result.recordset.length > 0) {
+      res.json({ success: true, student: result.recordset[0] });
+    } else {
+      res.json({ success: false, message: 'Student not found' });
     }
+  } catch (err) {
+    console.error('Error fetching student info:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
 
@@ -936,11 +946,9 @@ app.get('/api/training-plans/:tr', async (req, res) => {
 
 
 
-
 app.get('/api/verify-tr/:tr', async (req, res) => {
     const { tr } = req.params;
 
-    // ✅ Step 1: Ensure trainer is logged in
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({
             valid: false,
@@ -957,14 +965,13 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
         request.input('Branch', sql.NVarChar(50), Branch);
         request.input('Gender', sql.NVarChar(50), Gender);
 
-        // ✅ Step 2: Check for valid student with Status = 'Active' and matching branch/gender
         const result = await request.query(`
-            SELECT * FROM Master
+            SELECT m.TR, m.Name, m.Darajah, m.Goal, s.SlotID, s.SlotName
+            FROM Master m
             LEFT JOIN Slots s ON m.SlotID = s.SlotID
-            WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender
+            WHERE m.TR = @TR AND m.Status = 'Active' AND m.Branch = @Branch AND m.Gender = @Gender
         `);
 
-        // ✅ Step 3: Handle no match
         if (result.recordset.length === 0) {
             return res.status(404).json({
                 valid: false,
@@ -974,13 +981,13 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
 
         const student = result.recordset[0];
 
-        // ✅ Step 4: Return trimmed data
         res.json({
             valid: true,
             data: {
                 TR: student.TR,
                 Name: student.Name,
-                Slot: student.Slot,
+                SlotID: student.SlotID,
+                SlotName: student.SlotName,
                 Darajah: student.Darajah,
                 Goal: student.Goal
             }

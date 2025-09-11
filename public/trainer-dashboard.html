@@ -412,18 +412,19 @@ validateTrainerSession();
     });
 });
     
+
+
 async function checkTR() {
     const tr = document.getElementById('tr-input').value;
     const slotInfo = document.getElementById('slotInfo');
     const goalInfo = document.getElementById('goalinfo');
-    const submitButton = document.getElementById('submitButton'); // Reference to submit button
+    const submitButton = document.getElementById('submitButton');
 
     if (!tr) {
-        // If TR is empty, hide the submit button and return
         submitButton.style.display = 'none';
-        slotInfo.style.display = 'none'; // Hide slot info
-        goalInfo.style.display = 'none'; // Hide goal info
-        workoutEntryForm.style.display = 'none'; // Hide workout entry form
+        slotInfo.style.display = 'none';
+        goalInfo.style.display = 'none';
+        workoutEntryForm.style.display = 'none';
         return;
     }
 
@@ -438,14 +439,12 @@ async function checkTR() {
             confirmButtonColor: '#d33'
         });
         slotInfo.style.display = 'none';
-        goalInfo.style.display = 'none'; // Hide goal info
-        submitButton.style.display = 'none';  // Hide submit button
-        workoutEntryForm.style.display = 'none'; // Hide workout entry form
-       
+        goalInfo.style.display = 'none';
+        submitButton.style.display = 'none';
+        workoutEntryForm.style.display = 'none';
         return;
     }
 
-    // Show welcome SweetAlert
     Swal.fire({
         icon: 'success',
         title: `✅ Welcome ${data.data.Name}!`,
@@ -454,21 +453,18 @@ async function checkTR() {
         showConfirmButton: false,
     });
 
-    // Show Slot info
+    // Show Slot info with SlotName
     slotInfo.style.display = 'block';
-    slotInfo.innerHTML = `Slot: ${data.data.Slot}`;
+    slotInfo.innerHTML = data.data.SlotName ? `Slot: ${data.data.SlotName}` : 'No slot assigned';
     goalInfo.style.display = 'block';
     goalInfo.innerHTML = `Goal: ${data.data.Goal}`;
-    submitButton.style.display = 'inline-block'; // Show the submit button
-    workoutEntryForm.style.display = 'block'; // Show workout entry form
-    const TR = document.getElementById("tr-input").value.trim();
-    if (TR) {
-    loadTrainingPlans(TR);
+    submitButton.style.display = 'inline-block';
+    workoutEntryForm.style.display = 'block';
+
+    const TR = tr.trim();
+    if (TR) loadTrainingPlans(TR);
 }
 
-
-     
-}
 
 
 
