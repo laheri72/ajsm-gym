@@ -1689,15 +1689,7 @@ app.put('/api/attendance-record', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Missing or invalid parameters' });
   }
 
-  // // Validate CreatedAt date is within 7 days (attendance editable window)
-  // const createdDate = new Date(CreatedAt);
-  // const now = new Date();
-  // const diffTime = now - createdDate;
-  // const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-  // if (diffDays > 7) {
-  //   return res.status(403).json({ success: false, error: 'Attendance can only be edited within 7 days' });
-  // }
 
   try {
     const request = new sql.Request();
