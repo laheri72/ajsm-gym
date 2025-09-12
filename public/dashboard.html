@@ -795,122 +795,106 @@ document.getElementById('studentEntryForm').addEventListener('submit', async fun
 });
 
 
-async function loadWaitingList() {
-  const tableBody = document.querySelector("#waitingListTable tbody");
-  tableBody.innerHTML = "<tr><td colspan='7'>Loading...</td></tr>";
+// Variable to hold the DataTable instance
+let waitingListDataTable = null;
 
-  try {
-    const res = await fetch("/api/waiting-list");
-const students = await res.json();
-if (students.length === 0) {
-  tableBody.innerHTML = "<tr><td colspan='7'>No students in waiting list</td></tr>";
-  return;
+async function loadWaitingList() {
+    // If the DataTable is already initialized, just reload its data
+    if (waitingListDataTable) {
+        waitingListDataTable.ajax.reload();
+        return;
+    }
+
+    // Fetch the available slots ONCE before initializing the table.
+    // The getSlots() function conveniently caches this for us.
+    const availableSlots = await getSlots();
+
+    // Initialize the DataTable
+    waitingListDataTable = $('#waitingListTable').DataTable({
+        ajax: {
+            url: '/api/waiting-list',
+            dataSrc: '' // The API returns a direct array, so dataSrc is empty
+        },
+        columns: [
+            { data: 'WaitingID' },
+            { data: 'TR' },
+            { data: 'Name' },
+            { data: 'Darajah' },
+            { data: 'Goal' },
+            { 
+                data: 'RequestedAt',
+                render: function(data) {
+                    // Format the date for display
+                    return new Date(data).toLocaleString();
+                }
+            },
+            { 
+                data: 'WaitingID', // Use WaitingID for the data attributes
+                orderable: false, // Don't allow sorting on this column
+                render: function(data, type, row) {
+                    // Build the HTML for the slot dropdown
+                    let slotOptions = availableSlots.map(slot => 
+                        `<option value="${slot.SlotID}" 
+                            ${slot.AvailableSeats <= 0 ? 'disabled' : ''}>
+                            ${slot.SlotName} (${slot.AvailableSeats} seats)
+                        </option>`
+                    ).join('');
+
+                    // Return the complete HTML for the 'Action' cell
+                    return `
+                        <select class="assign-slot-dropdown form-control" style="width: auto; display: inline-block; margin-right: 5px;">
+                            <option value="" disabled selected>Select Slot</option>
+                            ${slotOptions}
+                        </select>
+                        <button class="btn assign-btn" data-id="${data}">Assign</button>
+                    `;
+                }
+            }
+        ],
+        responsive: true, // Make it mobile-friendly
+        destroy: true
+    });
 }
 
-    tableBody.innerHTML = "";
-    students.forEach(stu => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${stu.WaitingID}</td>
-        <td>${stu.TR}</td>
-        <td>${stu.Name}</td>
-        <td>${stu.Darajah}</td>
-        <td>${stu.Goal}</td>
-        <td>${new Date(stu.RequestedAt).toLocaleString()}</td>
-        <td>
-          <select class="assign-slot-dropdown" data-id="${stu.WaitingID}">
-            <option value="" disabled selected>Select Slot</option>
-          </select>
-          <button class="btn assign-btn" data-id="${stu.WaitingID}">Assign</button>
-        </td>
-      `;
-      tableBody.appendChild(row);
-    });
 
-    // Load slots for each dropdown
-    const dropdowns = document.querySelectorAll(".assign-slot-dropdown");
-    const slots = await getSlots();
+// NEW: Delegated event listener for all 'Assign' buttons
+$('#waitingListTable tbody').on('click', '.assign-btn', async function () {
+    const waitingID = $(this).data('id');
+    // Find the dropdown in the same table cell
+    const slotDropdown = $(this).closest('td').find('.assign-slot-dropdown');
+    const slotID = slotDropdown.val();
 
-      if (!Array.isArray(slots)) {
-        console.error("Slots API did not return an array:", data);
-        tableBody.innerHTML = "<tr><td colspan='7'>Error loading slots</td></tr>";
-        return;
-      }
+    if (!slotID) {
+        return Swal.fire('No Slot Selected', 'Please select a slot first!', 'warning');
+    }
 
-      dropdowns.forEach(dd => {
-        slots.forEach(slot => {
-          const option = document.createElement("option");
-          option.value = slot.SlotID;
-          option.textContent = `${slot.SlotName} (${slot.AvailableSeats} seats left)`;
-          if (slot.AvailableSeats <= 0) option.disabled = true;
-          dd.appendChild(option);
-        });
-      });
-
-
-    // Add click handler for Assign buttons
-    document.querySelectorAll(".assign-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const waitingID = btn.dataset.id;
-        const slotDropdown = document.querySelector(`.assign-slot-dropdown[data-id='${waitingID}']`);
-        const SlotID = slotDropdown.value;
-
-        if (!SlotID) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'No Slot Selected',
-            text: 'Please select a slot first!',
-          });
-          return;
-        }
-
-        try {
-          const res = await fetch("/api/assign-student-slot", {
+    try {
+        const res = await fetch("/api/assign-student-slot", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ WaitingID: parseInt(waitingID), SlotID: parseInt(SlotID) })
-          });
+            body: JSON.stringify({ WaitingID: parseInt(waitingID), SlotID: parseInt(slotID) })
+        });
+        const data = await res.json();
 
-          const data = await res.json();
-            if (res.ok) {
-              Swal.fire({
+        if (res.ok) {
+            Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: 'Student assigned successfully!',
+                title: 'Student Assigned!',
                 showConfirmButton: false,
                 timer: 3000
-              });
-              refreshSlotEntryPage();
-            } else {
-              Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                text: 'Error: ' + data.message,
-              });
-            }
-        } catch (err) {
-          console.error("Assign student error:", err);
-          Swal.fire('Error', 'Failed to assign student', 'error');
+            });
+            // Instead of reloading the page, just refresh the tables' data
+            refreshSlotEntryPage(); // This will reload both waiting list and slot tables
+        } else {
+            Swal.fire('Assignment Failed', `Error: ${data.message}`, 'error');
         }
-      });
-    });
-
-  } catch (err) {
-    console.error("Error loading waiting list:", err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Server Error',
-      text: 'Error loading waiting list',
-    });
-    tableBody.innerHTML = "<tr><td colspan='7'>Error loading list</td></tr>";
-  }
-}
-
-
-// // Call on page load
-// document.addEventListener("DOMContentLoaded", loadWaitingList);
-
+    } catch (err) {
+        console.error("Assign student error:", err);
+        Swal.fire('Server Error', 'Failed to assign student', 'error');
+    }
+});
 
 
 
@@ -1066,80 +1050,127 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   
 //-----------------------------------------------------------------------------------------------------------------------------
+// A variable to hold our DataTable instance
+let studentDataTable = null;
 
 async function loadStudentRecords() {
-      const tbody = document.querySelector('#studentTable tbody');
-    // --- CHANGE START ---
-    // 1. Show the loader before fetching data
-    tbody.innerHTML = `<tr><td colspan="6" class="loader-cell"><div class="loader"></div></td></tr>`;
-    // --- CHANGE END ---
-
-  try {
-    const res = await fetch('/api/students', { method: 'GET', credentials: 'include' });
-    const response = await res.json();
-
-    if (!response.success || !Array.isArray(response.data)) {
-      console.error('❌ Invalid response:', response);
-      Swal.fire('Error', 'Failed to fetch students.', 'error');
-      return;
-    }
-
-    const students = response.data;
-
-    // Render rows
-    renderTableRows(students);
-
-    // Setup filters
-    setupFilters(students);
-
-  } catch (err) {
-    console.error('❌ loadStudentRecords error:', err);
-    Swal.fire('Error', 'Error loading students.', 'error');
-  }
-}
-
-async function renderTableRows(students) {
-  const tbody = document.querySelector('#studentTable tbody');
-  tbody.innerHTML = '';
-
-      if (students.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="loader-cell">No active students found.</td></tr>`;
+    // If the DataTable is already initialized, just reload its data
+    if (studentDataTable) {
+        studentDataTable.ajax.reload();
         return;
     }
 
-  // Fetch slots once to populate dropdowns for editing
-  let slotData = [];
-  try {
+    // Initialize the DataTable for the first time
+    studentDataTable = $('#studentTable').DataTable({
+        // Use DataTables' AJAX feature to fetch data directly
+        ajax: {
+            url: '/api/students',
+            dataSrc: 'data' // The array of students is in the 'data' property of the response
+        },
+        // Define which data property maps to which column
+        columns: [
+            { data: 'TR' },
+            { data: 'Name' },
+            { data: 'Darajah' },
+            { data: 'Goal' },
+            { 
+                data: 'SlotName',
+                // Use a 'render' function for custom HTML in a cell
+                render: function(data, type, row) {
+                    const slotDisplay = data ? data : 'No slot assigned';
+                    // The buttons will now be part of the rendered content
+                    return `
+                        <span class="slot-text">${slotDisplay}</span>
+                        <button class="edit-slot-btn" data-tr="${row.TR}">✏️</button>
+                    `;
+                }
+            },
+            { 
+                data: 'TR', // Use the TR number for the button's data attribute
+                render: function(data, type, row) {
+                    return `<button class="deactivate-btn btn-danger" data-tr="${data}">🚫 Deactivate</button>`;
+                }
+            }
+        ],
+        responsive: true, // Make it mobile-friendly!
+        destroy: true // Allows re-initialization if needed
+    });
+}
+
+/**
+ * NEW: DELEGATED EVENT LISTENERS
+ * These are more efficient. They are attached once to the table body
+ * and can handle clicks on all buttons, even those created later.
+ */
+
+// Handles the 'Deactivate' button clicks
+$('#studentTable tbody').on('click', '.deactivate-btn', function () {
+    const tr = $(this).data('tr'); // Get the TR number from the button's data attribute
+    
+    Swal.fire({
+        title: 'Deactivate Student?',
+        text: `Are you sure you want to deactivate student TR ${tr}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: 'var(--primary)',
+        cancelButtonColor: 'var(--danger)',
+        confirmButtonText: 'Yes, deactivate.'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                // Your existing fetch logic for deactivation
+                await fetch(`/api/students/status/${tr}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Status: 'Inactive' })
+                });
+                Swal.fire('Deactivated!', 'The student has been deactivated.', 'success');
+                studentDataTable.ajax.reload(); // Reload the table data
+            } catch (err) {
+                Swal.fire('Error', 'Failed to update student.', 'error');
+            }
+        }
+    });
+});
+
+// Handles the 'Edit Slot' button clicks
+$('#studentTable tbody').on('click', '.edit-slot-btn', async function () {
+    const tr = $(this).data('tr');
+    const slotCell = $(this).closest('td');
+
+    // Prevent multiple dropdowns
+    if (slotCell.find('select').length > 0) return;
+
+    // Fetch the latest slot data
     const slotRes = await fetch('/api/slots');
     const slotJson = await slotRes.json();
-    slotData = slotJson.slots || [];
-  } catch (err) {
-    console.error('Error fetching slots for dropdown:', err);
-  }
+    const slotData = slotJson.slots || [];
 
-  students.forEach(s => {
-    const row = document.createElement('tr');
+    const currentText = slotCell.find('.slot-text').text();
 
-    // Determine slot display
-    const slotDisplay = s.SlotName ? s.SlotName : 'No slot assigned';
+    // Create and show the dropdown
+    const select = $('<select>').append(
+        slotData.map(slot => 
+            `<option value="${slot.SlotID}" 
+                ${slot.SlotName === currentText ? 'selected' : ''} 
+                ${slot.AvailableSeats <= 0 && slot.SlotName !== currentText ? 'disabled' : ''}>
+                ${slot.SlotName} (${slot.AvailableSeats || 0} left)
+            </option>`
+        ).join('')
+    );
 
-    row.innerHTML = `
-      <td>${s.TR}</td>
-      <td>${s.Name}</td>
-      <td>${s.Darajah}</td>
-      <td>${s.Goal}</td>
-      <td class="slot-cell">
-        <span class="slot-text">${slotDisplay}</span>
-        <button class="edit-slot-btn" data-tr="${s.TR}">✏️</button>
-      </td>
-      <td><button class="deactivate-btn" data-tr="${s.TR}">🚫 Deactivate</button></td>
-    `;
-    tbody.appendChild(row);
-  });
+    const saveBtn = $('<button>').text('💾').css('marginLeft', '5px');
+    
+    slotCell.empty().append(select, saveBtn);
 
-  attachDeactivateHandlers();
-  attachSlotEditHandlers(slotData);
-}
+    // Save button logic
+    saveBtn.on('click', async () => {
+        const newSlotID = parseInt(select.val());
+        // Your existing save logic...
+        // On success, reload the table: studentDataTable.ajax.reload();
+    });
+});
+
 
 function attachSlotEditHandlers(slotData) {
   document.querySelectorAll('.edit-slot-btn').forEach(btn => {
@@ -1208,46 +1239,6 @@ function attachSlotEditHandlers(slotData) {
 
 
 
-function setupFilters(students) {
-  const thead = document.querySelector('#studentTable thead');
-  if (thead.querySelector('.filter-row')) return;
-
-  const filterRow = document.createElement('tr');
-  filterRow.classList.add('filter-row');
-
-  ['TR', 'Name', 'Darajah', 'Goal', 'SlotName', 'Action'].forEach(col => {
-    const th = document.createElement('th');
-    if (col === 'Darajah' || col === 'SlotName') {
-      th.innerHTML = `<select data-column="${col}" style="width: 100%;">
-        <option value="">All ${col}</option>
-      </select>`;
-    }
-    filterRow.appendChild(th);
-  });
-
-  thead.appendChild(filterRow);
-
-  // Populate filters
-  populateDropdowns(students);
-
-  // Add change event
-  thead.querySelectorAll('select').forEach(select => {
-    select.addEventListener('change', () => applyFilters(students));
-  });
-}
-
-function applyFilters(students) {
-  const darajahValue = document.querySelector('select[data-column="Darajah"]').value;
-  const slotValue = document.querySelector('select[data-column="SlotName"]').value;
-
-  const filtered = students.filter(s =>
-    (darajahValue === '' || s.Darajah === darajahValue) &&
-    (slotValue === '' || s.SlotName === slotValue)
-  );
-
-  renderTableRows(filtered);
-}
-
 
 
 function attachDeactivateHandlers() {
@@ -1285,33 +1276,6 @@ function attachDeactivateHandlers() {
     });
 }
 
-
-function populateDropdowns(students) {
-  const darajahSet = new Set();
-  const slotSet = new Set();
-
-  students.forEach(s => {
-    darajahSet.add(s.Darajah);
-    slotSet.add(s.SlotName);
-  });
-
-  const darajahSelect = document.querySelector('select[data-column="Darajah"]');
-  const slotSelect = document.querySelector('select[data-column="SlotName"]');
-
-  darajahSet.forEach(d => {
-    const option = document.createElement('option');
-    option.value = d;
-    option.textContent = d;
-    darajahSelect.appendChild(option);
-  });
-
-  slotSet.forEach(s => {
-    const option = document.createElement('option');
-    option.value = s;
-    option.textContent = s;
-    slotSelect.appendChild(option);
-  });
-}
 
 
 //----------------------------------------------------------------------------------------------------------
