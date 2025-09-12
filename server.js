@@ -46,19 +46,12 @@ const config = {
 
 
 
-
-let pool;  
+// --- NEW CONNECTION LOGIC ---
+// This connects once and logs the status.
+// The mssql package will automatically manage the connection pool for all subsequent requests.
 sql.connect(config)
-    .then(pool => {
-        console.log('✅ Connected to SQL Server!');
-        return pool;
-    })
-    .catch(err => {
-        console.error('❌ Connection failed:', err);
-    });
-
-
-
+    .then(() => console.log('✅ Connected to SQL Server!'))
+    .catch(err => console.error('❌ Database Connection Failed! Bad Config: ', err));
 
 
 
@@ -69,7 +62,7 @@ app.post('/api/add-student', async (req, res) => {
   const { Branch, Gender } = req.session.user; // staff session
 
   try {
-    await sql.connect(config);
+
 
     await new sql.Request()
       .input('TR', sql.Int, TR)
@@ -100,7 +93,7 @@ app.get('/api/waiting-list', async (req, res) => {
 
     const { Branch, Gender } = req.session.user;
 
-    await sql.connect(config);
+   
     const result = await new sql.Request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
@@ -126,7 +119,6 @@ app.post('/api/assign-student-slot', async (req, res) => {
   const { Branch, Gender } = req.session.user;
 
   try {
-    await sql.connect(config);
 
     // 1️⃣ Fetch student from WaitingList
     const studentRes = await new sql.Request()
@@ -174,7 +166,6 @@ app.post('/api/slots', async (req, res) => {
   const { Branch, Gender } = req.session.user; // from staff session
 
   try {
-    await sql.connect(config);
     const result = await new sql.Request()
       .input('SlotName', sql.NVarChar(50), SlotName)
       .input('MaxCapacity', sql.Int, MaxCapacity)
@@ -197,7 +188,6 @@ app.get('/api/slots', async (req, res) => {
   const { Branch, Gender } = req.session.user;
 
   try {
-    await sql.connect(config);
     const result = await new sql.Request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
@@ -224,7 +214,6 @@ app.put('/api/slots/:id', async (req, res) => {
   const SlotID = req.params.id;
 
   try {
-    await sql.connect(config);
     await new sql.Request()
       .input('SlotID', sql.Int, SlotID)
       .input('SlotName', sql.NVarChar(50), SlotName)
@@ -291,7 +280,6 @@ app.put('/api/change-student-slot', async (req, res) => {
   }
 
   try {
-    await sql.connect(config);
     const request = new sql.Request();
     request.input('TR', sql.Int, TR);
     request.input('SlotID', sql.Int, SlotID);
@@ -414,7 +402,6 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
     const { weekId, tr } = req.params;
 
     try {
-        await sql.connect(config);
 
         // Get week start date
         const weekQuery = await new sql.Request()
@@ -475,7 +462,6 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
 
 app.get('/api/weeks', async (req, res) => {
     try {
-        await sql.connect(config);
         const result = await new sql.Request().query(`
             SELECT WeekID,
                    CONVERT(varchar, WeekStartDate, 23) AS WeekStartDate, 
@@ -495,7 +481,6 @@ app.get('/api/student-info/:tr', async (req, res) => {
   const { tr } = req.params;
 
   try {
-    await sql.connect(config);
     const result = await new sql.Request()
       .input('TR', sql.Int, tr)
       .query(`
@@ -527,8 +512,6 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        await sql.connect(config);
-
         // Fetch start date of the week
         const weekQuery = await new sql.Request()
             .input('WeekID', sql.Int, weekId)
@@ -615,7 +598,6 @@ app.post('/api/student-login', async (req, res) => {
   const { tr } = req.body;
 
   try {
-    await sql.connect(config);
     const result = await new sql.Request()
       .input('TR', sql.Int, tr)
       .query(`
@@ -683,7 +665,6 @@ app.post('/api/trainer-login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    await sql.connect(config);
     const request = new sql.Request();
     request.input('Username', sql.NVarChar(50), username);
     request.input('Password', sql.NVarChar(50), password);
@@ -722,7 +703,6 @@ app.post('/api/staff-login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    await sql.connect(config);
     const request = new sql.Request();
     request.input('Username', sql.NVarChar(50), username);
     request.input('Password', sql.NVarChar(50), password);
@@ -761,7 +741,6 @@ app.post('/api/staff-login', async (req, res) => {
 app.get('/api/admin/users/:branch', async (req, res) => {
   const branch = req.params.branch;
   try {
-    await sql.connect(config);
     const result = await sql.query`SELECT Username, Gender, Role FROM PassBank WHERE Branch = ${branch}`;
     res.json(result.recordset);
   } catch (err) {
@@ -773,7 +752,6 @@ app.get('/api/admin/users/:branch', async (req, res) => {
 app.post('/api/admin/add-user', async (req, res) => {
   const { username, password, gender, role, branch } = req.body;
   try {
-    await sql.connect(config);
     await sql.query`
       INSERT INTO PassBank (Username, Password, Gender, Role, Branch)
       VALUES (${username}, ${password}, ${gender}, ${role}, ${branch})
@@ -790,7 +768,6 @@ app.post('/api/admin/add-user', async (req, res) => {
 app.delete('/api/admin/delete-user/:username', async (req, res) => {
   const username = req.params.username;
   try {
-    await sql.connect(config);
     await sql.query`DELETE FROM PassBank WHERE Username = ${username}`;
     res.json({ success: true });
   } catch (err) {
@@ -1013,7 +990,6 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        await sql.connect(config);
         const request = new sql.Request();
         request.input('TR', sql.Int, tr);
         request.input('Branch', sql.NVarChar(50), Branch);
@@ -1141,8 +1117,6 @@ app.get('/api/all-test-records', async (req, res) => {
   }
 
   try {
-    await sql.connect(config);
-
     const result = await new sql.Request().query(`
       SELECT 
         TRS.CreatedAt AS CreatedAt,
@@ -1384,7 +1358,6 @@ app.get('/api/all-training-plans', async (req, res) => {
   const { Branch, Gender } = req.session.user;
 
   try {
-    await sql.connect(config);
     const result = await new sql.Request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(50), Gender)
@@ -1477,7 +1450,6 @@ app.get('/api/attendance/:weekId', async (req, res) => {
     try {
         const { weekId } = req.params;
 
-        await sql.connect(config);
         const request = new sql.Request();
         request.input('WeekID', sql.Int, weekId);
 
@@ -1510,7 +1482,6 @@ app.post('/api/import-csv', upload.single('csv'), async (req, res) => {
         .on('data', data => results.push(data))
         .on('end', async () => {
             try {
-                await sql.connect(config);
                 for (const row of results) {
                     const request = new sql.Request();
                     await request
@@ -1590,7 +1561,6 @@ app.get('/api/students/inactive', async (req, res) => {
   const { Branch: branch, Role } = req.session.user;
 
   try {
-    await sql.connect(config);
     const request = new sql.Request();
     request.input('Branch', sql.NVarChar(50), branch);
 
@@ -1637,7 +1607,6 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
   }
 
   try {
-    await sql.connect(config);
     const request = new sql.Request();
 
     request.input('TR', sql.Int, tr);
@@ -1731,7 +1700,6 @@ app.put('/api/attendance-record', async (req, res) => {
   // }
 
   try {
-    await sql.connect(config);
     const request = new sql.Request();
 
     if (AttendanceID) {
