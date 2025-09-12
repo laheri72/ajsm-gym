@@ -686,19 +686,35 @@ async function validateStaffSession() {
 
     const { Branch, Gender, Role } = data.user;
 
-      // Show/hide Admin tab using ID now
-      const adminTab = document.getElementById('tab-admin');
+            // Handle showing/hiding the Admin tab based on role
+        const isAdmin = Role === 'Admin';
+        document.getElementById('tab-admin').style.display = isAdmin ? 'inline-block' : 'none';
 
-          // Set the default active tab to Overview for EVERYONE
-        setActiveTab('tab-overview');
-        showSection('overview-section');
+        // Check localStorage for a saved tab
+        let lastTab = localStorage.getItem('lastActiveTab');
 
-      if (Role === 'Admin') {
-        document.getElementById('tab-admin').style.display = 'inline-block';
+        // If a non-admin somehow saved the admin tab, reset them to overview
+        if (lastTab === 'Admin-base' && !isAdmin) {
+            lastTab = null;
+        }
 
-      } else {
-        document.getElementById('tab-admin').style.display = 'none';
-      }
+        if (lastTab) {
+            // If a tab was saved, show it
+            const link = document.querySelector(`.navbar a[data-target="${lastTab}"]`);
+            showSection(lastTab);
+            setActiveTab(link.id);
+
+            // IMPORTANT: Also call the load functions for that specific tab
+            if (lastTab === 'student-record') loadStudentRecords();
+            if (lastTab === 'Admin-base') {
+                loadAdminUsers();
+                loadInactiveStudents();
+            }
+        } else {
+            // Otherwise, default to the Overview tab
+            showSection('overview-section');
+            setActiveTab('tab-overview');
+        }
 
     if (Role === 'Trainer') {
       window.location.href = 'Forbidden.html';
@@ -1160,13 +1176,23 @@ async function loadStudentRecords() {
                 data: 'SlotName',
                 // Use a 'render' function for custom HTML in a cell
                 render: function(data, type, row) {
-                    const slotDisplay = data ? data : 'No slot assigned';
-                    // The buttons will now be part of the rendered content
-                    return `
-                        <span class="slot-text">${slotDisplay}</span>
-                        <button class="edit-slot-btn" data-tr="${row.TR}">✏️</button>
-                    `;
-                }
+            let displayText = '';
+
+            // Step 1: Determine the main display text based on the slot's status
+            if (!row.SlotID) {
+                displayText = `<span style="color: var(--gray);">No slot assigned</span>`;
+            } else if (row.IsActive === false) {
+                displayText = `
+                    <span style="text-decoration: line-through; color: var(--danger);">${data}</span>
+                    <span style="font-weight: bold; color: var(--danger);"> ⚠️ (Deactivated)</span>
+                `;
+            } else {
+                displayText = `<span class="slot-text">${data}</span>`;
+            }
+            
+            // Step 2: ALWAYS append the edit button to the text
+            return `${displayText} <button class="edit-slot-btn" data-tr="${row.TR}">✏️</button>`;
+        }
             },
             { 
                 data: 'TR', // Use the TR number for the button's data attribute
@@ -1216,109 +1242,68 @@ $('#studentTable tbody').on('click', '.deactivate-btn', function () {
     });
 });
 
-// Handles the 'Edit Slot' button clicks
+// REPLACE your existing '.edit-slot-btn' listener with this one.
 $('#studentTable tbody').on('click', '.edit-slot-btn', async function () {
     const tr = $(this).data('tr');
     const slotCell = $(this).closest('td');
 
-    // Prevent multiple dropdowns
+    // Prevent multiple dropdowns from opening
     if (slotCell.find('select').length > 0) return;
 
-    // Fetch the latest slot data
+    // Fetch the latest slot data to ensure availability is current
     const slotRes = await fetch('/api/slots');
     const slotJson = await slotRes.json();
     const slotData = slotJson.slots || [];
 
     const currentText = slotCell.find('.slot-text').text();
 
-    // Create and show the dropdown
-    const select = $('<select>').append(
-        slotData.map(slot => 
-            `<option value="${slot.SlotID}" 
-                ${slot.SlotName === currentText ? 'selected' : ''} 
+    // Create and show the dropdown and save button
+    const select = $('<select class="form-control" style="width: auto; display: inline-block;">').append(
+        slotData.map(slot =>
+            `<option value="${slot.SlotID}"
+                ${slot.SlotName === currentText ? 'selected' : ''}
                 ${slot.AvailableSeats <= 0 && slot.SlotName !== currentText ? 'disabled' : ''}>
                 ${slot.SlotName} (${slot.AvailableSeats || 0} left)
             </option>`
         ).join('')
     );
 
-    const saveBtn = $('<button>').text('💾').css('marginLeft', '5px');
+    const saveBtn = $('<button class="btn" style="margin-left: 5px;">💾</button>');
     
     slotCell.empty().append(select, saveBtn);
 
-    // Save button logic
+    // --- THIS IS THE CORRECTED LOGIC ---
+    // The save button now knows what to do when clicked.
     saveBtn.on('click', async () => {
         const newSlotID = parseInt(select.val());
-        // Your existing save logic...
-        // On success, reload the table: studentDataTable.ajax.reload();
-    });
-});
-
-
-function attachSlotEditHandlers(slotData) {
-  document.querySelectorAll('.edit-slot-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tr = btn.dataset.tr;
-      const slotCell = btn.closest('td.slot-cell');
-
-      // Prevent multiple dropdowns
-      if (slotCell.querySelector('select')) return;
-
-      const currentText = slotCell.querySelector('.slot-text').innerText;
-
-      // Create dropdown with disabled full slots
-      const select = document.createElement('select');
-      select.innerHTML = slotData.map(slot => `
-        <option value="${slot.SlotID}" 
-                ${slot.SlotName === currentText ? 'selected' : ''} 
-                ${slot.AvailableSeats <= 0 && slot.SlotName !== currentText ? 'disabled' : ''}>
-          ${slot.SlotName} (${slot.AvailableSeats || 0} left)
-        </option>
-      `).join('');
-
-      const saveBtn = document.createElement('button');
-      saveBtn.textContent = '💾';
-      saveBtn.style.marginLeft = '5px';
-
-      // Clear text and append dropdown + save
-      slotCell.innerHTML = '';
-      slotCell.appendChild(select);
-      slotCell.appendChild(saveBtn);
-
-      saveBtn.addEventListener('click', async () => {
-        const newSlotID = parseInt(select.value);
 
         if (!newSlotID) {
-          Swal.fire('Warning', 'Please select a valid slot.', 'warning');
-          return;
+            return Swal.fire('Warning', 'Please select a valid slot.', 'warning');
         }
 
         try {
-          const res = await fetch('/api/change-student-slot', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ TR: parseInt(tr), SlotID: newSlotID })
-          });
+            const res = await fetch('/api/change-student-slot', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ TR: parseInt(tr), SlotID: newSlotID })
+            });
 
-          const data = await res.json();
-          if (data.success) {
-            // Update text
-            const slotName = slotData.find(s => s.SlotID === newSlotID)?.SlotName || 'Unknown';
-            slotCell.innerHTML = `<span class="slot-text">${slotName}</span> <button class="edit-slot-btn" data-tr="${tr}">✏️</button>`;
-            attachSlotEditHandlers(slotData); // Reattach for new button
-            Swal.fire('Success', 'Slot updated successfully!', 'success');
-            loadStudentRecords(); // refresh for updated available seats
-          } else {
-            Swal.fire('Error', 'Error updating slot: ' + data.message, 'error');
-          }
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Success', 'Slot updated successfully!', 'success');
+                // The correct way to update a DataTable: simply reload the data.
+                studentDataTable.ajax.reload();
+            } else {
+                Swal.fire('Error', 'Error updating slot: ' + data.message, 'error');
+            }
         } catch (err) {
-          console.error('Slot update error:', err);
-          Swal.fire('Error', 'Failed to update slot.', 'error');
+            console.error('Slot update error:', err);
+            Swal.fire('Error', 'Failed to update slot.', 'error');
         }
-      });
     });
-  });
-}
+    // --- END OF CORRECTION ---
+});
+
 
 
 
@@ -1573,29 +1558,6 @@ async function refreshSlotEntryPage() {
     await loadSlotTable();
 }
 
-//---------------------------------------------------------------------------------------------------
-
-      // // CSV Import
-      // document.getElementById('importCsvBtn').addEventListener('click', async () => {
-      //   const fileInput = document.getElementById('csvFile');
-      //   const file = fileInput.files[0];
-      //   if (!file) return alert('Please choose a CSV file');
-  
-      //   const formData = new FormData();
-      //   formData.append('csv', file);
-  
-      //   const res = await fetch('/api/import-csv', {
-      //     method: 'POST',
-      //     body: formData
-      //   });
-  
-      //   const result = await res.json();
-      //   document.getElementById('importStatus').textContent = res.ok
-      //     ? 'Import successful!'
-      //     : 'Error importing CSV: ' + result.error;
-  
-      //   loadStudentRecords();
-      // });
 
 //....................................................................................................
 
@@ -1968,6 +1930,8 @@ document.querySelector('.navbar').addEventListener('click', (event) => {
     
     event.preventDefault(); // Stop the '#' from appearing in the URL
     const targetId = link.dataset.target;
+
+    localStorage.setItem('lastActiveTab', targetId); 
 
     // Show the correct section and update the active tab style
     showSection(targetId);

@@ -246,19 +246,39 @@ app.put('/api/slots/:id', async (req, res) => {
 
 
 app.delete('/api/slots/:id', async (req, res) => {
-  const SlotID = req.params.id;
+    const SlotID = req.params.id;
+    
+    // It's best practice to wrap the connection and transaction in one try block
+    const pool = await sql.connect(config);
+    const transaction = new sql.Transaction(pool);
 
-  try {
-    await sql.connect(config);
-    await new sql.Request()
-      .input('SlotID', sql.Int, SlotID)
-      .query(`UPDATE Slots SET IsActive = 0 WHERE SlotID = @SlotID`);
+    try {
+        // Start the transaction
+        await transaction.begin();
 
-    res.json({ success: true, message: 'Slot deactivated successfully' });
-  } catch (err) {
-    console.error('Delete slot error:', err);
-    res.status(500).json({ success: false, message: 'Failed to delete slot' });
-  }
+        const request = new sql.Request(transaction);
+        request.input('SlotID', sql.Int, SlotID);
+
+        // Step 1: Unassign all active students from this slot
+        await request.query(`
+            UPDATE Master SET SlotID = NULL WHERE SlotID = @SlotID;
+        `);
+
+        // Step 2: Deactivate the slot itself
+        await request.query(`
+            UPDATE Slots SET IsActive = 0 WHERE SlotID = @SlotID;
+        `);
+
+        // If both steps succeeded, commit the changes
+        await transaction.commit();
+
+        res.json({ success: true, message: 'Slot deactivated and all students unassigned.' });
+    } catch (err) {
+        // If anything fails, roll back all changes
+        await transaction.rollback();
+        console.error('Slot deletion transaction error:', err.message);
+        res.status(500).json({ success: false, message: 'Failed to deactivate slot.' });
+    }
 });
 
 
@@ -281,7 +301,7 @@ app.put('/api/change-student-slot', async (req, res) => {
       SELECT s.MaxCapacity, 
              (SELECT COUNT(*) FROM Master WHERE SlotID = s.SlotID AND Status = 'Active') AS Assigned
       FROM Slots s
-      WHERE s.SlotID = @SlotID
+      WHERE s.SlotID = @SlotID AND s.IsActive = 1 
     `);
 
     if (capacityCheck.recordset.length === 0) {
@@ -310,36 +330,84 @@ app.put('/api/change-student-slot', async (req, res) => {
 
 //--------------------------------------------------------------------------------------------------------------------------
 
+// Add this new route to your server's API file.
+app.get('/api/overview-stats', async (req, res) => {
+    // 1. Enforce login and session branch/gender, matching your other APIs
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
 
+    const { Branch, Gender } = req.session.user;
 
-app.put('/api/students/status/:TR', async (req, res) => {
-  const { TR } = req.params;
-  const { Status } = req.body; // 'Active' or 'Inactive'
+    try {
+        // 2. Connect to the database using your established pattern
+        const pool = await sql.connect(config);
 
-  if (!TR || !Status) {
-    return res.status(400).json({ error: 'TR and Status are required' });
-  }
+        // 3. This single, efficient query runs all counts, now with security filters
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT
+                    (SELECT COUNT(*) FROM Master WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender) AS activeStudents,
+                    (SELECT COUNT(*) FROM Master WHERE Status = 'Inactive' AND Branch = @Branch AND Gender = @Gender) AS inactiveStudents,
+                    (SELECT COUNT(*) FROM Slots WHERE IsActive = 1 AND Branch = @Branch AND Gender = @Gender) AS slots,
+                    
+                    -- Fitness tests require a JOIN to filter by the student's branch/gender
+                    (SELECT COUNT(T.TestLog) FROM TestRecords T JOIN Master M ON T.TR = M.TR WHERE M.Branch = @Branch AND M.Gender = @Gender) AS fitnessTests,
+                    
+                    (SELECT COUNT(*) FROM TrainingPlan WHERE CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE) AND Branch = @Branch AND Gender = @Gender) AS todaysLogs,
+                    (SELECT COUNT(*) FROM WaitingList WHERE Branch = @Branch AND Gender = @Gender) AS waitingList,
+                    
+                    -- User count is based on branch only, as an admin would want to see all staff
+                    (SELECT COUNT(*) FROM PassBank WHERE Branch = @Branch) AS users;
+            `);
 
-  try {
-    await sql.connect(config);
-    const request = new sql.Request();
-    request.input('TR', sql.Int, TR);
-    request.input('Status', sql.NVarChar(20), Status);
+        // Send the first (and only) row of results as a JSON object
+        res.json({
+            success: true,
+            data: result.recordset[0]
+        });
 
-    await request.query(`
-      UPDATE Master
-      SET Status = @Status
-      WHERE TR = @TR
-    `);
-
-    res.json({ success: true, message: `Student marked as ${Status}` });
-  } catch (err) {
-    console.error('Error updating student status:', err.message);
-    res.status(500).json({ error: 'Failed to update student status' });
-  }
+    } catch (err) {
+        console.error("SQL error fetching overview stats:", err.message);
+        res.status(500).json({ success: false, error: "Failed to fetch overview statistics" });
+    }
 });
 
 
+//-------------------------------------------------------------------------------------------------------------------------
+app.put('/api/students/status/:TR', async (req, res) => {
+    const { TR } = req.params;
+    const { Status } = req.body; // 'Active' or 'Inactive'
+
+    if (!TR || !Status) {
+        return res.status(400).json({ error: 'TR and Status are required' });
+    }
+
+    try {
+        const pool = await sql.connect(config);
+        const request = pool.request(); // Use the connected pool
+        request.input('TR', sql.Int, TR);
+        request.input('Status', sql.NVarChar(20), Status);
+
+        // This query now has conditional logic
+        await request.query(`
+            UPDATE Master
+            SET
+                Status = @Status,
+                -- If the new status is 'Inactive', set their SlotID to NULL.
+                -- Otherwise, leave it as is.
+                SlotID = CASE WHEN @Status = 'Inactive' THEN NULL ELSE SlotID END
+            WHERE TR = @TR
+        `);
+
+        res.json({ success: true, message: `Student marked as ${Status}` });
+    } catch (err) {
+        console.error('Error updating student status:', err.message);
+        res.status(500).json({ error: 'Failed to update student status' });
+    }
+});
 
 
 app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
@@ -1468,48 +1536,50 @@ app.post('/api/import-csv', upload.single('csv'), async (req, res) => {
         });
 });
 
+
+// This is likely the route for your Active Students table
 app.get('/api/students', async (req, res) => {
-  if (!req.session.user) {
-    return res.status(401).json({ error: 'User session missing' });
-  }
+    // Enforce login and session branch/gender
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
 
-  const { Branch, Gender } = req.session.user;
+    const { Branch, Gender } = req.session.user;
 
-  if (!Branch || !Gender) {
-    return res.status(400).json({ error: 'Branch or Gender missing in session user' });
-  }
+    try {
+        const pool = await sql.connect(config);
 
-  try {
-    await sql.connect(config);
-    const request = new sql.Request();
-    request.input('Branch', sql.NVarChar(50), Branch);
-    request.input('Gender', sql.NVarChar(10), Gender);
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT
+                    M.[TR],
+                    M.[Name],
+                    M.[Darajah],
+                    M.[Goal],
+                    M.[SlotID],   -- Added: The frontend needs this for logic
+                    S.[SlotName],
+                    S.[IsActive]
+                FROM
+                    [Master] AS M
+                LEFT JOIN
+                    [Slots] AS S ON M.[SlotID] = S.[SlotID]
+                WHERE
+                    M.[Status] = 'Active' 
+                    AND M.[Branch] = @Branch 
+                    AND M.[Gender] = @Gender;
+            `);
+        
+        // CORRECTED RESPONSE: Wrap the data in an object
+        res.json({ success: true, data: result.recordset });
 
-    const result = await request.query(`
-      SELECT 
-        m.TR,
-        m.Name,
-        m.Darajah,
-        m.Goal,
-        m.Status,
-        m.Gender,
-        m.Branch,
-        m.SlotID,
-        s.SlotName
-      FROM Master m
-      LEFT JOIN Slots s ON m.SlotID = s.SlotID
-      WHERE m.Branch = @Branch
-        AND m.Gender = @Gender
-        AND m.Status = 'Active'
-    `);
-
-    res.json({ success: true, data: result.recordset });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch students' });
-  }
+    } catch (err) {
+        console.error('❌ Error fetching students:', err.message);
+        // Ensure the error response is also in JSON format
+        res.status(500).json({ success: false, error: 'Failed to fetch students' });
+    }
 });
-
 
 
 app.get('/api/students/inactive', async (req, res) => {
