@@ -227,11 +227,44 @@ thead select {
     100% { transform: rotate(360deg); }
 }
 
+
+/* --- Stat Cards for Overview --- */
+.stat-cards-container {
+    display: grid;
+    /* This will create 4 columns on desktop, 2 on tablet, and 1 on mobile */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+.stat-card {
+    background-color: white;
+    border-left: 5px solid var(--primary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+.stat-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--dark);
+    margin-top: 0.5rem;
+}
     </style>
 </head>
 <body>
     <div class="dashboard">
     <div class="navbar">
+        <a href="#" id="tab-overview" data-target="overview-section" class="active">📊 Overview</a>
         <a href="#" id="tab-entry" data-target="student-entry">Slot Entry</a>
         <a href="#" id="tab-admin" style="display: none;" data-target="Admin-base">👑 Admin Panel</a>
         <a href="#" id="tab-record" data-target="student-record">Active Students</a>
@@ -241,6 +274,42 @@ thead select {
         <a href="#" id="logoutLink">Logout</a>
     </div>
       <div class="content">
+
+
+            <section id="overview-section">
+                  <div class="stat-cards-container">
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-active-students">--</div>
+                          <div class="stat-label">Active Students</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-waiting-list">--</div>
+                          <div class="stat-label">In Waiting List</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-inactive-students">--</div>
+                          <div class="stat-label">Inactive Students</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-slots">--</div>
+                          <div class="stat-label">Total Slots</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-todays-logs">--</div>
+                          <div class="stat-label">Today's Training Logs</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-fitness-tests">--</div>
+                          <div class="stat-label">Fitness Tests Taken</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-users">--</div>
+                          <div class="stat-label">Staff & Trainers</div>
+                      </div>
+                  </div>
+              </section>
+
+
 
 
         <section id="student-entry" class="card">
@@ -620,21 +689,15 @@ async function validateStaffSession() {
       // Show/hide Admin tab using ID now
       const adminTab = document.getElementById('tab-admin');
 
+          // Set the default active tab to Overview for EVERYONE
+        setActiveTab('tab-overview');
+        showSection('overview-section');
+
       if (Role === 'Admin') {
         document.getElementById('tab-admin').style.display = 'inline-block';
-        // --- REPLACEMENT START ---
-        // Use our new functions to show the admin panel by default
-        setActiveTab('tab-admin');
-        showSection('Admin-base');
-        // Also load the admin data
-        loadAdminUsers();
-        loadInactiveStudents();
-        // --- REPLACEMENT END ---
 
       } else {
         document.getElementById('tab-admin').style.display = 'none';
-        setActiveTab('tab-entry');
-        showSection('student-entry');
       }
 
     if (Role === 'Trainer') {
@@ -715,6 +778,7 @@ function updateDarajahOptionsBasedOnGender(gender) {
 
 document.addEventListener('DOMContentLoaded', () => {
   validateStaffSession();
+  loadOverviewStats(); 
 });
 
 function setActiveTab(tabIdToActivate) {
@@ -751,6 +815,31 @@ async function getSlots() {
   return cachedSlots;
 }
 
+//----------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Fetches and displays the statistics for the overview page.
+ */
+async function loadOverviewStats() {
+    try {
+        const res = await fetch('/api/overview-stats'); // The new API we will create
+        const stats = await res.json();
+
+        if (stats.success) {
+            // Populate each card with data from the API
+            document.getElementById('stat-active-students').textContent = stats.data.activeStudents;
+            document.getElementById('stat-inactive-students').textContent = stats.data.inactiveStudents;
+            document.getElementById('stat-waiting-list').textContent = stats.data.waitingList;
+            document.getElementById('stat-slots').textContent = stats.data.slots;
+            document.getElementById('stat-todays-logs').textContent = stats.data.todaysLogs;
+            document.getElementById('stat-fitness-tests').textContent = stats.data.fitnessTests;
+            document.getElementById('stat-users').textContent = stats.data.users;
+        }
+    } catch (err) {
+        console.error("Failed to load overview stats:", err);
+        // You can add an error message to the cards here if you want
+    }
+}
 
 
 
@@ -920,7 +1009,7 @@ async function loadSlots() {
   }
 }
 
-// document.addEventListener('DOMContentLoaded', loadSlots);
+
 
 // Load slots into table
 async function loadSlotTable() {
@@ -959,11 +1048,7 @@ async function loadSlotTable() {
 }
 
 
-// // Call on page load
-// document.addEventListener('DOMContentLoaded', () => {
-//   loadSlots();
-//   loadSlotTable();
-// });
+
 
 // Handle new slot creation
 document.getElementById('createSlotForm').addEventListener('submit', async function (e) {
@@ -1038,14 +1123,12 @@ async function deleteSlot(slotId) {
     }
   });
 }
-// // Load on page ready
-// document.addEventListener('DOMContentLoaded', loadSlotTable);
-
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadWaitingList();
   await loadSlots();
   await loadSlotTable();
+
 });
 
   
