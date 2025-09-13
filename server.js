@@ -23,7 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'jamea1446@GYM!SecreT2025',  // ✅ now pulled from Render env
+  secret: 'jamea1446@GYM!SecreT2025',  
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -45,26 +45,26 @@ const config = {
 
 
 
-
-// --- NEW CONNECTION LOGIC ---
-// This connects once and logs the status.
-// The mssql package will automatically manage the connection pool for all subsequent requests.
-sql.connect(config)
-    .then(() => console.log('✅ Connected to SQL Server!'))
-    .catch(err => console.error('❌ Database Connection Failed! Bad Config: ', err));
-
-
+    
+// ----------------------------------------------------------------
+// --- ALL API ROUTES NOW USE THE SINGLE CONNECTION POOL ---
+// ----------------------------------------------------------------
 
 
 // ➕ Add Student (always goes to WaitingList)
 app.post('/api/add-student', async (req, res) => {
-  const { TR, Name, Darajah, Goal } = req.body;
-  const { Branch, Gender } = req.session.user; // staff session
+
 
   try {
 
+              if (!req.session.user) {
+            // If there's no session, stop right here and send an error.
+            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+        }
+      const { TR, Name, Darajah, Goal } = req.body;
+      const { Branch, Gender } = req.session.user; // staff session
 
-    await new sql.Request()
+    await pool.request()
       .input('TR', sql.Int, TR)
       .input('Name', sql.NVarChar(100), Name)
       .input('Darajah', sql.NVarChar(50), Darajah)
@@ -94,7 +94,7 @@ app.get('/api/waiting-list', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
    
-    const result = await new sql.Request()
+    const result = await pool.request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
       .query(`
@@ -115,13 +115,20 @@ app.get('/api/waiting-list', async (req, res) => {
 
 // ➕ Assign WaitingList Student to a Slot
 app.post('/api/assign-student-slot', async (req, res) => {
-  const { WaitingID, SlotID } = req.body;
-  const { Branch, Gender } = req.session.user;
+
 
   try {
+            if (!req.session.user) {
+            // If there's no session, stop right here and send an error.
+            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+        }
+
+            const { WaitingID, SlotID } = req.body;
+           const { Branch, Gender } = req.session.user;
+
 
     // 1️⃣ Fetch student from WaitingList
-    const studentRes = await new sql.Request()
+    const studentRes = await pool.request()
       .input('WaitingID', sql.Int, WaitingID)
       .query(`SELECT * FROM WaitingList WHERE WaitingID=@WaitingID`);
     
@@ -131,7 +138,7 @@ app.post('/api/assign-student-slot', async (req, res) => {
     const stu = studentRes.recordset[0];
 
     // 2️⃣ Insert into Master
-    await new sql.Request()
+    await pool.request()
       .input('TR', sql.Int, stu.TR)
       .input('Name', sql.NVarChar(100), stu.Name)
       .input('Darajah', sql.NVarChar(50), stu.Darajah)
@@ -145,7 +152,7 @@ app.post('/api/assign-student-slot', async (req, res) => {
       `);
 
     // 3️⃣ Remove from WaitingList
-    await new sql.Request()
+    await pool.request()
       .input('WaitingID', sql.Int, WaitingID)
       .query(`DELETE FROM WaitingList WHERE WaitingID=@WaitingID`);
 
@@ -163,10 +170,16 @@ app.post('/api/assign-student-slot', async (req, res) => {
 
 app.post('/api/slots', async (req, res) => {
   const { SlotName, MaxCapacity } = req.body;
-  const { Branch, Gender } = req.session.user; // from staff session
+ 
 
   try {
-    const result = await new sql.Request()
+            if (!req.session.user) {
+            // If there's no session, stop right here and send an error.
+            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+        }
+
+        const { Branch, Gender } = req.session.user;
+    const result = await pool.request()
       .input('SlotName', sql.NVarChar(50), SlotName)
       .input('MaxCapacity', sql.Int, MaxCapacity)
       .input('Branch', sql.NVarChar(50), Branch)
@@ -185,10 +198,15 @@ app.post('/api/slots', async (req, res) => {
 
 
 app.get('/api/slots', async (req, res) => {
-  const { Branch, Gender } = req.session.user;
+ 
 
   try {
-    const result = await new sql.Request()
+            if (!req.session.user) {
+            // If there's no session, stop right here and send an error.
+            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+        }
+    const { Branch, Gender } = req.session.user;
+    const result = await pool.request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
       .query(`
@@ -214,7 +232,7 @@ app.put('/api/slots/:id', async (req, res) => {
   const SlotID = req.params.id;
 
   try {
-    await new sql.Request()
+    await pool.request()
       .input('SlotID', sql.Int, SlotID)
       .input('SlotName', sql.NVarChar(50), SlotName)
       .input('MaxCapacity', sql.Int, MaxCapacity)
@@ -234,15 +252,15 @@ app.put('/api/slots/:id', async (req, res) => {
 });
 
 
+// CORRECTED VERSION
 app.delete('/api/slots/:id', async (req, res) => {
     const SlotID = req.params.id;
-    
-    // It's best practice to wrap the connection and transaction in one try block
-    const pool = await sql.connect(config);
+
+    // --- CHANGE THIS LINE ---
+    // Create a transaction directly. It will automatically use the global connection pool.
     const transaction = new sql.Transaction(pool);
 
     try {
-        // Start the transaction
         await transaction.begin();
 
         const request = new sql.Request(transaction);
@@ -258,18 +276,14 @@ app.delete('/api/slots/:id', async (req, res) => {
             UPDATE Slots SET IsActive = 0 WHERE SlotID = @SlotID;
         `);
 
-        // If both steps succeeded, commit the changes
         await transaction.commit();
-
         res.json({ success: true, message: 'Slot deactivated and all students unassigned.' });
     } catch (err) {
-        // If anything fails, roll back all changes
         await transaction.rollback();
         console.error('Slot deletion transaction error:', err.message);
         res.status(500).json({ success: false, message: 'Failed to deactivate slot.' });
     }
 });
-
 
 // Update student's slot
 app.put('/api/change-student-slot', async (req, res) => {
@@ -280,7 +294,7 @@ app.put('/api/change-student-slot', async (req, res) => {
   }
 
   try {
-    const request = new sql.Request();
+    const request = pool.request();
     request.input('TR', sql.Int, TR);
     request.input('SlotID', sql.Int, SlotID);
 
@@ -328,11 +342,7 @@ app.get('/api/overview-stats', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        // 2. Connect to the database using your established pattern
-        const pool = await sql.connect(config);
-
-        // 3. This single, efficient query runs all counts, now with security filters
-        const result = await pool.request()
+            const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
@@ -365,27 +375,28 @@ app.get('/api/overview-stats', async (req, res) => {
 
 
 //-------------------------------------------------------------------------------------------------------------------------
+// CORRECTED VERSION
 app.put('/api/students/status/:TR', async (req, res) => {
     const { TR } = req.params;
-    const { Status } = req.body; // 'Active' or 'Inactive'
+    const { Status } = req.body;
 
     if (!TR || !Status) {
         return res.status(400).json({ error: 'TR and Status are required' });
     }
 
     try {
-        const pool = await sql.connect(config);
-        const request = pool.request(); // Use the connected pool
+
+
+        // --- CHANGE THIS LINE ---
+        const request = pool.request(); // Use the global sql object
+
         request.input('TR', sql.Int, TR);
         request.input('Status', sql.NVarChar(20), Status);
 
-        // This query now has conditional logic
         await request.query(`
             UPDATE Master
             SET
                 Status = @Status,
-                -- If the new status is 'Inactive', set their SlotID to NULL.
-                -- Otherwise, leave it as is.
                 SlotID = CASE WHEN @Status = 'Inactive' THEN NULL ELSE SlotID END
             WHERE TR = @TR
         `);
@@ -397,14 +408,13 @@ app.put('/api/students/status/:TR', async (req, res) => {
     }
 });
 
-
 app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
     const { weekId, tr } = req.params;
 
     try {
 
         // Get week start date
-        const weekQuery = await new sql.Request()
+        const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
 
@@ -417,7 +427,7 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         // Get attendance for the student
-        const result = await new sql.Request()
+        const result = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('TR', sql.Int, tr)
             .query(`
@@ -462,7 +472,7 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
 
 app.get('/api/weeks', async (req, res) => {
     try {
-        const result = await new sql.Request().query(`
+        const result = await pool.request().query(`
             SELECT WeekID,
                    CONVERT(varchar, WeekStartDate, 23) AS WeekStartDate, 
                    CONVERT(varchar, WeekEndDate, 23) AS WeekEndDate
@@ -481,7 +491,7 @@ app.get('/api/student-info/:tr', async (req, res) => {
   const { tr } = req.params;
 
   try {
-    const result = await new sql.Request()
+    const result = await pool.request()
       .input('TR', sql.Int, tr)
       .query(`
         SELECT 
@@ -509,11 +519,16 @@ app.get('/api/student-info/:tr', async (req, res) => {
 
 app.get('/api/weekly-attendance/:weekId', async (req, res) => {
     const { weekId } = req.params;
-    const { Branch, Gender } = req.session.user;
+    
 
     try {
+              if (!req.session.user) {
+            // If there's no session, stop right here and send an error.
+            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+        }
+        const { Branch, Gender } = req.session.user;
         // Fetch start date of the week
-        const weekQuery = await new sql.Request()
+        const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
 
@@ -526,7 +541,7 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         // Fetch all TRs + attendance for this week
-        const attendanceQuery = await new sql.Request()
+        const attendanceQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
@@ -598,7 +613,7 @@ app.post('/api/student-login', async (req, res) => {
   const { tr } = req.body;
 
   try {
-    const result = await new sql.Request()
+    const result = await pool.request()
       .input('TR', sql.Int, tr)
       .query(`
         SELECT Name, Branch, Gender, Status 
@@ -665,7 +680,7 @@ app.post('/api/trainer-login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const request = new sql.Request();
+    const request = pool.request();
     request.input('Username', sql.NVarChar(50), username);
     request.input('Password', sql.NVarChar(50), password);
 
@@ -703,7 +718,7 @@ app.post('/api/staff-login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const request = new sql.Request();
+    const request = pool.request();
     request.input('Username', sql.NVarChar(50), username);
     request.input('Password', sql.NVarChar(50), password);
 
@@ -736,45 +751,49 @@ app.post('/api/staff-login', async (req, res) => {
 // ------------------------------------------------------------------------------------------------------
 
 
-
-// GET all users of admin's branch
+// CORRECTED ADMIN ROUTES
 app.get('/api/admin/users/:branch', async (req, res) => {
-  const branch = req.params.branch;
-  try {
-    const result = await sql.query`SELECT Username, Gender, Role FROM PassBank WHERE Branch = ${branch}`;
-    res.json(result.recordset);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
+    const branch = req.params.branch;
+    try {
+        const result = await pool.request() // <-- Use pool.request()
+            .input('branch', sql.NVarChar(50), branch)
+            .query(`SELECT Username, Gender, Role FROM PassBank WHERE Branch = @branch`);
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
-// ADD a new user
 app.post('/api/admin/add-user', async (req, res) => {
-  const { username, password, gender, role, branch } = req.body;
-  try {
-    await sql.query`
-      INSERT INTO PassBank (Username, Password, Gender, Role, Branch)
-      VALUES (${username}, ${password}, ${gender}, ${role}, ${branch})
-    `;
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Add user failed' });
-  }
+    const { username, password, gender, role, branch } = req.body;
+    try {
+        await pool.request() // <-- Use pool.request()
+            .input('username', sql.NVarChar(50), username)
+            .input('password', sql.NVarChar(50), password)
+            .input('gender', sql.NVarChar(10), gender)
+            .input('role', sql.NVarChar(20), role)
+            .input('branch', sql.NVarChar(50), branch)
+            .query(`
+                INSERT INTO PassBank (Username, Password, Gender, Role, Branch)
+                VALUES (@username, @password, @gender, @role, @branch)
+            `);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Add user failed' });
+    }
 });
 
-
-
-// DELETE a user
 app.delete('/api/admin/delete-user/:username', async (req, res) => {
-  const username = req.params.username;
-  try {
-    await sql.query`DELETE FROM PassBank WHERE Username = ${username}`;
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Delete failed' });
-  }
+    const username = req.params.username;
+    try {
+        await pool.request() // <-- Use pool.request()
+            .input('username', sql.NVarChar(50), username)
+            .query(`DELETE FROM PassBank WHERE Username = @username`);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Delete failed' });
+    }
 });
-
 
 //---------------------------------------------------------------------------------------------------------------
 
@@ -786,7 +805,6 @@ app.post('/api/test-login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        const pool = await sql.connect();
         const result = await pool.request()
             .input('Username', sql.Int, username)
             .input('Password', sql.Int, password)
@@ -818,9 +836,7 @@ app.get('/api/daily-attendance', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        const pool = await sql.connect(config);
-
-        const result = await pool.request()
+            const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
@@ -851,20 +867,19 @@ app.get('/api/daily-attendance', async (req, res) => {
 
 
 
+// CORRECTED VERSION
 app.post('/api/log-training-plan', async (req, res) => {
     const { TR, BodyParts } = req.body;
+    const { Branch, Gender } = req.session.user;
 
-    // ✅ 1. Check session
-    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+    if (!req.session.user || !Branch || !Gender) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
     }
 
-    const { Branch, Gender } = req.session.user;
-
     try {
-        const pool = await sql.connect(config);
 
-        // ✅ 2. Verify student is active and matches trainer's branch/gender
+
+        // --- CHANGE THIS LINE ---
         const check = await pool.request()
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
@@ -878,7 +893,7 @@ app.post('/api/log-training-plan', async (req, res) => {
             return res.status(403).json({ success: false, message: 'TR not authorized or not active' });
         }
 
-        // ✅ 3. Optional: Delete today's plan if already exists (overwrite behavior)
+        // --- CHANGE THIS LINE ---
         await pool.request()
             .input('TR', sql.Int, TR)
             .query(`
@@ -886,7 +901,7 @@ app.post('/api/log-training-plan', async (req, res) => {
                 WHERE TR = @TR AND CONVERT(date, CreatedAt) = CONVERT(date, GETDATE())
             `);
 
-        // ✅ 4. Insert new plan
+        // --- CHANGE THIS LINE ---
         await pool.request()
             .input('TR', sql.Int, TR)
             .input('BodyParts', sql.NVarChar(200), BodyParts.join(', '))
@@ -898,7 +913,6 @@ app.post('/api/log-training-plan', async (req, res) => {
             `);
 
         res.json({ success: true, message: 'Training plan logged successfully' });
-
     } catch (err) {
         console.error('❌ Error logging training plan:', err);
         res.status(500).json({ success: false, message: 'Internal server error' });
@@ -915,9 +929,7 @@ app.get('/api/student/training-plans', async (req, res) => {
     const { TR, Branch, Gender } = req.session.user;
 
     try {
-        const pool = await sql.connect(config);
-
-        const result = await pool.request()
+            const result = await pool.request()
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
@@ -951,10 +963,7 @@ app.get('/api/training-plans/:tr', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        const pool = await sql.connect(config);
-
-        // ✅ Only allow plans from same branch + gender
-        const result = await pool.request()
+            const result = await pool.request()
             .input('TR', sql.Int, tr)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
@@ -990,7 +999,7 @@ app.get('/api/verify-tr/:tr', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        const request = new sql.Request();
+        const request = pool.request();
         request.input('TR', sql.Int, tr);
         request.input('Branch', sql.NVarChar(50), Branch);
         request.input('Gender', sql.NVarChar(50), Gender);
@@ -1041,7 +1050,7 @@ app.post('/api/get-or-create-week', async (req, res) => {
             return res.status(400).json({ error: 'WeekStartDate and WeekEndDate are required' });
         }
 
-        const request = new sql.Request();
+        const request = pool.request();
         const todayStr = new Date().toISOString().split('T')[0];
         request.input('Today', sql.Date, todayStr);
 
@@ -1057,7 +1066,7 @@ app.post('/api/get-or-create-week', async (req, res) => {
         }
 
         // 🚀 Week doesn't exist — insert it
-        const insertRequest = new sql.Request();
+        const insertRequest = pool.request();
         insertRequest.input('WeekStartDate', sql.Date, WeekStartDate);
         insertRequest.input('WeekEndDate', sql.Date, WeekEndDate);
 
@@ -1092,7 +1101,7 @@ app.get('/api/current-tr', (req, res) => {
     res.json({ tr: req.session.currentTR });
 });
 
-app.get('/api/logout', (req, res) => {
+app.post('/api/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
       return res.status(500).json({ success: false, message: 'Failed to logout' });
@@ -1117,7 +1126,7 @@ app.get('/api/all-test-records', async (req, res) => {
   }
 
   try {
-    const result = await new sql.Request().query(`
+    const result = await pool.request().query(`
       SELECT 
         TRS.CreatedAt AS CreatedAt,
         TRS.TR,
@@ -1162,10 +1171,10 @@ app.post('/save-workout-plan', async (req, res) => {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    const pool = await sql.connect(config);
+
 
     // ✅ Get current week ID
-    const weekResult = await pool.request()
+       const weekResult = await pool.request()
       .input('Today', sql.Date, todayStr)
       .query(`
         SELECT TOP 1 WeekID FROM AttendanceWeek
@@ -1220,7 +1229,7 @@ app.get('/api/student/workout-plan', async (req, res) => {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
-    const pool = await sql.connect(config);
+    
 
     const weekResult = await pool.request()
       .input('Today', sql.Date, todayStr)
@@ -1272,7 +1281,7 @@ app.post('/api/student/apply-last-week', async (req, res) => {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
 
-    const pool = await sql.connect(config);
+    
 
     // Get current week
     const weekResult = await pool.request()
@@ -1358,7 +1367,7 @@ app.get('/api/all-training-plans', async (req, res) => {
   const { Branch, Gender } = req.session.user;
 
   try {
-    const result = await new sql.Request()
+    const result = await pool.request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(50), Gender)
       .query(`
@@ -1396,7 +1405,6 @@ app.post('/api/attendance-manual', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        const pool = await sql.connect(config);
 
         // ✅ Step 1: Verify that the student exists, is Active, and matches trainer's Branch & Gender
         const studentCheck = await pool.request()
@@ -1450,7 +1458,7 @@ app.get('/api/attendance/:weekId', async (req, res) => {
     try {
         const { weekId } = req.params;
 
-        const request = new sql.Request();
+        const request = pool.request();
         request.input('WeekID', sql.Int, weekId);
 
         const result = await request.query(`
@@ -1470,43 +1478,6 @@ app.get('/api/attendance/:weekId', async (req, res) => {
 
 
 
-// 📥 Import CSV
-const upload = multer({ dest: 'uploads/' });
-
-app.post('/api/import-csv', upload.single('csv'), async (req, res) => {
-    const results = [];
-    const { Branch, Gender } = req.session.user;
-
-    fs.createReadStream(req.file.path)
-        .pipe(csv())    
-        .on('data', data => results.push(data))
-        .on('end', async () => {
-            try {
-                for (const row of results) {
-                    const request = new sql.Request();
-                    await request
-                        .input('TR', sql.VarChar, row.TR)
-                        .input('Name', sql.VarChar, row.Name)
-                        .input('Darajah', sql.VarChar, row.Darajah)
-                        .input('Goal', sql.VarChar, row.Goal)
-                        .input('Slot', sql.VarChar, row.Slot)
-                        .input('Branch', sql.NVarChar(50), Branch)
-                        .input('Gender', sql.NVarChar(10), Gender)
-                        .query(`
-                            INSERT INTO Master (TR, Name, Darajah, Goal, Slot, Branch, Gender)
-                            VALUES (@TR, @Name, @Darajah, @Goal, @Slot, @Branch, @Gender)
-                        `);
-                }
-                res.json({ message: 'CSV import successful' });
-            } catch (err) {
-                console.error(err);
-                res.status(500).json({ error: 'Failed to import CSV' });
-            } finally {
-                fs.unlinkSync(req.file.path);
-            }
-        });
-});
-
 
 // This is likely the route for your Active Students table
 app.get('/api/students', async (req, res) => {
@@ -1518,8 +1489,6 @@ app.get('/api/students', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-        const pool = await sql.connect(config);
-
         const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
@@ -1561,7 +1530,7 @@ app.get('/api/students/inactive', async (req, res) => {
   const { Branch: branch, Role } = req.session.user;
 
   try {
-    const request = new sql.Request();
+    const request = pool.request();
     request.input('Branch', sql.NVarChar(50), branch);
 
     let query = `
@@ -1607,7 +1576,7 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
   }
 
   try {
-    const request = new sql.Request();
+    const request = pool.request();
 
     request.input('TR', sql.Int, tr);
     request.input('Branch', sql.NVarChar(50), Branch);
@@ -1692,7 +1661,7 @@ app.put('/api/attendance-record', async (req, res) => {
 
 
   try {
-    const request = new sql.Request();
+    const request = pool.request();
 
     if (AttendanceID) {
       // UPDATE existing attendance
@@ -1712,7 +1681,7 @@ app.put('/api/attendance-record', async (req, res) => {
       let weekId = WeekID;
       if (!weekId) {
         // Optional: fetch WeekID from AttendanceWeek based on CreatedAt
-        const weekResult = await new sql.Request()
+        const weekResult = await pool.request()
           .input('Date', sql.Date, CreatedAt)
           .query(`
             SELECT TOP 1 WeekID FROM AttendanceWeek
@@ -1725,7 +1694,7 @@ app.put('/api/attendance-record', async (req, res) => {
         weekId = weekResult.recordset[0].WeekID;
       }
 
-      const insertRequest = new sql.Request();
+      const insertRequest = pool.request();
       insertRequest.input('TR', sql.Int, TR);
       insertRequest.input('WeekID', sql.Int, weekId);
       insertRequest.input('IsPresent', sql.Bit, IsPresent);
@@ -1754,22 +1723,22 @@ app.put('/api/attendance-record', async (req, res) => {
 //--------------------------------- FITNESS TEST --------------------------------------------
 //-------------------------------------------------------------------------------------------
 
-// GET student info by TR
+// CORRECTED FITNESS TEST ROUTE
 app.get('/api/testmaster/:tr', async (req, res) => {
     const tr = req.params.tr;
     try {
-        await sql.connect(config);
-        const result = await sql.query(`
-            SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
-            FROM TestMaster WHERE TR = ${tr}
-        `);
+        const result = await pool.request() // <-- Use pool.request()
+            .input('tr', sql.Int, tr)
+            .query(`
+                SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
+                FROM TestMaster WHERE TR = @tr
+            `);
         res.json(result.recordset[0] || {});
     } catch (err) {
         console.error('Error fetching TestMaster:', err);
         res.status(500).json({ error: 'Failed to fetch student data' });
     }
 });
-
 
 
 app.post('/api/testrecords', async (req, res) => {
@@ -1779,8 +1748,6 @@ app.post('/api/testrecords', async (req, res) => {
     } = req.body;
 
     try {
-        
-        const pool = await sql.connect(config); // ✅ assign pool
         const request = pool.request();         // ✅ define request BEFORE using it
         request.input('TR', sql.Int, TR);
         request.input('DOB', sql.Date, DOB);
@@ -1819,7 +1786,6 @@ app.post('/api/testrecords', async (req, res) => {
 app.get('/api/testrecords/:tr', async (req, res) => {
     const tr = req.params.tr;
     try {
-        const pool = await sql.connect(config);
         const result = await pool.request()
             .input('TR', sql.Int, tr)
             .query('SELECT * FROM TestRecords WHERE TR = @TR ORDER BY TestLog DESC');
@@ -1836,8 +1802,20 @@ app.get('/api/testrecords/:tr', async (req, res) => {
 // Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 
+let pool; // Declare the pool variable in a scope accessible to all routes
 
-// Start server
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Server is running on http://localhost:${port}`);
-});
+sql.connect(config)
+    .then(connectionPool => {
+        // Assign the successfully created connection pool to our variable
+        pool = connectionPool;
+        
+        // Now that the pool is ready, start the server
+        app.listen(port, '0.0.0.0', () => {
+            console.log('✅ Connected to SQL Server!');
+            // console.log(`🚀 Server is running on http://localhost:${port}`);
+        });
+    })
+    .catch(err => {
+        console.error('❌ Database Connection Failed! Server not started.');
+        console.error(err);
+    });

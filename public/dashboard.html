@@ -1951,23 +1951,30 @@ document.querySelector('.navbar').addEventListener('click', (event) => {
 
 
 document.getElementById('logoutLink').addEventListener('click', function (e) {
-    e.preventDefault();
+    e.preventDefault(); // Prevent the link from trying to navigate
 
     fetch('/api/logout', {
-        method: 'GET',
+        method: 'POST', // This is the only change needed.
         credentials: 'include'
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            // Handle cases where the server responds with an error status (e.g., 500)
+            throw new Error('Logout request failed');
+        }
+        return res.json();
+    })
     .then(data => {
         if (data.success) {
             localStorage.clear(); // Clear any client-side data
-            window.location.href = 'homepage.html'; // Redirect to login/home
+            window.location.href = 'homepage.html'; // Redirect to home
         } else {
-            Swal.fire('Error', 'Logout failed.', 'error');
+            Swal.fire('Error', data.message || 'Logout failed.', 'error');
         }
     })
     .catch(err => {
         console.error('Logout error:', err);
+        Swal.fire('Error', 'Could not connect to the server. Please try again.', 'error');
     });
 });
 
