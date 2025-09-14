@@ -87,7 +87,7 @@
             color: white;
         }
 
-        .navbar a:hover,
+        
         .navbar a.active {
             color: var(--primary);
             background: rgba(67, 97, 238, 0.1);
@@ -171,11 +171,11 @@
             transition: all 0.3s;
         }
 
-        .btn:hover {
-            background: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+      .btn:hover {
+          background: var(--secondary); /* from [cite: 31, 32] */
+          transform: translateY(-3px); /* from [cite: 47] */
+          box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5); /* from [cite: 48] */
+      }
 
         table {
             width: 100%;
@@ -258,11 +258,7 @@
             box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
         }
 
-        .btn:hover {
-            background: var(--secondary);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5);
-        }
+
 
         .navbar a {
             transition: all 0.3s ease;
@@ -1075,16 +1071,16 @@ async function getStudentSession() {
 
 
 
-window.addEventListener('DOMContentLoaded', getStudentSession);
-
 
 function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;
+    const loadButton = weekSelect.nextElementSibling; // Get the button
     if (!selectedWeek) {
         alert('Please select a week.');
         return;
     }
-
+        loadButton.textContent = 'Loading...';
+        loadButton.disabled = true;
     // --- THIS IS THE ONLY CHANGE NEEDED ---
     // Use the studentTR variable from the global scope, not localStorage.
     if (!studentTR) { 
@@ -1111,7 +1107,7 @@ function loadAttendance() {
                     currentDate.setDate(currentDate.getDate() + i);
                     
                     if (status === 'Present') {
-                        return `<td class="present" style="color: green; font-weight: bold;">Present</td>`;
+                        return `<td class="present">Present</td>`;
                     } else if (status === 'On Leave') {
                         return `<td class="on-leave" style="color: #f59e0b; font-weight: bold;">On Leave</td>`;
                     } else if (currentDate <= today) {
@@ -1130,7 +1126,14 @@ function loadAttendance() {
                 tbody.appendChild(row);
             }
         })
-        .catch(err => console.error('Failed to load student attendance:', err));
+        .catch(err => console.error('Failed to load student attendance:', err))
+        .finally(() => {
+            // --- And this ---
+            loadButton.textContent = 'Load Attendance';
+            loadButton.disabled = false;
+            // ------------------
+        });
+        
 }
 
 //-------------------------------------------------------------------------------------------
@@ -1176,7 +1179,6 @@ function renderTrainingPlans(plans) {
   });
 }
 
-window.addEventListener('DOMContentLoaded', loadStudentPlans);
 
 
         function loadTip(goal) {
@@ -1362,6 +1364,11 @@ function loadBodyPartTips() {
             })
             .catch(err => {
                 console.error('Failed to load weeks:', err);
+                Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Failed to load week data. Please check your connection and try again.'
+            });
             });
     }
 
@@ -1476,7 +1483,7 @@ async function loadWeeklyPlan() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', loadWeeklyPlan);
+
 
 
 
@@ -1518,47 +1525,44 @@ async function applyLastWeeksPlan() {
 
  //----------------------------------------------------------------------------------------------------------
 
-  
-      // Trigger record load when dashboard loads
-      document.getElementById('planner-main').addEventListener('click', () => {
-        document.getElementById('attendance-low').style.display = 'none';
-         document.getElementById('tips-low').style.display = 'none';
-          document.getElementById('logs-low').style.display = 'none';
-        document.getElementById('planner-low').style.display = 'block';
-        loadStudentRecords();
-      });
-  
-      document.getElementById('tips-main').addEventListener('click', () => {
-        document.getElementById('attendance-low').style.display = 'none';
-         document.getElementById('logs-low').style.display = 'none';
-          document.getElementById('planner-low').style.display = 'none';
-        document.getElementById('tips-low').style.display = 'block';
-      });
+const mainNav = document.querySelector('.navbar');
+const contentSections = document.querySelectorAll('.content .card');
 
-      document.getElementById('attendance-main').addEventListener('click', () => {
-  document.getElementById('planner-low').style.display = 'none';
-  document.getElementById('logs-low').style.display = 'none';
-   document.getElementById('tips-low').style.display = 'none';
-  document.getElementById('attendance-low').style.display = 'block';
-});
+mainNav.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent default link behavior
+    const targetId = e.target.id;
 
-      document.getElementById('logs-main').addEventListener('click', () => {
-  document.getElementById('planner-low').style.display = 'none';
-  document.getElementById('attendance-low').style.display = 'none';
-  document.getElementById('tips-low').style.display = 'none';
-  document.getElementById('logs-low').style.display = 'block';
+    if (targetId) {
+        // Deactivate all links
+        mainNav.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+        // Activate the clicked link
+        e.target.classList.add('active');
+
+        // Hide all sections
+        contentSections.forEach(section => {
+            section.style.display = 'none';
+        });
+
+        // Show the target section
+        const sectionId = targetId.replace('-main', '-low');
+        const targetSection = document.getElementById(sectionId);
+        if (targetSection) {
+            targetSection.style.display = 'block';
+        }
+    }
 });
 
 
 
-
-
+document.addEventListener('DOMContentLoaded', () => {
+    getStudentSession();
+    loadStudentPlans();
+    loadWeeklyPlan();
+    loadWeeks(); // Also call this on initial load
+    setupEventListeners(); // A function to set up all your clicks
+});
 //----------------------------------------------------------------------------------------------------------
 
-// Call this when page loads
-window.onload = function() {
-    loadWeeks();
-};
 
 function logout() {
         localStorage.clear();
