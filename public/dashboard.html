@@ -270,7 +270,7 @@ thead select {
         <a href="#" id="tab-record" data-target="student-record">Active Students</a>
         <a href="#" id="tab-Progress" data-target="progress-tab">Track Progress</a>
         <a href="#" id="tab-test" style="display: none;" data-target="test-record">Fitness Test</a>
-        <a href="#" id="tab-attendance" data-target="attendance-summary">Attendance Summary</a>
+        <a href="#" id="tab-attendance" data-target="attendance-summary">Attendance</a>
         <a href="#" id="logoutLink">Logout</a>
     </div>
       <div class="content">
@@ -452,47 +452,11 @@ thead select {
 
  <section id="Admin-base" style="display: none; padding: 20px;">
 
-                      <section id="edit-attendance" class="card mt-4 p-3">
-          <h2> Attendance Module</h2>
 
-          <div class="row mb-2">
-            <div class="col-md-3">
-              <label for="editTR">TR Number</label>
-              <input type="number" class="form-control" id="editTR" required>
-            </div>
-            <div class="col-md-3">
-              <label for="editDate">Date</label>
-              <input type="date" class="form-control" id="editDate" required>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
-            </div>
-          </div>
-
-          <div id="attendanceEditor" style="display: none;">
-            <div class="row mb-2">
-              <div class="col-md-3">
-                <label>Current Status</label>
-                <input type="text" class="form-control" id="currentStatus" readonly>
-              </div>
-              <div class="col-md-3">
-                <label for="isPresentToggle">Mark as</label>
-                <select class="form-control" id="isPresentToggle">
-                  <option value="true">Present</option>
-                  <option value="false">Absent</option>
-                </select>
-              </div>
-              <div class="col-md-3 d-flex align-items-end">
-                <button class="btn btn-success w-100" id="updateAttendanceBtn">Update Attendance</button>
-              </div>
-            </div>
-           <h3> <p id="editMessage" class="text-info"></p></h3>
-          </div>
-        </section>
         <section class="card mt-4 p-3">
   <h2>👑 Role Management Panel</h2>
   <p id="adminBranchInfo">
-  Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch only.
+  Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch.
 </p>
 
 
@@ -557,7 +521,7 @@ thead select {
 
         <section id="student-record" class="card" style="display:none;">
           <div class="container mt-5">
-            <h2>Active Students (Staff View)</h2>
+            <h2>Active Students</h2>
             <div style="overflow-x: auto;">
               <table id="studentTable">
                 <thead>
@@ -620,6 +584,43 @@ thead select {
 
                 <section id="attendance-summary" class="card" style="display:none;">
 
+                                        <section id="edit-attendance" class="card mt-4 p-3">
+          <h2> Attendance Module</h2>
+
+          <div class="row mb-2">
+            <div class="col-md-3">
+              <label for="editTR">TR Number</label>
+              <input type="number" class="form-control" id="editTR" required>
+            </div>
+            <div class="col-md-3">
+              <label for="editDate">Date</label>
+              <input type="date" class="form-control" id="editDate" required>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
+            </div>
+          </div>
+
+            <div id="attendanceEditor" style="display: none;">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label>Current Status</label>
+                        <input type="text" class="form-control" id="currentStatus" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="newStatusSelect">Change Status To</label>
+                        <select class="form-control" id="newStatusSelect">
+                            <option value="on_leave">On Leave</option>
+                            <option value="present">Present</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-success w-100" id="updateAttendanceBtn">Save Changes</button>
+                    </div>
+                </div>
+                <h3><p id="editMessage" class="text-info mt-3"></p></h3>
+            </div>
+        </section>
 
           <div class="container mt-5">
           <h2>Weekly Attendance</h2>
@@ -684,7 +685,9 @@ async function validateStaffSession() {
       return;
     }
 
-    const { Branch, Gender, Role } = data.user;
+        // AFTER
+        const { Branch, Gender, Role, Username } = data.user;
+    
 
             // Handle showing/hiding the Admin tab based on role
         const isAdmin = Role === 'Admin';
@@ -748,6 +751,8 @@ async function validateStaffSession() {
     // Update Darajah options dynamically based on Gender
     updateDarajahOptionsBasedOnGender(Gender);
     
+
+    localStorage.setItem('username', Username);
 
   } catch (err) {
     console.error('Failed to validate session:', err);
@@ -1492,15 +1497,17 @@ function attachAttendanceLoader() {
     });
 }
 
-// Helper for color-coded attendance
+// Helper to render attendance cell with colors
 function renderAttendanceCell(value) {
-  if (value === 'Present') {
-    return `<td style="color: green; font-weight: bold;">Present</td>`;
-  } else if (value === 'Absent') {
-    return `<td style="color: red; font-weight: bold;">Absent</td>`;
-  } else {
-    return `<td></td>`;
-  }
+    if (value === 'Present') {
+        return `<td style="color: green; font-weight: bold;">Present</td>`;
+    } else if (value === 'On Leave') { // <-- ADD THIS CASE
+        return `<td style="color: #f59e0b; font-weight: bold;">On Leave</td>`; // Amber/Orange color
+    } else if (value === 'Absent') {
+        return `<td style="color: red; font-weight: bold;">Absent</td>`;
+    } else {
+        return `<td></td>`;
+    }
 }
 
 window.addEventListener('DOMContentLoaded', attachAttendanceLoader);
@@ -1565,138 +1572,99 @@ let currentAttendanceId = null;
 let currentTR = null;
 let currentDate = null;
 
+// CORRECTED VERSION
 document.getElementById('fetchAttendanceBtn').addEventListener('click', async () => {
-  const tr = document.getElementById('editTR').value.trim();
-  const date = document.getElementById('editDate').value;
-  const statusField = document.getElementById('currentStatus');
-  const editor = document.getElementById('attendanceEditor');
-  const message = document.getElementById('editMessage');
+    const tr = document.getElementById('editTR').value.trim();
+    const date = document.getElementById('editDate').value;
+    const editor = document.getElementById('attendanceEditor');
 
-  if (!tr || !date) {
-    return Swal.fire({
-      icon: 'warning',
-      title: 'Missing Data',
-      text: 'Please enter both TR and Date.'
-    });
-  }
-
-  try {
-    const res = await fetch(`/api/attendance-record/${tr}/${date}`);
-    const data = await res.json();
-
-    if (!data.success) {
-      console.error('❌ API Error:', data.error);
-      editor.style.display = 'none';
-      message.textContent = `❌ ${data.error}`;
-      return Swal.fire({
-        icon: 'error',
-        title: 'Unauthorized',
-        text: data.error
-      });
+    if (!tr || !date) {
+        return Swal.fire('Missing Data', 'Please enter both TR and Date.', 'warning');
     }
 
-    currentAttendanceId = data.record.AttendanceID;
-    currentTR = tr;
-    currentDate = date;
+    try {
+        const res = await fetch(`/api/attendance-record/${tr}/${date}`);
+        const data = await res.json();
 
-    statusField.value = data.record.IsPresent ? 'Present' : 'Absent';
-    document.getElementById('isPresentToggle').value = data.record.IsPresent ? 'true' : 'false';
-    editor.style.display = 'block';
-    message.textContent = '';
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to fetch record');
+        }
 
-    // If no AttendanceID, it's a fresh record (absent by default)
-    if (!data.record.AttendanceID) {
-      Swal.fire({
-        icon: 'info',
-        title: 'No Attendance Record',
-        text: 'Student found, but no attendance record for the selected date. Treated as Absent.'
-      });
-    } else {
-      Swal.fire({
-        icon: 'success',
-        title: 'Record Loaded',
-        text: `Attendance found for TR ${tr} on ${date}.`
-      });
+        currentAttendanceId = data.record.AttendanceID;
+        currentTR = tr;
+        currentDate = date;
+
+        const statusField = document.getElementById('currentStatus');
+        const newStatusSelect = document.getElementById('newStatusSelect');
+
+        // --- CORRECTED LOGIC BLOCK ---
+        if (data.record.IsPresent) {
+            statusField.value = 'Present';
+            newStatusSelect.value = 'present';
+        } else if (data.record.OnLeave) {
+            // FIX #2: Correctly displays "On Leave" when fetched.
+            statusField.value = 'On Leave';
+            newStatusSelect.value = 'on_leave';
+        } else {
+            statusField.value = 'Absent (Unmarked)';
+            // FIX #1: Defaults the dropdown to "On Leave" for a new entry.
+            newStatusSelect.value = 'on_leave';
+        }
+        
+
+
+        editor.style.display = 'block';
+        document.getElementById('editMessage').textContent = '';
+
+    } catch (err) {
+        console.error('❌ Fetch error:', err);
+        Swal.fire('Fetch Failed', err.message, 'error');
     }
-
-  } catch (err) {
-    console.error('❌ Fetch error:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Fetch Failed',
-      text: 'Failed to fetch attendance record. Please check console for details.'
-    });
-  }
 });
 
 
 
+// Listener for the "Save Changes" button
 document.getElementById('updateAttendanceBtn').addEventListener('click', async () => {
-  if (!currentTR || !currentDate) {
-    return Swal.fire({
-      icon: 'warning',
-      title: 'Missing Data',
-      text: 'Please fetch an attendance record first.'
-    });
-  }
-
-  const isPresent = document.getElementById('isPresentToggle').value === 'true';
-  const message = document.getElementById('editMessage');
-
-  const payload = {
-    AttendanceID: currentAttendanceId,  // null if insert
-    TR: parseInt(currentTR, 10),
-    CreatedAt: currentDate,
-    IsPresent: isPresent
-  };
-
-  try {
-    const res = await fetch('/api/attendance-record', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await res.json();
-
-    if (result.success) {
-      message.textContent = '✅ Attendance updated successfully';
-
-      await Swal.fire({
-        icon: 'success',
-        title: 'Updated!',
-        text: 'Attendance has been updated successfully.',
-        timer: 2000,
-        showConfirmButton: false
-      });
-
-                  // Instead of reloading, reset the form to be ready for the next lookup.
-            document.getElementById('editTR').value = '';
-            document.getElementById('editDate').value = '';
-            document.getElementById('currentStatus').value = '';
-            document.getElementById('attendanceEditor').style.display = 'none';
-            document.getElementById('editMessage').textContent = 'Ready to fetch next record.';
-
-    } else {
-      message.textContent = `❌ Error: ${result.error || 'Unknown error'}`;
-      Swal.fire({
-        icon: 'error',
-        title: 'Update Failed',
-        text: result.error || 'Something went wrong.'
-      });
+    if (!currentTR || !currentDate) {
+        return Swal.fire('Missing Data', 'Please fetch a record first.', 'warning');
     }
 
-  } catch (err) {
-    console.error('Update error:', err);
-    message.textContent = '❌ Failed to update attendance';
-    Swal.fire({
-      icon: 'error',
-      title: 'Server Error',
-      text: 'Could not connect to the server.'
-    });
-  }
-});
+    const newStatus = document.getElementById('newStatusSelect').value;
+    const onLeave = (newStatus === 'on_leave');
+    const isPresent = (newStatus === 'present');
+    
 
+    // This payload is now more explicit
+    const payload = {
+        TR: parseInt(currentTR, 10),
+        CreatedAt: currentDate,
+        IsPresent: isPresent,
+        OnLeave: onLeave // Send the new OnLeave flag
+    };
+
+    try {
+        // We now use your new, smarter MERGE-based API route
+        const res = await fetch('/api/attendance-record', {
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error);
+
+        Swal.fire('Updated!', 'Attendance has been updated successfully.', 'success');
+        // Reset the form
+        document.getElementById('attendanceEditor').style.display = 'none';
+        document.getElementById('editTR').value = '';
+        document.getElementById('editDate').value = '';
+
+    } catch (err) {
+        console.error('Update error:', err);
+        Swal.fire('Error', `Update Failed: ${err.message}`, 'error');
+    }
+});
 
 
 
@@ -1801,25 +1769,29 @@ document.addEventListener('DOMContentLoaded', () => {
 //---------------------------------------------------------------------------------------------------
 async function loadAdminUsers() {
     const tableBody = document.querySelector('#adminUserTable tbody');
-    // 1. Show the loader before fetching data (4 columns)
     tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell"><div class="loader"></div></td></tr>`;
 
     try {
         const branch = localStorage.getItem('branch');
-        const res = await fetch(`/api/admin/users/${branch}`);
-        const data = await res.json();
+        const currentUser = localStorage.getItem('username');
 
-        // 2. Clear the loader
+        const res = await fetch(`/api/admin/users/${branch}`);
+        const users = await res.json();
+        
+        const filteredUsers = users.filter(user => user.Username !== currentUser);
+        
         tableBody.innerHTML = ''; 
 
-        // Handle case where no users are found
-        if (!data || data.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell">No users found for this branch.</td></tr>`;
+        // --- CORRECTION 1 ---
+        // Check the 'filteredUsers' array, not the non-existent 'data' variable.
+        if (!filteredUsers || filteredUsers.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell">No other users found for this branch.</td></tr>`;
             return;
         }
 
-        // Render the user data
-        data.forEach(user => {
+        // --- CORRECTION 2 ---
+        // Loop over the 'filteredUsers' array to build the table.
+        filteredUsers.forEach(user => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${user.Username}</td>
@@ -1836,10 +1808,11 @@ async function loadAdminUsers() {
         });
     } catch (err) {
         console.error('Failed to load users:', err);
-        // 3. On error, show a user-friendly message
         tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell" style="color: var(--danger);">Error loading users. Please try again.</td></tr>`;
     }
 }
+
+
 async function deleteUser(username) {
     // --- REPLACEMENT START ---
     Swal.fire({
@@ -1870,9 +1843,15 @@ async function deleteUser(username) {
 
 document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    // ... (logic to get newUser object is the same)
-    const newUser = { /* ... */ };
+    const branch = localStorage.getItem('branch');
 
+    const newUser = {
+        username: document.getElementById('newUsername').value.trim(), // Changed to lowercase
+        password: document.getElementById('newPassword').value,       // Changed to lowercase
+        gender: document.getElementById('newGender').value,         // Changed to lowercase
+        role: document.getElementById('newRole').value,             // Changed to lowercase
+        branch: branch                                              // Changed to lowercase
+    };
     const res = await fetch('/api/admin/add-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -407,11 +407,11 @@ app.put('/api/students/status/:TR', async (req, res) => {
     }
 });
 
+
 app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
     const { weekId, tr } = req.params;
 
     try {
-
         // Get week start date
         const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
@@ -422,51 +422,51 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
         }
 
         const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
-        // Get attendance for the student
+        // --- CORRECTED LOGIC STARTS HERE ---
+        // Fetch IsPresent and OnLeave flags for each day in the week
         const result = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('TR', sql.Int, tr)
             .query(`
                 SELECT 
-                    M.TR,
                     M.Name,
-                    DATENAME(WEEKDAY, A.CreatedAt) AS DayName
+                    DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
+                    A.IsPresent,
+                    A.OnLeave  -- <-- Select the new column
                 FROM Master M
                 LEFT JOIN Attendance A 
-                    ON M.TR = A.TR AND A.WeekID = @WeekID AND A.IsPresent = 1
+                    ON M.TR = A.TR AND A.WeekID = @WeekID
                 WHERE M.TR = @TR
             `);
 
+        const studentName = result.recordset.length > 0 ? result.recordset[0].Name : '';
+        
+        // Create a clean record for the student
         const record = {
             TR: tr,
-            Name: '',
+            Name: studentName,
             WeekStartDate: startDate,
-            Monday: '',
-            Tuesday: '',
-            Wednesday: '',
-            Thursday: '',
-            Friday: '',
-            Saturday: '',
-            Sunday: ''
+            Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: ''
         };
 
+        // Loop through the database results to set the status for each day
         for (let row of result.recordset) {
-            record.Name = row.Name;
             if (row.DayName) {
-                record[row.DayName] = '✅';
+                if (row.IsPresent) {
+                    record[row.DayName] = 'Present';
+                } else if (row.OnLeave) {
+                    record[row.DayName] = 'On Leave'; // <-- Set the new status
+                }
             }
         }
-
+        
         res.json([record]);
     } catch (err) {
         console.error('Error fetching student attendance:', err.message);
         res.status(500).json({ error: 'Failed to fetch student attendance' });
     }
 });
-
 
 
 app.get('/api/weeks', async (req, res) => {
@@ -518,15 +518,13 @@ app.get('/api/student-info/:tr', async (req, res) => {
 
 app.get('/api/weekly-attendance/:weekId', async (req, res) => {
     const { weekId } = req.params;
-    
+    const { Branch, Gender } = req.session.user;
+
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
 
     try {
-              if (!req.session.user) {
-            // If there's no session, stop right here and send an error.
-            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
-        }
-        const { Branch, Gender } = req.session.user;
-        // Fetch start date of the week
         const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
@@ -536,10 +534,8 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
         }
 
         const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Fetch all TRs + attendance for this week
+        
+        // --- CORRECTED LOGIC STARTS HERE ---
         const attendanceQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('Branch', sql.NVarChar(50), Branch)
@@ -549,60 +545,47 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
                     M.TR,
                     M.Name,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
-                    A.CreatedAt
+                    A.IsPresent,
+                    A.OnLeave  -- We must SELECT the new column
                 FROM Master M
                 LEFT JOIN Attendance A 
-                    ON M.TR = A.TR AND A.WeekID = @WeekID AND A.IsPresent = 1
-                WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active' 
-
+                    ON M.TR = A.TR AND A.WeekID = @WeekID
+                WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active'
             `);
 
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const resultMap = new Map();
 
-        // Initialize map with all students
-        for (let row of attendanceQuery.recordset) {
-            const { TR, Name } = row;
+        // Initialize all students with 'Absent' for the week
+        attendanceQuery.recordset.forEach(row => {
+            if (!resultMap.has(row.TR)) {
+                const record = { TR: row.TR, Name: row.Name };
+                ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach(day => {
+                    record[day] = 'Absent'; // Default to Absent
+                });
+                resultMap.set(row.TR, record);
+            }
+        });
 
-            if (!resultMap.has(TR)) {
-                const record = {
-                    TR,
-                    Name
-                };
-
-                for (let i = 0; i < 7; i++) {
-                    const currentDate = new Date(startDate);
-                    currentDate.setDate(startDate.getDate() + i);
-
-                    const dayName = days[i];
-
-                    if (currentDate > today) {
-                        record[dayName] = '';
-                    } else {
-                        record[dayName] = 'Absent'; // Default to Absent
-                    }
+        // Now, loop through the records again to set the correct status
+        attendanceQuery.recordset.forEach(row => {
+            if (row.DayName) { // Check if there is an attendance record for this day
+                const studentRecord = resultMap.get(row.TR);
+                if (row.IsPresent) {
+                    studentRecord[row.DayName] = 'Present';
+                } else if (row.OnLeave) {
+                    studentRecord[row.DayName] = 'On Leave'; // Set the new status
                 }
-
-                resultMap.set(TR, record);
+                // If neither is true, it remains 'Absent' by default
             }
-        }
-
-        // Override ✅ present where applicable
-        for (let row of attendanceQuery.recordset) {
-            const { TR, DayName } = row;
-            if (DayName && resultMap.has(TR)) {
-                resultMap.get(TR)[DayName] = 'Present';
-            }
-        }
+        });
 
         res.json([...resultMap.values()]);
+
     } catch (err) {
         console.error('Error fetching weekly attendance:', err.message);
         res.status(500).json({ error: 'Failed to fetch weekly attendance' });
     }
 });
-
-
 
 //--------------------------------------------------------------------------------------------------
 //.............................LOGIN INFO...........................................................
@@ -1645,75 +1628,55 @@ app.get('/api/attendance-record/:tr/:date', async (req, res) => {
 
 
 
+// This route now exclusively handles marking a student as "On Leave" for a specific date.
 app.put('/api/attendance-record', async (req, res) => {
-  const { AttendanceID, TR, WeekID, IsPresent, CreatedAt } = req.body;
-  const { Branch, Gender } = req.session.user;
+    // We only need TR and the specific date from the frontend.
+    const { TR, CreatedAt } = req.body;
+    const { Branch, Gender } = req.session.user;
 
-  if (!Branch || !Gender) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
+    if (!TR || !CreatedAt) {
+        return res.status(400).json({ success: false, error: 'TR and Date are required.' });
+    }
 
-  if (!TR || !CreatedAt || typeof IsPresent !== 'boolean') {
-    return res.status(400).json({ success: false, error: 'Missing or invalid parameters' });
-  }
-
-
-
-  try {
-    const request = pool.request();
-
-    if (AttendanceID) {
-      // UPDATE existing attendance
-      request.input('AttendanceID', sql.Int, AttendanceID);
-      request.input('IsPresent', sql.Bit, IsPresent);
-
-      const updateResult = await request.query(`
-        UPDATE Attendance
-        SET IsPresent = @IsPresent
-        WHERE AttendanceID = @AttendanceID
-      `);
-
-      return res.json({ success: true, message: 'Attendance updated successfully' });
-    } else {
-      // INSERT new attendance record
-      // We need WeekID - if not provided, try to calculate from CreatedAt date
-      let weekId = WeekID;
-      if (!weekId) {
-        // Optional: fetch WeekID from AttendanceWeek based on CreatedAt
+    try {
+        // First, find the correct WeekID for the given date.
         const weekResult = await pool.request()
-          .input('Date', sql.Date, CreatedAt)
-          .query(`
-            SELECT TOP 1 WeekID FROM AttendanceWeek
-            WHERE @Date BETWEEN WeekStartDate AND WeekEndDate
-          `);
+            .input('Date', sql.Date, CreatedAt)
+            .query('SELECT WeekID FROM AttendanceWeek WHERE @Date BETWEEN WeekStartDate AND WeekEndDate');
 
         if (weekResult.recordset.length === 0) {
-          return res.status(400).json({ success: false, error: 'Week not found for given date' });
+            return res.status(400).json({ success: false, error: 'No valid week found for the selected date.' });
         }
-        weekId = weekResult.recordset[0].WeekID;
-      }
+        const weekId = weekResult.recordset[0].WeekID;
 
-      const insertRequest = pool.request();
-      insertRequest.input('TR', sql.Int, TR);
-      insertRequest.input('WeekID', sql.Int, weekId);
-      insertRequest.input('IsPresent', sql.Bit, IsPresent);
-      insertRequest.input('CreatedAt', sql.DateTime, CreatedAt);
-      insertRequest.input('Branch', sql.NVarChar(50), Branch);
-      insertRequest.input('Gender', sql.NVarChar(10), Gender);
+        // Use a MERGE statement to either UPDATE an existing record or INSERT a new one.
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+        request.input('WeekID', sql.Int, weekId);
+        request.input('Date', sql.Date, CreatedAt);
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+        
+        await request.query(`
+            MERGE Attendance AS target
+            USING (SELECT @TR AS TR, @Date AS CreatedAt) AS source
+            ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = source.CreatedAt)
+            -- If a record for this TR on this day already exists (e.g., they were marked present):
+            WHEN MATCHED THEN
+                UPDATE SET IsPresent = 0, OnLeave = 1
+            -- If no record exists for this TR on this day:
+            WHEN NOT MATCHED THEN
+                INSERT (TR, WeekID, IsPresent, CreatedAt, Branch, Gender, OnLeave)
+                VALUES (@TR, @WeekID, 0, @Date, @Branch, @Gender, 1);
+        `);
 
-      const insertResult = await insertRequest.query(`
-        INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, Branch, Gender)
-        VALUES (@TR, @WeekID, @IsPresent, @CreatedAt, @Branch, @Gender)
-      `);
+        res.json({ success: true, message: 'Student successfully marked as "On Leave".' });
 
-      return res.json({ success: true, message: 'Attendance inserted successfully' });
+    } catch (err) {
+        console.error('Error setting "On Leave" status:', err);
+        res.status(500).json({ success: false, error: 'Failed to update attendance.' });
     }
-  } catch (err) {
-    console.error('Error updating attendance:', err);
-    return res.status(500).json({ success: false, error: 'Failed to update attendance' });
-  }
 });
-
 
 
 
