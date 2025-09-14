@@ -47,7 +47,7 @@ const config = {
 
     
 // ----------------------------------------------------------------
-// --- ALL API ROUTES NOW USE THE SINGLE CONNECTION  ---
+// --- ALL API ROUTES NOW USE THE SINGLE CONNECTION POOL ---
 // ----------------------------------------------------------------
 
 
@@ -256,7 +256,8 @@ app.put('/api/slots/:id', async (req, res) => {
 app.delete('/api/slots/:id', async (req, res) => {
     const SlotID = req.params.id;
 
-
+    // --- CHANGE THIS LINE ---
+    // Create a transaction directly. It will automatically use the global connection pool.
     const transaction = new sql.Transaction(pool);
 
     try {
@@ -754,7 +755,7 @@ app.post('/api/staff-login', async (req, res) => {
 app.get('/api/admin/users/:branch', async (req, res) => {
     const branch = req.params.branch;
     try {
-        const result = await pool.request() 
+        const result = await pool.request() // <-- Use pool.request()
             .input('branch', sql.NVarChar(50), branch)
             .query(`SELECT Username, Gender, Role FROM PassBank WHERE Branch = @branch`);
         res.json(result.recordset);
@@ -766,7 +767,7 @@ app.get('/api/admin/users/:branch', async (req, res) => {
 app.post('/api/admin/add-user', async (req, res) => {
     const { username, password, gender, role, branch } = req.body;
     try {
-        await pool.request() 
+        await pool.request() // <-- Use pool.request()
             .input('username', sql.NVarChar(50), username)
             .input('password', sql.NVarChar(50), password)
             .input('gender', sql.NVarChar(10), gender)
@@ -785,7 +786,7 @@ app.post('/api/admin/add-user', async (req, res) => {
 app.delete('/api/admin/delete-user/:username', async (req, res) => {
     const username = req.params.username;
     try {
-        await pool.request()
+        await pool.request() // <-- Use pool.request()
             .input('username', sql.NVarChar(50), username)
             .query(`DELETE FROM PassBank WHERE Username = @username`);
         res.json({ success: true });
@@ -1726,7 +1727,7 @@ app.put('/api/attendance-record', async (req, res) => {
 app.get('/api/testmaster/:tr', async (req, res) => {
     const tr = req.params.tr;
     try {
-        const result = await pool.request() 
+        const result = await pool.request() // <-- Use pool.request()
             .input('tr', sql.Int, tr)
             .query(`
                 SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
@@ -1801,14 +1802,14 @@ app.get('/api/testrecords/:tr', async (req, res) => {
 // Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 
-let pool; 
+let pool; // Declare the pool variable in a scope accessible to all routes
 
 sql.connect(config)
     .then(connectionPool => {
-        
+        // Assign the successfully created connection pool to our variable
         pool = connectionPool;
         
-        
+        // Now that the pool is ready, start the server
         app.listen(port, '0.0.0.0', () => {
             console.log('✅ Connected to SQL Server!');
             // console.log(`🚀 Server is running on http://localhost:${port}`);
