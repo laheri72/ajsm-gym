@@ -519,7 +519,7 @@ thead select {
 
 <!-- -------------------------------------------------------------------------------------------------------------------------------- -->
 
-        <section id="student-record" class="card" style="display:none;">
+    <section id="student-record" class="card" style="display:none;">
           <div class="container mt-5">
             <h2>Active Students</h2>
             <div style="overflow-x: auto;">
@@ -538,7 +538,7 @@ thead select {
               </table>
             </div>
           </div>
-        </section>
+    </section>
 
 
 
@@ -546,7 +546,7 @@ thead select {
 
 
         
-                <section id="test-record" class="card" style="display:none;">
+          <section id="test-record" class="card" style="display:none;">
                     <div class="container mt-5">
             <h2>🧪 All Fitness Test Records</h2>
             <button id="exportTestRecordsBtn" class="btn btn-success mb-3">Export to Excel</button>
@@ -580,11 +580,11 @@ thead select {
               </table>
             </div>
           </div>
-                </section>
+        </section>
 
-                <section id="attendance-summary" class="card" style="display:none;">
+        <section id="attendance-summary" class="card" style="display:none;">
 
-                                        <section id="edit-attendance" class="card mt-4 p-3">
+        <section id="edit-attendance" class="card mt-4 p-3">
           <h2> Attendance Module</h2>
 
           <div class="row mb-2">
@@ -640,34 +640,35 @@ thead select {
 
 
             <!-- Attendance Table -->
-             <div style="overflow-x: auto;">
-        <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
-          <thead>
-            <tr>
-              <th>Tr No</th>
-              <th>Name</th>
-              <th>Monday</th>
-              <th>Tuesday</th>
-              <th>Wednesday</th>
-              <th>Thursday</th>
-              <th>Friday</th>
-              <th>Saturday</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        </div>
+              <div style="overflow-x: auto;">
+                  <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
+                      <thead>
+                          <tr>
+                              <th>Tr No</th>
+                              <th>Name</th>
+                              <th>Slot</th> 
+                              <th>Monday</th>
+                              <th>Tuesday</th>
+                              <th>Wednesday</th>
+                              <th>Thursday</th>
+                              <th>Friday</th>
+                              <th>Saturday</th>
+                          </tr>
+                      </thead>
+                      <tbody></tbody>
+                  </table>
+              </div>
         </div>
 
         </section>
         
         
-      </div>
-    </div>  
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        </div>
+      </div>  
+      <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+      <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   
     <script>
@@ -1443,34 +1444,28 @@ function attachAttendanceLoader() {
         btn.addEventListener('click', async () => {
             const weekId = document.getElementById('weekSelect').value;
             if (!weekId) {
-                // Also upgraded the old alert to a SweetAlert
                 return Swal.fire('No Week Selected', 'Please select a week before loading.', 'warning');
             }
 
             const tbody = document.querySelector('#attendanceTable tbody');
-            // --- CHANGE START ---
-            // 1. Show the loader in the table (it has 8 columns)
-            tbody.innerHTML = `<tr><td colspan="8" class="loader-cell"><div class="loader"></div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="loader-cell"><div class="loader"></div></td></tr>`;
 
             try {
                 const res = await fetch(`/api/weekly-attendance/${weekId}`);
                 const data = await res.json();
-
-                // 2. Clear the loader
                 tbody.innerHTML = '';
 
-                // Handle case where no data is returned
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="loader-cell">No attendance records found for this week.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="loader-cell">No attendance records found for this week.</td></tr>`;
                     return;
                 }
                 
-                // Render the data rows
                 data.forEach(student => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${student.TR}</td>
                         <td>${student.Name}</td>
+                        <td>${student.SlotName}</td>
                         ${renderAttendanceCell(student.Monday)}
                         ${renderAttendanceCell(student.Tuesday)}
                         ${renderAttendanceCell(student.Wednesday)}
@@ -1482,20 +1477,39 @@ function attachAttendanceLoader() {
                 });
             } catch (err) {
                 console.error('Failed to load attendance:', err);
-                // 3. On error, show a user-friendly message
-                tbody.innerHTML = `<tr><td colspan="8" class="loader-cell" style="color: var(--danger);">Error loading attendance. Please try again.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="loader-cell" style="color: var(--danger);">Error loading attendance. Please try again.</td></tr>`;
             }
-            // --- CHANGE END ---
         });
         btn.dataset.bound = 'true';
     }
 
-    // Export to Excel part remains the same
+    // --- NEW EXPORT LOGIC STARTS HERE ---
     const exportBtn = document.getElementById('exportAttendanceBtn');
     exportBtn.addEventListener('click', () => {
-        // ... your existing export logic ...
+        // 1. Get the table element from the DOM
+        const table = document.getElementById('attendanceTable');
+        const tbody = table.querySelector('tbody');
+
+        // 2. Check if there is data to export
+        // This prevents exporting an empty sheet or a sheet with "No records found"
+        if (!tbody || tbody.rows.length === 0 || tbody.rows[0].cells[0].hasAttribute('colspan')) {
+            Swal.fire('No Data to Export', 'Please load attendance data before exporting.', 'warning');
+            return; // Stop the function
+        }
+
+        // 3. Convert the HTML table to a worksheet
+        const worksheet = XLSX.utils.table_to_sheet(table);
+
+        // 4. Create a new workbook and add the worksheet
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Weekly Attendance");
+
+        // 5. Generate the Excel file and trigger the download
+        XLSX.writeFile(workbook, "Weekly_Attendance.xlsx");
     });
+    // --- NEW EXPORT LOGIC ENDS HERE ---
 }
+
 
 // Helper to render attendance cell with colors
 function renderAttendanceCell(value) {

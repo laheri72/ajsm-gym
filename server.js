@@ -533,49 +533,77 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
             return res.status(404).json({ error: 'Week not found' });
         }
 
+        // --- NEW LOGIC: DATE AWARENESS ---
+        // 1. Get today's date and reset time to 00:00:00 for accurate comparison
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 2. Get the start date of the selected week
         const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
         
-        // --- CORRECTED LOGIC STARTS HERE ---
+        // 3. Create a map of day names to their actual dates for the week
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayDateMap = {};
+        dayNames.forEach((day, index) => {
+            const dayDate = new Date(startDate);
+            dayDate.setDate(startDate.getDate() + index);
+            dayDateMap[day] = dayDate;
+        });
+        // --- END OF NEW DATE LOGIC ---
+
         const attendanceQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
                 SELECT 
-                    M.TR,
-                    M.Name,
+                    M.TR, M.Name, S.SlotName,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
-                    A.IsPresent,
-                    A.OnLeave  -- We must SELECT the new column
+                    A.IsPresent, A.OnLeave
                 FROM Master M
-                LEFT JOIN Attendance A 
-                    ON M.TR = A.TR AND A.WeekID = @WeekID
-                WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active'
+                LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
+                LEFT JOIN Slots S ON M.SlotID = S.SlotID
+                WHERE 
+                    M.Branch = @Branch AND M.Gender = @Gender AND 
+                    M.Status = 'Active' AND S.IsActive = 1
+                ORDER BY S.SlotName, M.Name
             `);
 
         const resultMap = new Map();
 
-        // Initialize all students with 'Absent' for the week
         attendanceQuery.recordset.forEach(row => {
             if (!resultMap.has(row.TR)) {
-                const record = { TR: row.TR, Name: row.Name };
-                ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach(day => {
-                    record[day] = 'Absent'; // Default to Absent
+                const record = { 
+                    TR: row.TR, 
+                    Name: row.Name,
+                    SlotName: row.SlotName || 'N/A'
+                };
+
+                // --- MODIFIED LOGIC: Set default status based on date ---
+                dayNames.forEach(day => {
+                    // Check if the date for this day is in the future
+                    if (dayDateMap[day] > today) {
+                        record[day] = null; // Future dates are blank
+                    } else {
+                        record[day] = 'Absent'; // Past or present dates default to Absent
+                    }
                 });
+                // --- END OF MODIFIED LOGIC ---
+
                 resultMap.set(row.TR, record);
             }
         });
 
-        // Now, loop through the records again to set the correct status
+        // Loop again to set the correct status for PRESENT or ON LEAVE records
+        // This part correctly overrides the default 'Absent' status
         attendanceQuery.recordset.forEach(row => {
-            if (row.DayName) { // Check if there is an attendance record for this day
+            if (row.DayName) {
                 const studentRecord = resultMap.get(row.TR);
                 if (row.IsPresent) {
                     studentRecord[row.DayName] = 'Present';
                 } else if (row.OnLeave) {
-                    studentRecord[row.DayName] = 'On Leave'; // Set the new status
+                    studentRecord[row.DayName] = 'On Leave';
                 }
-                // If neither is true, it remains 'Absent' by default
             }
         });
 
@@ -586,7 +614,6 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch weekly attendance' });
     }
 });
-
 //--------------------------------------------------------------------------------------------------
 //.............................LOGIN INFO...........................................................
 //--------------------------------------------------------------------------------------------------
