@@ -1,295 +1,476 @@
-/* Modern Color Scheme with Light/Dark Contrast */
+/* =================================================================== */
+/* 1. GLOBAL & ROOT STYLES
+/* =================================================================== */
+
+:root {
+    --primary: #4CAF50;
+    --secondary: #3e8e41;
+    --success: #4CAF50;
+    --danger: #f44336;
+    --light: #f5f7fa;
+    --dark: #2d3436;
+    --gray: #95a5a6;
+}
 
 * {
     box-sizing: border-box;
-    font-family: 'Times New Roman', Times, serif;
 }
 
 body {
     margin: 0;
-    background-color: #f5f7fa;
+    background-color: var(--light);
+    font-family: 'Poppins', sans-serif; /* Standardized font for the dashboard */
+    color: black;
+    overflow-x: hidden;
 }
 
+h2 {
+    color: var(--primary);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+
+/* =================================================================== */
+/* 3. UNIFIED HEADER, INFO-BAR & NAV (Professional Polish)
+/* =================================================================== */
+
+/* 1. The Main Header Container */
+.app-header {
+    background: #232526; /* A solid, professional background */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 10;
+}
+
+/* 2. Top Bar & Welcome Text (Header) */
 .header {
-    text-align: center;
-    padding: 40px 20px;
-    background-image: url("images/gym_scene_converted.jpg"); /* make sure the path is correct */
-    background-size: cover;         /* fill entire area */
-    background-position: center;    /* center the image */
-    background-repeat: no-repeat;
-    background-attachment: fixed;   /* optional: creates a parallax feel */
-    height: 400px;                  /* adjust as per image height */
-    color: #ecf0f1;
-    border-bottom: 4px solid #4CAF50;
-    box-shadow: 0 4px 30px rgba(0,0,0,0.3);
-    position: relative;
-    overflow: hidden;
-    perspective: 1000px;
-}
-
-.header::before,
-.header::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        45deg,
-        rgba(76, 175, 80, 0.15) 0%,
-        rgba(76, 175, 80, 0) 50%
-    );
-    animation: shine 6s infinite;
-    mix-blend-mode: overlay;
-}
-
-.header::after {
-    background: linear-gradient(
-        -45deg,
-        rgba(255,255,255,0.1) 0%,
-        rgba(255,255,255,0) 50%
-    );
-    animation: shine 8s infinite 2s;
-}
-
-@keyframes shine {
-    0% { transform: translateX(-100%) skewX(-15deg); }
-    100% { transform: translateX(100%) skewX(-15deg); }
-}
-
-.header-content {
-    position: relative;
-    z-index: 2;
-    transform-style: preserve-3d;
-    animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0) rotateX(5deg); }
-    50% { transform: translateY(-10px) rotateX(5deg); }
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 30px;
+    /* NEW: Replaced distracting image with a clean, subtle gradient */
+    background: linear-gradient(to right, #2c3e50, #4b6cb7); 
 }
 
 .header h1 {
-    font-size: 3.5rem;
-    margin-bottom: 15px;
-    color: #00FFEA !important;
-    text-transform: uppercase;
-    letter-spacing: 4px;
-    text-shadow: 3px 3px 8px rgba(0,0,0,0.4);
-    animation: pulse 2s infinite alternate,
-               colorShift 8s infinite alternate;
-    display: inline-block;
-    background: linear-gradient(90deg, #00FFEA, #9B59B6);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-@keyframes colorShift {
-    0% { filter: hue-rotate(0deg); }
-    100% { filter: hue-rotate(20deg); }
+    font-size: 2rem;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    margin: 0;
 }
 
 .header h2 {
-    font-size: 1.8rem;
-    color: #00FFEA;
+    font-size: 1rem;
+    color: #bdc3c7; /* Softer color for the subtitle */
+    text-shadow: none;
+    margin: 4px 0 0;
     font-weight: 300;
-    letter-spacing: 2px;
-    animation: fadeIn 1.5s ease-out,
-               floatText 4s ease-in-out infinite;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
 }
 
-@keyframes floatText {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+/* A cleaner, more subtle logout button */
+.header-actions .btn {
+    background: transparent;
+    border: 1px solid #bdc3c7;
+    color: white;
+    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: 5px;
+    transition: all 0.2s ease-in-out;
+}
+.header-actions .btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: white;
 }
 
-.header h3 {
-    font-size: 1.4rem;
-    color: #FFB84D;
-    animation: slideUp 1s ease-out,
-               fadeInOut 6s infinite;
-    margin-top: 10px;
-}
 
-@keyframes fadeInOut {
-    0%, 100% { opacity: 0.8; }
-    50% { opacity: 1; }
-}
-
-.header hr {
-    border: none;
-    height: 2px;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(76, 175, 80, 0.5),
-        transparent
-    );
-    margin: 20px auto;
-    width: 60%;
-    animation: expand 2s ease-out;
-}
-
-@keyframes expand {
-    from { width: 0; opacity: 0; }
-    to { width: 60%; opacity: 1; }
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.main {
+/* 3. A Structured & Consistent Info Bar */
+.info-bar {
     display: flex;
-    height: 100vh;
-    overflow: hidden;
-    position: relative;
-    background: #f5f7fa;
-}
-
-.left-section {
-    width: 60%;
-    padding: 40px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    justify-content: center; /* Aligns the group of items to the center */
     align-items: center;
-    background-image: url("images/gym final.jpg"); /* path to your image */
-    background-size: cover;        /* stretches to fill screen */
-    background-repeat: no-repeat;
-    background-position: center;
-    background-blend-mode: overlay;
-}
-
-.right-section {
-    width: 40%;
-    padding: 40px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
-    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-}
-
-/* Slideshow styles */
-
-.slideshow-container {
-    width: 100%;
-    max-width: 600px;
-    padding: 20px;
-    background-color: rgba(44, 62, 80, 0.7);
-    border-radius: 10px;
-}
-
-.quote-slide q {
-    font-size: 28px;
-    font-style: italic;
-    font-weight: 300;
-    line-height: 1.6;
-    color: #ecf0f1;
-    padding: 20px;
-    display: block;
-    border-radius: 8px;
-    border-left: 4px solid #4CAF50;
-}
-
-/* Enhanced Button Styles with No. 045 Design */
-
-.login-buttons {
-    display: flex;
-    flex-direction: row;
+    gap: 25px; /* Space between items */
     flex-wrap: wrap;
-    gap: 40px;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    max-width: 700px;
-    padding: 30px;
-    margin: 0 auto;
+    background: #1f2c39;
+    padding: 12px 30px;
+    font-size: 0.9rem;
+    color: #bdc3c7;
+    border-top: 1px solid #465a70;
 }
 
-.login-btn {
-    position: relative;
-    width: 130px;
-    height: 130px;
-    border: none;
-    background: none;
-    padding: 0;
-    margin: 0 auto;
-    cursor: pointer;
-    transform-style: preserve-3d;
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+/* Use a separator for a cleaner look than different backgrounds */
+.info-item:not(:first-child)::before {
+    content: '|';
+    margin-right: 25px;
+    color: #465a70;
 }
 
-.login-btn-icon {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.1);
-    /* Cross-browser backdrop filter */
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 6px 30px rgba(0,0,0,0.2),
-                inset 0 0 0 1px rgba(255,255,255,0.2),
-                0 10px 20px -5px rgba(0,0,0,0.3);
-    transform: translateZ(20px);
-    transition: all 0.3s ease;
-}
-
-.login-btn-label {
-    position: absolute;
-    top: -28px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    color: #fff;
+.info-item span,
+.info-item.goal {
+    color: #ffffff; /* Make all key info white */
     font-weight: 600;
-    font-size: 15px;
-    background: rgba(0,0,0,0.6);
-    padding: 5px 12px;
-    border-radius: 20px;
-    /* Cross-browser backdrop filter */
-    -webkit-backdrop-filter: blur(5px);
-    backdrop-filter: blur(5px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    /* REMOVED: Inconsistent background for the goal item */
 }
 
-.login-btn:hover {
-    transform: translateY(-5px) scale(1.05); /* Scale effect */
-    background: rgba(255, 255, 255, 0.2); /* Slightly change background color */
+
+/* 4. A Balanced, Full-Width Navigation */
+.navbar {
+    display: flex; /* This remains the same */
+    justify-content: center;
+    background-color: #2c3e50;
+    border-top: 1px solid #465a70;
 }
 
-.login-btn:hover .login-btn-icon {
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2),
-                inset 0 0 0 1px rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.15);
+.navbar a {
+    color: #ecf0f1;
+    text-decoration: none;
+    padding: 15px 20px; /* Increased padding for a taller, more modern feel */
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+    border-bottom: 3px solid transparent; /* Prepare for the active state indicator */
+    flex-grow: 1; /* NEW: This makes the links spread out evenly to fill the bar */
 }
 
-.login-btn:active {
-    transform: translateY(0);
+.navbar a:hover {
+    background-color: #3b5066;
 }
 
-/* Animations */
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+.navbar a.active {
+    color: #00FFEA; /* Bright color for active link text */
+    background-color: #1f2c39;
+    border-bottom-color: #00FFEA; /* A clear indicator for the active tab */
 }
 
-.quote-slide {
-    animation: fadeIn 0.8s ease-out;
+/* =================================================================== */
+/* 5. MAIN CONTENT & CARDS
+/* =================================================================== */
+
+.content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
+}
+
+.card p {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.card-title {
+    text-align: center;
+    font-size: 1rem;
+}
+
+/* =================================================================== */
+/* 6. FORMS & BUTTONS
+/* =================================================================== */
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    transition: all 0.3s;
+    color: black;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+select.form-control {
+    color: #000;
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    appearance: none;
+}
+
+select.form-control option {
+    color: #000;
+}
+
+/* Styles for disabled elements */
+select:disabled,
+button:disabled {
+    background-color: #f2f2f2;
+    color: #888;
+    cursor: not-allowed;
+    border: 1px solid #ccc;
+}
+
+button:disabled {
+    background-color: #ccc;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: black; /* Reverted to black for visibility on light backgrounds */
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn:hover {
+    background: var(--secondary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5);
+}
+
+/* Specific rule to make the header's logout button text white */
+.header .btn {
+    color: black;
+    background-color: #00f0ff;
+}
+
+/* Accessibility improvement for keyboard users */
+.btn:focus-visible,
+.navbar a:focus-visible {
+    outline: 2px solid #00FFEA;
+    outline-offset: 2px;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+/* =================================================================== */
+/* 7. TABLES
+/* =================================================================== */
+
+/* Universal table styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+table th, table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    color: black;
+}
+
+table thead th {
+    background-color: var(--primary);
+    color: white;
+}
+
+table tr:nth-child(even) {
+    background: rgba(67, 97, 238, 0.05);
+}
+
+/* Specific styles for #attendanceTable */
+#attendanceTable th, #attendanceTable td {
+    border: 1px solid #ccc;
+    padding: 12px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.present {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.absent {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+.on-leave {
+    background-color: #fff3cd; /* Light yellow background */
+    color: #856404; /* Dark yellow/brown text */
+    font-weight: bold;
+}
+
+/* Specific styles for .styled-plan-table */
+.styled-plan-table {
+    margin-top: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.styled-plan-table th, .styled-plan-table td {
+    padding: 10px 14px;
+}
+
+.styled-plan-table th {
+    background-color: #37c8ed;
+    color: #444; /* Changed from white for better contrast */
+    font-weight: 600;
+}
+
+.styled-plan-table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+td iframe {
+    border-radius: 8px;
+    max-width: 100%;
+    height: 180px;
+}
+
+/* =================================================================== */
+/* 8. SPECIFIC COMPONENTS
+/* =================================================================== */
+
+.filter-group {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.attendance-summary {
+    margin-top: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    background-color: #e0f7e9;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    animation: fadeInSlide 1s ease forwards;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    user-select: none;
+}
+
+.planner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    padding: 0 15px;
+}
+
+.day-wrapper {
+    flex: 1 1 280px;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #3a3897 50%, #2c2a72 50%, #1a1a4e 100%);
+    border-radius: 16px;
+    padding: 15px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+    transition: transform 0.2s ease-in-out;
+}
+
+.day-wrapper:hover {
+    transform: translateY(-3px);
+}
+
+.day-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-align: center;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.day-card {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 140px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    overflow-y: auto;
+}
+
+.day-card[contenteditable="true"]:focus {
+    outline: none;
+    border-color: #007bff;
+    background: #f0f8ff;
+}
+
+
+
+/* =================================================================== */
+/* 9. RESPONSIVE DESIGN FOR MOBILE DEVICES
+/* =================================================================== */
+
+@media (max-width: 768px) {
+
+    /* --- Header on Mobile --- */
+    .header {
+        flex-direction: column; /* Stack welcome text and button vertically */
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .header h1 {
+        font-size: 1.5rem; /* Smaller font for small screens */
+    }
+
+    .header h2 {
+        font-size: 0.8rem;
+    }
+
+    /* --- Info Bar on Mobile --- */
+    .info-bar {
+        justify-content: flex-start; /* Align items to the left */
+        gap: 15px;
+        padding: 10px 15px;
+    }
+    
+    .info-item:not(:first-child)::before {
+        display: none; /* Hide the separators on mobile to save space */
+    }
+
+    /* --- Navigation on Mobile --- */
+    .navbar {
+        flex-direction: column; /* Stack nav links vertically */
+        align-items: stretch; /* Make links full-width */
+    }
+
+    .navbar a {
+        border-bottom: 1px solid #465a70;
+        border-radius: 0;
+    }
+
+    /* --- Main Content on Mobile --- */
+    .content {
+        padding: 1rem; /* Reduce padding on smaller screens */
+    }
+    
+    /* --- Planner on Mobile --- */
+    .planner {
+        flex-direction: column; /* Ensure day cards stack in a single column */
+    }
+
 }
