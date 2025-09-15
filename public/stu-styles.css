@@ -474,3 +474,47 @@ td iframe {
     }
 
 }
+
+/* --- UPDATED: Leaderboard Toast Styling --- */
+#leaderboard-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px; /* Slightly wider */
+     background-color: #ffffff; /* <-- Ensures a solid white background */
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 1.25rem; /* More padding */
+    border-top: 4px solid var(--primary-color);
+    z-index: 1000;
+    
+    /* Animation properties */
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+#leaderboard-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+#leaderboard-toast h3 {
+    margin-top: 0;
+    margin-bottom: 1rem; /* More space below header */
+    font-size: 1.25rem; /* Larger header */
+    font-weight: 700;   /* Bolder header */
+    text-align: center;
+}
+
+#leaderboard-toast ol {
+    margin: 0;
+    padding-left: 1.75rem; /* Adjusted padding for medals */
+}
+
+#leaderboard-toast li {
+    padding: 0.4rem 0;  /* More vertical space */
+    font-size: 1.1rem;    /* Larger text */
+    font-weight: 600;   /* Bolder text */
+    color: var(--text-dark);
+}

@@ -517,6 +517,8 @@
 </div>
 
 
+
+
    <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
 
@@ -537,6 +539,7 @@ async function getStudentSession() {
       return;
     }
 
+    showLeaderboard();
     const user = data.user;
     studentTR = user.TR;
     studentName = user.Name;
@@ -1066,6 +1069,39 @@ mainNav.addEventListener('click', (e) => {
 });
 
 
+// UPDATED function to include rank medals
+async function showLeaderboard() {
+    try {
+        const res = await fetch('/api/leaderboard');
+        const result = await res.json();
+        
+        if (result.success && result.data.length > 0) {
+            const listElement = document.getElementById('leaderboard-list');
+            const toastElement = document.getElementById('leaderboard-toast');
+            
+            listElement.innerHTML = ''; // Clear previous entries
+            
+            const medals = ['🥇', '🥈', '🥉']; // Medals for top 3 ranks
+            
+            result.data.forEach((student, index) => {
+                // Add a medal emoji based on the student's rank (index)
+                const rank_medal = medals[index] || '•';
+                const li = `<li>${rank_medal} ${student.Name} (${student.AttendanceScore} days)</li>`;
+                listElement.insertAdjacentHTML('beforeend', li);
+            });
+
+            // Show the leaderboard
+            toastElement.classList.add('show');
+
+            // Hide it after 7 seconds
+            setTimeout(() => {
+                toastElement.classList.remove('show');
+            }, 7000);
+        }
+    } catch (err) {
+        console.error("Could not load leaderboard:", err);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     getStudentSession();
@@ -1116,6 +1152,11 @@ function logout() {
     });
   });
 </script>
+<div id="leaderboard-toast">
+    <h3>🏆 Weekly Leaders</h3>
+    <ol id="leaderboard-list">
+        </ol>
+</div>
 
 </body>
 </html>

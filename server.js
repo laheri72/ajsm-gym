@@ -959,6 +959,60 @@ app.get('/api/student/training-plans', async (req, res) => {
 });
 
 
+// Add this new API route for the leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+    // Ensure student is logged in to get their branch and gender
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+
+        // This query finds the current week, calculates scores, and ranks the top 3
+        const result = await request.query(`
+            -- First, find the current week's ID
+            DECLARE @CurrentWeekID INT;
+            SELECT @CurrentWeekID = WeekID FROM AttendanceWeek WHERE GETDATE() BETWEEN WeekStartDate AND WeekEndDate;
+
+            -- Now, calculate scores and rank students
+            WITH AttendanceScores AS (
+                SELECT TR, COUNT(*) AS AttendanceCount
+                FROM Attendance
+                WHERE WeekID = @CurrentWeekID AND IsPresent = 1
+                GROUP BY TR
+            ),
+            LogScores AS (
+                -- This calculates the number of exercises by counting commas + 1
+                SELECT TR, SUM(ISNULL(LEN(BodyParts) - LEN(REPLACE(BodyParts, ',', '')), 0) + 1) AS LogCount
+                FROM TrainingPlan
+                WHERE CreatedAt BETWEEN (SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @CurrentWeekID)
+                                  AND DATEADD(day, 1, (SELECT WeekEndDate FROM AttendanceWeek WHERE WeekID = @CurrentWeekID))
+                GROUP BY TR
+            )
+            SELECT TOP 3
+                M.Name,
+                COALESCE(A.AttendanceCount, 0) AS AttendanceScore
+            FROM Master M
+            LEFT JOIN AttendanceScores A ON M.TR = A.TR
+            LEFT JOIN LogScores T ON M.TR = T.TR
+            WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active'
+            ORDER BY
+                COALESCE(A.AttendanceCount, 0) DESC, -- Primary sort: Highest attendance
+                COALESCE(T.LogCount, 0) DESC;         -- Tie-breaker: Most exercises logged
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching leaderboard:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
+    }
+});
+
 
 
 app.get('/api/training-plans/:tr', async (req, res) => {
