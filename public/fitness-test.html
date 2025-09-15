@@ -6,9 +6,12 @@
     <title>Staff Dashboard - FitTracker</title>
     <link rel="icon" href="images/favicon.png" type="image/png">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script> 
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -169,9 +172,9 @@
           background-color: var(--primary);
         }
 
-        thead th {
+        /* thead th {
           color: white;
-        }
+        } */
 
 
         th, td {
@@ -342,7 +345,7 @@
 
         <!-- Student Info -->
         <div id="studentInfo" class="mb-4 hidden">
-            <h5>Talabat Information:</h5>
+            <h5>Student Information:</h5>
             <table class="table table-bordered">
                 <tbody>
                     <tr><th>Name</th><td id="studentName"></td></tr>
@@ -517,7 +520,7 @@
 <!-- ---------------------------------------------------------------------------------------------------------------- -->
         <section id="student-swim" class="card" style="display:none;">
             <h2>Swimming Test</h2>
-          <h2>Comming Soon</h2>
+          <h2>Coming Soon</h2>
         </section>
 
         
@@ -1077,64 +1080,74 @@ function renderProgressBar(records) {
 }
 
 
-
 async function loadTestHistory(tr) {
+    Swal.showLoading();
     try {
         const response = await fetch(`/api/testrecords/${tr}`);
         const records = await response.json();
-        const tbody = document.getElementById('historyBody');
-        tbody.innerHTML = '';
-
         const saveBtn = document.getElementById('saveBtn');
         const saveWarning = document.getElementById('saveWarning');
+        const tbody = document.getElementById('historyBody');
+        tbody.innerHTML = ''; // Clear existing content
 
+        // Handle save button visibility based on submission timing
         if (records.length > 0) {
-            // Get latest record
             const latest = new Date(records[0].CreatedAt);
             const now = new Date();
             const diffDays = Math.floor((now - latest) / (1000 * 60 * 60 * 24));
 
             if (diffDays < 7) {
-                // Hide button if less than 7 days
                 saveBtn.style.display = "none";
-                saveWarning.textContent =
-                    `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
+                saveWarning.textContent = `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
                 saveWarning.style.color = 'orange';
             } else {
-                // Show button
                 saveBtn.style.display = "inline-block";
                 saveWarning.textContent = '✅ You can save a new record now.';
                 saveWarning.style.color = 'green';
             }
         } else {
-            // No record yet → first time user
             saveBtn.style.display = "inline-block";
             saveWarning.textContent = '⚠️ First attempt. Please submit carefully.';
             saveWarning.style.color = 'red';
         }
 
-        // Build history table
-        records.forEach(record => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${new Date(record.CreatedAt).toLocaleDateString()}</td>
-                <td>${record.BMI.toFixed(2)}</td>
-                <td>${record.BodyFat.toFixed(2)}</td>
-                <td>${record.BMR.toFixed(1)}</td>
-                <td>${record.VO2Max ? record.VO2Max.toFixed(1) : 'N/A'}</td>
-                <td>${record.Total.toFixed(1)}</td>
-                <td><strong>${record.Grade}</strong></td>
-            `;
-            tbody.appendChild(row);
+        // Initialize or reinitialize DataTables
+        if ($.fn.DataTable.isDataTable('#historyTable')) {
+            $('#historyTable').DataTable().destroy(); // Destroy existing instance to avoid conflicts
+        }
+
+        const table = $('#historyTable').DataTable({
+            paging: true,
+            searching: true,
+            ordering: true,
+            responsive: true, // Add this
+            data: records, // Pass records directly to DataTables
+            columns: [
+                { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
+                { data: 'BMI', render: (data) => parseFloat(data).toFixed(2) },
+                { data: 'BodyFat', render: (data) => parseFloat(data).toFixed(2) },
+                { data: 'BMR', render: (data) => parseFloat(data).toFixed(1) },
+                { data: 'VO2Max', render: (data) => (data ? parseFloat(data).toFixed(1) : 'N/A') },
+                { data: 'Total', render: (data) => parseFloat(data).toFixed(1) },
+                { data: 'Grade', render: (data) => `<strong>${data}</strong>` }
+            ],
+            language: {
+                emptyTable: "No test records available. Please submit a fitness test."
+            }
         });
 
         renderProgressBar(records);
+        Swal.close();
 
     } catch (err) {
         console.error("Error loading test history", err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error Loading History',
+            text: 'Failed to load test history. Please try again later.'
+        });
     }
 }
-
 
 
 
@@ -1240,7 +1253,7 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
     e.preventDefault();
 
     fetch('/api/logout', {
-        method: 'GET',
+        method: 'POST',
         credentials: 'include'
     })
     .then(res => res.json())
