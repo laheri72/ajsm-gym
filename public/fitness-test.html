@@ -65,21 +65,8 @@
             background: rgba(67, 97, 238, 0.1);
         }
 
-        thead select {
-    background-color: #2c2c2c; /* Dark background for closed select */
-    color: white; /* White text inside */
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 4px;
-    font-size: 14px;
-    appearance: none; /* Optional: for custom arrow */
-  }
 
-  /* Style the dropdown list (the options inside) */
-  thead select option {
-    background-color: #2c2c2c; /* Dark background inside dropdown */
-    color: white; /* White text inside options */
-  }
+
 
         .content {
             flex: 1;
@@ -88,13 +75,7 @@
             margin: 0 auto;
             width: 100%;
         }
-        thead select {
-        background-color: white;
-        color: black;
-        border: 1px solid #ccc;
-        padding: 2px;
-        font-size: 14px;
-        }
+
 
           thead select {
     background-color: #2c2c2c; /* Dark background for closed select */
@@ -174,22 +155,9 @@
 }
 
 
-        .btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--primary);
-            color: black;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
 
-        .btn:hover {
-            background: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+
+
 
         table {
             width: 100%;
@@ -261,17 +229,17 @@
             }
         }
 
-        .btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--primary);
-            color: black;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.4s ease;
-            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
-        }
+            .btn {
+                padding: 0.75rem 1.5rem;
+                background: var(--primary);
+                color: black;
+                border: none;
+                border-radius: 0.5rem;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.4s ease;
+                box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+            }
 
         .btn:hover {
             background: var(--secondary);
@@ -390,16 +358,17 @@
 
         <!-- Fitness Test Form -->
         <div id="fitnessForm" class="hidden">
-            <h5>Enter Fitness Test Data:</h5>
             <button class="btn btn-info mb-3" onclick="showTestInfo()" style="background-color: moccasin;">ℹ️ Test Info</button>  
             <br>
             <p>Click on the button "Test Info" to view  Instructions & Guidelines </p>
             <br>
-            <button onclick="showConverter()">📏 Convert Inches to CM</button>
+            <button onclick="showConverter()" class="btn btn-secondary mb-4">📏 Convert Inches to CM</button>
             <br>
             <br>
             <br>
             <form id="testForm">
+                <h5>Enter Fitness Test Data:</h5>
+                <br>
 
                 <div class="row mb-3">
                     <div class="col">
@@ -1197,45 +1166,39 @@ document.getElementById("saveGoalBtn").addEventListener("click", (e) => {
 });
 
 
-function toNum(x) {
-  const v = parseFloat(x);
-  return Number.isFinite(v) ? v : null;
-}
-
-function computeProgress(start, current, goal) {
-  // Guard invalid numbers
-  if ([start, current, goal].some(v => v === null)) return null;
-
-  // If start == goal: already “at goal” at the beginning
-  if (start === goal) {
-    return current === goal ? 100 : 0; // cap to 0/100 to avoid div-by-zero weirdness
-  }
-
-  // Linear progress along the line from start -> goal (direction-aware)
-  const fraction = (current - start) / (goal - start);
-  return Math.max(0, Math.min(100, fraction * 100)); // clamp 0..100 (overshoot becomes 100)
-}
-
-
-
-
-
 
   //----------------------------------------------------------------------------------------------------------------
         
-      // Trigger record load when dashboard loads
-      document.getElementById('tab-fit').addEventListener('click', () => {
-        document.getElementById('student-swim').style.display = 'none';
-        document.getElementById('student-fit').style.display = 'block';
-        loadStudentRecords();
-      });
-  
-      document.getElementById('tab-swim').addEventListener('click', () => {
-        document.getElementById('student-fit').style.display = 'none';
-        document.getElementById('student-swim').style.display = 'block';
-      });
+// Get all the navigation links
+const navLinks = document.querySelectorAll('.navbar a');
+const fitSection = document.getElementById('student-fit');
+const swimSection = document.getElementById('student-swim');
 
+// Hide the swim section by default
+swimSection.style.display = 'none';
 
+// Add a click listener to each link
+navLinks.forEach(link => {
+    link.addEventListener('click', function(event) {
+        event.preventDefault(); // Stop the link from trying to navigate
+
+        // 1. Remove 'active' class from ALL nav links
+        navLinks.forEach(nav => nav.classList.remove('active'));
+
+        // 2. Add 'active' class to the ONE link that was clicked
+        this.classList.add('active');
+
+        // 3. Show the correct content section based on the clicked link's ID
+        if (this.id === 'tab-fit') {
+            fitSection.style.display = 'block';
+            swimSection.style.display = 'none';
+        } else if (this.id === 'tab-swim') {
+            fitSection.style.display = 'none';
+            swimSection.style.display = 'block';
+        }
+        // You can ignore the logout link or handle it separately
+    });
+});
 
 //-------------------------------------------------------------------------------------------------
 function clearFitnessResults() {
