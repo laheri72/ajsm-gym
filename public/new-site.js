@@ -1,76 +1,97 @@
-// Slideshow functionality
-let slideIndex = 0;
-showSlides();
+// Wait for the entire HTML document to be loaded and parsed before running the script.
+document.addEventListener('DOMContentLoaded', () => {
 
-function showSlides() {
-    let i;
-    let slides = document.getElementsByClassName("quote-slide");
-    
-    if (slides.length > 0) {
-        // Hide all slides
-        for (i = 0; i < slides.length; i++) {
-            slides[i].style.display = "none";  
-        }
-        
-        // Move to next slide
-        slideIndex++;
-        if (slideIndex > slides.length) {slideIndex = 1}
-        
-        // Show current slide
-        slides[slideIndex-1].style.display = "block";
-        
-        // Change slide every 3 seconds
-        setTimeout(showSlides, 3000);
+    /**
+     * Initializes the rotating quote slideshow.
+     * Uses CSS classes for smooth transitions instead of direct style manipulation.
+     */
+    function initSlideshow() {
+        const slides = document.querySelectorAll('.quote-slide');
+        if (slides.length === 0) return; // Exit if no slides are found
+
+        let currentSlideIndex = 0;
+
+        // Hide all slides initially except the first one
+        slides.forEach((slide, index) => {
+            if (index !== currentSlideIndex) {
+                slide.classList.remove('is-active');
+            } else {
+                slide.classList.add('is-active');
+            }
+        });
+
+        setInterval(() => {
+            // Remove active class from the current slide
+            slides[currentSlideIndex].classList.remove('is-active');
+
+            // Update the index, looping back to 0 if at the end
+            currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+
+            // Add active class to the new current slide
+            slides[currentSlideIndex].classList.add('is-active');
+        }, 5000); // Change quote every 5 seconds
     }
-}
 
-function setupButton(selector, page) {
-    const btn = document.querySelector(selector);
-    if (btn) {
-        btn.addEventListener('click', () => {
-            window.location.href = page;
+    /**
+     * Sets up navigation for all login buttons using a single event listener.
+     * This is more efficient than adding a listener to each button.
+     */
+    function initNavigation() {
+        const loginContainer = document.querySelector('.login-buttons');
+        if (!loginContainer) return; // Exit if the container isn't on the page
+
+        loginContainer.addEventListener('click', (event) => {
+            // Find the closest button element that was clicked
+            const button = event.target.closest('.login-btn');
+            
+            // Check if a button was clicked and if it has a data-href attribute
+            if (button && button.dataset.href) {
+                window.location.href = button.dataset.href;
+            }
         });
     }
-}
 
-setupButton('.trainer-btn', 'trainer.html');
-setupButton('.student-btn', 'student.html');
-setupButton('.staff-btn', 'staff.html');
-setupButton('.blog-btn', 'blog.html');
+    /**
+     * Handles the submission of the attendance form using localStorage.
+     */
+    function initAttendanceForm() {
+        const attendanceForm = document.getElementById('attendanceForm');
+        if (!attendanceForm) return; // Exit if the form isn't on the page
 
-// Attendance Form Handling (only if form exists)
-const attendanceForm = document.getElementById('attendanceForm');
-if (attendanceForm) {
-    attendanceForm.addEventListener('submit', function(e) {
-        e.preventDefault();
+        attendanceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
 
-        // Get form values
-        const day = document.getElementById('day').value;
-        const studentId = document.getElementById('studentId').value;
-        const attendance = document.querySelector('input[name="attendance"]:checked').value;
+            const formData = new FormData(this);
+            const studentId = formData.get('studentId');
+            const attendance = formData.get('attendance');
+            const day = formData.get('day');
 
-        // Create attendance record
-        const record = {
-            day,
-            studentId,
-            attendance,
-            date: new Date().toISOString()
-        };
+            if (!studentId || !attendance || !day) {
+                alert('Please fill out all fields.');
+                return;
+            }
 
-        // Get existing records or initialize array
-        let records = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
+            const record = {
+                day,
+                studentId,
+                attendance,
+                timestamp: new Date().toISOString()
+            };
 
-        // Add new record
-        records.push(record);
+            // Get existing records or initialize an empty array
+            const records = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
+            records.push(record);
 
-        // Save back to localStorage
-        localStorage.setItem('attendanceRecords', JSON.stringify(records));
+            // Save back to localStorage
+            localStorage.setItem('attendanceRecords', JSON.stringify(records));
 
-        // Reset form
-        this.reset();
+            this.reset();
+            alert('Attendance recorded successfully!');
+        });
+    }
 
-        // Show success message
-        alert('Attendance recorded successfully!');
-    });
-}
-
+    // Initialize all modules
+    initSlideshow();
+    initNavigation();
+    initAttendanceForm(); // This will run but do nothing if the form is not on the current page.
+});

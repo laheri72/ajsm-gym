@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="images/favicon.png" type="image/png">
-
   <title>Marol-Jamea Gym Website</title>
   <style>
     /* RESET */
@@ -11,8 +11,8 @@
       margin: 0;
       padding: 0;
       height: 100%;
-      overflow-x: hidden;
-      font-family: "Oswald", sans-serif;
+      overflow: hidden; /* Changed from overflow-x for full-screen lock */
+      font-family: "Oswald", sans-serif; /* Make sure to import this font if it's custom */
       scroll-behavior: smooth;
     }
 
@@ -39,21 +39,23 @@
       text-align: center;
       z-index: 20;
       transition: opacity 1s ease, transform 1s ease;
+      width: 90%; /* Added for better mobile view */
     }
-
 
     .title h1 {
       font-size: 3rem;
       font-weight: bold;
       color: white;
       margin: 0;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.7); /* Added shadow for readability */
     }
 
     .tagline {
-      margin-top: 150px;
-      margin-left: 530px;
+      margin-top: 10px; /* Adjusted margin */
       font-size: 1.5rem;
       color: #eee;
+      opacity: 0; /* Initially hidden for animation */
+      animation: fadeInTagline 1.5s ease 1s forwards; /* Creative: Fades in after title */
     }
 
     /* GYM SPLASH */
@@ -89,10 +91,10 @@
     .logo-image {
       width: 150px;
       opacity: 0;
-      animation: logo-animation 1.5s ease forwards; /* Animation applied here */
+      animation: logo-animation 1.5s ease forwards;
     }
 
-    /* Fancy exit effect */
+    /* FANCY EXIT EFFECT */
     .fade-elements {
       opacity: 0;
       transform: scale(1.2);
@@ -111,22 +113,30 @@
       cursor: pointer;
       border-radius: 30px;
       backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px); /* For Safari */
       transition: background 0.3s ease;
+      z-index: 100; /* Ensure it's clickable */
     }
 
     .skip-button:hover {
       background: rgba(255, 255, 255, 0.3);
     }
 
-    /* Logo animation keyframe */
+    /* ANIMATION KEYFRAMES */
     @keyframes logo-animation {
-      0% {
+      from {
         opacity: 0;
         transform: scale(0.5);
       }
-      100% {
+      to {
         opacity: 1;
         transform: scale(1);
+      }
+    }
+
+    @keyframes fadeInTagline {
+      to {
+        opacity: 1;
       }
     }
   </style>
@@ -134,40 +144,32 @@
 
 <body>
 
-<!-- 🌄 BACKGROUND -->
 <div class="background-container"></div>
 
-<!-- ✨ TITLE + TAGLINE -->
 <div class="text-overlay" id="textOverlay">
   <div class="title">
     <h1>Welcome to FitTracker</h1>
   </div>
-</div>
   <div class="tagline">Strength • Discipline • Power</div>
 </div>
 
-<!-- 💪 SPLASH IMAGES -->
 <div class="gym-splash" id="splash">
   <div class="image-container" id="imageContainer">
-    <img src="images/Unted.png" alt="Center Image" class="logo-image" id="utedImage">
+    <img src="images/Unted.png" alt="University Logo" class="logo-image" id="utedImage">
   </div>
-
-  <!-- ⏩ Skip Button -->
   <button class="skip-button" onclick="skipIntro()">Skip Intro</button>
 </div>
 
-<!-- 🛠 JS Scripts -->
 <script>
-  // Automatically fade out after 6s
-  setTimeout(function() {
-    fadeToBlackAndRedirect();
-  }, 4000);
+  // Automatically start transition after 4 seconds
+  const autoRedirect = setTimeout(startTransition, 4000);
 
   function skipIntro() {
-    fadeToBlackAndRedirect();
+    clearTimeout(autoRedirect); // Stop the automatic redirect if skip is clicked
+    startTransition();
   }
 
-  function fadeToBlackAndRedirect() {
+  function startTransition() {
     const splash = document.getElementById('splash');
     const imageContainer = document.getElementById('imageContainer');
     const textOverlay = document.getElementById('textOverlay');
@@ -177,10 +179,10 @@
     imageContainer.classList.add('fade-elements');
     textOverlay.classList.add('fade-elements');
 
-    // Wait for the animation to finish
-    setTimeout(function() {
+    // Wait for the animation to finish before redirecting
+    setTimeout(() => {
       window.location.href = "homepage.html";
-    }, 1000); // 1s = same as transition time
+    }, 1000); // 1s = same as CSS transition time
   }
 </script>
 
