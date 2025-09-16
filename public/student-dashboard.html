@@ -23,7 +23,7 @@
                 <h2 id="welcomeText"></h2>
             </div>
             <div class="header-actions">
-                <button onclick="logout()" class="btn">Logout</button>
+                <button id="logoutBtn" class="btn">Logout</button>
             </div>
         </header>
 
@@ -82,7 +82,7 @@
   </div>
 
   <div class="text-center mt-4">
-    <button onclick="savePlan()" type="button" class="btn btn-primary me-2">Save</button>
+    <button id="savePlanBtn" type="button" class="btn btn-primary me-2">Save</button>
     <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
       Apply Last Week’s Plan
     </button>
@@ -101,7 +101,7 @@
             <select id="weekSelect" class="form-control" required>
                 <option value="" disabled selected>Loading Weeks...</option>
               </select>          
-            <button class="btn" onclick="loadAttendance()" style="margin-top: 0.5rem;">Load Attendance</button>
+            <button id="loadAttendanceBtn" class="btn" style="margin-top: 0.5rem;">Load Attendance</button>
           </div>
     
        
@@ -491,7 +491,7 @@
 
               <div style="margin-top: 20px;">
                 <h2>Need guidance on specific body part workouts?</h2>
-                <select id="bodyPartSelect" class="form-select" onchange="loadBodyPartTips()">
+                <select id="bodyPartSelect" class="form-select">
                   <option value="">-- Select Body Part --</option>
                   <option value="Cardio">Cardio</option>
                   <option value="Chest">Chest</option>
@@ -573,7 +573,11 @@ async function getStudentSession() {
 
           loadTip(stu.Goal);
         } else {
-          alert('Student info not found.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Student info not found.',
+          });
         }
       });
 
@@ -592,7 +596,11 @@ function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;
     const loadButton = weekSelect.nextElementSibling; // Get the button
     if (!selectedWeek) {
-        alert('Please select a week.');
+            Swal.fire({
+        icon: 'warning',
+        title: 'Oops...',
+        text: 'Please select a week to view attendance.',
+    });
         return;
     }
         loadButton.textContent = 'Loading...';
@@ -600,7 +608,11 @@ function loadAttendance() {
     // --- THIS IS THE ONLY CHANGE NEEDED ---
     // Use the studentTR variable from the global scope, not localStorage.
     if (!studentTR) { 
-        alert('Could not find student TR. Please log in again.');
+            Swal.fire({
+        icon: 'warning',
+        title: 'Oops...',
+        text: 'Could not find student TR. Please log in again.',
+    });
         return;
     }
 
@@ -695,16 +707,6 @@ function renderTrainingPlans(plans) {
   });
 }
 
-
-
-        function loadTip(goal) {
-                let tip = "Stay active and hydrated!";
-                if (goal.includes('Fat Loss')) tip = "Focus on high-protein, low-carb meals.";
-                else if (goal.includes('Muscle Gain')) tip = "Increase protein intake and lift heavy!";
-                else if (goal.includes('Endurance')) tip = "Practice steady cardio sessions.";
-
-                document.getElementById('tipArea').innerText = tip;
-                    }
 
 
 //------------------------------------------------------------------------------
@@ -888,36 +890,7 @@ function loadBodyPartTips() {
             });
     }
 
-//----------------------------------------------------------------------------------------------------------
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const studentTR = localStorage.getItem('studentTR');
-  if (!studentTR) return;
-
-  try {
-    const res = await fetch(`/api/workout-log/${studentTR}`);
-    const result = await res.json();
-
-    const tbody = document.querySelector('#history-table tbody');
-    tbody.innerHTML = '';
-
-    if (result.success && result.data.length > 0) {
-      result.data.forEach(log => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${new Date(log.LogDate).toLocaleString()}</td>
-          <td>${log.MachineName}</td>
-          <td>${log.Value}</td>
-        `;
-        tbody.appendChild(row);
-      });
-    } else {
-      tbody.innerHTML = `<tr><td colspan="3" class="text-center">No workout history yet.</td></tr>`;
-    }
-  } catch (err) {
-    console.error('Failed to load workout history:', err);
-  }
-});
 
 //----------------------------------------------------------------------------------------------------------
 
@@ -1104,10 +1077,30 @@ async function showLeaderboard() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Setup Event Listeners ---
+    // Header and navigation buttons
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('planner-main').addEventListener('click', () => showSection('planner'));
+    document.getElementById('tips-main').addEventListener('click', () => showSection('tips'));
+    document.getElementById('attendance-main').addEventListener('click', () => showSection('attendance'));
+    document.getElementById('logs-main').addEventListener('click', () => showSection('logs'));
+
+    // Planner buttons
+    document.getElementById('savePlanBtn').addEventListener('click', savePlan);
+    document.getElementById('applyLastWeekBtn').addEventListener('click', applyLastWeeksPlan);
+
+    // Attendance button
+    document.getElementById('loadAttendanceBtn').addEventListener('click', loadAttendance);
+
+    // Tips section select dropdown
+    document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
+
+
+    // --- Initial Data Loading ---
     getStudentSession();
-    loadStudentPlans();
+    // loadStudentPlans(); // This is called inside getStudentSession, no need to call twice
     loadWeeklyPlan();
-    loadWeeks(); // Also call this on initial load
+    loadWeeks(); 
 });
 //----------------------------------------------------------------------------------------------------------
 
