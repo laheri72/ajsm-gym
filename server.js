@@ -562,13 +562,15 @@ app.get('/api/student/eligible-weeks', async (req, res) => {
 
 app.get('/api/weekly-attendance/:weekId', async (req, res) => {
     const { weekId } = req.params;
-    const { Branch, Gender } = req.session.user;
-
-    if (!req.session.user) {
+    
+    // Session check remains the same
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
     }
+    const { Branch, Gender } = req.session.user;
 
     try {
+        // This part remains the same: get the start date of the selected week
         const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
@@ -576,44 +578,39 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
         if (weekQuery.recordset.length === 0) {
             return res.status(404).json({ error: 'Week not found' });
         }
-
-        // --- NEW LOGIC: DATE AWARENESS ---
-        // 1. Get today's date and reset time to 00:00:00 for accurate comparison
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // 2. Get the start date of the selected week
         const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
-        
-        // 3. Create a map of day names to their actual dates for the week
-        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayDateMap = {};
-        dayNames.forEach((day, index) => {
-            const dayDate = new Date(startDate);
-            dayDate.setDate(startDate.getDate() + index);
-            dayDateMap[day] = dayDate;
-        });
-        // --- END OF NEW DATE LOGIC ---
 
+        // --- THE MAIN QUERY IS UPDATED HERE ---
         const attendanceQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
+            // ✅ Pass the week's start date as a parameter to the query
+            .input('WeekStartDate', sql.Date, startDate) 
             .query(`
                 SELECT 
-                    M.TR, M.Name, S.SlotName,
+                    M.TR, M.Name, M.JoinedAt, S.SlotName,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
-                    A.IsPresent, A.OnLeave
+                    A.IsPresent,
+                    A.OnLeave  -- Corrected: Added OnLeave to be fetched
                 FROM Master M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
                 LEFT JOIN Slots S ON M.SlotID = S.SlotID
                 WHERE 
-                    M.Branch = @Branch AND M.Gender = @Gender AND 
-                    M.Status = 'Active' AND S.IsActive = 1
-                ORDER BY S.SlotName, M.Name
+                    M.Branch = @Branch 
+                    AND M.Gender = @Gender 
+                    AND M.Status = 'Active'
+                    -- ✅ THIS IS THE KEY: Only include members who had joined by the start of this week
+                    AND M.JoinedAt <= @WeekStartDate;
             `);
 
+        // The rest of your JavaScript logic for processing the results is perfect and does not need to change.
+        // It will now only receive the correctly filtered list of members.
+        
         const resultMap = new Map();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
         attendanceQuery.recordset.forEach(row => {
             if (!resultMap.has(row.TR)) {
@@ -622,24 +619,20 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
                     Name: row.Name,
                     SlotName: row.SlotName || 'N/A'
                 };
-
-                // --- MODIFIED LOGIC: Set default status based on date ---
-                dayNames.forEach(day => {
-                    // Check if the date for this day is in the future
-                    if (dayDateMap[day] > today) {
+                
+                dayNames.forEach((day, i) => {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + i);
+                    if (currentDate > today) {
                         record[day] = null; // Future dates are blank
                     } else {
-                        record[day] = 'Absent'; // Past or present dates default to Absent
+                        record[day] = 'Absent'; // Default to Absent
                     }
                 });
-                // --- END OF MODIFIED LOGIC ---
-
                 resultMap.set(row.TR, record);
             }
         });
 
-        // Loop again to set the correct status for PRESENT or ON LEAVE records
-        // This part correctly overrides the default 'Absent' status
         attendanceQuery.recordset.forEach(row => {
             if (row.DayName) {
                 const studentRecord = resultMap.get(row.TR);

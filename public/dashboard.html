@@ -1483,31 +1483,37 @@ function attachAttendanceLoader() {
         btn.dataset.bound = 'true';
     }
 
-    // --- NEW EXPORT LOGIC STARTS HERE ---
     const exportBtn = document.getElementById('exportAttendanceBtn');
     exportBtn.addEventListener('click', () => {
-        // 1. Get the table element from the DOM
         const table = document.getElementById('attendanceTable');
         const tbody = table.querySelector('tbody');
 
-        // 2. Check if there is data to export
-        // This prevents exporting an empty sheet or a sheet with "No records found"
         if (!tbody || tbody.rows.length === 0 || tbody.rows[0].cells[0].hasAttribute('colspan')) {
             Swal.fire('No Data to Export', 'Please load attendance data before exporting.', 'warning');
-            return; // Stop the function
+            return;
         }
 
-        // 3. Convert the HTML table to a worksheet
         const worksheet = XLSX.utils.table_to_sheet(table);
-
-        // 4. Create a new workbook and add the worksheet
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Weekly Attendance");
 
-        // 5. Generate the Excel file and trigger the download
-        XLSX.writeFile(workbook, "Weekly_Attendance.xlsx");
+        // --- ✅ START: DYNAMIC FILENAME LOGIC ---
+
+        // 1. Get the text from the selected week in the dropdown
+        const weekSelect = document.getElementById('weekSelect');
+        const selectedText = weekSelect.selectedOptions[0].text; // e.g., "Week 1 (Sun, 20 Apr → Sat, 26 Apr)"
+        
+        // 2. Clean the text to make it a valid filename (replace invalid characters)
+        const safeFilename = selectedText.replace(/→/g, 'to').replace(/[/\\]/g, '-');
+
+        // 3. Create the final filename with the .xlsx extension
+        const finalFileName = `${safeFilename}.xlsx`;
+
+        // --- ✅ END: DYNAMIC FILENAME LOGIC ---
+
+        // 4. Use the new dynamic filename for the download
+        XLSX.writeFile(workbook, finalFileName);
     });
-    // --- NEW EXPORT LOGIC ENDS HERE ---
 }
 
 
