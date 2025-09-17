@@ -53,36 +53,52 @@ const config = {
 
 // ➕ Add Student (always goes to WaitingList)
 app.post('/api/add-student', async (req, res) => {
-
-
-  try {
-
-              if (!req.session.user) {
-            // If there's no session, stop right here and send an error.
+    try {
+        if (!req.session.user) {
             return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
         }
-      const { TR, Name, Darajah, Goal } = req.body;
-      const { Branch, Gender } = req.session.user; // staff session
+        
+        const { TR, Name, Darajah, Goal } = req.body;
+        const { Branch, Gender } = req.session.user;
 
-    await pool.request()
-      .input('TR', sql.Int, TR)
-      .input('Name', sql.NVarChar(100), Name)
-      .input('Darajah', sql.NVarChar(50), Darajah)
-      .input('Goal', sql.NVarChar(100), Goal)
-      .input('Branch', sql.NVarChar(50), Branch)
-      .input('Gender', sql.NVarChar(10), Gender)
-      .query(`
-        INSERT INTO WaitingList (TR, Name, Darajah, Goal, Branch, Gender)
-        VALUES (@TR, @Name, @Darajah, @Goal, @Branch, @Gender)
-      `);
+        // --- ✅ START: NEW CHECK ---
+        // 1. Check if the TR already exists in the Master table
+        const checkRequest = pool.request();
+        checkRequest.input('TR', sql.Int, TR);
+        const existingMember = await checkRequest.query(`
+            SELECT TR, Status FROM Master WHERE TR = @TR
+        `);
 
-    res.json({ success: true, message: 'Student added to Waiting List.' });
-  } catch (err) {
-    console.error('Add student error:', err);
-    res.status(500).json({ success: false, message: 'Failed to add student' });
-  }
+        // 2. If a record is found, stop and send an error message
+        if (existingMember.recordset.length > 0) {
+            const status = existingMember.recordset[0].Status;
+            return res.status(409).json({ // 409 Conflict is a good status code here
+                success: false, 
+                message: `This TR already exists as an '${status}' member. Please check the active/inactive students list or contact an admin.` 
+            });
+        }
+        // --- ✅ END: NEW CHECK ---
+
+        // 3. If the TR is unique, proceed to insert into the WaitingList
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('Name', sql.NVarChar(100), Name)
+            .input('Darajah', sql.NVarChar(50), Darajah)
+            .input('Goal', sql.NVarChar(100), Goal)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                INSERT INTO WaitingList (TR, Name, Darajah, Goal, Branch, Gender)
+                VALUES (@TR, @Name, @Darajah, @Goal, @Branch, @Gender)
+            `);
+
+        res.json({ success: true, message: 'Student added to Waiting List.' });
+
+    } catch (err) {
+        console.error('Add student error:', err);
+        res.status(500).json({ success: false, message: 'Failed to add student' });
+    }
 });
-
 
 app.get('/api/waiting-list', async (req, res) => {
   try {
