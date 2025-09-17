@@ -516,6 +516,50 @@ app.get('/api/student-info/:tr', async (req, res) => {
 });
 
 
+app.get('/api/student/eligible-weeks', async (req, res) => {
+    // 1. Ensure a student is logged in by checking the session
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+
+    const { TR } = req.session.user;
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+
+        // 2. Get the student's official join date from the Master table
+        const studentResult = await request.query(`
+            SELECT JoinedAt FROM Master WHERE TR = @TR
+        `);
+
+        if (studentResult.recordset.length === 0 || !studentResult.recordset[0].JoinedAt) {
+             return res.status(404).json({ success: false, error: 'Student join date not found.' });
+        }
+        
+        const joinedDate = studentResult.recordset[0].JoinedAt;
+        
+        // 3. Fetch only the weeks that started on or after the student joined
+        const weeksResult = await pool.request()
+            .input('JoinedAt', sql.Date, joinedDate)
+            .query(`
+                SELECT WeekID,
+                       CONVERT(varchar, WeekStartDate, 23) AS WeekStartDate,
+                       CONVERT(varchar, WeekEndDate, 23) AS WeekEndDate
+                FROM AttendanceWeek
+                WHERE WeekStartDate >= @JoinedAt
+                ORDER BY WeekID ASC
+            `);
+
+        res.json({ success: true, weeks: weeksResult.recordset });
+
+    } catch (err) {
+        console.error('Error fetching eligible weeks:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch eligible weeks' });
+    }
+});
+
+
 app.get('/api/weekly-attendance/:weekId', async (req, res) => {
     const { weekId } = req.params;
     const { Branch, Gender } = req.session.user;

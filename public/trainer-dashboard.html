@@ -393,10 +393,12 @@
                 await loadTrainingPlans(currentValidTR);
 
                 Swal.fire({
+                    toast: true,
+                    position: 'top-end',
                     icon: 'success',
                     title: `✅ Welcome ${data.data.Name}!`,
                     text: 'You can now mark attendance and log the workout.',
-                    timer: 1500,
+                    timer: 2500,
                     showConfirmButton: false,
                 });
 

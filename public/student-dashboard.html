@@ -121,11 +121,25 @@
             </thead>
             <tbody></tbody>
           </table>
+
+          </table> <div id="attendanceSummaryCard" class="attendance-summary-card" style="display: none;">
+              <h4 class="summary-title">Week Summary</h4>
+              <div class="summary-grid">
+                  <div class="summary-item present-bg">
+                      <div class="summary-count" id="presentCount">0</div>
+                      <div class="summary-label">Present</div>
+                  </div>
+                  <div class="summary-item absent-bg">
+                      <div class="summary-count" id="absentCount">0</div>
+                      <div class="summary-label">Absent</div>
+                  </div>
+                  <div class="summary-item on-leave-bg">
+                      <div class="summary-count" id="onLeaveCount">0</div>
+                      <div class="summary-label">On Leave</div>
+                  </div>
+              </div>
+          </div>
             
-    <section>
-       <label id="attendanceRate" style="font-weight: bold; margin-top: 1rem;"></label>
-    
-    </section>
 
     </section>
 
@@ -594,25 +608,23 @@ async function getStudentSession() {
 
 function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;
-    const loadButton = weekSelect.nextElementSibling; // Get the button
+    const loadButton = document.getElementById('loadAttendanceBtn'); // Assuming you gave it an ID
+    
     if (!selectedWeek) {
-            Swal.fire({
-        icon: 'warning',
-        title: 'Oops...',
-        text: 'Please select a week to view attendance.',
-    });
+        Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select a week.' });
         return;
     }
-        loadButton.textContent = 'Loading...';
-        loadButton.disabled = true;
-    // --- THIS IS THE ONLY CHANGE NEEDED ---
-    // Use the studentTR variable from the global scope, not localStorage.
-    if (!studentTR) { 
-            Swal.fire({
-        icon: 'warning',
-        title: 'Oops...',
-        text: 'Could not find student TR. Please log in again.',
-    });
+
+    loadButton.textContent = 'Loading...';
+    loadButton.disabled = true;
+
+    // ✅ HIDE THE SUMMARY CARD BEFORE LOADING NEW DATA
+    document.getElementById('attendanceSummaryCard').style.display = 'none';
+
+    if (!studentTR) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Could not find student TR. Please log in again.' });
+        loadButton.textContent = 'Load Attendance';
+        loadButton.disabled = false;
         return;
     }
 
@@ -629,16 +641,24 @@ function loadAttendance() {
                 const weekStartDate = new Date(student.WeekStartDate);
                 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 
+                // ✅ INITIALIZE COUNTERS
+                let presentCount = 0;
+                let absentCount = 0;
+                let onLeaveCount = 0;
+
                 const cells = daysOfWeek.map((day, i) => {
                     const status = student[day];
                     const currentDate = new Date(weekStartDate);
                     currentDate.setDate(currentDate.getDate() + i);
                     
                     if (status === 'Present') {
+                        presentCount++; // ✅ INCREMENT COUNT
                         return `<td class="present">Present</td>`;
                     } else if (status === 'On Leave') {
+                        onLeaveCount++; // ✅ INCREMENT COUNT
                         return `<td class="on-leave" style="color: #f59e0b; font-weight: bold;">On Leave</td>`;
                     } else if (currentDate <= today) {
+                        absentCount++; // ✅ INCREMENT COUNT
                         return `<td class="absent" style="color: red; font-weight: bold;">Absent</td>`;
                     } else {
                         return `<td></td>`; // Future day
@@ -652,16 +672,20 @@ function loadAttendance() {
                     ${cells.join('')}
                 `;
                 tbody.appendChild(row);
+
+                // ✅ UPDATE AND SHOW THE SUMMARY CARD
+                document.getElementById('presentCount').innerText = presentCount;
+                document.getElementById('absentCount').innerText = absentCount;
+                document.getElementById('onLeaveCount').innerText = onLeaveCount;
+                document.getElementById('attendanceSummaryCard').style.display = 'block';
+
             }
         })
         .catch(err => console.error('Failed to load student attendance:', err))
         .finally(() => {
-            // --- And this ---
             loadButton.textContent = 'Load Attendance';
             loadButton.disabled = false;
-            // ------------------
         });
-        
 }
 
 //-------------------------------------------------------------------------------------------
@@ -857,40 +881,52 @@ function loadBodyPartTips() {
         return new Date(dateString).toLocaleDateString(undefined, options);
     }
 
-    // Function to load weeks from the API
-    function loadWeeks() {
-        fetch('/api/weeks')
-            .then(res => res.json())
-            .then(data => {
-                const weekSelect = document.getElementById('weekSelect');
-                weekSelect.innerHTML = '<option value="" disabled selected>Select Range</option>'; // Reset dropdown
+// Function to load weeks from the API
+function loadWeeks() {
+    // --- THIS IS THE UPDATED PART ---
+    // We now call the new, secure endpoint and include session credentials
+    fetch('/api/student/eligible-weeks', {
+        method: 'GET',
+        credentials: 'include' // IMPORTANT: This sends the session cookie
+    })
+    // ---------------------------------
+        .then(res => {
+            if (!res.ok) {
+                // Handle potential errors like if the session expired
+                throw new Error('Could not fetch weeks. Please log in again.');
+            }
+            return res.json();
+        })
+        .then(data => {
+            const weekSelect = document.getElementById('weekSelect');
+            weekSelect.innerHTML = '<option value="" disabled selected>Select Range</option>'; // Reset dropdown
 
-                if (data.success && data.weeks.length > 0) {
-                    data.weeks.forEach(week => {
-                        const option = document.createElement('option');
-                        option.value = week.WeekID;
+            if (data.success && data.weeks.length > 0) {
+                data.weeks.forEach(week => {
+                    const option = document.createElement('option');
+                    option.value = week.WeekID;
 
-                        // Format dates directly, without adding time
-                        const startFormatted = formatDate(week.WeekStartDate);
-                        const endFormatted = formatDate(week.WeekEndDate);
+                    const startFormatted = formatDate(week.WeekStartDate);
+                    const endFormatted = formatDate(week.WeekEndDate);
 
-                        option.text = `(${startFormatted} → ${endFormatted})`;
+                    option.text = `(${startFormatted} → ${endFormatted})`;
 
-                        weekSelect.appendChild(option);
-                    });
-                }
-            })
-            .catch(err => {
-                console.error('Failed to load weeks:', err);
-                Swal.fire({
+                    weekSelect.appendChild(option);
+                });
+            } else {
+                 // If a student has no eligible weeks yet, show a message
+                 weekSelect.innerHTML = '<option value="" disabled selected>No attendance weeks yet</option>';
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load weeks:', err);
+            Swal.fire({
                 icon: 'error',
                 title: 'Oops...',
-                text: 'Failed to load week data. Please check your connection and try again.'
+                text: err.message || 'Failed to load week data. Please check your connection and try again.'
             });
-            });
-    }
-
-
+        });
+}
 
 //----------------------------------------------------------------------------------------------------------
 

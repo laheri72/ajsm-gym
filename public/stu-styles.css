@@ -518,3 +518,59 @@ td iframe {
     font-weight: 600;   /* Bolder text */
     color: var(--text-dark);
 }
+
+/* =================================================================== */
+/* ATTENDANCE SUMMARY CARD
+/* =================================================================== */
+
+.attendance-summary-card {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    border-radius: 1rem;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.summary-title {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.summary-item {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+}
+
+.summary-count {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.summary-label {
+    font-size: 1rem;
+    margin-top: 0.25rem;
+    opacity: 0.9;
+}
+
+/* Background colors to match table styles */
+.present-bg { background-color: #28a745; }
+.absent-bg { background-color: #dc3545; }
+.on-leave-bg { background-color: #ffc107; color: #343a40; }

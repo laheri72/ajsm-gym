@@ -594,9 +594,10 @@ async function validateStudentSession() {
 
       Swal.fire({
         icon: 'success',
+        position: 'top-end',
         title: `Welcome ${student.Name}!`,
         text: `TR ${tr} loaded successfully.`,
-        timer: 1000,
+        timer: 2000,
         showConfirmButton: false,
       });
 
@@ -1081,7 +1082,7 @@ function renderProgressBar(records) {
 
 
 async function loadTestHistory(tr) {
-    Swal.showLoading();
+    // Swal.showLoading();
     try {
         const response = await fetch(`/api/testrecords/${tr}`);
         const records = await response.json();
