@@ -1109,7 +1109,7 @@ async function showLeaderboard() {
             result.data.forEach((student, index) => {
                 // Add a medal emoji based on the student's rank (index)
                 const rank_medal = medals[index] || '•';
-                const li = `<li>${rank_medal} ${student.Name} (${student.AttendanceScore} days)</li>`;
+                const li = `<li>${rank_medal} ${student.Name}</li>`;
                 listElement.insertAdjacentHTML('beforeend', li);
             });
 
@@ -1198,7 +1198,7 @@ function logout() {
   });
 </script>
 <div id="leaderboard-toast">
-    <h3>🏆 Weekly Leaders</h3>
+    <h3>🏆 Today's Leaderboard</h3>
     <ol id="leaderboard-list">
         </ol>
 </div>
