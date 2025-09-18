@@ -101,7 +101,7 @@
             <select id="weekSelect" class="form-control" required>
                 <option value="" disabled selected>Loading Weeks...</option>
               </select>          
-            <button id="loadAttendanceBtn" class="btn" style="margin-top: 0.5rem;">Load Attendance</button>
+            <button id="loadAttendanceBtn" class="btn btn-load" style="margin-top: 0.5rem;">Load Attendance</button>
           </div>
     
        
@@ -122,7 +122,8 @@
             <tbody></tbody>
           </table>
 
-          </table> <div id="attendanceSummaryCard" class="attendance-summary-card" style="display: none;">
+          </table>
+           <div id="attendanceSummaryCard" class="attendance-summary-card" style="display: none;">
               <h4 class="summary-title">Week Summary</h4>
               <div class="summary-grid">
                   <div class="summary-item present-bg">
@@ -137,6 +138,16 @@
                       <div class="summary-count" id="onLeaveCount">0</div>
                       <div class="summary-label">On Leave</div>
                   </div>
+              </div>
+          </div>
+          <div id="attendanceSummaryCard" class="attendance-summary-card" style="display: none;">
+            ...
+          </div>
+
+          <div id="attendanceWarning" class="attendance-warning" style="display: none;">
+              <div class="warning-icon">⚠️</div>
+              <div class="warning-text">
+                  <strong>Warning:</strong> You have 2 or more absences this week. Consistent absences may lead to membership termination. If you believe this is a mistake, please contact a staff member immediately.
               </div>
           </div>
             
@@ -608,7 +619,7 @@ async function getStudentSession() {
 
 function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;
-    const loadButton = document.getElementById('loadAttendanceBtn'); // Assuming you gave it an ID
+    const loadButton = document.getElementById('loadAttendanceBtn');
     
     if (!selectedWeek) {
         Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select a week.' });
@@ -618,8 +629,9 @@ function loadAttendance() {
     loadButton.textContent = 'Loading...';
     loadButton.disabled = true;
 
-    // ✅ HIDE THE SUMMARY CARD BEFORE LOADING NEW DATA
+    // ✅ HIDE BOTH CARDS BEFORE LOADING NEW DATA
     document.getElementById('attendanceSummaryCard').style.display = 'none';
+    document.getElementById('attendanceWarning').style.display = 'none';
 
     if (!studentTR) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not find student TR. Please log in again.' });
@@ -641,7 +653,6 @@ function loadAttendance() {
                 const weekStartDate = new Date(student.WeekStartDate);
                 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 
-                // ✅ INITIALIZE COUNTERS
                 let presentCount = 0;
                 let absentCount = 0;
                 let onLeaveCount = 0;
@@ -652,16 +663,16 @@ function loadAttendance() {
                     currentDate.setDate(currentDate.getDate() + i);
                     
                     if (status === 'Present') {
-                        presentCount++; // ✅ INCREMENT COUNT
+                        presentCount++;
                         return `<td class="present">Present</td>`;
                     } else if (status === 'On Leave') {
-                        onLeaveCount++; // ✅ INCREMENT COUNT
+                        onLeaveCount++;
                         return `<td class="on-leave" style="color: #f59e0b; font-weight: bold;">On Leave</td>`;
                     } else if (currentDate <= today) {
-                        absentCount++; // ✅ INCREMENT COUNT
+                        absentCount++;
                         return `<td class="absent" style="color: red; font-weight: bold;">Absent</td>`;
                     } else {
-                        return `<td></td>`; // Future day
+                        return `<td></td>`;
                     }
                 });
 
@@ -673,12 +684,16 @@ function loadAttendance() {
                 `;
                 tbody.appendChild(row);
 
-                // ✅ UPDATE AND SHOW THE SUMMARY CARD
+                // Update and show the summary card
                 document.getElementById('presentCount').innerText = presentCount;
                 document.getElementById('absentCount').innerText = absentCount;
                 document.getElementById('onLeaveCount').innerText = onLeaveCount;
                 document.getElementById('attendanceSummaryCard').style.display = 'block';
 
+                // ✅ SHOW WARNING IF ABSENCES ARE 2 OR MORE
+                if (absentCount >= 2) {
+                    document.getElementById('attendanceWarning').style.display = 'flex';
+                }
             }
         })
         .catch(err => console.error('Failed to load student attendance:', err))
@@ -687,7 +702,6 @@ function loadAttendance() {
             loadButton.disabled = false;
         });
 }
-
 //-------------------------------------------------------------------------------------------
 
 
@@ -1116,10 +1130,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
     document.getElementById('logoutBtn').addEventListener('click', logout);
-    document.getElementById('planner-main').addEventListener('click', () => showSection('planner'));
-    document.getElementById('tips-main').addEventListener('click', () => showSection('tips'));
-    document.getElementById('attendance-main').addEventListener('click', () => showSection('attendance'));
-    document.getElementById('logs-main').addEventListener('click', () => showSection('logs'));
+
+    
+    // document.getElementById('planner-main').addEventListener('click', () => showSection('planner'));
+    // document.getElementById('tips-main').addEventListener('click', () => showSection('tips'));
+    // document.getElementById('attendance-main').addEventListener('click', () => showSection('attendance'));
+    // document.getElementById('logs-main').addEventListener('click', () => showSection('logs'));
 
     // Planner buttons
     document.getElementById('savePlanBtn').addEventListener('click', savePlan);

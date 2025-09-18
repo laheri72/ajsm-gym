@@ -231,18 +231,15 @@ button:disabled {
     border: 1px solid #ddd;
 }
 
-.btn {
-    padding: 0.75rem 1.5rem;
-    background: var(--primary);
-    color: black; /* Reverted to black for visibility on light backgrounds */
+#loadAttendanceBtn {
+    background-color: var(--primary); /* Your green color: #4CAF50 */
+    color: white; /* White text is more readable on a green background */
     border: none;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.4s ease;
-    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
 }
 
+#loadAttendanceBtn:hover {
+    background-color: var(--secondary); /* Your darker green for hover: #3e8e41 */
+}
 .btn:hover {
     background: var(--secondary);
     transform: translateY(-3px);
@@ -574,3 +571,30 @@ td iframe {
 .present-bg { background-color: #28a745; }
 .absent-bg { background-color: #dc3545; }
 .on-leave-bg { background-color: #ffc107; color: #343a40; }
+
+
+/* =================================================================== */
+/* ATTENDANCE WARNING MESSAGE
+/* =================================================================== */
+
+.attendance-warning {
+    display: flex;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background-color: #fff3cd; /* Light yellow background */
+    border: 1px solid #ffeeba;
+    color: #856404; /* Dark yellow/brown text */
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.warning-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+}
+
+.warning-text strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
