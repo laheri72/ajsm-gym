@@ -1813,7 +1813,66 @@ app.put('/api/attendance-record', async (req, res) => {
 });
 
 
+// This new route handles marking all students as "On Leave" for a specific date
+app.post('/api/attendance/bulk-leave', async (req, res) => {
+    const { date } = req.body;
+    const { Branch, Gender } = req.session.user;
 
+    if (!date) {
+        return res.status(400).json({ success: false, error: 'A date is required.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+
+        // Step 1: Find the correct WeekID for the given date.
+        const weekResult = await new sql.Request(transaction)
+            .input('Date', sql.Date, date)
+            .query('SELECT WeekID FROM AttendanceWeek WHERE @Date BETWEEN WeekStartDate AND WeekEndDate');
+
+        if (weekResult.recordset.length === 0) {
+            throw new Error('No valid week found for the selected date.');
+        }
+        const weekId = weekResult.recordset[0].WeekID;
+
+        // Step 2: Use a single, powerful MERGE statement to update or insert records
+        // for ALL active students in the specified branch/gender.
+        const mergeRequest = new sql.Request(transaction);
+        mergeRequest.input('Date', sql.Date, date);
+        mergeRequest.input('WeekID', sql.Int, weekId);
+        mergeRequest.input('Branch', sql.NVarChar(50), Branch);
+        mergeRequest.input('Gender', sql.NVarChar(10), Gender);
+        
+        await mergeRequest.query(`
+            -- Use MERGE to handle both existing and non-existing attendance records
+            MERGE Attendance AS target
+            USING (
+                -- Select all active students who had joined by the event date
+                SELECT TR FROM Master 
+                WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND JoinedAt <= @Date
+            ) AS source
+            ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = @Date)
+            
+            -- If a student already has a record for this day (e.g., marked present accidentally):
+            WHEN MATCHED THEN
+                UPDATE SET IsPresent = 0, OnLeave = 1
+            
+            -- If a student does NOT have a record for this day:
+            WHEN NOT MATCHED BY TARGET THEN
+                INSERT (TR, WeekID, IsPresent, CreatedAt, Branch, Gender, OnLeave)
+                VALUES (source.TR, @WeekID, 0, @Date, @Branch, @Gender, 1);
+        `);
+
+        await transaction.commit();
+        res.json({ success: true, message: 'All active students have been marked as "On Leave".' });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error('Error in bulk "On Leave" action:', err);
+        res.status(500).json({ success: false, error: err.message || 'Failed to update attendance records.' });
+    }
+});
 
 //-------------------------------------------------------------------------------------------
 //--------------------------------- FITNESS TEST --------------------------------------------

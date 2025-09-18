@@ -259,6 +259,16 @@ thead select {
     color: var(--dark);
     margin-top: 0.5rem;
 }
+/* This sets the text color and font weight for the whole row */
+.attendance-danger-row {
+    color: #721c24 !important;
+    font-weight: bold;
+}
+
+/* This new, more specific rule sets the background on all cells inside the row */
+.attendance-danger-row td {
+    background-color: #f8d7da !important;
+}
     </style>
 </head>
 <body>
@@ -621,8 +631,22 @@ thead select {
                 <h3><p id="editMessage" class="text-info mt-3"></p></h3>
             </div>
         </section>
+        <section id="bulk-attendance" class="card mt-4 p-3">
+          <h2>Bulk Attendance Actions</h2>
+          <div class="row">
+              <div class="col-md-4">
+                  <label for="bulkLeaveDate">Select Date for University Event</label>
+                  <input type="date" class="form-control" id="bulkLeaveDate">
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                  <button class="btn btn-warning w-100" id="bulkLeaveBtn">Mark All as On Leave</button>
+              </div>
+          </div>
+      </section>
 
-          <div class="container mt-5">
+       
+
+      <div class="container mt-5">
           <h2>Weekly Attendance</h2>
           <div class="form-group">
             <label for="weekSelect">Select Week</label>
@@ -653,6 +677,7 @@ thead select {
                               <th>Thursday</th>
                               <th>Friday</th>
                               <th>Saturday</th>
+                              <th>Total Absences</th>
                           </tr>
                       </thead>
                       <tbody></tbody>
@@ -1461,7 +1486,18 @@ function attachAttendanceLoader() {
                 }
                 
                 data.forEach(student => {
+                      // 1. Calculate the total number of absences for this student
+                      let absentCount = 0;
+                      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                      days.forEach(day => {
+                          if (student[day] === 'Absent') {
+                              absentCount++;
+                          }
+                      });
                     const row = document.createElement('tr');
+                    if (absentCount >= 3) {
+                        row.classList.add('attendance-danger-row');
+                    }
                     row.innerHTML = `
                         <td>${student.TR}</td>
                         <td>${student.Name}</td>
@@ -1472,6 +1508,7 @@ function attachAttendanceLoader() {
                         ${renderAttendanceCell(student.Thursday)}
                         ${renderAttendanceCell(student.Friday)}
                         ${renderAttendanceCell(student.Saturday)}
+                        <td>${absentCount}</td> 
                     `;
                     tbody.appendChild(row);
                 });
@@ -1686,7 +1723,48 @@ document.getElementById('updateAttendanceBtn').addEventListener('click', async (
     }
 });
 
+// Add this event listener to your main script file
+document.getElementById('bulkLeaveBtn').addEventListener('click', () => {
+    const dateInput = document.getElementById('bulkLeaveDate');
+    const selectedDate = dateInput.value;
 
+    if (!selectedDate) {
+        Swal.fire('No Date Selected', 'Please select a date for the event.', 'warning');
+        return;
+    }
+
+    // A confirmation dialog is crucial for bulk actions
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `This will mark ALL active students in your section as "On Leave" for ${selectedDate}. This action cannot be easily undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, proceed!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch('/api/attendance/bulk-leave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date: selectedDate })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || 'An unknown error occurred.');
+                }
+
+                Swal.fire('Success!', data.message, 'success');
+                dateInput.value = ''; // Clear the date input
+
+            } catch (err) {
+                Swal.fire('Operation Failed', err.message, 'error');
+            }
+        }
+    });
+});
 
 //----------------------------------------------------------------------------------------------------
 
