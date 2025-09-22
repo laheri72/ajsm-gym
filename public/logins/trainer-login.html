@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trainer Login - FitTracker</title> <link rel="stylesheet" href="/css/style1.css"> <link rel="icon" href="images/favicon.png" type="image/png">
+  <title>Trainer Login - FitTracker</title> <link rel="stylesheet" href="../css/style1.css"> <link rel="icon" href="../images/favicon.png" type="image/png">
 </head>
 
 <body>
-  <div class="login-container" style="background-image: url('images/ChatGPT Image Apr 29, 2025, 04_03_12 PM.png');"> <div class="login-form">
+  <div class="login-container" style="background-image: url('../images/ChatGPT Image Apr 29, 2025, 04_03_12 PM.png');"> <div class="login-form">
       <h1>Trainer Login</h1> <p>Access the Trainer Dashboard</p> <form id="loginForm">
         <div class="form-group">
           <label for="username">Username</label>
@@ -20,7 +20,7 @@
         <button type="submit" class="login-btn">Login</button>
       </form>
 
-      <a href="homepage.html" class="return-link">Return to Main Page</a>
+      <a href="../homepage.html" class="return-link">Return to Main Page</a>
     </div>
 
   </div>
@@ -68,7 +68,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             });
 
             setTimeout(() => {
-                window.location.href = 'trainer-dashboard.html';
+                window.location.href = '../trainer/trainer-dashboard.html';
             }, 700);
         } else {
             Swal.fire('Login Failed', 'Invalid credentials. Please try again.', 'error');

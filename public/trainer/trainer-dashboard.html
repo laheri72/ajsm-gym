@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trainer Dashboard - FitTracker</title>
-    <link rel="icon" href="images/favicon.png" type="image/png">
+    <link rel="icon" href="../images/favicon.png" type="image/png">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -346,14 +346,14 @@
                 const res = await fetch('/api/session-user', { credentials: 'include' });
                 const data = await res.json();
                 if (!data.success || !data.user) {
-                    window.location.href = 'Forbidden.html';
+                    window.location.href = '../Forbidden.html';
                     return;
                 }
                 const { Branch, Gender } = data.user;
                 elements.welcomeText.innerText = `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
             } catch (err) {
                 console.error('Session validation failed:', err);
-                window.location.href = 'Forbidden.html';
+                window.location.href = '../Forbidden.html';
             }
         }
 
@@ -567,7 +567,7 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
         if (data.success) {
             // If logout is successful, clear any stored data and redirect
             localStorage.clear();
-            window.location.href = 'homepage.html';
+            window.location.href = '../homepage.html';
         } else {
             // Show an error if the server reported a failure
             alert('Logout failed. Please try again.');

@@ -21,7 +21,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: linear-gradient(rgba(12, 10, 26, 0.7), rgba(12, 10, 26, 0.85)), url('images/gym final.jpg');
+    background-image: linear-gradient(rgba(12, 10, 26, 0.7), rgba(12, 10, 26, 0.85)), url('../images/gym final.jpg');
     background-size: cover;
     background-position: center;
 }

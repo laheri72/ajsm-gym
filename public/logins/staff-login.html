@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff Login - FitTracker</title>
-  <link rel="stylesheet" href="/css/style1.css">
-  <link rel="icon" href="images/favicon.png" type="image/png">
+  <link rel="stylesheet" href="../css/style1.css">
+  <link rel="icon" href="../images/favicon.png" type="image/png">
 </head>
 
 <body>
-  <div class="login-container" style="background-image: url('images/staff final.jpg');">
+  <div class="login-container" style="background-image: url('../images/staff final.jpg');">
 
     <div class="login-form">
       <h1>Staff Login</h1>
@@ -27,7 +27,7 @@
         <button type="submit" class="login-btn">Login</button>
       </form>
 
-      <a href="homepage.html" class="return-link">Return to Main Page</a>
+      <a href="../homepage.html" class="return-link">Return to Main Page</a>
     </div>
 
   </div>
@@ -67,7 +67,7 @@
                 Toast.fire({ icon: 'success', title: '✅ Login successful' });
                 
                 setTimeout(() => {
-                    window.location.href = "staff/overview.html";
+                    window.location.href = "../staff/overview.html";
                 }, 700);
 
             } else {
