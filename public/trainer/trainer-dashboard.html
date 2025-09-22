@@ -499,38 +499,51 @@
             }
         }
 
-        async function loadDailyAttendance() {
-            elements.dailyAttendanceSection.classList.toggle('hidden');
-            if (elements.dailyAttendanceSection.classList.contains('hidden')) return;
+async function loadDailyAttendance() {
+    elements.dailyAttendanceSection.classList.toggle('hidden');
+    if (elements.dailyAttendanceSection.classList.contains('hidden')) return;
 
-            elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>`;
+    elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>`;
 
-            try {
-                const res = await fetch('/api/daily-attendance');
-                const data = await res.json();
-                elements.dailyAttendanceTableBody.innerHTML = '';
+    try {
+        const res = await fetch('/api/daily-attendance');
+        const data = await res.json();
+        elements.dailyAttendanceTableBody.innerHTML = '';
 
-                if (data.length === 0) {
-                    elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No attendance marked yet today.</td></tr>`;
-                    return;
-                }
-
-                data.forEach(student => {
-                    const statusStyle = student.IsPresentToday === 'Present' 
-                        ? `background-color: var(--success-bg); color: var(--success-text);`
-                        : `background-color: var(--error-bg); color: var(--error-text);`;
-                    const row = `
-                        <tr>
-                            <td>${student.TR}</td>
-                            <td>${student.Name}</td>
-                            <td style="text-align:center; font-weight:bold; ${statusStyle}">${student.IsPresentToday}</td>
-                        </tr>`;
-                    elements.dailyAttendanceTableBody.insertAdjacentHTML('beforeend', row);
-                });
-            } catch (err) {
-                elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Failed to load attendance.</td></tr>`;
-            }
+        if (data.length === 0) {
+            elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No attendance marked yet today.</td></tr>`;
+            return;
         }
+
+        data.forEach(student => {
+            // ✅ UPDATED LOGIC TO HANDLE THREE STATUSES
+            let statusStyle = '';
+            const statusText = student.IsPresentToday;
+
+            switch (statusText) {
+                case 'Present':
+                    statusStyle = `background-color: var(--success-bg); color: var(--success-text);`;
+                    break;
+                case 'On Leave':
+                    statusStyle = `background-color: #fff3cd; color: #856404;`; // Yellow/Amber style
+                    break;
+                default: // 'Absent'
+                    statusStyle = `background-color: var(--error-bg); color: var(--error-text);`;
+                    break;
+            }
+            
+            const row = `
+                <tr>
+                    <td>${student.TR}</td>
+                    <td>${student.Name}</td>
+                    <td style="text-align:center; font-weight:bold; ${statusStyle}">${statusText}</td>
+                </tr>`;
+            elements.dailyAttendanceTableBody.insertAdjacentHTML('beforeend', row);
+        });
+    } catch (err) {
+        elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Failed to load attendance.</td></tr>`;
+    }
+}
         
         // --- Event Listeners and Initializers ---
         document.addEventListener("DOMContentLoaded", () => {

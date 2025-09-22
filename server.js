@@ -890,7 +890,6 @@ app.post('/api/test-login', async (req, res) => {
 
 
 app.get('/api/daily-attendance', async (req, res) => {
-    // ✅ Enforce login and session branch/gender
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ error: 'Unauthorized access. Please log in.' });
     }
@@ -898,16 +897,17 @@ app.get('/api/daily-attendance', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-            const result = await pool.request()
+        const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
                 SELECT 
                     M.TR,
                     M.Name,
+                    -- ✅ THIS IS THE UPDATED LOGIC --
                     CASE 
+                        WHEN A.OnLeave = 1 THEN 'On Leave' -- Check for OnLeave first
                         WHEN A.IsPresent = 1 THEN 'Present'
-                        WHEN A.IsPresent = 0 THEN 'Absent'
                         ELSE 'Absent'
                     END AS IsPresentToday
                 FROM Master M
@@ -926,7 +926,6 @@ app.get('/api/daily-attendance', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch daily attendance' });
     }
 });
-
 
 
 // CORRECTED VERSION
