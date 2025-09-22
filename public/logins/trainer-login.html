@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trainer Login - FitTracker</title> <link rel="stylesheet" href="/css/style1.css"> <link rel="icon" href="images/favicon.png" type="image/png">
+</head>
+
+<body>
+  <div class="login-container" style="background-image: url('images/ChatGPT Image Apr 29, 2025, 04_03_12 PM.png');"> <div class="login-form">
+      <h1>Trainer Login</h1> <p>Access the Trainer Dashboard</p> <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+
+      <a href="homepage.html" class="return-link">Return to Main Page</a>
+    </div>
+
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="module">
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    // 🟡 Show instant toast
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true
+    });
+
+    Toast.fire({
+        icon: 'info',
+        title: '🧑‍🏫 Trainer session started...'
+    });
+
+    try {
+        const response = await fetch('/api/trainer-login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            localStorage.setItem('staffUser', username);
+
+            Toast.fire({
+                icon: 'success',
+                title: '✅ Login successful'
+            });
+
+            setTimeout(() => {
+                window.location.href = 'trainer-dashboard.html';
+            }, 700);
+        } else {
+            Swal.fire('Login Failed', 'Invalid credentials. Please try again.', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        Swal.fire('Error', 'Server error. Please try again later.', 'error');
+    }
+});
+</script>
+
+
+        
+</body>
+</html>

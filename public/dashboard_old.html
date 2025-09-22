@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Staff Dashboard - FitTracker</title>
+    <link rel="icon" href="images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      
+
+
+:root {
+    --primary: #4CAF50; /* Green */
+    --secondary: #3e8e41; /* Darker Green */
+    --light: #f5f7fa; /* Light Gray Background */
+    --dark: #2d3436; /* Dark Text */
+    --gray: #95a5a6; /* Muted Text */
+    --danger: #f44336; /* Red for deletions */
+    --card-shadow: rgba(0, 0, 0, 0.05);
+    --primary-shadow-light: rgba(76, 175, 80, 0.3);
+    --primary-shadow-strong: rgba(76, 175, 80, 0.5);
+}
+
+body {
+    margin: 0;
+    background-color: var(--light);
+    font-family: 'Poppins', sans-serif;
+    color: var(--dark);
+}
+
+/* --- Layout --- */
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* --- Components --- */
+.navbar {
+    background: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    box-shadow: 0 2px 10px var(--card-shadow);
+    flex-wrap: wrap; /* Added for better mobile view */
+}
+
+.navbar a {
+    color: var(--dark);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.navbar a:hover,
+.navbar a.active {
+    color: var(--primary);
+    background: rgba(76, 175, 80, 0.1); /* Use primary color for background */
+    transform: scale(1.05);
+}
+
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px var(--card-shadow);
+    margin-bottom: 2rem;
+}
+
+/* --- CONSOLIDATED & ENHANCED BUTTON STYLE --- */
+.btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white; /* IMPROVED CONTRAST: White text on green is more readable */
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 8px var(--primary-shadow-light);
+}
+
+.btn:hover {
+    background: var(--secondary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px var(--primary-shadow-strong);
+}
+
+/* --- Forms --- */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    transition: all 0.3s;
+    color: var(--dark); /* Set default text color */
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2); /* Added focus ring */
+}
+
+select.form-control {
+    appearance: none;
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+}
+
+/* --- Tables --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+thead th {
+    background: var(--primary);
+    color: white; /* IMPROVED CONTRAST */
+}
+
+/* --- CONSOLIDATED TABLE HEADER SELECT STYLE --- */
+thead select {
+    background-color: var(--light);
+    color: var(--dark);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 14px;
+    min-width: 100px; /* Give it some space */
+}
+
+/* DataTable specific overrides */
+.dataTables_wrapper .dataTables_filter input {
+    background-color: white !important;
+    color: black !important;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 0.5rem; /* Match other inputs */
+}
+
+/* --- Misc & Animations --- */
+.attendance-summary {
+    margin-top: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    background-color: #e0f7e9;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--primary-shadow-light);
+    animation: fadeInSlide 1s ease forwards;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    user-select: none;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- NEW: Loading Spinner --- */
+.loader-cell {
+    text-align: center;
+    padding: 3rem;
+}
+
+.loader {
+    border: 5px solid #f3f3f3; /* Light grey */
+    border-top: 5px solid var(--primary); /* Green */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+/* --- Stat Cards for Overview --- */
+.stat-cards-container {
+    display: grid;
+    /* This will create 4 columns on desktop, 2 on tablet, and 1 on mobile */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+.stat-card {
+    background-color: white;
+    border-left: 5px solid var(--primary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+.stat-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--dark);
+    margin-top: 0.5rem;
+}
+/* This sets the text color and font weight for the whole row */
+.attendance-danger-row {
+    color: #721c24 !important;
+    font-weight: bold;
+}
+
+/* This new, more specific rule sets the background on all cells inside the row */
+.attendance-danger-row td {
+    background-color: #f8d7da !important;
+}
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+    <div class="navbar">
+        <a href="#" id="tab-overview" data-target="overview-section" class="active">📊 Overview</a>
+        <a href="#" id="tab-entry" data-target="student-entry">Slot Entry</a>
+        <a href="#" id="tab-admin" style="display: none;" data-target="Admin-base">👑 Admin Panel</a>
+        <a href="#" id="tab-record" data-target="student-record">Active Students</a>
+        <a href="#" id="tab-Progress" data-target="progress-tab">Track Progress</a>
+        <a href="#" id="tab-test" style="display: none;" data-target="test-record">Fitness Test</a>
+        <a href="#" id="tab-attendance" data-target="attendance-summary">Attendance</a>
+        <a href="#" id="logoutLink">Logout</a>
+    </div>
+      <div class="content">
+
+
+            <section id="overview-section">
+                  <div class="stat-cards-container">
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-active-students">--</div>
+                          <div class="stat-label">Active Students</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-waiting-list">--</div>
+                          <div class="stat-label">In Waiting List</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-inactive-students">--</div>
+                          <div class="stat-label">Inactive Students</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-slots">--</div>
+                          <div class="stat-label">Total Slots</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-todays-logs">--</div>
+                          <div class="stat-label">Today's Training Logs</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-fitness-tests">--</div>
+                          <div class="stat-label">Fitness Tests Taken</div>
+                      </div>
+                      <div class="stat-card">
+                          <div class="stat-value" id="stat-users">--</div>
+                          <div class="stat-label">Staff & Trainers</div>
+                      </div>
+                  </div>
+              </section>
+
+
+
+
+        <section id="student-entry" class="card">
+          <h2>Student Entry - waiting list</h2>
+          <h4 id="welcomeText"></h4>
+
+              <form id="studentEntryForm">
+                <div class="form-group">
+                  <label for="trNo">Tr No</label>
+                  <input type="text" id="trNo" class="form-control" required />
+                </div>
+                <div class="form-group">
+                  <label for="studentName">Name</label>
+                  <input type="text" id="studentName" class="form-control" required />
+                </div>
+                <div class="form-group">
+                  <label for="darajah">Darajah</label>
+                  <select id="darajah" class="form-control" required>
+                    <option value="" disabled selected>Select Darajah</option>
+                    <option value="Class 5 AM">Class 5 AM</option>
+                    <option value="Class 5 BM">Class 5 BM</option>
+                    <option value="Class 6 AM">Class 6 AM</option>
+                    <option value="Class 6 BM">Class 6 BM</option>
+                    <option value="Class 7 AM">Class 7 AM</option>
+                    <option value="Class 7 BM">Class 7 BM</option>
+                    <option value="Class 8 AM">Class 8 AM</option>
+                    <option value="Class 9 AM">Class 9 AM</option>
+                    <option value="Class 10 AM">Class 10 AM</option>
+                    <option value="Class 11 AM">Class 11 AM</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="goal">Preferred Goal</label>
+                  <select id="goal" class="form-control" required>
+                    <option value="" disabled selected>Select Goal</option>
+                    <option value="Muscle Gain">Muscle Gain</option>
+                    <option value="Fat Loss">Fat Loss</option>
+                    <option value="Increase Fitness Level">Increase Fitness Level</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn">Add Student</button>
+              </form>
+
+<!--   
+          <div class="form-group" style="margin-top: 2rem;">
+            <label for="csvFile">Bulk Import CSV</label>
+            <input type="file" id="csvFile" accept=".csv" class="form-control" />
+            <button type="button" id="importCsvBtn" class="btn" style="margin-top: 0.5rem;">Import CSV</button>
+            <div id="importStatus" style="margin-top: 0.5rem; font-weight: 600;"></div>
+          </div> -->
+          <br />
+
+          <section id="waiting-list" class="card">
+            <h2>Waiting List</h2>
+
+            <div style="overflow-x:auto;">
+              <table id="waitingListTable">
+                <thead>
+                  <tr>
+                    <th>Waiting ID</th>
+                    <th>TR</th>
+                    <th>Name</th>
+                    <th>Darajah</th>
+                    <th>Goal</th>
+                    <th>Added On</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Filled dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <br />
+
+
+            <section id="slot-management" class="card">
+                    <h2>Slot Management</h2>
+
+                    <!-- Create New Slot Form -->
+                    <form id="createSlotForm">
+                      <div class="form-group">
+                        <label for="slotName">Slot Name / Time</label>
+                        <input type="text" id="slot" class="form-control" placeholder="e.g., 4:00-4:40 PM" required />
+                      </div>
+                      <div class="form-group">
+                        <label for="maxCapacity">Max Capacity</label>
+                        <input type="number" id="maxCapacity" class="form-control" min="1" required />
+                      </div>
+                      <button type="submit" class="btn">Create Slot</button>
+                    </form>
+
+                    <!-- Existing Slots Table -->
+                    <div style="margin-top: 2rem; overflow-x:auto;">
+                      <table id="slotTable">
+                        <thead>
+                          <tr>
+                            <th>Slot ID</th>
+                            <th>Slot Name</th>
+                            <th>Max Capacity</th>
+                            <th>Assigned</th>
+                            <th>Available</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- Filled dynamically -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+
+        </section>
+  
+
+
+        <section id="progress-tab" class="card" style="display:none;">
+  <div class="container mt-5">
+    <h2>📅 All Training Plans</h2>
+    <button id="exportTrainingPlansBtn" class="btn btn-success mb-3">Export to Excel</button>
+
+    <div style="overflow-x: auto;">
+      <table id="training-plans-table" class="table table-striped table-bordered nowrap" style="width:100%">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>TR</th>
+            <th>Body Parts</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ----------------------------------------------------------------------------------------------------------------------------- -->
+
+ <section id="Admin-base" style="display: none; padding: 20px;">
+
+
+        <section class="card mt-4 p-3">
+  <h2>👑 Role Management Panel</h2>
+  <p id="adminBranchInfo">
+  Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch.
+</p>
+
+
+  <div style="overflow-x: auto;">
+  <!-- Table (read-only) -->
+  <table id="adminUserTable" border="1" cellspacing="0" cellpadding="5">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Gender</th>
+        <th>Role</th>
+         <th>Action</th> 
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <!-- Add New User -->
+  <h3>Add New User</h3>
+  <form id="adminAddForm" class="form-group">
+    <input type="text" placeholder="Username" id="newUsername" required />
+    <input type="text" placeholder="Password" id="newPassword" required />
+    <select id="newGender">
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+    <select id="newRole">
+      <option value="Trainer">Trainer</option>
+      <option value="Staff">Staff</option>
+    </select>
+    <button type="submit" class="btn btn-success mb-3">Add User</button>
+  </form>
+  </section>
+
+
+  <section id="inactive-student-record" class="card">
+  <div class="container mt-5">
+    <h2>Inactive Students (Admin View)</h2>
+    <div style="overflow-x: auto;">
+      <table id="inactiveStudentTable">
+        <thead>
+          <tr>
+            <th>Tr No</th>
+            <th>Name</th>
+            <th>Darajah</th>
+            <th>Preferred Goal</th>
+            <th>Slot</th>
+            <th>Activate</th> 
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</section>
+
+
+
+<!-- -------------------------------------------------------------------------------------------------------------------------------- -->
+
+    <section id="student-record" class="card" style="display:none;">
+          <div class="container mt-5">
+            <h2>Active Students</h2>
+            <div style="overflow-x: auto;">
+              <table id="studentTable">
+                <thead>
+                  <tr>
+                    <th>Tr No</th>
+                    <th>Name</th>
+                    <th>Darajah</th>
+                    <th>Preferred Goal</th>
+                    <th>Slot</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+    </section>
+
+
+
+
+
+
+        
+          <section id="test-record" class="card" style="display:none;">
+                    <div class="container mt-5">
+            <h2>🧪 All Fitness Test Records</h2>
+            <button id="exportTestRecordsBtn" class="btn btn-success mb-3">Export to Excel</button>
+
+
+            <!-- Scrollable wrapper -->
+            <div style="overflow-x: auto;">
+              <table id="test-records-table" class="table table-striped table-bordered nowrap" style="width:100%">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>TR</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Weight</th>
+                    <th>Height</th>
+                    <th>Waist</th>
+                    <th>Hips</th>
+                    <th>Neck</th>
+                    <th>BMI</th>
+                    <th>BMI Status</th>
+                    <th>Body Fat %</th>
+                    <th>BMR</th>
+                    <th>Calorie Intake</th>
+                    <th>VO₂ Max</th>
+                    <th>Total</th>
+                    <th>Grade</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="attendance-summary" class="card" style="display:none;">
+
+        <section id="edit-attendance" class="card mt-4 p-3">
+          <h2> Attendance Module</h2>
+
+          <div class="row mb-2">
+            <div class="col-md-3">
+              <label for="editTR">TR Number</label>
+              <input type="number" class="form-control" id="editTR" required>
+            </div>
+            <div class="col-md-3">
+              <label for="editDate">Date</label>
+              <input type="date" class="form-control" id="editDate" required>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
+            </div>
+          </div>
+
+            <div id="attendanceEditor" style="display: none;">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label>Current Status</label>
+                        <input type="text" class="form-control" id="currentStatus" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="newStatusSelect">Change Status To</label>
+                        <select class="form-control" id="newStatusSelect">
+                            <option value="on_leave">On Leave</option>
+                            <option value="present">Present</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-success w-100" id="updateAttendanceBtn">Save Changes</button>
+                    </div>
+                </div>
+                <h3><p id="editMessage" class="text-info mt-3"></p></h3>
+            </div>
+        </section>
+        <section id="bulk-attendance" class="card mt-4 p-3">
+          <h2>Bulk Attendance Actions</h2>
+          <div class="row">
+              <div class="col-md-4">
+                  <label for="bulkLeaveDate">Select Date for University Event</label>
+                  <input type="date" class="form-control" id="bulkLeaveDate">
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                  <button class="btn btn-warning w-100" id="bulkLeaveBtn">Mark All as On Leave</button>
+              </div>
+          </div>
+      </section>
+
+       
+
+      <div class="container mt-5">
+          <h2>Weekly Attendance</h2>
+          <div class="form-group">
+            <label for="weekSelect">Select Week</label>
+            <select id="weekSelect" class="form-control" required>
+              <option value="" disabled selected>Loading Weeks...</option>
+            </select>
+            
+            <button class="btn" id="loadAttendanceBtn" style="margin-top: 0.5rem;">Load Attendance</button>
+          </div>
+        
+            <!-- Export Button -->
+            <div class="d-flex justify-content-end">
+            <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
+          </div>
+
+
+            <!-- Attendance Table -->
+              <div style="overflow-x: auto;">
+                  <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
+                      <thead>
+                          <tr>
+                              <th>Tr No</th>
+                              <th>Name</th>
+                              <th>Slot</th> 
+                              <th>Monday</th>
+                              <th>Tuesday</th>
+                              <th>Wednesday</th>
+                              <th>Thursday</th>
+                              <th>Friday</th>
+                              <th>Saturday</th>
+                              <th>Total Absences</th>
+                          </tr>
+                      </thead>
+                      <tbody></tbody>
+                  </table>
+              </div>
+        </div>
+
+        </section>
+        
+        
+        </div>
+      </div>  
+      <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+      <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  
+    <script>
+async function validateStaffSession() {
+  try {
+    const res = await fetch('/api/session-user', {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    const data = await res.json();
+
+    if (!data.success || !data.user) {
+      window.location.href = 'Forbidden.html';
+      return;
+    }
+
+        // AFTER
+        const { Branch, Gender, Role, Username } = data.user;
+    
+
+            // Handle showing/hiding the Admin tab based on role
+        const isAdmin = Role === 'Admin';
+        document.getElementById('tab-admin').style.display = isAdmin ? 'inline-block' : 'none';
+
+        // Check localStorage for a saved tab
+        let lastTab = localStorage.getItem('lastActiveTab');
+
+        // If a non-admin somehow saved the admin tab, reset them to overview
+        if (lastTab === 'Admin-base' && !isAdmin) {
+            lastTab = null;
+        }
+
+        if (lastTab) {
+            // If a tab was saved, show it
+            const link = document.querySelector(`.navbar a[data-target="${lastTab}"]`);
+            showSection(lastTab);
+            setActiveTab(link.id);
+
+            // IMPORTANT: Also call the load functions for that specific tab
+            if (lastTab === 'student-record') loadStudentRecords();
+            if (lastTab === 'Admin-base') {
+                loadAdminUsers();
+                loadInactiveStudents();
+            }
+        } else {
+            // Otherwise, default to the Overview tab
+            showSection('overview-section');
+            setActiveTab('tab-overview');
+        }
+
+    if (Role === 'Trainer') {
+      window.location.href = 'Forbidden.html';
+      return;
+    }
+
+    // Update welcome text
+    document.getElementById('welcomeText').innerText =
+      `${Branch.toUpperCase()} ( ${Gender.toUpperCase()} ) - Logged as  ${Role}`;
+
+      // Show "Fitness Test" tab only if Branch = Marol and Gender = Male
+      const fitnessTab = document.getElementById('tab-test');
+      if (Branch === 'Marol' && Gender === 'Male') {
+        fitnessTab.style.display = 'inline-block';
+      } else {
+        fitnessTab.style.display = 'none';  // Just for extra safety
+      }
+
+
+    // Store branch and gender in localStorage for reuse
+    localStorage.setItem('branch', Branch);
+      // 🔵 Update the paragraph inside admin panel with branch name
+     const adminInfoPara = document.getElementById('branch-name');
+    if (adminInfoPara && Branch) {
+      adminInfoPara.innerText = Branch;
+    }
+
+
+    localStorage.setItem('gender', Gender);
+
+    // Update Darajah options dynamically based on Gender
+    updateDarajahOptionsBasedOnGender(Gender);
+    
+
+    localStorage.setItem('username', Username);
+
+  } catch (err) {
+    console.error('Failed to validate session:', err);
+    window.location.href = 'Forbidden.html';
+  }
+}
+
+// Function to update Darajah select options based on Gender
+function updateDarajahOptionsBasedOnGender(gender) {
+  if (!gender) return;
+
+  const isFemale = gender.toLowerCase() === 'female';
+
+  const darajahSelect = document.getElementById('darajah');
+
+  if (!darajahSelect) return;
+
+  const maleOptions = [
+    "Class 5 AM",
+    "Class 5 BM",
+    "Class 6 AM",
+    "Class 6 BM",
+    "Class 7 AM",
+    "Class 7 BM",
+    "Class 8 AM",
+    "Class 9 AM",
+    "Class 10 AM",
+    "Class 11 AM"
+  ];
+
+  // Clear existing options
+  darajahSelect.innerHTML = '';
+  darajahSelect.appendChild(new Option("Select Darajah", "", true, true));
+  darajahSelect.options[0].disabled = true;
+   
+  maleOptions.forEach(optionText => {
+    let displayText = optionText;
+    if (isFemale) {
+      displayText = displayText.replace('AM', 'AF').replace('BM', 'BF');
+    }
+    darajahSelect.appendChild(new Option(displayText, displayText));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  validateStaffSession();
+  loadOverviewStats(); 
+});
+
+function setActiveTab(tabIdToActivate) {
+  // Remove active class from all navbar links
+  document.querySelectorAll('.navbar a').forEach(tab => {
+    tab.classList.remove('active');
+  });
+
+  // Add active class to the current one
+  const targetTab = document.getElementById(tabIdToActivate);
+  if (targetTab) {
+    targetTab.classList.add('active');
+  }
+}
+
+
+//.........................................................................................................................
+
+let cachedSlots = null;
+
+async function getSlots() {
+  if (cachedSlots) return cachedSlots; // reuse cache
+
+  const res = await fetch('/api/slots');
+  const data = await res.json();
+  const slots = data.slots || data;
+
+  if (!Array.isArray(slots)) {
+    console.error("Slots API did not return array:", data);
+    return [];
+  }
+
+  cachedSlots = slots;
+  return cachedSlots;
+}
+
+//----------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Fetches and displays the statistics for the overview page.
+ */
+async function loadOverviewStats() {
+    try {
+        const res = await fetch('/api/overview-stats'); // The new API we will create
+        const stats = await res.json();
+
+        if (stats.success) {
+            // Populate each card with data from the API
+            document.getElementById('stat-active-students').textContent = stats.data.activeStudents;
+            document.getElementById('stat-inactive-students').textContent = stats.data.inactiveStudents;
+            document.getElementById('stat-waiting-list').textContent = stats.data.waitingList;
+            document.getElementById('stat-slots').textContent = stats.data.slots;
+            document.getElementById('stat-todays-logs').textContent = stats.data.todaysLogs;
+            document.getElementById('stat-fitness-tests').textContent = stats.data.fitnessTests;
+            document.getElementById('stat-users').textContent = stats.data.users;
+        }
+    } catch (err) {
+        console.error("Failed to load overview stats:", err);
+        // You can add an error message to the cards here if you want
+    }
+}
+
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+
+// Add student
+document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
+  event.preventDefault();
+  
+  const payload = {
+    TR: document.getElementById('trNo').value.trim(), 
+    Name: document.getElementById('studentName').value,
+    Darajah: document.getElementById('darajah').value,
+    Goal: document.getElementById('goal').value
+  };
+
+  const res = await fetch('/api/add-student', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (res.ok && data.success) {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Student added to Waiting List!',
+      showConfirmButton: false,
+      timer: 2000
+    });
+    refreshSlotEntryPage();
+    document.getElementById('studentEntryForm').reset();
+  } else {
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Error: ' + data.message,
+    });
+  }
+});
+
+
+// Variable to hold the DataTable instance
+let waitingListDataTable = null;
+
+async function loadWaitingList() {
+    // If the DataTable is already initialized, just reload its data
+    if (waitingListDataTable) {
+        waitingListDataTable.ajax.reload();
+        return;
+    }
+
+    // Fetch the available slots ONCE before initializing the table.
+    // The getSlots() function conveniently caches this for us.
+    const availableSlots = await getSlots();
+
+    // Initialize the DataTable
+    waitingListDataTable = $('#waitingListTable').DataTable({
+        ajax: {
+            url: '/api/waiting-list',
+            dataSrc: '' // The API returns a direct array, so dataSrc is empty
+        },
+        columns: [
+            { data: 'WaitingID' },
+            { data: 'TR' },
+            { data: 'Name' },
+            { data: 'Darajah' },
+            { data: 'Goal' },
+            { 
+                data: 'RequestedAt',
+                render: function(data) {
+                    // Format the date for display
+                    return new Date(data).toLocaleString();
+                }
+            },
+            { 
+                data: 'WaitingID', // Use WaitingID for the data attributes
+                orderable: false, // Don't allow sorting on this column
+                render: function(data, type, row) {
+                    // Build the HTML for the slot dropdown
+                    let slotOptions = availableSlots.map(slot => 
+                        `<option value="${slot.SlotID}" 
+                            ${slot.AvailableSeats <= 0 ? 'disabled' : ''}>
+                            ${slot.SlotName} (${slot.AvailableSeats} seats)
+                        </option>`
+                    ).join('');
+
+                    // Return the complete HTML for the 'Action' cell
+                    return `
+                        <select class="assign-slot-dropdown form-control" style="width: auto; display: inline-block; margin-right: 5px;">
+                            <option value="" disabled selected>Select Slot</option>
+                            ${slotOptions}
+                        </select>
+                        <button class="btn assign-btn" data-id="${data}">Assign</button>
+                    `;
+                }
+            }
+        ],
+        responsive: true, // Make it mobile-friendly
+        destroy: true
+    });
+}
+
+
+// NEW: Delegated event listener for all 'Assign' buttons
+$('#waitingListTable tbody').on('click', '.assign-btn', async function () {
+    const waitingID = $(this).data('id');
+    // Find the dropdown in the same table cell
+    const slotDropdown = $(this).closest('td').find('.assign-slot-dropdown');
+    const slotID = slotDropdown.val();
+
+    if (!slotID) {
+        return Swal.fire('No Slot Selected', 'Please select a slot first!', 'warning');
+    }
+
+    try {
+        const res = await fetch("/api/assign-student-slot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ WaitingID: parseInt(waitingID), SlotID: parseInt(slotID) })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Student Assigned!',
+                showConfirmButton: false,
+                timer: 3000
+            });
+            // Instead of reloading the page, just refresh the tables' data
+            refreshSlotEntryPage(); // This will reload both waiting list and slot tables
+        } else {
+            Swal.fire('Assignment Failed', `Error: ${data.message}`, 'error');
+        }
+    } catch (err) {
+        console.error("Assign student error:", err);
+        Swal.fire('Server Error', 'Failed to assign student', 'error');
+    }
+});
+
+
+
+// Load slots into <select>
+async function loadSlots() {
+  try {
+      const slots = await getSlots();  // ✅ cached now
+
+    const slotSelect = document.getElementById('slot');
+    if (!slotSelect) return;
+
+    slotSelect.innerHTML = '<option value="" disabled selected>Select Slot</option>';
+
+    slots.forEach(s => {
+      const option = document.createElement('option');
+      option.value = s.SlotID;
+      option.textContent = `${s.SlotName} (${s.AvailableSeats} left)`;
+      if (s.AvailableSeats <= 0) option.disabled = true;
+      slotSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error('Error loading slots:', err);
+  }
+}
+
+
+
+// Load slots into table
+async function loadSlotTable() {
+  const tbody = document.querySelector('#slotTable tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+
+  try {
+     const slots = await getSlots();   // ✅ cached now
+
+    if (slots.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6">No slots created yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    slots.forEach(slot => {
+      const assignedCount = (slot.MaxCapacity || 0) - (slot.AvailableSeats || 0);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${slot.SlotID}</td>
+        <td>${slot.SlotName}</td>
+        <td>${slot.MaxCapacity}</td>
+        <td>${assignedCount}</td>
+        <td>${slot.AvailableSeats || 0}</td>
+        <td><button onclick="deleteSlot(${slot.SlotID})">Delete</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error('Error loading slots:', err);
+    tbody.innerHTML = '<tr><td colspan="6">Error loading slots</td></tr>';
+  }
+}
+
+
+
+
+// Handle new slot creation
+document.getElementById('createSlotForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const payload = {
+    SlotName: document.getElementById('slot').value.trim(),
+    MaxCapacity: parseInt(document.getElementById('maxCapacity').value, 10)
+  };
+
+  try {
+    const res = await fetch('/api/slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Slot created successfully!',
+        showConfirmButton: false,
+        timer: 2000
+      });
+      this.reset();
+      loadSlotTable();
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Error: ' + data.error,
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Failed to create slot',
+    });
+  }
+});
+
+// Delete slot
+async function deleteSlot(slotId) {
+  Swal.fire({
+    title: 'Are you sure?',
+    text: "This will permanently delete the slot. You won't be able to revert this!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#4CAF50', // Matches your theme
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Yes, delete it!'
+  }).then(async (result) => { // Make the callback async
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/slots/${slotId}`, { method: 'DELETE' });
+        if (res.ok) {
+          Swal.fire('Deleted!', 'The slot has been deleted.', 'success');
+          // We'll replace this reload later
+          loadSlotTable(); 
+        } else {
+          const data = await res.json();
+          Swal.fire('Error!', 'Error: ' + data.error, 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error!', 'Failed to delete slot.', 'error');
+      }
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadWaitingList();
+  await loadSlots();
+  await loadSlotTable();
+
+});
+
+  
+//-----------------------------------------------------------------------------------------------------------------------------
+// A variable to hold our DataTable instance
+let studentDataTable = null;
+
+async function loadStudentRecords() {
+    // If the DataTable is already initialized, just reload its data
+    if (studentDataTable) {
+        studentDataTable.ajax.reload();
+        return;
+    }
+
+    // Initialize the DataTable for the first time
+    studentDataTable = $('#studentTable').DataTable({
+        // Use DataTables' AJAX feature to fetch data directly
+        ajax: {
+            url: '/api/students',
+            dataSrc: 'data' // The array of students is in the 'data' property of the response
+        },
+        // Define which data property maps to which column
+        columns: [
+            { data: 'TR' },
+            { data: 'Name' },
+            { data: 'Darajah' },
+            { data: 'Goal' },
+            { 
+                data: 'SlotName',
+                // Use a 'render' function for custom HTML in a cell
+                render: function(data, type, row) {
+            let displayText = '';
+
+            // Step 1: Determine the main display text based on the slot's status
+            if (!row.SlotID) {
+                displayText = `<span style="color: var(--gray);">No slot assigned</span>`;
+            } else if (row.IsActive === false) {
+                displayText = `
+                    <span style="text-decoration: line-through; color: var(--danger);">${data}</span>
+                    <span style="font-weight: bold; color: var(--danger);"> ⚠️ (Deactivated)</span>
+                `;
+            } else {
+                displayText = `<span class="slot-text">${data}</span>`;
+            }
+            
+            // Step 2: ALWAYS append the edit button to the text
+            return `${displayText} <button class="edit-slot-btn" data-tr="${row.TR}">✏️</button>`;
+        }
+            },
+            { 
+                data: 'TR', // Use the TR number for the button's data attribute
+                render: function(data, type, row) {
+                    return `<button class="deactivate-btn btn-danger" data-tr="${data}">🚫 Deactivate</button>`;
+                }
+            }
+        ],
+        responsive: true, // Make it mobile-friendly!
+        destroy: true // Allows re-initialization if needed
+    });
+}
+
+/**
+ * NEW: DELEGATED EVENT LISTENERS
+ * These are more efficient. They are attached once to the table body
+ * and can handle clicks on all buttons, even those created later.
+ */
+
+// Handles the 'Deactivate' button clicks
+$('#studentTable tbody').on('click', '.deactivate-btn', function () {
+    const tr = $(this).data('tr'); // Get the TR number from the button's data attribute
+    
+    Swal.fire({
+        title: 'Deactivate Student?',
+        text: `Are you sure you want to deactivate student TR ${tr}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: 'var(--primary)',
+        cancelButtonColor: 'var(--danger)',
+        confirmButtonText: 'Yes, deactivate.'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                // Your existing fetch logic for deactivation
+                await fetch(`/api/students/status/${tr}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Status: 'Inactive' })
+                });
+                Swal.fire('Deactivated!', 'The student has been deactivated.', 'success');
+                studentDataTable.ajax.reload(); // Reload the table data
+            } catch (err) {
+                Swal.fire('Error', 'Failed to update student.', 'error');
+            }
+        }
+    });
+});
+
+// REPLACE your existing '.edit-slot-btn' listener with this one.
+$('#studentTable tbody').on('click', '.edit-slot-btn', async function () {
+    const tr = $(this).data('tr');
+    const slotCell = $(this).closest('td');
+
+    // Prevent multiple dropdowns from opening
+    if (slotCell.find('select').length > 0) return;
+
+    // Fetch the latest slot data to ensure availability is current
+    const slotRes = await fetch('/api/slots');
+    const slotJson = await slotRes.json();
+    const slotData = slotJson.slots || [];
+
+    const currentText = slotCell.find('.slot-text').text();
+
+    // Create and show the dropdown and save button
+    const select = $('<select class="form-control" style="width: auto; display: inline-block;">').append(
+        slotData.map(slot =>
+            `<option value="${slot.SlotID}"
+                ${slot.SlotName === currentText ? 'selected' : ''}
+                ${slot.AvailableSeats <= 0 && slot.SlotName !== currentText ? 'disabled' : ''}>
+                ${slot.SlotName} (${slot.AvailableSeats || 0} left)
+            </option>`
+        ).join('')
+    );
+
+    const saveBtn = $('<button class="btn" style="margin-left: 5px;">💾</button>');
+    
+    slotCell.empty().append(select, saveBtn);
+
+    // --- THIS IS THE CORRECTED LOGIC ---
+    // The save button now knows what to do when clicked.
+    saveBtn.on('click', async () => {
+        const newSlotID = parseInt(select.val());
+
+        if (!newSlotID) {
+            return Swal.fire('Warning', 'Please select a valid slot.', 'warning');
+        }
+
+        try {
+            const res = await fetch('/api/change-student-slot', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ TR: parseInt(tr), SlotID: newSlotID })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Success', 'Slot updated successfully!', 'success');
+                // The correct way to update a DataTable: simply reload the data.
+                studentDataTable.ajax.reload();
+            } else {
+                Swal.fire('Error', 'Error updating slot: ' + data.message, 'error');
+            }
+        } catch (err) {
+            console.error('Slot update error:', err);
+            Swal.fire('Error', 'Failed to update slot.', 'error');
+        }
+    });
+    // --- END OF CORRECTION ---
+});
+
+
+
+
+
+
+function attachDeactivateHandlers() {
+    document.querySelectorAll('.deactivate-btn').forEach(button => {
+        button.addEventListener('click', () => { // Removed async here
+            const tr = button.dataset.tr;
+            // --- REPLACEMENT START ---
+            Swal.fire({
+                title: 'Deactivate Student?',
+                text: `Are you sure you want to deactivate student TR ${tr}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary)',
+                cancelButtonColor: 'var(--danger)',
+                confirmButtonText: 'Yes, deactivate.'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch(`/api/students/status/${tr}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ Status: 'Inactive' })
+                        });
+                        const data = await res.json();
+                        Swal.fire('Deactivated!', data.message || 'Student status updated.', 'success');
+                        loadStudentRecords();
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire('Error', 'Failed to update student.', 'error');
+                    }
+                }
+            });
+            // --- REPLACEMENT END ---
+        });
+    });
+}
+
+
+
+//----------------------------------------------------------------------------------------------------------
+
+
+async function loadInactiveStudents() {
+  try {
+    const res = await fetch('/api/students/inactive', { method: 'GET', credentials: 'include' });
+    const response = await res.json();
+
+    if (!response.success || !Array.isArray(response.data)) {
+      console.error('❌ Invalid response:', response);
+      Swal.fire('Error', 'Failed to fetch inactive students.', 'error');
+      return;
+    }
+
+    const students = response.data;
+
+    renderInactiveRows(students);
+
+  } catch (err) {
+    console.error('❌ loadInactiveStudents error:', err);
+    Swal.fire('Error', 'Error loading inactive students.', 'error');
+  }
+}
+
+function renderInactiveRows(students) {
+  const tbody = document.querySelector('#inactiveStudentTable tbody');
+  tbody.innerHTML = '';
+
+  students.forEach(s => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${s.TR}</td>
+      <td>${s.Name}</td>
+      <td>${s.Darajah}</td>
+      <td>${s.Goal}</td>
+      <td>${s.SlotName || '-'}</td>
+      <td><button class="activate-btn" data-tr="${s.TR}">✅ Activate</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  attachActivateHandlers();
+}
+
+
+function attachActivateHandlers() {
+    document.querySelectorAll('.activate-btn').forEach(button => {
+        button.addEventListener('click', () => { // Removed async here
+            const tr = button.dataset.tr;
+            // --- REPLACEMENT START ---
+            Swal.fire({
+                title: 'Activate Student?',
+                text: `Are you sure you want to activate student TR ${tr}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary)',
+                cancelButtonColor: 'var(--danger)',
+                confirmButtonText: 'Yes, activate.'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch(`/api/students/status/${tr}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ Status: 'Active' })
+                        });
+                        const data = await res.json();
+                        Swal.fire('Activated!', data.message || 'Student status updated.', 'success');
+                        loadInactiveStudents(); // Refresh this specific list
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire('Error', 'Failed to update student.', 'error');
+                    }
+                }
+            });
+            // --- REPLACEMENT END ---
+        });
+    });
+}
+
+
+
+
+
+//----------------------------------------------------------------------------------------------------------
+
+function attachAttendanceLoader() {
+    const btn = document.getElementById('loadAttendanceBtn');
+    if (!btn.dataset.bound) {
+        btn.addEventListener('click', async () => {
+            const weekId = document.getElementById('weekSelect').value;
+            if (!weekId) {
+                return Swal.fire('No Week Selected', 'Please select a week before loading.', 'warning');
+            }
+
+            const tbody = document.querySelector('#attendanceTable tbody');
+            tbody.innerHTML = `<tr><td colspan="9" class="loader-cell"><div class="loader"></div></td></tr>`;
+
+            try {
+                const res = await fetch(`/api/weekly-attendance/${weekId}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="loader-cell">No attendance records found for this week.</td></tr>`;
+                    return;
+                }
+                
+                data.forEach(student => {
+                      // 1. Calculate the total number of absences for this student
+                      let absentCount = 0;
+                      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                      days.forEach(day => {
+                          if (student[day] === 'Absent') {
+                              absentCount++;
+                          }
+                      });
+                    const row = document.createElement('tr');
+                    if (absentCount >= 3) {
+                        row.classList.add('attendance-danger-row');
+                    }
+                    row.innerHTML = `
+                        <td>${student.TR}</td>
+                        <td>${student.Name}</td>
+                        <td>${student.SlotName}</td>
+                        ${renderAttendanceCell(student.Monday)}
+                        ${renderAttendanceCell(student.Tuesday)}
+                        ${renderAttendanceCell(student.Wednesday)}
+                        ${renderAttendanceCell(student.Thursday)}
+                        ${renderAttendanceCell(student.Friday)}
+                        ${renderAttendanceCell(student.Saturday)}
+                        <td>${absentCount}</td> 
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('Failed to load attendance:', err);
+                tbody.innerHTML = `<tr><td colspan="9" class="loader-cell" style="color: var(--danger);">Error loading attendance. Please try again.</td></tr>`;
+            }
+        });
+        btn.dataset.bound = 'true';
+    }
+
+    const exportBtn = document.getElementById('exportAttendanceBtn');
+    exportBtn.addEventListener('click', () => {
+        const table = document.getElementById('attendanceTable');
+        const tbody = table.querySelector('tbody');
+
+        if (!tbody || tbody.rows.length === 0 || tbody.rows[0].cells[0].hasAttribute('colspan')) {
+            Swal.fire('No Data to Export', 'Please load attendance data before exporting.', 'warning');
+            return;
+        }
+
+        const worksheet = XLSX.utils.table_to_sheet(table);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Weekly Attendance");
+
+        // --- ✅ START: DYNAMIC FILENAME LOGIC ---
+
+        // 1. Get the text from the selected week in the dropdown
+        const weekSelect = document.getElementById('weekSelect');
+        const selectedText = weekSelect.selectedOptions[0].text; // e.g., "Week 1 (Sun, 20 Apr → Sat, 26 Apr)"
+        
+        // 2. Clean the text to make it a valid filename (replace invalid characters)
+        const safeFilename = selectedText.replace(/→/g, 'to').replace(/[/\\]/g, '-');
+
+        // 3. Create the final filename with the .xlsx extension
+        const finalFileName = `${safeFilename}.xlsx`;
+
+        // --- ✅ END: DYNAMIC FILENAME LOGIC ---
+
+        // 4. Use the new dynamic filename for the download
+        XLSX.writeFile(workbook, finalFileName);
+    });
+}
+
+
+// Helper to render attendance cell with colors
+function renderAttendanceCell(value) {
+    if (value === 'Present') {
+        return `<td style="color: green; font-weight: bold;">Present</td>`;
+    } else if (value === 'On Leave') { // <-- ADD THIS CASE
+        return `<td style="color: #f59e0b; font-weight: bold;">On Leave</td>`; // Amber/Orange color
+    } else if (value === 'Absent') {
+        return `<td style="color: red; font-weight: bold;">Absent</td>`;
+    } else {
+        return `<td></td>`;
+    }
+}
+
+window.addEventListener('DOMContentLoaded', attachAttendanceLoader);
+
+
+  function formatDate(dateString) {
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
+function loadWeeks() {
+    fetch('/api/weeks')
+        .then(res => res.json())
+        .then(data => {
+            const weekSelect = document.getElementById('weekSelect');
+            weekSelect.innerHTML = '<option value="" disabled selected>Select Week</option>'; // Reset dropdown
+
+            if (data.success && data.weeks.length > 0) {
+                data.weeks.forEach(week => {
+                    const option = document.createElement('option');
+                    option.value = week.WeekID;
+
+                    // Format dates directly, without adding time
+                    const startFormatted = formatDate(week.WeekStartDate);
+                    const endFormatted = formatDate(week.WeekEndDate);
+
+                    option.text = `Week ${week.WeekID} (${startFormatted} → ${endFormatted})`;
+
+                    weekSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(err => {
+            console.error('Failed to load weeks:', err);
+        });
+}
+
+// Call this when page loads
+window.onload = function() {
+    loadWeeks();
+};
+  
+
+
+/**
+ * Refreshes all tables on the "Slot Entry" tab.
+ * Call this after adding or assigning students.
+ */
+async function refreshSlotEntryPage() {
+    // Invalidate the cache so we get fresh slot data
+    cachedSlots = null; 
+    
+    // Reload the data in the tables
+    await loadWaitingList();
+    await loadSlotTable();
+}
+
+
+//....................................................................................................
+
+let currentAttendanceId = null;
+let currentTR = null;
+let currentDate = null;
+
+// CORRECTED VERSION
+document.getElementById('fetchAttendanceBtn').addEventListener('click', async () => {
+    const tr = document.getElementById('editTR').value.trim();
+    const date = document.getElementById('editDate').value;
+    const editor = document.getElementById('attendanceEditor');
+
+    if (!tr || !date) {
+        return Swal.fire('Missing Data', 'Please enter both TR and Date.', 'warning');
+    }
+
+    try {
+        const res = await fetch(`/api/attendance-record/${tr}/${date}`);
+        const data = await res.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to fetch record');
+        }
+
+        currentAttendanceId = data.record.AttendanceID;
+        currentTR = tr;
+        currentDate = date;
+
+        const statusField = document.getElementById('currentStatus');
+        const newStatusSelect = document.getElementById('newStatusSelect');
+
+        // --- CORRECTED LOGIC BLOCK ---
+        if (data.record.IsPresent) {
+            statusField.value = 'Present';
+            newStatusSelect.value = 'present';
+        } else if (data.record.OnLeave) {
+            // FIX #2: Correctly displays "On Leave" when fetched.
+            statusField.value = 'On Leave';
+            newStatusSelect.value = 'on_leave';
+        } else {
+            statusField.value = 'Absent (Unmarked)';
+            // FIX #1: Defaults the dropdown to "On Leave" for a new entry.
+            newStatusSelect.value = 'on_leave';
+        }
+        
+
+
+        editor.style.display = 'block';
+        document.getElementById('editMessage').textContent = '';
+
+    } catch (err) {
+        console.error('❌ Fetch error:', err);
+        Swal.fire('Fetch Failed', err.message, 'error');
+    }
+});
+
+
+
+// Listener for the "Save Changes" button
+document.getElementById('updateAttendanceBtn').addEventListener('click', async () => {
+    if (!currentTR || !currentDate) {
+        return Swal.fire('Missing Data', 'Please fetch a record first.', 'warning');
+    }
+
+    const newStatus = document.getElementById('newStatusSelect').value;
+    const onLeave = (newStatus === 'on_leave');
+    const isPresent = (newStatus === 'present');
+    
+
+    // This payload is now more explicit
+    const payload = {
+        TR: parseInt(currentTR, 10),
+        CreatedAt: currentDate,
+        IsPresent: isPresent,
+        OnLeave: onLeave // Send the new OnLeave flag
+    };
+
+    try {
+        // We now use your new, smarter MERGE-based API route
+        const res = await fetch('/api/attendance-record', {
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error);
+
+        Swal.fire('Updated!', 'Attendance has been updated successfully.', 'success');
+        // Reset the form
+        document.getElementById('attendanceEditor').style.display = 'none';
+        document.getElementById('editTR').value = '';
+        document.getElementById('editDate').value = '';
+
+    } catch (err) {
+        console.error('Update error:', err);
+        Swal.fire('Error', `Update Failed: ${err.message}`, 'error');
+    }
+});
+
+// Add this event listener to your main script file
+document.getElementById('bulkLeaveBtn').addEventListener('click', () => {
+    const dateInput = document.getElementById('bulkLeaveDate');
+    const selectedDate = dateInput.value;
+
+    if (!selectedDate) {
+        Swal.fire('No Date Selected', 'Please select a date for the event.', 'warning');
+        return;
+    }
+
+    // A confirmation dialog is crucial for bulk actions
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `This will mark ALL active students in your section as "On Leave" for ${selectedDate}. This action cannot be easily undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, proceed!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch('/api/attendance/bulk-leave', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date: selectedDate })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || 'An unknown error occurred.');
+                }
+
+                Swal.fire('Success!', data.message, 'success');
+                dateInput.value = ''; // Clear the date input
+
+            } catch (err) {
+                Swal.fire('Operation Failed', err.message, 'error');
+            }
+        }
+    });
+});
+
+//----------------------------------------------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize DataTable for fitness test records
+  const testRecordsTable = $('#test-records-table').DataTable({
+    ajax: function (data, callback, settings) {
+      responsive: true,
+      fetch('/api/all-test-records', {
+        method: 'GET',
+        credentials: 'include' // send cookies/session info
+      })
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) {
+          callback({ data: json.data });
+        } else {
+          callback({ data: [] });
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching test records:', err);
+        callback({ data: [] });
+      });
+    },
+columns: [
+  { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+  { data: 'TR' },
+  { data: 'Name' },
+  { data: 'Age', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'Weight', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'Height', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Waist', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Hips', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Neck', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'BMI', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'BMIStatus' },
+  { data: 'BodyFat', render: d => d != null ? d.toFixed(2) : 'N/A' },
+  { data: 'BMR', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'CalorieIntake', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'VO2Max', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Total', render: d => d != null ? d.toFixed(1) : 'N/A' },
+  { data: 'Grade' }
+]
+,
+    order: [[0, 'desc']],
+    pageLength: 25
+  });
+
+  // Export button functionality
+  document.getElementById('exportTestRecordsBtn').addEventListener('click', () => {
+    const data = testRecordsTable.rows({ search: 'applied' }).data().toArray();
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "TestRecords");
+    XLSX.writeFile(workbook, "Fitness_Test_Records.xlsx");
+  });
+});
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const trainingPlansTable = $('#training-plans-table').DataTable({
+    ajax: function (data, callback, settings) {
+      fetch('/api/all-training-plans', {
+        method: 'GET',
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.success) {
+            callback({ data: json.data });
+          } else {
+            callback({ data: [] });
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching training plans:', err);
+          callback({ data: [] });
+        });
+    },
+    columns: [
+      { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+      { data: 'TR' },
+      { data: 'BodyParts' }
+    ],
+    order: [[0, 'desc']],
+    pageLength: 25
+  });
+
+  document.getElementById('exportTrainingPlansBtn').addEventListener('click', () => {
+    const data = trainingPlansTable.rows({ search: 'applied' }).data().toArray();
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'TrainingPlans');
+    XLSX.writeFile(workbook, 'Training_Plans.xlsx');
+  });
+});
+
+//---------------------------------------------------------------------------------------------------
+async function loadAdminUsers() {
+    const tableBody = document.querySelector('#adminUserTable tbody');
+    tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell"><div class="loader"></div></td></tr>`;
+
+    try {
+        const branch = localStorage.getItem('branch');
+        const currentUser = localStorage.getItem('username');
+
+        const res = await fetch(`/api/admin/users/${branch}`);
+        const users = await res.json();
+        
+        const filteredUsers = users.filter(user => user.Username !== currentUser);
+        
+        tableBody.innerHTML = ''; 
+
+        // --- CORRECTION 1 ---
+        // Check the 'filteredUsers' array, not the non-existent 'data' variable.
+        if (!filteredUsers || filteredUsers.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell">No other users found for this branch.</td></tr>`;
+            return;
+        }
+
+        // --- CORRECTION 2 ---
+        // Loop over the 'filteredUsers' array to build the table.
+        filteredUsers.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.Username}</td>
+                <td>${user.Gender}</td>
+                <td>${user.Role}</td>
+                <td>
+                    <button style="background-color: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;"
+                        onclick="deleteUser('${user.Username}')">
+                        Delete
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (err) {
+        console.error('Failed to load users:', err);
+        tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell" style="color: var(--danger);">Error loading users. Please try again.</td></tr>`;
+    }
+}
+
+
+async function deleteUser(username) {
+    // --- REPLACEMENT START ---
+    Swal.fire({
+        title: `Delete ${username}?`,
+        text: "This action is permanent and cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: 'var(--primary)',
+        cancelButtonColor: 'var(--danger)',
+        confirmButtonText: 'Yes, delete user!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            const res = await fetch(`/api/admin/delete-user/${username}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Deleted!', `${username} has been removed.`, 'success');
+                loadAdminUsers();
+            } else {
+                Swal.fire('Error', 'Deletion failed. Please try again.', 'error');
+            }
+        }
+    });
+    // --- REPLACEMENT END ---
+}
+
+
+document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const branch = localStorage.getItem('branch');
+
+    const newUser = {
+        username: document.getElementById('newUsername').value.trim(), // Changed to lowercase
+        password: document.getElementById('newPassword').value,       // Changed to lowercase
+        gender: document.getElementById('newGender').value,         // Changed to lowercase
+        role: document.getElementById('newRole').value,             // Changed to lowercase
+        branch: branch                                              // Changed to lowercase
+    };
+    const res = await fetch('/api/admin/add-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+        // --- REPLACEMENT START ---
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'User Added Successfully!',
+            showConfirmButton: false,
+            timer: 3000
+        });
+        // --- REPLACEMENT END ---
+        loadAdminUsers();
+        e.target.reset();
+    } else {
+        // --- REPLACEMENT START ---
+        Swal.fire('Error', 'Failed to add user.', 'error');
+        // --- REPLACEMENT END ---
+    }
+});
+
+
+      //---------------------------------------------------------------------------------------------------
+  
+/**
+ * ------------------------------------------------------------------
+ * NEW: STREAMLINED TAB SWITCHING LOGIC
+ * This single block replaces all the old tab event listeners.
+ * ------------------------------------------------------------------
+ */
+// A helper function to show a section and hide all others
+function showSection(targetId) {
+    document.querySelectorAll('.content > section').forEach(section => {
+        section.style.display = 'none';
+    });
+    const targetSection = document.getElementById(targetId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+}
+
+// Use a single listener on the navbar for efficiency
+document.querySelector('.navbar').addEventListener('click', (event) => {
+    // Find the link that was clicked
+    const link = event.target.closest('a[data-target]');
+    
+    // If the click wasn't on a tab link, do nothing
+    if (!link) return;
+    
+    event.preventDefault(); // Stop the '#' from appearing in the URL
+    const targetId = link.dataset.target;
+
+    localStorage.setItem('lastActiveTab', targetId); 
+
+    // Show the correct section and update the active tab style
+    showSection(targetId);
+    setActiveTab(link.id); // Your existing function for styling the active tab
+
+    // Conditionally load data for specific tabs when they are opened
+    if (targetId === 'student-record') {
+        loadStudentRecords();
+    } else if (targetId === 'Admin-base') {
+        loadAdminUsers();
+        loadInactiveStudents();
+    }
+});
+
+//-------------------------------------------------------------------------------------------------
+
+
+
+document.getElementById('logoutLink').addEventListener('click', function (e) {
+    e.preventDefault(); // Prevent the link from trying to navigate
+
+    fetch('/api/logout', {
+        method: 'POST', // This is the only change needed.
+        credentials: 'include'
+    })
+    .then(res => {
+        if (!res.ok) {
+            // Handle cases where the server responds with an error status (e.g., 500)
+            throw new Error('Logout request failed');
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (data.success) {
+            localStorage.clear(); // Clear any client-side data
+            window.location.href = 'homepage.html'; // Redirect to home
+        } else {
+            Swal.fire('Error', data.message || 'Logout failed.', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Logout error:', err);
+        Swal.fire('Error', 'Could not connect to the server. Please try again.', 'error');
+    });
+});
+
+    </script>
+  </body>
+  
+</html>

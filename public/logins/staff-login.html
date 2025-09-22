@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Login - FitTracker</title>
+  <link rel="stylesheet" href="/css/style1.css">
+  <link rel="icon" href="images/favicon.png" type="image/png">
+</head>
+
+<body>
+  <div class="login-container" style="background-image: url('images/staff final.jpg');">
+
+    <div class="login-form">
+      <h1>Staff Login</h1>
+      <p>Please enter your staff credentials</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+
+      <a href="homepage.html" class="return-link">Return to Main Page</a>
+    </div>
+
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="module">
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        const Toast = Swal.mixin({
+            toast: true, position: 'top-end', showConfirmButton: false,
+            timer: 2000, timerProgressBar: true
+        });
+
+        Toast.fire({ icon: 'info', title: '👤 Authenticating...' });
+
+        try {
+            const response = await fetch('/api/staff-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.user) {
+                // --- THIS IS THE KEY CHANGE ---
+                // We now receive a full 'user' object from the API.
+                // We save it directly to localStorage. It's now perfect from the start.
+                localStorage.setItem('staffUser', JSON.stringify(data.user));
+                // --- END OF CHANGE ---
+
+                Toast.fire({ icon: 'success', title: '✅ Login successful' });
+                
+                setTimeout(() => {
+                    window.location.href = "staff/overview.html";
+                }, 700);
+
+            } else {
+                Swal.fire('Login Failed', data.message || 'Invalid credentials.', 'error');
+            }
+        } catch (error) {
+            console.error('Error during login:', error);
+            Swal.fire('Error', 'Server error. Please try again later.', 'error');
+        }
+    });
+</script>
+
+
+
+    
+</body>
+</html>
