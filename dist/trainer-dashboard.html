@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trainer Dashboard - FitTracker</title>
+    <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <style>
+        /* --- Professional Theming and Layout --- */
+        :root {
+            --primary-color: #10b981; /* Emerald Green */
+            --primary-hover: #059669; /* Darker Emerald */
+            --secondary-color: #f3f4f6; /* Light Gray Background */
+            --text-color: #374151; /* Cool Gray Text */
+            --border-color: #d1d5db; /* Lighter Gray Border */
+            --card-bg: #ffffff;
+            --success-bg: #d1fae5;
+            --success-text: #065f46;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            margin: 0;
+        }
+
+        .navbar {
+            background: var(--card-bg);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .navbar a:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .navbar a.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .main-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        /* --- Consistent Form Styling --- */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.2s ease;
+            text-decoration: none; /* For <a> tags styled as buttons */
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Component Specific Styles --- */
+        .info-card {
+            background-color: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-card p {
+            margin: 0.25rem 0;
+            font-weight: 500;
+        }
+        
+        #slotInfo { font-size: 1.25rem; }
+        #goalInfo { color: #6b7280; }
+
+        .choices__inner {
+            padding-top: 0.3rem;
+            padding-bottom: 0.3rem;
+            min-height: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        /* Hide elements utility class */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <a href="#" class="active" id="Marking">Attendance</a>
+        <a href="trainer-login.html" id="logoutLink">Logout</a>
+    </div>
+    
+    <div class="content">
+        <div class="card main-form">
+            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span id="currentDateDisplay"></span></p>
+            <h2>📋 Mark Student Attendance</h2>
+            <h3 id="welcomeText" style="text-align:center; font-weight:normal; margin-top:-1rem; margin-bottom: 2rem;"></h3>
+    
+            <form id="attendanceForm">
+                <div class="form-group">
+                    <label for="tr-input">Student TR Number</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="tr-input" class="form-control" placeholder="Enter TR and press Enter">
+                        <button type="button" id="checkTrButton" class="btn" style="width: auto; margin-top:0;">
+                            <span class="btn-text">Check</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="studentInfoCard" class="info-card hidden">
+                    <p id="slotInfo"></p>
+                    <p id="goalInfo"></p>
+                </div>
+
+                <div id="workoutEntryForm" class="hidden">
+                    <div class="form-group">
+                        <label for="bodyParts">Today's Workout</label>
+                        
+                        <select id="bodyParts" multiple>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Chest">Chest</option>
+                            <option value="Back">Back</option>
+                            <option value="Shoulders">Shoulders</option>
+                            <option value="Biceps">Biceps</option>
+                            <option value="Triceps">Triceps</option>
+                            <option value="Legs">Legs</option>
+                            <option value="Core">Core</option>
+                        </select>
+                    </div>
+                </div>
+    
+                <button type="submit" class="btn" id="submitButton" disabled>
+                    <span class="btn-text">Submit Attendance</span>
+                </button>
+                
+                <a href="#" id="viewAttendanceBtn" class="btn" style="background-color:#4b5563; margin-top:0.5rem;">View Today's Attendance</a>
+            </form>
+        </div>
+        
+        <div id="daily-attendance-section" class="card hidden">
+            <h2>Today's Attendance</h2>
+            <table id="dailyAttendanceTable">
+                <thead>
+                    <tr>
+                        <th>TR</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+         <div id="plan-history-section" class="card hidden">
+            <h4>📅 Training Plan History</h4>
+            <table id="planHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Body Parts</th>
+                    </tr>
+                </thead>
+                <tbody id="plan-history-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const elements = {
+            welcomeText: document.getElementById('welcomeText'),
+            currentDateDisplay: document.getElementById('currentDateDisplay'),
+            trInput: document.getElementById('tr-input'),
+            checkTrButton: document.getElementById('checkTrButton'),
+            submitButton: document.getElementById('submitButton'),
+            viewAttendanceBtn: document.getElementById('viewAttendanceBtn'),
+            attendanceForm: document.getElementById('attendanceForm'),
+            studentInfoCard: document.getElementById('studentInfoCard'),
+            slotInfo: document.getElementById('slotInfo'),
+            goalInfo: document.getElementById('goalInfo'),
+            workoutEntryForm: document.getElementById('workoutEntryForm'),
+            dailyAttendanceSection: document.getElementById('daily-attendance-section'),
+            dailyAttendanceTableBody: document.querySelector('#dailyAttendanceTable tbody'),
+            planHistorySection: document.getElementById('plan-history-section'),
+            planHistoryBody: document.getElementById('plan-history-body')
+        };
+        let bodyPartsChoices; // To hold the Choices.js instance
+        let currentValidTR = null; // To store the validated TR number
+
+        // --- Utility Functions ---
+        function toggleButtonSpinner(button, showSpinner) {
+            const btnText = button.querySelector('.btn-text');
+            if (showSpinner) {
+                button.disabled = true;
+                if (!button.querySelector('.spinner')) {
+                    button.insertAdjacentHTML('afterbegin', '<div class="spinner"></div>');
+                }
+                if (btnText) btnText.style.display = 'none';
+            } else {
+                button.disabled = false;
+                const spinner = button.querySelector('.spinner');
+                if (spinner) spinner.remove();
+                if (btnText) btnText.style.display = 'inline';
+            }
+        }
+
+        // REPLACE your old resetForm function with this one
+        function resetForm() {
+            elements.attendanceForm.reset();
+
+            // --- CORRECTED LOGIC ---
+            // If a Choices instance exists, destroy it completely
+            // and reset our variable back to null.
+            if (bodyPartsChoices) {
+                bodyPartsChoices.destroy();
+                bodyPartsChoices = null;
+            }
+            // --- END CORRECTION ---
+
+            elements.studentInfoCard.classList.add('hidden');
+            elements.workoutEntryForm.classList.add('hidden');
+            elements.planHistorySection.classList.add('hidden');
+            elements.submitButton.disabled = true;
+            currentValidTR = null;
+        }
+
+        // --- Main Logic Functions ---
+        async function validateTrainerSession() {
+            try {
+                const res = await fetch('/api/session-user', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success || !data.user) {
+                    window.location.href = 'Forbidden.html';
+                    return;
+                }
+                const { Branch, Gender } = data.user;
+                elements.welcomeText.innerText = `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
+            } catch (err) {
+                console.error('Session validation failed:', err);
+                window.location.href = 'Forbidden.html';
+            }
+        }
+
+        async function checkTR() {
+            const tr = elements.trInput.value.trim();
+            if (!tr) return;
+
+            toggleButtonSpinner(elements.checkTrButton, true);
+            resetForm(); // Reset previous student's data
+            elements.trInput.value = tr; // Keep the value in the input
+
+            try {
+                const res = await fetch(`/api/verify-tr/${tr}`);
+                const data = await res.json();
+
+                if (!data.valid) {
+                    throw new Error(data.message || 'This TR is invalid or membership expired!');
+                }
+
+                currentValidTR = data.data.TR;
+                elements.slotInfo.textContent = data.data.SlotName ? `Slot: ${data.data.SlotName}` : 'No slot assigned';
+                elements.goalInfo.textContent = `Goal: ${data.data.Goal}`;
+                elements.studentInfoCard.classList.remove('hidden');
+                elements.workoutEntryForm.classList.remove('hidden');
+                elements.submitButton.disabled = false;
+
+                        // Initialize Choices.js now that the element is visible, but only if it hasn't been already.
+                    if (!bodyPartsChoices) {
+                        bodyPartsChoices = new Choices('#bodyParts', {
+                            removeItemButton: true,
+                            placeholderValue: 'Select trained body parts...',
+                            searchEnabled: false,
+                            shouldSort: false,
+                        });
+                    }
+                
+                await loadTrainingPlans(currentValidTR);
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `✅ Welcome ${data.data.Name}!`,
+                    text: 'You can now mark attendance and log the workout.',
+                    timer: 2500,
+                    showConfirmButton: false,
+                });
+
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid TR',
+                    text: error.message,
+                });
+            } finally {
+                toggleButtonSpinner(elements.checkTrButton, false);
+            }
+        }
+
+        async function loadTrainingPlans(tr) {
+            try {
+                const res = await fetch(`/api/training-plans/${tr}`);
+                const data = await res.json();
+                elements.planHistoryBody.innerHTML = ''; // Clear old
+
+                if (data.success && data.data.length > 0) {
+                    data.data.forEach(entry => {
+                        const row = `<tr><td>${entry.LogDate}</td><td>${entry.BodyParts}</td></tr>`;
+                        elements.planHistoryBody.insertAdjacentHTML('beforeend', row);
+                    });
+                } else {
+                    elements.planHistoryBody.innerHTML = `<tr><td colspan="2">No recent plans found.</td></tr>`;
+                }
+                elements.planHistorySection.classList.remove('hidden');
+            } catch (err) {
+                console.error('Failed to load plan history:', err);
+            }
+        }
+
+        async function submitAttendanceAndPlan(e) {
+            e.preventDefault();
+            if (elements.submitButton.disabled) return;
+            
+            toggleButtonSpinner(elements.submitButton, true);
+
+            const selectedOptions = bodyPartsChoices.getValue(true);
+
+            try {
+                // Determine WeekID
+                const today = new Date();
+                const weekStart = new Date(today);
+                const day = weekStart.getDay();
+                const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+                weekStart.setDate(diff);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                
+                const weekResponse = await fetch('/api/get-or-create-week', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        WeekStartDate: weekStart.toISOString().split('T')[0],
+                        WeekEndDate: weekEnd.toISOString().split('T')[0]
+                    })
+                });
+                const weekData = await weekResponse.json();
+                const WeekID = weekData.WeekID;
+
+                // Submit attendance (assuming present)
+                const attendanceRes = await fetch('/api/attendance-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ TR: currentValidTR, WeekID, IsPresent: 1 })
+                });
+                const attendanceData = await attendanceRes.json();
+                if (!attendanceRes.ok) throw new Error(attendanceData.error || 'Attendance submission failed');
+
+                // Submit training plan if parts selected
+                if (selectedOptions.length > 0) {
+                    const planRes = await fetch('/api/log-training-plan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ TR: currentValidTR, BodyParts: selectedOptions })
+                    });
+                    const planData = await planRes.json();
+                    if (!planRes.ok) throw new Error(planData.message || 'Plan logging failed');
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Attendance and workout plan logged successfully.',
+                }).then(resetForm);
+
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Submission Error',
+                    text: error.message,
+                });
+            } finally {
+                toggleButtonSpinner(elements.submitButton, false);
+            }
+        }
+
+        async function loadDailyAttendance() {
+            elements.dailyAttendanceSection.classList.toggle('hidden');
+            if (elements.dailyAttendanceSection.classList.contains('hidden')) return;
+
+            elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>`;
+
+            try {
+                const res = await fetch('/api/daily-attendance');
+                const data = await res.json();
+                elements.dailyAttendanceTableBody.innerHTML = '';
+
+                if (data.length === 0) {
+                    elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No attendance marked yet today.</td></tr>`;
+                    return;
+                }
+
+                data.forEach(student => {
+                    const statusStyle = student.IsPresentToday === 'Present' 
+                        ? `background-color: var(--success-bg); color: var(--success-text);`
+                        : `background-color: var(--error-bg); color: var(--error-text);`;
+                    const row = `
+                        <tr>
+                            <td>${student.TR}</td>
+                            <td>${student.Name}</td>
+                            <td style="text-align:center; font-weight:bold; ${statusStyle}">${student.IsPresentToday}</td>
+                        </tr>`;
+                    elements.dailyAttendanceTableBody.insertAdjacentHTML('beforeend', row);
+                });
+            } catch (err) {
+                elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Failed to load attendance.</td></tr>`;
+            }
+        }
+        
+        // --- Event Listeners and Initializers ---
+        document.addEventListener("DOMContentLoaded", () => {
+            validateTrainerSession();
+            elements.currentDateDisplay.textContent = new Date().toISOString().split('T')[0];
+
+
+
+
+            elements.checkTrButton.addEventListener('click', checkTR);
+            elements.trInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    checkTR();
+                }
+            });
+            elements.attendanceForm.addEventListener('submit', submitAttendanceAndPlan);
+            elements.viewAttendanceBtn.addEventListener('click', loadDailyAttendance);
+        });
+
+    </script>
+    <script>
+document.getElementById('logoutLink').addEventListener('click', function (e) {
+    // Prevent the link from navigating to trainer-login.html immediately
+    e.preventDefault();
+
+    // Send a POST request to the secure logout endpoint
+    fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include' // Important for sending the session cookie
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // If logout is successful, clear any stored data and redirect
+            localStorage.clear();
+            window.location.href = 'homepage.html';
+        } else {
+            // Show an error if the server reported a failure
+            alert('Logout failed. Please try again.');
+        }
+    })
+    .catch(err => {
+        console.error('Logout error:', err);
+        alert('Could not connect to the server to log out.');
+    });
+});
+</script>
+</body>
+</html>

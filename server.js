@@ -21,7 +21,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'dist')));
 app.use(session({
   secret: 'jamea1446@GYM!SecreT2025',  
   resave: false,
@@ -1955,6 +1955,23 @@ app.get('/api/testrecords/:tr', async (req, res) => {
 
 // code for install anything via terminal 
 // Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+// --- THIS IS THE NEW PART ---
+// This catch-all route MUST be at the end, after all API routes.
+// It serves the correct HTML file for any page request.
+app.get('*', (req, res) => {
+  // Construct the file path based on the request
+  // Example: a request to '/staff/overview' will look for 'dist/staff/overview.html'
+  const filePath = path.join(__dirname, 'dist', req.path.endsWith('/') ? req.path + 'index.html' : req.path + '.html');
+  
+  // If a specific HTML file exists, send it.
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    // Otherwise, send the main index.html file or a 404 page.
+    res.sendFile(path.join(__dirname, 'dist/index.html'));
+  }
+});
 
 
 let pool; 

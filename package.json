@@ -4,7 +4,8 @@
   "description": "> A project by **Raudat ul Ikhwaan**,  \r > under the University of **Al Jamea Tus Saifiyah**, Marol Campus.\r ### 🔹 Developed by\r   - Mulla Idris Bh Laheri\r      - Mulla Abizer Bh Dewas",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
     "start": "node server.js"
   },
   "repository": {
@@ -27,5 +28,8 @@
     "mssql": "^9.0.0",
     "multer": "^2.0.0",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
   }
 }
