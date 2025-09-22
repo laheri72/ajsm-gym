@@ -798,7 +798,7 @@ app.post('/api/staff-login', async (req, res) => {
 
       req.session.user = { Username, Branch, Gender, Role };
 
-      return res.json({ success: true, role: Role });
+      return res.json({ success: true, user: { Username, Branch, Gender, Role } });
 
     } else {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -1956,22 +1956,29 @@ app.get('/api/testrecords/:tr', async (req, res) => {
 // code for install anything via terminal 
 // Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-// --- THIS IS THE NEW PART ---
+// --- REPLACE the old app.get('*',...) with THIS new version ---
 // This catch-all route MUST be at the end, after all API routes.
-// It serves the correct HTML file for any page request.
 app.get('*', (req, res) => {
-  // Construct the file path based on the request
-  // Example: a request to '/staff/overview' will look for 'dist/staff/overview.html'
-  const filePath = path.join(__dirname, 'dist', req.path.endsWith('/') ? req.path + 'index.html' : req.path + '.html');
-  
-  // If a specific HTML file exists, send it.
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    // Otherwise, send the main index.html file or a 404 page.
-    res.sendFile(path.join(__dirname, 'dist/index.html'));
-  }
+    // Construct the potential path to a file or directory on the server
+    const resourcePath = path.join(__dirname, 'dist', req.path);
+
+    // 1. Check if the requested path is a directory
+    if (fs.existsSync(resourcePath) && fs.lstatSync(resourcePath).isDirectory()) {
+        // If it is a directory, send a 403 Forbidden error.
+        return res.status(403).send('Forbidden: Access to this directory is not allowed.');
+    }
+
+    // 2. Check if a corresponding .html file exists for the path
+    const filePath = resourcePath + '.html';
+    if (fs.existsSync(filePath)) {
+        // If the HTML file exists, send it.
+        return res.sendFile(filePath);
+    }
+    
+    // 3. If it's neither a directory nor a file, send a 404 Not Found error.
+    res.status(404).sendFile(path.join(__dirname, 'dist/Forbidden.html')); // Or a custom 404 page
 });
+
 
 
 let pool; 

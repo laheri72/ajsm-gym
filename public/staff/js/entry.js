@@ -232,7 +232,7 @@ $('#waitingListTable tbody').on('click', '.assign-btn', async function () {
 
     // --- PAGE INITIALIZATION ---
 
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(localStorage.getItem('staffUser'));
     if (user && user.Gender) {
         updateDarajahOptionsBasedOnGender(user.Gender);
     }

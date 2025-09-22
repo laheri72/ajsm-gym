@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- PAGE INITIALIZATION ---
 
     // Get user info stored by auth.js to display branch name
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(localStorage.getItem('staffUser'));
     if (user && user.Branch) {
         const branchNameEl = document.getElementById('branch-name');
         if (branchNameEl) {

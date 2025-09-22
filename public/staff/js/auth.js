@@ -1,80 +1,33 @@
 /**
- * This script runs on EVERY staff page.
- * 1. Validates the user's session. Redirects to Forbidden.html if not logged in.
- * 2. Fetches user details (Role, Branch, Gender) and stores them for other scripts.
- * 3. Dynamically handles the visibility of Admin/Fitness Test tabs.
- * 4. Sets the 'active' class on the correct navbar link.
+ * This script now focuses only on background validation and utility functions.
+ * The initial UI setup is handled by the bootstrap script in the HTML <head> to prevent flickering.
  */
-document.addEventListener('DOMContentLoaded', () => {
-    validateStaffSession();
-    setActiveNavbarLink();
-});
 
-async function validateStaffSession() {
+// --- Background Security Check ---
+async function validateSessionInBackground() {
     try {
-        const res = await fetch('/api/session-user', {
-            method: 'GET',
-            credentials: 'include'
-        });
+        const res = await fetch('/api/session-user', { method: 'GET', credentials: 'include' });
         const data = await res.json();
 
-        // If session is invalid or user is not found, kick them out.
-        if (!data.success || !data.user) {
+        if (!data.success || !data.user || data.user.Role === 'Trainer') {
+            localStorage.removeItem('staffUser');
             window.location.href = '../Forbidden.html';
             return;
         }
 
-        // If a Staff member with 'Trainer' role tries to access, kick them out.
-        if (data.user.Role === 'Trainer') {
-            window.location.href = '../Forbidden.html';
-            return;
-        }
-
-        // Store user details in localStorage so other page-specific scripts can use them.
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        // Handle UI elements common to all pages
-        handleCommonUI(data.user);
+        // Re-sync localStorage with the latest server data.
+        localStorage.setItem('staffUser', JSON.stringify(data.user));
 
     } catch (err) {
-        console.error('Failed to validate session:', err);
+        console.error('Session validation failed:', err);
+        localStorage.removeItem('staffUser');
         window.location.href = '../Forbidden.html';
     }
 }
 
-function handleCommonUI(user) {
-    const { Branch, Gender, Role } = user;
-
-    // Show/hide Admin tab based on role
-    const adminTab = document.getElementById('tab-admin');
-    if (adminTab) {
-        adminTab.style.display = (Role === 'Admin') ? 'inline-block' : 'none';
-    }
-
-    // Show/hide Fitness Test tab based on branch and gender
-    const fitnessTab = document.getElementById('tab-test');
-    if (fitnessTab) {
-        fitnessTab.style.display = (Branch === 'Marol' && Gender === 'Male') ? 'inline-block' : 'none';
-    }
-    
-    // Handle logout link
-     document.getElementById('logoutLink').addEventListener('click', function (e) {
-        e.preventDefault();
-        fetch('/api/logout', { method: 'POST', credentials: 'include' })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.clear();
-                    window.location.href = '../homepage.html';
-                }
-            }).catch(err => console.error('Logout failed:', err));
-    });
-}
-
+// --- Set Active Navbar Link ---
 function setActiveNavbarLink() {
-    // Get the current page's filename (e.g., "overview.html")
     const currentPage = window.location.pathname.split('/').pop();
-
     document.querySelectorAll('.navbar a').forEach(link => {
         const linkPage = link.getAttribute('href');
         if (linkPage === currentPage) {
@@ -84,3 +37,22 @@ function setActiveNavbarLink() {
         }
     });
 }
+
+// --- Main Execution Block ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Run the security check in the background.
+    validateSessionInBackground();
+
+    // Set the active tab style.
+    setActiveNavbarLink();
+
+    // Handle logout.
+    document.getElementById('logoutLink').addEventListener('click', function (e) {
+        e.preventDefault();
+        fetch('/api/logout', { method: 'POST', credentials: 'include' })
+            .then(() => {
+                localStorage.removeItem('staffUser');
+                window.location.href = '../homepage.html';
+            }).catch(err => console.error('Logout failed:', err));
+    });
+});
