@@ -16,7 +16,7 @@ const port = 10000;
 
 // Middleware
 app.use(cors({
-  origin: 'https://webdev-raudat-al-ikhwan.onrender.com',
+  origin: 'https://ajsm-gym.onrender.com',
   credentials: true
 }));
 app.use(express.json());
