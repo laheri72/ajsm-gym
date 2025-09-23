@@ -201,12 +201,14 @@
 </head>
 <body>
 
-    <div class="navbar">
-        <a href="#" class="active" id="Marking">Attendance</a>
-        <a href="trainer-login.html" id="logoutLink">Logout</a>
-    </div>
+<div class="navbar">
+    <a href="#" class="nav-link active" id="nav-attendance">📋 Attendance</a>
+    <a href="#" class="nav-link" id="nav-fitness-test">🏋️ Fitness Test</a>
+    <a href="trainer-login.html" id="logoutLink">Logout</a>
+</div>
     
     <div class="content">
+        <section id="attendance-section" class="page-section">
         <div class="card main-form">
             <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span id="currentDateDisplay"></span></p>
             <h2>📋 Mark Student Attendance</h2>
@@ -279,6 +281,30 @@
                 <tbody id="plan-history-body"></tbody>
             </table>
         </div>
+    </section>
+
+    <section id="fitness-test-section" class="page-section hidden">
+                <div class="card">
+                    <h2>🏋️ Trainer Fitness Test Entry</h2>
+                    
+                    <div class="form-group">
+                        <label for="student-selector">Select Students for Testing (Max 5)</label>
+                        <select id="student-selector" multiple></select>
+                    </div>
+                    <button id="addStudentsBtn" class="btn">Add Students to Testing Area</button>
+                    <hr style="margin: 2rem 0;">
+
+                    <div id="testing-area">
+                        <p style="text-align: center; color: #6b7280;">Select students to begin the test.</p>
+                    </div>
+                    
+                    <div id="submission-container" class="hidden" style="margin-top: 2rem;">
+                        <button id="submitAllTestsBtn" class="btn">
+                            <span class="btn-text">Submit All Records</span>
+                        </button>
+                    </div>
+                </div>
+                </section>
     </div>
 
     <script type="module">
@@ -591,6 +617,264 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
         alert('Could not connect to the server to log out.');
     });
 });
+</script>
+
+<script type="module">
+    // --- DOM Element References ---
+    const testingArea = document.getElementById('testing-area');
+    const addStudentsBtn = document.getElementById('addStudentsBtn');
+    const submitAllBtn = document.getElementById('submitAllTestsBtn');
+    const submissionContainer = document.getElementById('submission-container');
+    let studentChoices;
+
+    // --- 1. Initialize Student Selector ---
+    async function initializeSelector() {
+        try {
+            const res = await fetch('/api/students-list');
+            if (!res.ok) throw new Error('Network response was not ok');
+            const students = await res.json();
+            
+            studentChoices = new Choices('#student-selector', {
+                removeItemButton: true,
+                maxItemCount: 5,
+                placeholderValue: 'Search by name or TR...',
+                choices: students
+            });
+        } catch (err) {
+            console.error('Failed to load students:', err);
+            Swal.fire('Error', 'Could not load student list.', 'error');
+        }
+    }
+
+    // --- 2. Add Selected Students to the Testing Area ---
+    addStudentsBtn.addEventListener('click', async () => {
+        const selectedStudents = studentChoices.getValue(true);
+        if (selectedStudents.length === 0) {
+            Swal.fire('No Selection', 'Please select at least one student.', 'info');
+            return;
+        }
+
+        testingArea.innerHTML = '<div style="text-align:center;">Loading student forms...</div>';
+        
+        const formPromises = selectedStudents.map(tr =>
+            fetch(`/api/testmaster/${tr}`).then(res => res.json())
+        );
+
+        const studentData = await Promise.all(formPromises);
+
+        testingArea.innerHTML = ''; // Clear loading message
+        studentData.forEach(student => {
+            if (student && student.TR) {
+                const formHTML = createStudentTestForm(student);
+                testingArea.insertAdjacentHTML('beforeend', formHTML);
+            }
+        });
+
+        submissionContainer.classList.toggle('hidden', studentData.length === 0);
+    });
+
+    // --- 3. Submit All Forms ---
+    submitAllBtn.addEventListener('click', () => {
+        const allRecordsPayload = [];
+        const studentForms = document.querySelectorAll('.student-test-form');
+        let allFormsValid = true;
+
+        for (const form of studentForms) {
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                allFormsValid = false;
+                break;
+            }
+            const record = calculateFitnessRecord(form);
+            if (record) {
+                allRecordsPayload.push(record);
+            } else {
+                allFormsValid = false; // A calculation failed
+                Swal.fire('Calculation Error', `Could not calculate report for TR ${form.dataset.tr}. Check all inputs.`, 'error');
+                break;
+            }
+        }
+        
+        if (!allFormsValid) {
+            if (studentForms.length > 0 && allFormsValid) {
+                 Swal.fire('Error', 'Please fill all required fields for every student.', 'error');
+            }
+            return;
+        }
+
+        Swal.fire({
+            title: `Confirm Submission`,
+            text: `You are about to submit ${allRecordsPayload.length} fitness records. This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Submit All',
+            reverseButtons: true
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                // --- THIS IS THE COMPLETE SUBMISSION LOGIC ---
+                const buttonText = submitAllBtn.querySelector('.btn-text');
+                buttonText.textContent = 'Submitting...';
+                submitAllBtn.disabled = true;
+
+                try {
+                    const res = await fetch('/api/trainer-test-records', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(allRecordsPayload)
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) {
+                        // Throw an error to be caught by the catch block
+                        throw new Error(data.error || 'An unknown error occurred.');
+                    }
+                    
+                    Swal.fire('Success!', data.message, 'success').then(() => {
+                        location.reload(); // Reload the page to clear forms
+                    });
+
+                } catch (err) {
+                    Swal.fire('Submission Failed', err.message, 'error');
+                } finally {
+                    // Restore button state
+                    buttonText.textContent = 'Submit All Records';
+                    submitAllBtn.disabled = false;
+                }
+                // --- END OF SUBMISSION LOGIC ---
+            }
+        });
+    });
+
+    // --- 4. Helper: Create HTML for a student's form ---
+    function createStudentTestForm(student) {
+        // This form structure is based on your 'fiteness test dashboard.txt' file
+        return `
+            <form class="student-test-form card" data-tr="${student.TR}" data-dob="${student.DOB}" data-age="${student.Age}" style="margin-bottom: 2rem; border-top: 4px solid var(--primary-color);">
+                <h4>Test for: ${student.Name} (TR: ${student.TR})</h4>
+                <div class="row mb-3">
+                    <div class="col"><label>Weight (kg)</label><input type="number" step="any" class="form-control" name="Weight" required></div>
+                    <div class="col"><label>Height (cm)</label><input type="number" step="any" class="form-control" name="Height" required></div>
+                    <div class="col"><label>Waist (cm)</label><input type="number" step="any" class="form-control" name="Waist" required></div>
+                    <div class="col"><label>Hips (cm)</label><input type="number" step="any" class="form-control" name="Hips" required></div>
+                    <div class="col"><label>Neck (cm)</label><input type="number" step="any" class="form-control" name="Neck" required></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col"><label>Push-ups (30 sec)</label><input type="number" class="form-control" name="PushUps" required></div>
+                    <div class="col"><label>Sit-ups (30 sec)</label><input type="number" class="form-control" name="SitUps" required></div>
+                    <div class="col"><label>Squats (30 sec)</label><input type="number" class="form-control" name="Squats" required></div>
+                    <div class="col"><label>Sit and Reach</label><input type="number" step="any" class="form-control" name="SitReach" required></div>
+                    <div class="col"><label>Step-Up Pulse Rate</label><input type="number" class="form-control" name="PulseRate" required></div>
+                </div>
+            </form>
+        `;
+    }
+
+    // --- 5. Helper: Main Calculation Logic ---
+    function calculateFitnessRecord(formElement) {
+        // [cite_start]// This entire calculation block is adapted from your 'generateReport' function [cite: 235]
+        try {
+            const calculated = {};
+            // Gather values from the form
+            const Weight = parseFloat(formElement.querySelector('[name="Weight"]').value);
+            const Height = parseFloat(formElement.querySelector('[name="Height"]').value);
+            const Waist = parseFloat(formElement.querySelector('[name="Waist"]').value);
+            const Hips = parseFloat(formElement.querySelector('[name="Hips"]').value);
+            const Neck = parseFloat(formElement.querySelector('[name="Neck"]').value);
+            const PulseRate = parseFloat(formElement.querySelector('[name="PulseRate"]').value);
+            const PushUps = parseInt(formElement.querySelector('[name="PushUps"]').value) || 0;
+            const SitUps = parseInt(formElement.querySelector('[name="SitUps"]').value) || 0;
+            const Squats = parseInt(formElement.querySelector('[name="Squats"]').value) || 0;
+            const SitReach = parseFloat(formElement.querySelector('[name="SitReach"]').value) || 0;
+            
+            // Age from the form's data attribute
+            const Age = parseInt(formElement.dataset.age);
+
+            // [cite_start]// BMI + Status [cite: 242, 243, 244]
+            const heightInM = Height / 100;
+            const bmi = (Weight / (heightInM * heightInM));
+            calculated.BMI = parseFloat(bmi.toFixed(1));
+            if (bmi < 18.5) calculated.BMIStatus = "Underweight";
+            else if (bmi < 24.9) calculated.BMIStatus = "Normal weight";
+            else if (bmi < 29.9) calculated.BMIStatus = "Overweight";
+            else calculated.BMIStatus = "Obese";
+
+            // [cite_start]// Body Fat % [cite: 245]
+            calculated.BodyFat = parseFloat((495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450).toFixed(1));
+
+            // [cite_start]// BMR + Calorie Intake [cite: 246]
+            calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age + 5);
+            calculated.CalorieIntake = Math.round(calculated.BMR * 1.55);
+
+            // [cite_start]// VO2 Max [cite: 247]
+            calculated.VO2Max = PulseRate ? Math.round(15 * (220 - Age) / PulseRate) : "N/A";
+
+            // [cite_start]// Fitness Score [cite: 249, 250, 251]
+            const totalScore = Math.round(
+                (PushUps / 2) + (SitUps / 2) + (Squats / 2) + SitReach + (calculated.VO2Max !== "N/A" ? calculated.VO2Max / 2 : 0)
+            );
+            calculated.Total = totalScore;
+
+            // [cite_start]// Grade [cite: 252, 253]
+            if (totalScore >= 80) calculated.Grade = "A+";
+            else if (totalScore >= 70) calculated.Grade = "A";
+            else if (totalScore >= 60) calculated.Grade = "B";
+            else if (totalScore >= 50) calculated.Grade = "C";
+            else calculated.Grade = "D";
+
+            // Return the final, structured record for the API
+            return {
+                TR: formElement.dataset.tr,
+                DOB: formElement.dataset.dob,
+                Age: Age,
+                Weight, Height, Waist, Hips, Neck,
+                BMI: calculated.BMI,
+                BMIStatus: calculated.BMIStatus,
+                BodyFat: calculated.BodyFat,
+                BMR: calculated.BMR,
+                CalorieIntake: calculated.CalorieIntake,
+                VO2Max: calculated.VO2Max,
+                Total: calculated.Total,
+                Grade: calculated.Grade
+            };
+        } catch (e) {
+            console.error(`Calculation failed for TR ${formElement.dataset.tr}`, e);
+            return null; // Return null on failure
+        }
+    }
+
+    // --- Initial page load ---
+    initializeSelector();
+
+    
+</script>
+<script type="module">
+    document.addEventListener('DOMContentLoaded', () => {
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pageSections = document.querySelectorAll('.page-section');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault(); // Stop the link from navigating away
+
+                // 1. Get the target section ID from the clicked link's ID
+                // e.g., "nav-attendance" -> "attendance-section"
+                const targetId = link.id.replace('nav-', '') + '-section';
+
+                // 2. Update the 'active' class on the nav links
+                navLinks.forEach(nav => nav.classList.remove('active'));
+                link.classList.add('active');
+
+                // 3. Show the target section and hide the others
+                pageSections.forEach(section => {
+                    if (section.id === targetId) {
+                        section.classList.remove('hidden');
+                    } else {
+                        section.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    });
 </script>
 </body>
 </html>

@@ -1259,7 +1259,8 @@ app.get('/api/all-test-records', async (req, res) => {
         TRS.CalorieIntake,
         TRS.VO2Max,
         TRS.Total,
-        TRS.Grade
+        TRS.Grade,
+        TRS.SubmittedBy
       FROM TestRecords TRS
       JOIN TestMaster TMS ON TRS.TR = TMS.TR
       ORDER BY TRS.CreatedAt DESC
@@ -1950,6 +1951,88 @@ app.get('/api/testrecords/:tr', async (req, res) => {
         res.status(500).json({ error: "Failed to fetch test records" });
     }
 });
+
+
+// Add this new route to your API file
+app.post('/api/trainer-test-records', async (req, res) => {
+    // Expect an array of records in the request body
+    const records = req.body;
+    
+    // Check for authorization (ensure user is a trainer)
+    if (req.session.user?.Role !== 'Trainer' && req.session.user?.Role !== 'Admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (!Array.isArray(records) || records.length === 0) {
+        return res.status(400).json({ error: 'Request body must be a non-empty array of test records.' });
+    }
+    
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+
+        const insertQuery = `
+            INSERT INTO TestRecords 
+            (TR, DOB, Age, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, SubmittedBy) 
+            VALUES (@TR, @DOB, @Age, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade, @SubmittedBy)
+        `;
+
+        for (const record of records) {
+            const request = new sql.Request(transaction);
+            
+            // Validate required fields for each record here if necessary
+
+            // Set inputs from the record object
+            request.input('TR', sql.Int, record.TR);
+            request.input('DOB', sql.Date, record.DOB);
+            request.input('Age', sql.Int, record.Age);
+            request.input('Weight', sql.Float, record.Weight);
+            request.input('Height', sql.Float, record.Height);
+            request.input('Waist', sql.Float, record.Waist);
+            request.input('Hips', sql.Float, record.Hips);
+            request.input('Neck', sql.Float, record.Neck);
+            request.input('BMI', sql.Float, record.BMI);
+            request.input('BMIStatus', sql.NVarChar(50), record.BMIStatus);
+            request.input('BodyFat', sql.Float, record.BodyFat);
+            request.input('BMR', sql.Float, record.BMR);
+            request.input('CalorieIntake', sql.Float, record.CalorieIntake);
+            request.input('VO2Max', sql.Float, record.VO2Max === "N/A" ? null : record.VO2Max);
+            request.input('Total', sql.Float, record.Total);
+            request.input('Grade', sql.NVarChar(2), record.Grade);
+            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer'); // Hardcoded value
+
+            await request.query(insertQuery);
+        }
+
+        await transaction.commit();
+        res.status(200).json({ message: `${records.length} test records saved successfully.` });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error("Error saving trainer test records:", err);
+        res.status(500).json({ error: "Server error during bulk insert." });
+    }
+});
+
+// API to get all students formatted for a dropdown selector
+app.get('/api/students-list', async (req, res) => {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                TR AS value, 
+                Name + ' (' + CAST(TR AS NVARCHAR(10)) + ')' AS label 
+            FROM TestMaster
+            ORDER BY Name
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching student list:', err);
+        res.status(500).json({ error: 'Failed to fetch student list' });
+    }
+});
+
+
+
 
 
 // code for install anything via terminal 

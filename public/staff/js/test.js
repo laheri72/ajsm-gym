@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { data: 'CalorieIntake', render: d => formatNumber(d, 1) },
             { data: 'VO2Max', render: d => formatNumber(d, 1) },
             { data: 'Total', render: d => formatNumber(d, 1) },
-            { data: 'Grade' }
+            { data: 'Grade' },
+            { data: 'SubmittedBy' }
         ],
         order: [[0, 'desc']], // Show newest records first
         pageLength: 25,
