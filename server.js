@@ -1091,6 +1091,41 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
+
+
+// API for the Fitness Progression Line Chart
+app.get('/api/student/fitness-test-history', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) return res.status(401).json({ success: false });
+    const { TR } = req.session.user;
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT CONVERT(VARCHAR(10), CreatedAt, 120) AS TestDate, Weight, BodyFat, Grade
+                FROM TestRecords 
+                WHERE TR = @TR 
+                ORDER BY CreatedAt ASC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// API for the Workout Consistency Heatmap
+app.get('/api/student/workout-calendar', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) return res.status(401).json({ success: false });
+    const { TR } = req.session.user;
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT DISTINCT CAST(P.CreatedAt AS DATE) as workoutDate
+                FROM TrainingPlan P
+                WHERE P.TR = @TR AND P.CreatedAt > DATEADD(month, -6, GETDATE());
+            `);
+        res.json({ success: true, data: result.recordset.map(r => r.workoutDate) });
+    } catch (err) { res.status(500).json({ success: false }); }
+});
+
 app.get('/api/training-plans/:tr', async (req, res) => {
     const { tr } = req.params;
 
@@ -1361,8 +1396,16 @@ app.post('/save-workout-plan', async (req, res) => {
 
 app.get('/api/student/workout-plan', async (req, res) => {
   try {
+    // ✅ ADD THIS CHECK FIRST
+    // This ensures a user is logged in before we try to access their details.
+    if (!req.session.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+    }
+
+    // Now that we know req.session.user exists, it's safe to destructure it.
     const { TR, Branch, Gender } = req.session.user;
 
+    // This check is still useful for data integrity.
     if (!TR || !Branch || !Gender) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
@@ -1370,8 +1413,6 @@ app.get('/api/student/workout-plan', async (req, res) => {
     // 1. Get current week ID
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-
-    
 
     const weekResult = await pool.request()
       .input('Today', sql.Date, todayStr)
@@ -1396,14 +1437,13 @@ app.get('/api/student/workout-plan', async (req, res) => {
         SELECT Day, Content FROM WorkoutPlan
         WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender AND WeekID = @WeekID
       `);
-
+      
     res.json({
       success: true,
       currentWeekID,
       data: planResult.recordset,
       hasCurrentWeek: planResult.recordset.length > 0
     });
-
   } catch (err) {
     console.error('Workout GET error:', err);
     res.status(500).json({ success: false, message: 'Failed to load workout plan' });

@@ -9,6 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Quill core CSS -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <link rel="stylesheet" href="../css/stu-styles.css">
 
 
@@ -159,27 +162,41 @@
 
 
 <section class="card" id="logs-low" style="display: none;">
-    <div id="workout-analytics" style="margin-bottom: 2rem;">
+    
+    <div class="analytics-widget">
+        <h3>Your Fitness Progression</h3>
+        <p>Tracking key metrics from your fitness tests over time.</p>
+        <canvas id="fitnessProgressChart"></canvas>
+    </div>
+
+    <div class="analytics-widget">
+        <h3>Your Workout Consistency</h3>
+        <p>Each colored square represents a day you logged a workout.</p>
+        <div id="consistencyHeatmap"></div>
+    </div>
+
+    <div class="analytics-widget">
         <h3>Your Workout Distribution</h3>
         <div class="chart-container" style="max-width: 400px; margin: auto;">
             <canvas id="bodyPartChart"></canvas>
         </div>
     </div>
-    
-    <div id="student-plan-section">
-        <h3>Your Training Records</h3>
-        <table id="studentPlanTable" class="styled-plan-table">
-            <thead>
-                <tr>
-                    <th>Date</th> 
-                    <th>Plan</th> 
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</section>
 
+    <div id="student-plan-section" style="margin-top: 30px;">
+      <h3>Your Training Records</h3>
+      <table id="studentPlanTable" class="styled-plan-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          </tbody>
+      </table>
+    </div>
+
+</section>
 
    
 
@@ -582,8 +599,6 @@ async function getStudentSession() {
     document.getElementById('welcomeText').innerText =
       `Fitness ${studentName} | ${branch.toUpperCase()} | ${gender.toUpperCase()}`;
 
-    // Load workout plan
-    loadStudentPlans(studentTR);
 
     // Load extra info (Darajah, Goal etc.)
     fetch(`/api/student-info/${studentTR}`, {
@@ -1168,11 +1183,108 @@ mainNav.addEventListener('click', (e) => {
         if (targetSection) {
             targetSection.style.display = 'block';
             if (sectionId === 'logs-low') {
+                loadStudentPlans();
                 loadTrainingAnalytics();
+                loadFitnessProgress();
+                loadWorkoutConsistency();
             }
         }
     }
 });
+
+// Updated function to render the Fitness Progression chart
+async function loadFitnessProgress() {
+    try {
+        const res = await fetch('/api/student/fitness-test-history', { credentials: 'include' });
+        const result = await res.json();
+        
+        // Ensure there are at least two data points to draw a line
+        if (result.success && result.data.length > 1) {
+            const labels = result.data.map(d => d.TestDate);
+            const weightData = result.data.map(d => d.Weight);
+            const bodyFatData = result.data.map(d => d.BodyFat);
+
+            const canvasElement = document.getElementById('fitnessProgressChart');
+            if (!canvasElement) return; // Safety check
+
+            const ctx = canvasElement.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { 
+                            label: 'Weight (kg)', 
+                            data: weightData, 
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            fill: true,
+                            tension: 0.1 
+                        },
+                        { 
+                            label: 'Body Fat (%)', 
+                            data: bodyFatData, 
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true,
+                            tension: 0.1 
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: { display: true, text: 'Weight & Body Fat Over Time' }
+                    }
+                }
+            });
+        } else {
+            // If there's not enough data, show a message instead of an empty chart
+            document.getElementById('fitnessProgressChart').parentElement.innerHTML = '<p>Take at least two fitness tests to see your progression chart.</p>';
+        }
+    } catch (err) { 
+        console.error('Failed to load fitness progress:', err);
+        document.getElementById('fitnessProgressChart').parentElement.innerHTML = '<p>Could not load progression data.</p>';
+    }
+}
+
+// New function to render the Workout Consistency heatmap
+async function loadWorkoutConsistency() {
+    try {
+        const res = await fetch('/api/student/workout-calendar', { credentials: 'include' });
+        const result = await res.json();
+        
+        if (result.success && result.data.length > 0) {
+            const workoutData = result.data.map(dateString => {
+                return { date: dateString, value: 1 }; // Format data for the library
+            });
+
+            const cal = new CalHeatmap();
+            const container = document.getElementById('consistencyHeatmap');
+            container.innerHTML = ''; // Clear the placeholder text
+
+            cal.paint({
+                itemSelector: container,
+                domain: { type: 'month', padding: [10, 10, 10, 10] },
+                subDomain: { type: 'day', radius: 2 },
+                data: { source: workoutData, x: 'date', y: 'value' },
+                scale: {
+                    color: {
+                        type: 'threshold',
+                        range: ['#cce5ff', '#80bfff', '#3399ff', '#0073e6'],
+                        domain: [1, 2, 3, 4]
+                    }
+                },
+                date: { start: new Date(new Date().getFullYear(), new Date().getMonth() - 5) }, // Show last 6 months
+            });
+        } else {
+             document.getElementById('consistencyHeatmap').innerHTML = '<p>No workout consistency data to display yet.</p>';
+        }
+    } catch (err) { 
+        console.error('Failed to load workout consistency:', err);
+        document.getElementById('consistencyHeatmap').innerHTML = '<p>Could not load consistency data.</p>';
+    }
+}
 
 
 // UPDATED function to include rank medals
@@ -1233,7 +1345,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Data Loading ---
     getStudentSession();
-    // loadStudentPlans(); // This is called inside getStudentSession, no need to call twice
     loadWeeklyPlan();
     loadWeeks(); 
 });

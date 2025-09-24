@@ -608,3 +608,7 @@ td iframe {
     background-color: rgba(76, 175, 80, 0.1);
     border-radius: 999px; /* Creates the pill shape */
 }
+#consistencyHeatmap {
+    overflow-x: auto; /* Adds a scrollbar on small screens if needed */
+    padding-bottom: 10px; /* Adds a little space for the scrollbar */
+}
