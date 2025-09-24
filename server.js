@@ -1576,7 +1576,105 @@ app.get('/api/all-training-plans', async (req, res) => {
   }
 });
 
+// API for the "At a Glance" stat cards
+app.get('/api/staff/activity-summary', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
 
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 0);
+                DECLARE @PrevWeekStart DATE = DATEADD(wk, -1, @WeekStart);
+
+                -- Most Trained Body Part This Week
+                SELECT TOP 1 B.Name AS mostTrainedBodyPart FROM TrainingLog L
+                JOIN TrainingPlan P ON L.PlanID = P.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.Branch = @Branch AND P.Gender = @Gender AND P.CreatedAt >= @WeekStart
+                GROUP BY B.Name ORDER BY COUNT(*) DESC;
+
+                -- Workouts This Week vs Last Week
+                SELECT
+                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as workoutsThisWeek,
+                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt BETWEEN @PrevWeekStart AND @WeekStart) as workoutsLastWeek;
+            `);
+
+        res.json({
+            success: true,
+            mostTrained: result.recordsets[0][0]?.mostTrainedBodyPart || 'N/A',
+            workoutsThisWeek: result.recordsets[1][0].workoutsThisWeek,
+            workoutsLastWeek: result.recordsets[1][0].workoutsLastWeek
+        });
+    } catch (err) {
+        console.error('Error fetching activity summary:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+// API to get Body Part trends for the bar chart
+app.get('/api/staff/body-part-trends', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT B.Name as bodyPart, COUNT(L.LogID) as count
+                FROM TrainingLog L
+                JOIN TrainingPlan P ON L.PlanID = P.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.Branch = @Branch AND P.Gender = @Gender
+                GROUP BY B.Name
+                ORDER BY count DESC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching body part trends:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+
+// API to get a ranked summary of students by a specific body part workout
+app.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+
+    const { Branch, Gender } = req.session.user;
+    const { partName } = req.query; // e.g., ?partName=Legs
+
+    if (!partName) {
+        return res.status(400).json({ success: false, error: 'A body part name is required.' });
+    }
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .input('BodyPartName', sql.NVarChar(50), partName)
+            .query(`
+                SELECT
+                    M.TR, M.Name, COUNT(L.LogID) AS WorkoutCount
+                FROM Master M
+                JOIN TrainingPlan P ON M.TR = P.TR
+                JOIN TrainingLog L ON P.PlanID = L.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE
+                    B.Name = @BodyPartName
+                    AND P.Branch = @Branch AND P.Gender = @Gender
+                GROUP BY M.TR, M.Name
+                ORDER BY WorkoutCount DESC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching workout summary:', err);
+        res.status(500).json({ success: false });
+    }
+});
 
 
 //-----------------------------------------------------------------------------------------------------------------------

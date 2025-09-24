@@ -286,3 +286,16 @@ html.is-marol-male #tab-test {
     background-color: rgba(76, 175, 80, 0.1);
     border-radius: 999px;
 }
+/* Style for the view toggle buttons */
+.view-controls .btn {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    font-weight: 600;
+}
+
+.view-controls .btn.active {
+    background-color: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
