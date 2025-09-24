@@ -158,21 +158,27 @@
 
 
 
-    <section class="card" id="logs-low" style="display: none;">
-      <div id="student-plan-section" style="margin-top: 30px;">
-        <h3>Your Training Records - Trainer Filled</h3>
+<section class="card" id="logs-low" style="display: none;">
+    <div id="workout-analytics" style="margin-bottom: 2rem;">
+        <h3>Your Workout Distribution</h3>
+        <div class="chart-container" style="max-width: 400px; margin: auto;">
+            <canvas id="bodyPartChart"></canvas>
+        </div>
+    </div>
+    
+    <div id="student-plan-section">
+        <h3>Your Training Records</h3>
         <table id="studentPlanTable" class="styled-plan-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Plan</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
+            <thead>
+                <tr>
+                    <th>Date</th> 
+                    <th>Plan</th> 
+                </tr>
+            </thead>
+            <tbody></tbody>
         </table>
-      </div>
-
-    </section>
+    </div>
+</section>
 
 
    
@@ -724,27 +730,101 @@ async function loadStudentPlans() {
   }
 }
 
-// ✅ Render table rows dynamically
 function renderTrainingPlans(plans) {
-  const tbody = document.querySelector('#studentPlanTable tbody');
-  tbody.innerHTML = ''; // Clear previous
+    const tbody = document.querySelector('#studentPlanTable tbody');
+    tbody.innerHTML = ''; // Clear previous
 
-  plans.forEach(plan => {
-    const tr = document.createElement('tr');
+    plans.forEach(plan => {
+        const tr = document.createElement('tr');
 
-    const dateTd = document.createElement('td');
-    dateTd.textContent = plan.LogDate;
+        const dateTd = document.createElement('td');
+        dateTd.textContent = plan.LogDate;
 
-    const partsTd = document.createElement('td');
-    partsTd.textContent = plan.BodyParts;
+        const partsTd = document.createElement('td');
+        
+        // ✅ NEW RENDERING LOGIC
+        // Split the string into an array and create an HTML pill for each part
+        if (plan.BodyParts) {
+            const partsArray = plan.BodyParts.split(', ');
+            partsTd.innerHTML = partsArray.map(part => 
+                `<span class="body-part-pill">${part}</span>`
+            ).join('');
+        } else {
+            partsTd.textContent = 'N/A';
+        }
+        
+        tr.appendChild(dateTd);
+        tr.appendChild(partsTd);
 
-    tr.appendChild(dateTd);
-    tr.appendChild(partsTd);
-
-    tbody.appendChild(tr);
-  });
+        tbody.appendChild(tr);
+    });
 }
 
+
+// A new helper function to generate an array of random, colorful RGBA strings
+function generateColors(numColors) {
+    const colors = [];
+    for (let i = 0; i < numColors; i++) {
+        const r = Math.floor(Math.random() * 200);
+        const g = Math.floor(Math.random() * 200);
+        const b = Math.floor(Math.random() * 200);
+        colors.push(`rgba(${r}, ${g}, ${b}, 0.7)`); // 0.7 opacity for a nice look
+    }
+    return colors;
+}
+
+// Your updated analytics function
+async function loadTrainingAnalytics() {
+    try {
+        const res = await fetch('/api/student/training-analytics', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        const result = await res.json();
+
+        if (result.success && result.data.length > 0) {
+            const labels = result.data.map(item => item.bodyPart);
+            const data = result.data.map(item => item.count);
+
+            // ✅ GENERATE A DYNAMIC ARRAY OF COLORS
+            const backgroundColors = generateColors(labels.length);
+
+            const canvasElement = document.getElementById('bodyPartChart');
+            if (!canvasElement) return; // Safety check
+
+            const ctx = canvasElement.getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Workouts',
+                        data: data,
+                        // ✅ USE THE GENERATED COLORS HERE
+                        backgroundColor: backgroundColors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Workout Distribution by Body Part'
+                        }
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        console.error("Failed to load analytics chart:", err);
+    }
+}
 
 
 //------------------------------------------------------------------------------
@@ -1087,6 +1167,9 @@ mainNav.addEventListener('click', (e) => {
         const targetSection = document.getElementById(sectionId);
         if (targetSection) {
             targetSection.style.display = 'block';
+            if (sectionId === 'logs-low') {
+                loadTrainingAnalytics();
+            }
         }
     }
 });
@@ -1168,6 +1251,7 @@ function logout() {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Quill JS -->
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

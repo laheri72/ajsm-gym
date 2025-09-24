@@ -598,3 +598,13 @@ td iframe {
     display: block;
     margin-bottom: 0.25rem;
 }
+.body-part-pill {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    margin: 0.1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 999px; /* Creates the pill shape */
+}

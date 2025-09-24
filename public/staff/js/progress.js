@@ -1,26 +1,34 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize the DataTable for the training plans table
-    const trainingPlansTable = $('#training-plans-table').DataTable({
-        // Use DataTables' AJAX feature to fetch data directly from the API
-        ajax: {
-            url: '/api/all-training-plans',
-            credentials: 'include', // Important for sending session cookies
-            dataSrc: 'data' // The API response has the data array in a 'data' property
-        },
-        columns: [
-            // Format the 'CreatedAt' date for better readability
-            { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
-            { data: 'TR' },
-            { data: 'BodyParts' }
-        ],
-        // Default sort order (newest first)
-        order: [[0, 'desc']],
-        pageLength: 25, // Show 25 entries per page
-        responsive: true,
-        language: {
-            emptyTable: "No training plans have been logged yet."
+  const trainingPlansTable = $('#training-plans-table').DataTable({
+    ajax: {
+      url: '/api/all-training-plans',
+      credentials: 'include',
+      dataSrc: 'data'
+    },
+    // ✅ UPDATED COLUMN DEFINITIONS
+    columns: [
+      { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+      { data: 'TR' },
+      { data: 'Name' }, // Display the new Name field
+      { 
+        data: 'BodyParts',
+        // Use a render function to create the styled pills
+        render: function(data) {
+          if (!data) return '';
+          const partsArray = data.split(', ');
+          return partsArray.map(part => 
+              `<span class="body-part-pill">${part}</span>`
+          ).join(' ');
         }
-    });
+      }
+    ],
+    order: [[0, 'desc']],
+    pageLength: 25,
+    responsive: true,
+    language: {
+      emptyTable: "No training plans have been logged yet."
+    }
+  });
 
     // Add a click event listener to the export button
     document.getElementById('exportTrainingPlansBtn').addEventListener('click', () => {

@@ -928,79 +928,98 @@ app.get('/api/daily-attendance', async (req, res) => {
 });
 
 
-// CORRECTED VERSION
 app.post('/api/log-training-plan', async (req, res) => {
     const { TR, BodyParts } = req.body;
     const { Branch, Gender } = req.session.user;
 
-    if (!req.session.user || !Branch || !Gender) {
-        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
-    }
-
+    // A transaction is crucial for multi-step database operations
+    const transaction = new sql.Transaction(pool);
     try {
+        await transaction.begin();
 
-
-        // --- CHANGE THIS LINE ---
-        const check = await pool.request()
+        // Step 1: Insert a single record into the main TrainingPlan table to create a "session"
+        // We get back the new PlanID that was just created.
+        const planResult = await new sql.Request(transaction)
             .input('TR', sql.Int, TR)
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                SELECT 1 FROM Master
-                WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender
-            `);
-
-        if (check.recordset.length === 0) {
-            return res.status(403).json({ success: false, message: 'TR not authorized or not active' });
-        }
-
-        // --- CHANGE THIS LINE ---
-        await pool.request()
-            .input('TR', sql.Int, TR)
-            .query(`
-                DELETE FROM TrainingPlan
-                WHERE TR = @TR AND CONVERT(date, CreatedAt) = CONVERT(date, GETDATE())
-            `);
-
-        // --- CHANGE THIS LINE ---
-        await pool.request()
-            .input('TR', sql.Int, TR)
-            .input('BodyParts', sql.NVarChar(200), BodyParts.join(', '))
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
-                INSERT INTO TrainingPlan (TR, BodyParts, Branch, Gender)
-                VALUES (@TR, @BodyParts, @Branch, @Gender)
+                INSERT INTO TrainingPlan (TR, Branch, Gender)
+                OUTPUT INSERTED.PlanID
+                VALUES (@TR, @Branch, @Gender);
             `);
+        
+        const newPlanID = planResult.recordset[0].PlanID;
 
+        // Step 2: Loop through the array of body parts sent from the frontend
+        for (const partName of BodyParts) {
+            // For each body part, insert a new row into our junction table (TrainingLog)
+            await new sql.Request(transaction)
+                .input('PlanID', sql.Int, newPlanID)
+                .input('PartName', sql.NVarChar(50), partName)
+                .query(`
+                    INSERT INTO TrainingLog (PlanID, BodyPartID)
+                    SELECT @PlanID, BodyPartID FROM BodyParts WHERE Name = @PartName;
+                `);
+        }
+        
+        // If all inserts were successful, commit the transaction
+        await transaction.commit();
         res.json({ success: true, message: 'Training plan logged successfully' });
+
     } catch (err) {
+        // If any step failed, roll back the entire transaction
+        await transaction.rollback();
         console.error('❌ Error logging training plan:', err);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
 
+app.get('/api/student/training-analytics', async (req, res) => {
+    const { TR } = req.session.user; // Get TR from the logged-in student's session
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT B.Name as bodyPart, COUNT(L.LogID) as count
+                FROM TrainingLog L
+                JOIN TrainingPlan P ON L.PlanID = P.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.TR = @TR
+                GROUP BY B.Name
+                ORDER BY count DESC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) { /* ... error handling ... */ }
+});
+
+
 app.get('/api/student/training-plans', async (req, res) => {
-    // ✅ Ensure student is logged in
-    if (!req.session.user || !req.session.user.TR || !req.session.user.Branch || !req.session.user.Gender) {
+    // Session check remains the same
+    if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
     }
 
-    const { TR, Branch, Gender } = req.session.user;
+    const { TR } = req.session.user;
 
     try {
-            const result = await pool.request()
+        const result = await pool.request()
             .input('TR', sql.Int, TR)
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
+            // ✅ THIS IS THE NEW, NORMALIZED QUERY
             .query(`
                 SELECT 
-                    CONVERT(VARCHAR(10), CreatedAt, 120) AS LogDate,
-                    BodyParts
-                FROM TrainingPlan
-                WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
-                ORDER BY CreatedAt DESC
+                    CONVERT(VARCHAR(10), P.CreatedAt, 120) AS LogDate,
+                    -- Use STRING_AGG to combine multiple rows of body parts into one string
+                    STRING_AGG(B.Name, ', ') AS BodyParts
+                FROM TrainingPlan P
+                -- Join through the new tables
+                JOIN TrainingLog L ON P.PlanID = L.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.TR = @TR
+                -- Group by the plan to aggregate the parts for each session
+                GROUP BY P.PlanID, P.CreatedAt
+                ORDER BY P.CreatedAt DESC;
             `);
 
         res.json({ success: true, data: result.recordset });
@@ -1010,10 +1029,7 @@ app.get('/api/student/training-plans', async (req, res) => {
     }
 });
 
-
-// Add this new API route for the leaderboard
 app.get('/api/leaderboard', async (req, res) => {
-    // Ensure student is logged in to get their branch and gender
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
@@ -1024,26 +1040,37 @@ app.get('/api/leaderboard', async (req, res) => {
         request.input('Branch', sql.NVarChar(50), Branch);
         request.input('Gender', sql.NVarChar(10), Gender);
 
-        // This query finds the current week, calculates scores, and ranks the top 3
         const result = await request.query(`
-            -- First, find the current week's ID
+            -- ✅ GET THE CURRENT WEEK'S DATES
             DECLARE @CurrentWeekID INT;
-            SELECT @CurrentWeekID = WeekID FROM AttendanceWeek WHERE GETDATE() BETWEEN WeekStartDate AND WeekEndDate;
+            DECLARE @CurrentWeekStart DATE;
+            DECLARE @CurrentWeekEnd DATE;
 
-            -- Now, calculate scores and rank students
+            SELECT TOP 1
+                @CurrentWeekID = WeekID,
+                @CurrentWeekStart = WeekStartDate,
+                @CurrentWeekEnd = WeekEndDate
+            FROM AttendanceWeek 
+            WHERE GETDATE() BETWEEN WeekStartDate AND WeekEndDate;
+
+            -- Attendance scores (this part is correct)
             WITH AttendanceScores AS (
                 SELECT TR, COUNT(*) AS AttendanceCount
                 FROM Attendance
                 WHERE WeekID = @CurrentWeekID AND IsPresent = 1
                 GROUP BY TR
             ),
+            -- Corrected LogScores CTE
             LogScores AS (
-                -- This calculates the number of exercises by counting commas + 1
-                SELECT TR, SUM(ISNULL(LEN(BodyParts) - LEN(REPLACE(BodyParts, ',', '')), 0) + 1) AS LogCount
-                FROM TrainingPlan
-                WHERE CreatedAt BETWEEN (SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @CurrentWeekID)
-                                  AND DATEADD(day, 1, (SELECT WeekEndDate FROM AttendanceWeek WHERE WeekID = @CurrentWeekID))
-                GROUP BY TR
+                SELECT
+                    P.TR,
+                    COUNT(L.LogID) as TotalBodyParts, 
+                    COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays
+                FROM TrainingPlan P
+                JOIN TrainingLog L ON P.PlanID = L.PlanID
+                -- ✅ CORRECTED FILTER: Use the date range instead of a non-existent WeekID
+                WHERE P.CreatedAt BETWEEN @CurrentWeekStart AND DATEADD(day, 1, @CurrentWeekEnd)
+                GROUP BY P.TR
             )
             SELECT TOP 3
                 M.Name,
@@ -1053,19 +1080,16 @@ app.get('/api/leaderboard', async (req, res) => {
             LEFT JOIN LogScores T ON M.TR = T.TR
             WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active'
             ORDER BY
-                COALESCE(A.AttendanceCount, 0) DESC, -- Primary sort: Highest attendance
-                COALESCE(T.LogCount, 0) DESC;         -- Tie-breaker: Most exercises logged
+                COALESCE(A.AttendanceCount, 0) DESC,
+                COALESCE(T.WorkoutDays, 0) DESC,
+                COALESCE(T.TotalBodyParts, 0) DESC;
         `);
-
         res.json({ success: true, data: result.recordset });
-
     } catch (err) {
         console.error('Error fetching leaderboard:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
     }
 });
-
-
 
 app.get('/api/training-plans/:tr', async (req, res) => {
     const { tr } = req.params;
@@ -1078,17 +1102,19 @@ app.get('/api/training-plans/:tr', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
-            const result = await pool.request()
+        const result = await pool.request()
             .input('TR', sql.Int, tr)
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
+            // ✅ THIS IS THE NEW, CORRECTED QUERY
             .query(`
                 SELECT 
-                    CONVERT(VARCHAR(10), CreatedAt, 120) AS LogDate,
-                    BodyParts
-                FROM TrainingPlan
-                WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
-                ORDER BY CreatedAt DESC
+                    CONVERT(VARCHAR(10), P.CreatedAt, 120) AS LogDate,
+                    STRING_AGG(B.Name, ', ') AS BodyParts
+                FROM TrainingPlan P
+                JOIN TrainingLog L ON P.PlanID = L.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.TR = @TR
+                GROUP BY P.PlanID, P.CreatedAt
+                ORDER BY P.CreatedAt DESC;
             `);
 
         res.json({ success: true, data: result.recordset });
@@ -1486,23 +1512,29 @@ app.get('/api/all-training-plans', async (req, res) => {
     const result = await pool.request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(50), Gender)
+      // ✅ THIS IS THE NEW, NORMALIZED QUERY
       .query(`
         SELECT 
-          TR,
-          BodyParts,
-          CreatedAt
-        FROM TrainingPlan
-        WHERE Branch = @Branch AND Gender = @Gender
-        ORDER BY CreatedAt DESC
+          P.TR,
+          M.Name, -- Include the student's name
+          P.CreatedAt,
+          -- Use STRING_AGG to combine multiple body parts back into one string for display
+          STRING_AGG(B.Name, ', ') AS BodyParts
+        FROM TrainingPlan P
+        JOIN Master M ON P.TR = M.TR
+        JOIN TrainingLog L ON P.PlanID = L.PlanID
+        JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+        WHERE P.Branch = @Branch AND P.Gender = @Gender
+        GROUP BY P.PlanID, P.TR, M.Name, P.CreatedAt
+        ORDER BY P.CreatedAt DESC;
       `);
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
-    console.error('Error fetching training plans:', err.message);
+    console.error('Error fetching all training plans:', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
 
 
 
