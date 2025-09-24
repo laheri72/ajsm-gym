@@ -215,6 +215,7 @@
 
 <div class="navbar">
     <a href="#" class="nav-link active" id="nav-attendance">📋 Attendance</a>
+    <a href="#" class="nav-link" id="nav-checkout">🚪 Check-out</a>
     <a href="#" class="nav-link" id="nav-fitness-test">🏋️ Fitness Test</a>
     <a href="trainer-login.html" id="logoutLink">Logout</a>
 </div>
@@ -294,6 +295,24 @@
             </table>
         </div>
     </section>
+
+
+    <section id="checkout-section" class="page-section hidden">
+    <div class="card main-form">
+        <h2>🚪 Student Check-out</h2>
+        <p>Enter a student's TR to mark their session as complete.</p>
+        
+        <div class="form-group">
+            <label for="checkout-tr-input">Student TR Number</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="checkout-tr-input" class="form-control" placeholder="Enter TR number">
+                <button type="button" id="checkout-btn" class="btn">
+                    <span class="btn-text">Check Out</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 
     <section id="fitness-test-section" class="page-section hidden">
                 <div class="card">
@@ -857,36 +876,107 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
     // --- Initial page load ---
     initializeSelector();
 
+
+
+    // Add this new event listener to your trainer dashboard's script
+document.getElementById('checkout-btn').addEventListener('click', async () => {
+    const trInput = document.getElementById('checkout-tr-input');
+    const tr = trInput.value.trim();
+
+    if (!tr) {
+        return Swal.fire('Missing TR', 'Please enter a TR number to check out.', 'warning');
+    }
+
+    try {
+        const res = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ TR: tr })
+        });
+        
+        const data = await res.json();
+
+        if (!res.ok) {
+            // Handle errors from the API, like "student not checked in"
+            throw new Error(data.message);
+        }
+
+        // On success, show the detailed message from the server
+        Swal.fire({
+            icon: 'success',
+            title: 'Check-out Complete!',
+            text: data.message,
+        });
+
+        trInput.value = ''; // Clear the input field
+
+    } catch (err) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Check-out Failed',
+            text: err.message,
+        });
+    }
+});
+
+// ✅ Allow only numbers in the input
+document.getElementById('checkout-tr-input').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, ''); // removes anything that's not a digit
+});
+
+// ✅ Trigger button click on Enter key
+document.getElementById('checkout-tr-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // stop form submission / page reload
+        document.getElementById('checkout-btn').click();
+    }
+});
     
 </script>
 <script type="module">
-    document.addEventListener('DOMContentLoaded', () => {
-        const navLinks = document.querySelectorAll('.nav-link');
-        const pageSections = document.querySelectorAll('.page-section');
+document.addEventListener('DOMContentLoaded', () => {
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pageSections = document.querySelectorAll('.page-section');
 
-        navLinks.forEach(link => {
-            link.addEventListener('click', (event) => {
-                event.preventDefault(); // Stop the link from navigating away
+    navLinks.forEach(link => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault(); // Stop the link from navigating away
 
-                // 1. Get the target section ID from the clicked link's ID
-                // e.g., "nav-attendance" -> "attendance-section"
-                const targetId = link.id.replace('nav-', '') + '-section';
+            const targetId = link.id.replace('nav-', '') + '-section';
 
-                // 2. Update the 'active' class on the nav links
-                navLinks.forEach(nav => nav.classList.remove('active'));
-                link.classList.add('active');
+            // Update the 'active' class on the nav links
+            navLinks.forEach(nav => nav.classList.remove('active'));
+            link.classList.add('active');
 
-                // 3. Show the target section and hide the others
-                pageSections.forEach(section => {
-                    if (section.id === targetId) {
-                        section.classList.remove('hidden');
-                    } else {
-                        section.classList.add('hidden');
+            // Show the target section and hide the others
+            pageSections.forEach(section => {
+                if (section.id === targetId) {
+                    section.classList.remove('hidden');
+
+                    // Focus input if it's Attendance or Checkout section
+                    if (section.id === 'checkout-section') {
+                        const input = section.querySelector('#checkout-tr-input');
+                        if (input) input.focus();
+                    } else if (section.id === 'attendance-section') {
+                        const input = section.querySelector('#tr-input');
+                        if (input) input.focus();
                     }
-                });
+
+                } else {
+                    section.classList.add('hidden');
+                }
             });
         });
     });
+
+    // Optional: Focus Attendance input on page load if Attendance is active by default
+    const attendanceSection = document.querySelector('#attendance-section');
+    if (attendanceSection && !attendanceSection.classList.contains('hidden')) {
+        const input = attendanceSection.querySelector('#tr-input');
+        if (input) input.focus();
+    }
+});
+
 </script>
 </body>
 </html>

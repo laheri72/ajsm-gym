@@ -1727,8 +1727,8 @@ app.post('/api/attendance-manual', async (req, res) => {
             .input('WeekID', sql.Int, WeekID)
             .input('IsPresent', sql.Bit, IsPresent)
             .query(`
-                INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt)
-                VALUES (@TR, @WeekID, @IsPresent, GETDATE())
+                INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, OutTime, DurationInMinutes)
+                VALUES (@TR, @WeekID, @IsPresent, GETDATE(), NULL, NULL)
             `);
 
         res.status(200).json({ message: '✅ Attendance marked successfully' });
@@ -1739,6 +1739,64 @@ app.post('/api/attendance-manual', async (req, res) => {
 });
 
   
+
+// Add this new route to your server file
+app.post('/api/checkout', async (req, res) => {
+    // The TR is sent from the trainer's form
+    const { TR } = req.body;
+    const moment = require('moment-timezone'); // Make sure moment-timezone is required
+
+    if (!TR) {
+        return res.status(400).json({ success: false, message: 'TR number is required.' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+
+        // Find the open session (where OutTime is NULL) for this student today
+        const openSession = await request.query(`
+            SELECT AttendanceID, CreatedAt FROM Attendance
+            WHERE TR = @TR 
+              AND OutTime IS NULL 
+              AND CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE);
+        `);
+
+        if (openSession.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'This student is not currently checked in. Please mark their attendance first.' });
+        }
+
+        const { AttendanceID, CreatedAt } = openSession.recordset[0];
+        
+        // Use moment to handle timezones correctly for duration calculation
+        const inTime = moment(CreatedAt);
+        const outTime = moment(); // Current time
+        const duration = outTime.diff(inTime, 'minutes');
+
+        // Update the record with OutTime and the calculated Duration
+        await request
+            .input('OutTime', sql.DateTime, outTime.toDate())
+            .input('Duration', sql.Int, duration)
+            .input('AttendanceID', sql.Int, AttendanceID)
+            .query(`
+                UPDATE Attendance 
+                SET OutTime = @OutTime, DurationInMinutes = @Duration
+                WHERE AttendanceID = @AttendanceID;
+            `);
+        
+        const inTimeFormatted = inTime.tz("Asia/Kolkata").format("h:mm A");
+        const outTimeFormatted = outTime.tz("Asia/Kolkata").format("h:mm A");
+
+        res.json({ 
+            success: true, 
+            message: `Checked out successfully! Session: ${inTimeFormatted} - ${outTimeFormatted} (${duration} minutes).` 
+        });
+
+    } catch (err) {
+        console.error('Check-out error:', err);
+        res.status(500).json({ success: false, message: 'Server error during check-out.' });
+    }
+});
 
 
 app.get('/api/attendance/:weekId', async (req, res) => {
