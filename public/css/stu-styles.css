@@ -612,3 +612,107 @@ td iframe {
     overflow-x: auto; /* Adds a scrollbar on small screens if needed */
     padding-bottom: 10px; /* Adds a little space for the scrollbar */
 }
+
+/* Add this to your stu-styles.css file */
+
+.analytics-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    align-items: stretch;
+}
+
+.stat-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+
+.stat-card .stat-value {
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.stat-card span {
+    font-size: 1.2rem;
+    color: var(--gray);
+    margin-top: 0.5rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Make it responsive on smaller screens */
+@media (max-width: 992px) {
+    .analytics-row {
+        grid-template-columns: 1fr;
+    }
+}
+/* Add this CSS to your stu-styles.css file */
+
+.analytics-tabs {
+    width: 100%;
+}
+
+.tab-nav {
+    display: flex;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 1.5rem;
+}
+
+.tab-link {
+    padding: 12px 20px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gray);
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.tab-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.tab-link.active {
+    color: var(--dark);
+}
+
+.tab-link.active::after {
+    transform: scaleX(1);
+}
+
+.tab-pane {
+    display: none; /* Hide all panels by default */
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.tab-pane.active {
+    display: block; /* Show only the active panel */
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}

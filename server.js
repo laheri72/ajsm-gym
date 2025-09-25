@@ -1166,8 +1166,72 @@ app.get('/api/training-plans/:tr', async (req, res) => {
     }
 });
 
+// Replace the entire /api/student/session-analytics function with this new sequential version
+app.get('/api/student/session-analytics', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+    const { TR } = req.session.user;
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        await transaction.begin();
+
+        // --- ✅ NEW LOGIC: Run queries one after another (sequentially) ---
+
+        // Query 1: Get recent session history
+        const historyResult = await new sql.Request(transaction)
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 20 CreatedAt, OutTime, DurationInMinutes 
+                FROM Attendance 
+                WHERE TR = @TR AND OutTime IS NOT NULL 
+                ORDER BY CreatedAt DESC;
+            `);
+
+        // Query 2: Get average workout duration
+        const averageResult = await new sql.Request(transaction)
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT AVG(CAST(DurationInMinutes AS FLOAT)) as avgDuration 
+                FROM Attendance 
+                WHERE TR = @TR AND DurationInMinutes > 0;
+            `);
+
+        // Query 3: Get total hours per week
+        const weeklyResult = await new sql.Request(transaction)
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 8
+                    W.WeekStartDate,
+                    ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as totalHours
+                FROM AttendanceWeek W
+                LEFT JOIN Attendance A ON W.WeekID = A.WeekID AND A.TR = @TR
+                GROUP BY W.WeekID, W.WeekStartDate
+                ORDER BY W.WeekStartDate DESC;
+            `);
+        
+        // All queries are done, now commit the transaction
+        await transaction.commit();
+
+        res.json({
+            success: true,
+            data: {
+                history: historyResult.recordset,
+                average: averageResult.recordset[0] ? averageResult.recordset[0].avgDuration : 0,
+                weekly: weeklyResult.recordset.reverse()
+            }
+        });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error('Error fetching student session analytics:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch analytics data' });
+    }
+});
 
 
+//---------------------------------------------------------------------------------------------------------------
 
 app.get('/api/verify-tr/:tr', async (req, res) => {
     const { tr } = req.params;

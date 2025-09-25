@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
     <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5"></script>
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
     <link rel="stylesheet" href="../css/stu-styles.css">
 
 
@@ -34,9 +36,9 @@
 
         <nav class="navbar">
             <a href="#" class="active" id="planner-main">Workout Planner</a>
-            <a href="#" id="tips-main">Tips</a>
+            <a href="#" id="logs-main">Analysis</a>
             <a href="#" id="attendance-main">Attendance</a>
-            <a href="#" id="logs-main">Training Logs</a>
+            <a href="#" id="tips-main">Tips</a>
         </nav>
                 <div class="info-bar">
             <div id="studentGoal" class="info-item goal"></div>
@@ -160,42 +162,84 @@
 
 
 
-
 <section class="card" id="logs-low" style="display: none;">
-    
-    <div class="analytics-widget">
-        <h3>Your Fitness Progression</h3>
-        <p>Tracking key metrics from your fitness tests over time.</p>
-        <canvas id="fitnessProgressChart"></canvas>
-    </div>
+    <div class="analytics-tabs">
+        <div class="tab-nav">
+            <button class="tab-link active" data-tab="overview">📈 Performance Overview</button>
+            <button class="tab-link" data-tab="logs">📓 Workout Logs</button>
+            <button class="tab-link" data-tab="history"> history Session History</button>
+            <button class="tab-link" data-tab="progression">🏋️ Fitness Progression</button>
+        </div>
 
-    <div class="analytics-widget">
-        <h3>Your Workout Consistency</h3>
-        <p>Each colored square represents a day you logged a workout.</p>
-        <div id="consistencyHeatmap"></div>
-    </div>
+        <div class="tab-content">
+            
+            <div id="overview" class="tab-pane active">
+                <div class="analytics-grid">
+                    <div class="analytics-widget stat-card">
+                        <h3>Your Average Session</h3>
+                        <p id="avg-session-time" class="stat-value">--</p>
+                        <span>minutes</span>
+                    </div>
+                    <div class="analytics-widget">
+                        <h3>Your Workout Consistency</h3>
+                        <p>Each colored square represents a day you logged a workout.</p>
+                        <div id="consistencyHeatmap"></div>
+                    </div>
+                </div>
+                <div class="analytics-widget">
+                    <h3>Your Week in Hours</h3>
+                    <p>Total time spent in the gym over the last several weeks.</p>
+                    <canvas id="weeklyHoursChart"></canvas>
+                </div>
+            </div>
 
-    <div class="analytics-widget">
-        <h3>Your Workout Distribution</h3>
-        <div class="chart-container" style="max-width: 400px; margin: auto;">
-            <canvas id="bodyPartChart"></canvas>
+            <div id="logs" class="tab-pane">
+                <div class="analytics-grid">
+                    <div class="analytics-widget">
+                        <h3>Workout Focus (by Count)</h3>
+                        <div class="chart-container" style="max-width: 400px; margin: auto;">
+                            <canvas id="bodyPartChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-widget">
+                        <h3>Your Training Records</h3>
+                        <div class="table-responsive">
+                            <table id="studentPlanTable" class="styled-plan-table">
+                                <thead>
+                                    <tr><th>Date</th><th>Plan</th></tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="history" class="tab-pane">
+                <div class="analytics-widget">
+                    <h3>Your Session History</h3>
+                    <p>A log of your recent gym visits.</p>
+                    <div class="table-responsive">
+                        <table id="sessionHistoryTable" class="styled-plan-table">
+                            <thead>
+                                <tr><th>Date</th><th>Check-in</th><th>Check-out</th><th>Duration (min)</th></tr>
+                            </thead>
+                            <tbody id="sessionHistoryBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="progression" class="tab-pane">
+                <div class="analytics-widget">
+                    <h3>Your Fitness Progression</h3>
+                    <p>Tracking key metrics from your fitness tests over time.</p>
+                    <canvas id="fitnessProgressChart"></canvas>
+                </div>
+            </div>
+
         </div>
     </div>
-
-    <div id="student-plan-section" style="margin-top: 30px;">
-      <h3>Your Training Records</h3>
-      <table id="studentPlanTable" class="styled-plan-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Plan</th>
-          </tr>
-        </thead>
-        <tbody>
-          </tbody>
-      </table>
-    </div>
-
 </section>
 
    
@@ -830,7 +874,7 @@ async function loadTrainingAnalytics() {
                         },
                         title: {
                             display: true,
-                            text: 'Workout Distribution by Body Part'
+                            text: 'Workout Focus (by Count)'
                         }
                     }
                 }
@@ -1187,6 +1231,7 @@ mainNav.addEventListener('click', (e) => {
                 loadTrainingAnalytics();
                 loadFitnessProgress();
                 loadWorkoutConsistency();
+                loadSessionAnalytics();
             }
         }
     }
@@ -1286,6 +1331,83 @@ async function loadWorkoutConsistency() {
     }
 }
 
+// Add these new functions to your script
+async function loadSessionAnalytics() {
+    try {
+        const res = await fetch('/api/student/session-analytics', { credentials: 'include' });
+        const result = await res.json();
+
+        if (result.success) {
+            renderAverageSession(result.data.average);
+            renderWeeklyHoursChart(result.data.weekly);
+            renderSessionHistory(result.data.history);
+        } else {
+            console.error('Failed to load session analytics');
+        }
+    } catch (err) {
+        console.error('Error fetching session analytics:', err);
+    }
+}
+
+function renderAverageSession(avg) {
+    const avgElement = document.getElementById('avg-session-time');
+    avgElement.textContent = avg ? Math.round(avg) : '0';
+}
+
+function renderWeeklyHoursChart(weeklyData) {
+    if (!weeklyData || weeklyData.length === 0) {
+        document.getElementById('weeklyHoursChart').parentElement.innerHTML = '<p>No weekly time data available yet.</p>';
+        return;
+    }
+
+    const labels = weeklyData.map(w => moment(w.WeekStartDate).format('DD MMM'));
+    const data = weeklyData.map(w => w.totalHours.toFixed(2));
+    
+    const ctx = document.getElementById('weeklyHoursChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Hours',
+                data: data,
+                backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                borderColor: 'rgba(76, 175, 80, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Hours' } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function renderSessionHistory(historyData) {
+    const tbody = document.getElementById('sessionHistoryBody');
+    tbody.innerHTML = ''; // Clear previous
+
+    if (!historyData || historyData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">No session history found.</td></tr>';
+        return;
+    }
+
+    historyData.forEach(session => {
+        const date = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format('ddd, DD MMM YYYY');
+        const inTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format('h:mm A');
+        const outTime = session.OutTime ? moment.utc(session.OutTime).tz("Asia/Kolkata").format('h:mm A') : 'N/A';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${date}</td>
+            <td>${inTime}</td>
+            <td>${outTime}</td>
+            <td>${session.DurationInMinutes || 'N/A'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
 
 // UPDATED function to include rank medals
 async function showLeaderboard() {
@@ -1341,6 +1463,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tips section select dropdown
     document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
+
+    // Add this inside your DOMContentLoaded event listener
+function setupAnalyticsTabs() {
+    const tabNav = document.querySelector('.tab-nav');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+
+    if (tabNav) { // Check if the tabs exist on the page
+        tabNav.addEventListener('click', (e) => {
+            if (e.target.matches('.tab-link')) {
+                const tabId = e.target.dataset.tab;
+
+                // Update active state on buttons
+                tabNav.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Update active state on content panes
+                tabPanes.forEach(pane => {
+                    if (pane.id === tabId) {
+                        pane.classList.add('active');
+                    } else {
+                        pane.classList.remove('active');
+                    }
+                });
+            }
+        });
+    }
+}
+
+// And call this new function inside DOMContentLoaded
+setupAnalyticsTabs();
 
 
     // --- Initial Data Loading ---
