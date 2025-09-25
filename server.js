@@ -1678,6 +1678,135 @@ app.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
 });
 
 
+//---------------------------------------------------------------------------------------------------------------
+// Place these new routes in your main server.js file
+
+// API for the "At a Glance" duration-based stat cards
+app.get('/api/staff/duration-summary', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 0);
+
+                SELECT 
+                    (SELECT ISNULL(AVG(CAST(DurationInMinutes AS FLOAT)), 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND DurationInMinutes IS NOT NULL) as avgDuration,
+                    
+                    -- ✅ CORRECTED SUBQUERY FOR BUSIEST SLOT
+                    (SELECT TOP 1 S.SlotName 
+                     FROM Attendance A 
+                     JOIN Master M ON A.TR = M.TR -- First, join Attendance to Master
+                     JOIN Slots S ON M.SlotID = S.SlotID -- Then, join Master to Slots
+                     WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL 
+                     GROUP BY S.SlotName 
+                     ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
+                     
+                    (SELECT ISNULL(SUM(DurationInMinutes) / 60.0, 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as totalHoursThisWeek
+            `);
+        const data = result.recordset[0];
+        res.json({ 
+            success: true, 
+            avgDuration: data.avgDuration.toFixed(0),
+            busiestSlot: data.busiestSlot || 'N/A',
+            totalHoursThisWeek: data.totalHoursThisWeek.toFixed(1)
+        });
+    } catch (err) {
+        console.error('Error fetching duration summary:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+// API for the Peak Gym Hours line chart
+app.get('/api/staff/peak-hours', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT DATEPART(hour, CreatedAt) AS hour, COUNT(*) AS count
+                FROM Attendance
+                WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 0)
+                GROUP BY DATEPART(hour, CreatedAt)
+                ORDER BY hour ASC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching peak hours:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+// API for the Member Engagement data table
+app.get('/api/staff/engagement-report', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                WITH LastVisit AS (
+                    SELECT TR, MAX(CreatedAt) as lastVisitDate
+                    FROM Attendance
+                    GROUP BY TR
+                )
+                SELECT
+                    M.Name,
+                    ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours,
+                    ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration,
+                    DATEDIFF(day, LV.lastVisitDate, GETDATE()) as DaysSinceLastVisit
+                FROM Master M
+                LEFT JOIN Attendance A ON M.TR = A.TR
+                LEFT JOIN LastVisit LV ON M.TR = LV.TR
+                WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
+                GROUP BY M.Name, LV.lastVisitDate;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching engagement report:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+// API for the Goal Alignment data table
+app.get('/api/staff/goal-alignment', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
+    const { goal, partName } = req.query;
+
+    if (!goal || !partName) return res.status(400).json({ success: false });
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .input('Goal', sql.NVarChar(100), goal)
+            .input('PartName', sql.NVarChar(50), partName)
+            .query(`
+                SELECT M.Name, M.Goal, COUNT(L.LogID) as TimesTrained
+                FROM Master M
+                LEFT JOIN TrainingPlan P ON M.TR = P.TR
+                LEFT JOIN TrainingLog L ON P.PlanID = L.PlanID
+                LEFT JOIN BodyParts B ON L.BodyPartID = B.BodyPartID AND B.Name = @PartName
+                WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender AND M.Goal = @Goal
+                GROUP BY M.Name, M.Goal;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching goal alignment:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
+
 //-----------------------------------------------------------------------------------------------------------------------
 
 
