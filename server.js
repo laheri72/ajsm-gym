@@ -1704,6 +1704,47 @@ app.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
 });
 
 
+app.get('/api/staff/activity-summary', async (req, res) => {
+    if (!req.session.user) return res.status(401).json({ success: false });
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                -- --- ✅ REFINED LOGIC ---
+                -- This line now defines the start of the week based on the IST calendar.
+                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
+                -- --- END REFINEMENT ---
+
+                DECLARE @PrevWeekStart DATE = DATEADD(wk, -1, @WeekStart);
+
+                -- Most Trained Body Part This Week
+                SELECT TOP 1 B.Name AS mostTrainedBodyPart FROM TrainingLog L
+                JOIN TrainingPlan P ON L.PlanID = P.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.Branch = @Branch AND P.Gender = @Gender AND P.CreatedAt >= @WeekStart
+                GROUP BY B.Name ORDER BY COUNT(*) DESC;
+
+                -- Workouts This Week vs Last Week
+                SELECT
+                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as workoutsThisWeek,
+                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt BETWEEN @PrevWeekStart AND @WeekStart) as workoutsLastWeek;
+            `);
+
+        res.json({
+            success: true,
+            mostTrained: result.recordsets[0][0]?.mostTrainedBodyPart || 'N/A',
+            workoutsThisWeek: result.recordsets[1][0].workoutsThisWeek,
+            workoutsLastWeek: result.recordsets[1][0].workoutsLastWeek
+        });
+    } catch (err) {
+        console.error('Error fetching activity summary:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
 //---------------------------------------------------------------------------------------------------------------
 // Place these new routes in your main server.js file
 
