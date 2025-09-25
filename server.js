@@ -1852,7 +1852,7 @@ app.get('/api/staff/duration-summary', async (req, res) => {
     }
 });
 
-// API for the Peak Gym Hours line chart
+// API for the Peak Gym Hours line chart (Now Monthly)
 app.get('/api/staff/peak-hours', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ success: false });
     const { Branch, Gender } = req.session.user;
@@ -1862,20 +1862,20 @@ app.get('/api/staff/peak-hours', async (req, res) => {
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
-                -- --- ✅ REFINED LOGIC ---
-                -- The start of the week is now based on the IST calendar.
-                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
-
-                -- The hour is extracted from the IST-converted timestamp.
                 SELECT 
                     DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) AS hour, 
                     COUNT(*) AS count
                 FROM Attendance
-                WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart
-                -- The grouping is also done by the IST hour.
+                WHERE 
+                    Branch = @Branch 
+                    AND Gender = @Gender 
+                    AND IsPresent = 1
+                    -- --- ✅ REFINED LOGIC: Filter for the current month in IST ---
+                    AND MONTH(DATEADD(MINUTE, 330, CreatedAt)) = MONTH(DATEADD(MINUTE, 330, GETUTCDATE()))
+                    AND YEAR(DATEADD(MINUTE, 330, CreatedAt)) = YEAR(DATEADD(MINUTE, 330, GETUTCDATE()))
+                    -- --- END REFINEMENT ---
                 GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt))
                 ORDER BY hour ASC;
-                -- --- END REFINEMENT ---
             `);
         res.json({ success: true, data: result.recordset });
     } catch (err) {

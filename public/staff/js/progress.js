@@ -148,9 +148,15 @@ async function loadPeakHoursChart() {
         const res = await fetch('/api/staff/peak-hours', { credentials: 'include' });
         const result = await res.json();
         if (result.success && result.data.length > 0) {
-            const labels = result.data.map(item => `${item.hour}:00`);
+            
+            // ▼▼▼ THIS IS THE FIX ▼▼▼
+            // We use Moment.js to convert the 24-hour number into a 12-hour AM/PM format.
+            const labels = result.data.map(item => moment().hour(item.hour).format('h A'));
+            // --- END FIX ---
+
             const data = result.data.map(item => item.count);
             const ctx = document.getElementById('peakHoursChart').getContext('2d');
+            
             new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -167,8 +173,13 @@ async function loadPeakHoursChart() {
                 },
                 options: { responsive: true, plugins: { legend: { display: false } } }
             });
+        } else {
+            // If there's no data, show a message
+            document.getElementById('peakHoursChart').parentElement.innerHTML = '<p>No peak hours data available for this week yet.</p>';
         }
-    } catch (err) { console.error('Failed to load peak hours chart:', err); }
+    } catch (err) { 
+        console.error('Failed to load peak hours chart:', err); 
+    }
 }
 
 function initializeTrainingPlansTable() {
