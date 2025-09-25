@@ -348,7 +348,6 @@ app.put('/api/change-student-slot', async (req, res) => {
 
 //--------------------------------------------------------------------------------------------------------------------------
 
-// Add this new route to your server's API file.
 app.get('/api/overview-stats', async (req, res) => {
     // 1. Enforce login and session branch/gender, matching your other APIs
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
@@ -367,28 +366,28 @@ app.get('/api/overview-stats', async (req, res) => {
                     (SELECT COUNT(*) FROM Master WHERE Status = 'Inactive' AND Branch = @Branch AND Gender = @Gender) AS inactiveStudents,
                     (SELECT COUNT(*) FROM Slots WHERE IsActive = 1 AND Branch = @Branch AND Gender = @Gender) AS slots,
                     
-                    -- Fitness tests require a JOIN to filter by the student's branch/gender
                     (SELECT COUNT(T.TestLog) FROM TestRecords T JOIN Master M ON T.TR = M.TR WHERE M.Branch = @Branch AND M.Gender = @Gender) AS fitnessTests,
                     
-                    (SELECT COUNT(*) FROM TrainingPlan WHERE CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE) AND Branch = @Branch AND Gender = @Gender) AS todaysLogs,
+                    -- --- ✅ REFINED LOGIC ---
+                    -- This line is changed to compare dates in IST (+330 minutes) instead of UTC.
+                    (SELECT COUNT(*) FROM TrainingPlan WHERE CAST(DATEADD(MINUTE, 330, CreatedAt) AS DATE) = CAST(DATEADD(MINUTE, 330, GETUTCDATE()) AS DATE) AND Branch = @Branch AND Gender = @Gender) AS todaysLogs,
+                    -- --- END REFINEMENT ---
+
                     (SELECT COUNT(*) FROM WaitingList WHERE Branch = @Branch AND Gender = @Gender) AS waitingList,
                     
-                    -- User count is based on branch only, as an admin would want to see all staff
                     (SELECT COUNT(*) FROM PassBank WHERE Branch = @Branch) AS users;
             `);
 
-        // Send the first (and only) row of results as a JSON object
         res.json({
             success: true,
             data: result.recordset[0]
         });
-
+        
     } catch (err) {
         console.error("SQL error fetching overview stats:", err.message);
         res.status(500).json({ success: false, error: "Failed to fetch overview statistics" });
     }
 });
-
 
 //-------------------------------------------------------------------------------------------------------------------------
 // CORRECTED VERSION
@@ -898,23 +897,36 @@ app.get('/api/daily-attendance', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
+        // --- ✅ REFINED LOGIC ---
+        // 1. Define the start and end of the current day in the IST timezone.
+        const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day');
+        const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day');
+
+        // 2. Convert these IST boundaries to UTC, as the database stores time in UTC.
+        const startUTC = startOfTodayIST.utc().toDate();
+        const endUTC = endOfTodayIST.utc().toDate();
+        // --- END REFINEMENT ---
+
         const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
+            // 3. Pass the UTC range as parameters to the query.
+            .input('StartUTC', sql.DateTime, startUTC)
+            .input('EndUTC', sql.DateTime, endUTC)
             .query(`
                 SELECT 
                     M.TR,
                     M.Name,
-                    -- ✅ THIS IS THE UPDATED LOGIC --
                     CASE 
-                        WHEN A.OnLeave = 1 THEN 'On Leave' -- Check for OnLeave first
+                        WHEN A.OnLeave = 1 THEN 'On Leave'
                         WHEN A.IsPresent = 1 THEN 'Present'
                         ELSE 'Absent'
                     END AS IsPresentToday
                 FROM Master M
                 LEFT JOIN Attendance A
                     ON M.TR = A.TR 
-                    AND CONVERT(date, A.CreatedAt) = CONVERT(date, GETDATE())
+                    -- 4. Find attendance records that fall within the UTC range of the IST day.
+                    AND A.CreatedAt BETWEEN @StartUTC AND @EndUTC
                 WHERE M.Status = 'Active'
                 AND M.Branch = @Branch
                 AND M.Gender = @Gender
@@ -927,7 +939,6 @@ app.get('/api/daily-attendance', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch daily attendance' });
     }
 });
-
 
 app.post('/api/log-training-plan', async (req, res) => {
     const { TR, BodyParts } = req.body;
@@ -1042,7 +1053,6 @@ app.get('/api/leaderboard', async (req, res) => {
         request.input('Gender', sql.NVarChar(10), Gender);
 
         const result = await request.query(`
-            -- ✅ GET THE CURRENT WEEK'S DATES
             DECLARE @CurrentWeekID INT;
             DECLARE @CurrentWeekStart DATE;
             DECLARE @CurrentWeekEnd DATE;
@@ -1052,30 +1062,26 @@ app.get('/api/leaderboard', async (req, res) => {
                 @CurrentWeekStart = WeekStartDate,
                 @CurrentWeekEnd = WeekEndDate
             FROM AttendanceWeek 
-            WHERE GETDATE() BETWEEN WeekStartDate AND WeekEndDate;
+            -- --- ✅ REFINED LOGIC ---
+            -- This line now uses the current IST time to find the correct week.
+            WHERE DATEADD(MINUTE, 330, GETUTCDATE()) BETWEEN WeekStartDate AND WeekEndDate;
+            -- --- END REFINEMENT ---
 
-            -- Attendance scores (this part is correct)
+            -- The rest of your query logic is perfect and remains unchanged.
             WITH AttendanceScores AS (
                 SELECT TR, COUNT(*) AS AttendanceCount
                 FROM Attendance
                 WHERE WeekID = @CurrentWeekID AND IsPresent = 1
                 GROUP BY TR
             ),
-            -- Corrected LogScores CTE
             LogScores AS (
-                SELECT
-                    P.TR,
-                    COUNT(L.LogID) as TotalBodyParts, 
-                    COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays
+                SELECT P.TR, COUNT(L.LogID) as TotalBodyParts, COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays
                 FROM TrainingPlan P
                 JOIN TrainingLog L ON P.PlanID = L.PlanID
-                -- ✅ CORRECTED FILTER: Use the date range instead of a non-existent WeekID
                 WHERE P.CreatedAt BETWEEN @CurrentWeekStart AND DATEADD(day, 1, @CurrentWeekEnd)
                 GROUP BY P.TR
             )
-            SELECT TOP 3
-                M.Name,
-                COALESCE(A.AttendanceCount, 0) AS AttendanceScore
+            SELECT TOP 3 M.Name, COALESCE(A.AttendanceCount, 0) AS AttendanceScore
             FROM Master M
             LEFT JOIN AttendanceScores A ON M.TR = A.TR
             LEFT JOIN LogScores T ON M.TR = T.TR
@@ -1228,10 +1234,15 @@ app.post('/api/get-or-create-week', async (req, res) => {
         }
 
         const request = pool.request();
-        const todayStr = new Date().toISOString().split('T')[0];
-        request.input('Today', sql.Date, todayStr);
 
-        // ✅ Get the most recent week that contains today
+        // --- ✅ REFINED LOGIC ---
+        // This line is the only change. It gets the current date in the "Asia/Kolkata" (IST) timezone.
+        const todayInIST = moment.tz("Asia/Kolkata").format('YYYY-MM-DD');
+        request.input('Today', sql.Date, todayInIST);
+        // --- END REFINEMENT ---
+
+        // The rest of your logic is perfect and remains unchanged.
+        // It now correctly uses the IST date to find the week.
         const existingWeek = await request.query(`
             SELECT TOP 1 WeekID FROM AttendanceWeek 
             WHERE @Today BETWEEN WeekStartDate AND WeekEndDate
@@ -1242,7 +1253,6 @@ app.post('/api/get-or-create-week', async (req, res) => {
             return res.json({ WeekID: existingWeek.recordset[0].WeekID });
         }
 
-        // 🚀 Week doesn't exist — insert it
         const insertRequest = pool.request();
         insertRequest.input('WeekStartDate', sql.Date, WeekStartDate);
         insertRequest.input('WeekEndDate', sql.Date, WeekEndDate);
@@ -1251,14 +1261,13 @@ app.post('/api/get-or-create-week', async (req, res) => {
             INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
             VALUES (@WeekStartDate, @WeekEndDate)
         `);
-
-        // 🔁 Get the newly inserted week's WeekID
+        
         const newWeekResult = await insertRequest.query(`
             SELECT TOP 1 WeekID FROM AttendanceWeek 
             WHERE WeekStartDate = @WeekStartDate AND WeekEndDate = @WeekEndDate
             ORDER BY WeekID DESC
         `);
-
+        
         return res.json({ message: '✅ Week created', WeekID: newWeekResult.recordset[0].WeekID });
 
     } catch (err) {
@@ -1266,8 +1275,6 @@ app.post('/api/get-or-create-week', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch or create week' });
     }
 });
-
-
 
 
 
@@ -1577,41 +1584,60 @@ app.get('/api/all-training-plans', async (req, res) => {
   }
 });
 
-// API for the "At a Glance" stat cards
-app.get('/api/staff/activity-summary', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
+app.get('/api/leaderboard', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
     const { Branch, Gender } = req.session.user;
 
     try {
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 0);
-                DECLARE @PrevWeekStart DATE = DATEADD(wk, -1, @WeekStart);
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
 
-                -- Most Trained Body Part This Week
-                SELECT TOP 1 B.Name AS mostTrainedBodyPart FROM TrainingLog L
-                JOIN TrainingPlan P ON L.PlanID = P.PlanID
-                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
-                WHERE P.Branch = @Branch AND P.Gender = @Gender AND P.CreatedAt >= @WeekStart
-                GROUP BY B.Name ORDER BY COUNT(*) DESC;
+        const result = await request.query(`
+            DECLARE @CurrentWeekID INT;
+            DECLARE @CurrentWeekStart DATE;
+            DECLARE @CurrentWeekEnd DATE;
 
-                -- Workouts This Week vs Last Week
-                SELECT
-                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as workoutsThisWeek,
-                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt BETWEEN @PrevWeekStart AND @WeekStart) as workoutsLastWeek;
-            `);
+            SELECT TOP 1
+                @CurrentWeekID = WeekID,
+                @CurrentWeekStart = WeekStartDate,
+                @CurrentWeekEnd = WeekEndDate
+            FROM AttendanceWeek 
+            -- --- ✅ REFINED LOGIC ---
+            -- This line now uses the current IST time to find the correct week.
+            WHERE DATEADD(MINUTE, 330, GETUTCDATE()) BETWEEN WeekStartDate AND WeekEndDate;
+            -- --- END REFINEMENT ---
 
-        res.json({
-            success: true,
-            mostTrained: result.recordsets[0][0]?.mostTrainedBodyPart || 'N/A',
-            workoutsThisWeek: result.recordsets[1][0].workoutsThisWeek,
-            workoutsLastWeek: result.recordsets[1][0].workoutsLastWeek
-        });
+            -- The rest of your query logic is perfect and remains unchanged.
+            WITH AttendanceScores AS (
+                SELECT TR, COUNT(*) AS AttendanceCount
+                FROM Attendance
+                WHERE WeekID = @CurrentWeekID AND IsPresent = 1
+                GROUP BY TR
+            ),
+            LogScores AS (
+                SELECT P.TR, COUNT(L.LogID) as TotalBodyParts, COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays
+                FROM TrainingPlan P
+                JOIN TrainingLog L ON P.PlanID = L.PlanID
+                WHERE P.CreatedAt BETWEEN @CurrentWeekStart AND DATEADD(day, 1, @CurrentWeekEnd)
+                GROUP BY P.TR
+            )
+            SELECT TOP 3 M.Name, COALESCE(A.AttendanceCount, 0) AS AttendanceScore
+            FROM Master M
+            LEFT JOIN AttendanceScores A ON M.TR = A.TR
+            LEFT JOIN LogScores T ON M.TR = T.TR
+            WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active'
+            ORDER BY
+                COALESCE(A.AttendanceCount, 0) DESC,
+                COALESCE(T.WorkoutDays, 0) DESC,
+                COALESCE(T.TotalBodyParts, 0) DESC;
+        `);
+        res.json({ success: true, data: result.recordset });
     } catch (err) {
-        console.error('Error fetching activity summary:', err);
-        res.status(500).json({ success: false });
+        console.error('Error fetching leaderboard:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
     }
 });
 
@@ -1681,7 +1707,6 @@ app.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
 //---------------------------------------------------------------------------------------------------------------
 // Place these new routes in your main server.js file
 
-// API for the "At a Glance" duration-based stat cards
 app.get('/api/staff/duration-summary', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ success: false });
     const { Branch, Gender } = req.session.user;
@@ -1691,16 +1716,18 @@ app.get('/api/staff/duration-summary', async (req, res) => {
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
-                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 0);
+                -- --- ✅ REFINED LOGIC ---
+                -- This line is also changed to define the week's start using the IST calendar.
+                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
+                -- --- END REFINEMENT ---
 
                 SELECT 
                     (SELECT ISNULL(AVG(CAST(DurationInMinutes AS FLOAT)), 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND DurationInMinutes IS NOT NULL) as avgDuration,
                     
-                    -- ✅ CORRECTED SUBQUERY FOR BUSIEST SLOT
                     (SELECT TOP 1 S.SlotName 
                      FROM Attendance A 
-                     JOIN Master M ON A.TR = M.TR -- First, join Attendance to Master
-                     JOIN Slots S ON M.SlotID = S.SlotID -- Then, join Master to Slots
+                     JOIN Master M ON A.TR = M.TR
+                     JOIN Slots S ON M.SlotID = S.SlotID
                      WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL 
                      GROUP BY S.SlotName 
                      ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
@@ -1730,11 +1757,20 @@ app.get('/api/staff/peak-hours', async (req, res) => {
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
-                SELECT DATEPART(hour, CreatedAt) AS hour, COUNT(*) AS count
+                -- --- ✅ REFINED LOGIC ---
+                -- The start of the week is now based on the IST calendar.
+                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
+
+                -- The hour is extracted from the IST-converted timestamp.
+                SELECT 
+                    DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) AS hour, 
+                    COUNT(*) AS count
                 FROM Attendance
-                WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 0)
-                GROUP BY DATEPART(hour, CreatedAt)
+                WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart
+                -- The grouping is also done by the IST hour.
+                GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt))
                 ORDER BY hour ASC;
+                -- --- END REFINEMENT ---
             `);
         res.json({ success: true, data: result.recordset });
     } catch (err) {
@@ -1762,7 +1798,10 @@ app.get('/api/staff/engagement-report', async (req, res) => {
                     M.Name,
                     ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours,
                     ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration,
-                    DATEDIFF(day, LV.lastVisitDate, GETDATE()) as DaysSinceLastVisit
+                    -- --- ✅ REFINED LOGIC ---
+                    -- DATEDIFF now compares against the current IST time, not UTC.
+                    DATEDIFF(day, LV.lastVisitDate, DATEADD(MINUTE, 330, GETUTCDATE())) as DaysSinceLastVisit
+                    -- --- END REFINEMENT ---
                 FROM Master M
                 LEFT JOIN Attendance A ON M.TR = A.TR
                 LEFT JOIN LastVisit LV ON M.TR = LV.TR
@@ -1813,53 +1852,51 @@ app.get('/api/staff/goal-alignment', async (req, res) => {
 app.post('/api/attendance-manual', async (req, res) => {
     const { TR, WeekID, IsPresent } = req.body;
 
-    // ✅ Ensure trainer is logged in
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ error: 'Unauthorized access. Please log in.' });
     }
-
     const { Branch, Gender } = req.session.user;
 
     try {
-
-        // ✅ Step 1: Verify that the student exists, is Active, and matches trainer's Branch & Gender
         const studentCheck = await pool.request()
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                SELECT 1 FROM Master
-                WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender
-            `);
+            .query(`SELECT 1 FROM Master WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender`);
 
         if (studentCheck.recordset.length === 0) {
             return res.status(403).json({ error: '❌ TR not authorized or inactive.' });
         }
 
-        // ✅ Step 2: Check if attendance already exists today
+        // --- ✅ REFINED LOGIC ---
+        // 1. Define the start and end of the current IST day and convert to UTC.
+        const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day').utc().toDate();
+        const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day').utc().toDate();
+        // --- END REFINEMENT ---
+
         const attendanceCheck = await pool.request()
             .input('TR', sql.Int, TR)
-            .input('WeekID', sql.Int, WeekID)
+            .input('StartUTC', sql.DateTime, startOfTodayIST) // Pass range to query
+            .input('EndUTC', sql.DateTime, endOfTodayIST)
             .query(`
                 SELECT 1 FROM Attendance
-                WHERE TR = @TR AND WeekID = @WeekID
-                AND CONVERT(date, CreatedAt) = CONVERT(date, GETDATE())
+                WHERE TR = @TR AND CreatedAt BETWEEN @StartUTC AND @EndUTC
             `);
-
+            
         if (attendanceCheck.recordset.length > 0) {
             return res.status(400).json({ error: '❌ Attendance already marked for today.' });
         }
 
-        // ✅ Step 3: Insert attendance
         await pool.request()
             .input('TR', sql.Int, TR)
             .input('WeekID', sql.Int, WeekID)
             .input('IsPresent', sql.Bit, IsPresent)
+            // 2. Explicitly use the current UTC time for the timestamp.
             .query(`
                 INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, OutTime, DurationInMinutes)
-                VALUES (@TR, @WeekID, @IsPresent, GETDATE(), NULL, NULL)
+                VALUES (@TR, @WeekID, @IsPresent, GETUTCDATE(), NULL, NULL)
             `);
-
+            
         res.status(200).json({ message: '✅ Attendance marked successfully' });
     } catch (error) {
         console.error('❌ Attendance insert error:', error);
@@ -1867,13 +1904,9 @@ app.post('/api/attendance-manual', async (req, res) => {
     }
 });
 
-  
-
-// Add this new route to your server file
 app.post('/api/checkout', async (req, res) => {
-    // The TR is sent from the trainer's form
     const { TR } = req.body;
-    const moment = require('moment-timezone'); // Make sure moment-timezone is required
+    // 'moment-timezone' should be required at the top of your server.js file.
 
     if (!TR) {
         return res.status(400).json({ success: false, message: 'TR number is required.' });
@@ -1883,26 +1916,41 @@ app.post('/api/checkout', async (req, res) => {
         const request = pool.request();
         request.input('TR', sql.Int, TR);
 
-        // Find the open session (where OutTime is NULL) for this student today
+        // --- ✅ REFINED LOGIC ---
+        // 1. Define the start and end of the current day in the IST timezone.
+        const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day');
+        const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day');
+
+        // 2. Convert these IST boundaries to UTC for the database query.
+        const startUTC = startOfTodayIST.utc().toDate();
+        const endUTC = endOfTodayIST.utc().toDate();
+        
+        // 3. Pass the UTC range as parameters.
+        request.input('StartUTC', sql.DateTime, startUTC);
+        request.input('EndUTC', sql.DateTime, endUTC);
+        // --- END REFINEMENT ---
+
+        // Find the open session (where OutTime is NULL) for this student on the current IST day
         const openSession = await request.query(`
             SELECT AttendanceID, CreatedAt FROM Attendance
             WHERE TR = @TR 
               AND OutTime IS NULL 
-              AND CAST(CreatedAt AS DATE) = CAST(GETDATE() AS DATE);
+              -- 4. The query now uses the correct time range instead of just the date.
+              AND CreatedAt BETWEEN @StartUTC AND @EndUTC;
         `);
 
         if (openSession.recordset.length === 0) {
             return res.status(404).json({ success: false, message: 'This student is not currently checked in. Please mark their attendance first.' });
         }
 
+        // The rest of your logic for calculating duration and formatting the response is perfect.
         const { AttendanceID, CreatedAt } = openSession.recordset[0];
-        
-        // Use moment to handle timezones correctly for duration calculation
-        const inTime = moment(CreatedAt);
-        const outTime = moment(); // Current time
+
+        const inTime = moment.utc(CreatedAt);
+        const outTime = moment.utc();  
+
         const duration = outTime.diff(inTime, 'minutes');
 
-        // Update the record with OutTime and the calculated Duration
         await request
             .input('OutTime', sql.DateTime, outTime.toDate())
             .input('Duration', sql.Int, duration)
@@ -1912,7 +1960,7 @@ app.post('/api/checkout', async (req, res) => {
                 SET OutTime = @OutTime, DurationInMinutes = @Duration
                 WHERE AttendanceID = @AttendanceID;
             `);
-        
+
         const inTimeFormatted = inTime.tz("Asia/Kolkata").format("h:mm A");
         const outTimeFormatted = outTime.tz("Asia/Kolkata").format("h:mm A");
 
