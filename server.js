@@ -2005,10 +2005,12 @@ app.post('/api/checkout', async (req, res) => {
         const inTimeFormatted = inTime.tz("Asia/Kolkata").format("h:mm A");
         const outTimeFormatted = outTime.tz("Asia/Kolkata").format("h:mm A");
 
-        res.json({ 
-            success: true, 
-            message: `Checked out successfully! Session: ${inTimeFormatted} - ${outTimeFormatted} (${duration} minutes).` 
-        });
+          res.json({ 
+              success: true, 
+              duration: duration,
+              inTime: inTimeFormatted,
+              outTime: outTimeFormatted
+          });
 
     } catch (err) {
         console.error('Check-out error:', err);
@@ -2016,6 +2018,49 @@ app.post('/api/checkout', async (req, res) => {
     }
 });
 
+
+// API to get all students currently checked in (active sessions)
+app.get('/api/active-sessions', async (req, res) => {
+    // 1. Enforce login and get trainer's branch/gender from session
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        // 2. Define the current IST day and convert it to a UTC range for the query
+        const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day').utc().toDate();
+        const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day').utc().toDate();
+
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .input('StartUTC', sql.DateTime, startOfTodayIST)
+            .input('EndUTC', sql.DateTime, endOfTodayIST)
+            .query(`
+                SELECT 
+                    A.TR,
+                    M.Name,
+                    A.CreatedAt -- The check-in timestamp
+                FROM Attendance A
+                JOIN Master M ON A.TR = M.TR
+                WHERE 
+                    A.Branch = @Branch 
+                    AND A.Gender = @Gender
+                    AND A.OutTime IS NULL -- The key condition: they haven't checked out
+                    AND A.CreatedAt BETWEEN @StartUTC AND @EndUTC -- They checked in today (IST)
+                ORDER BY A.CreatedAt ASC; -- Show earliest check-ins first
+            `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error("Error fetching active sessions:", err.message);
+        res.status(500).json({ success: false, error: "Failed to fetch active sessions" });
+    }
+});
+
+//-------------------------------------------------------------------------------------------------------
 
 app.get('/api/attendance/:weekId', async (req, res) => {
     try {

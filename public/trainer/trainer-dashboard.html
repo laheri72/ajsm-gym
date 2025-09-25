@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
     <style>
         /* --- Professional Theming and Layout --- */
@@ -207,6 +209,49 @@
   color: #fff;
   text-align: center;
 }
+/* Add this CSS to your existing <style> block */
+
+.swal2-html-container {
+    overflow: initial !important; /* Allow content to be styled freely */
+}
+
+.body-parts-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.body-part-chip {
+    padding: 10px 18px;
+    border-radius: 20px;
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    user-select: none; /* Prevents text selection on click */
+}
+
+.body-part-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.body-part-chip.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-hover);
+}
+
+#max-selection-warning {
+    color: var(--error-text);
+    font-size: 0.9em;
+    height: 1.2em; /* Reserve space to prevent layout shift */
+    margin-top: 10px;
+    transition: opacity 0.2s ease;
+}
 
 
     </style>
@@ -311,7 +356,28 @@
                 </button>
             </div>
         </div>
+
+        
+<div id="active-sessions-container" style="margin-top: 2.5rem;">
+    <h3 style="text-align: center; margin-bottom: 1rem;">🕒 Currently Checked-in Students</h3>
+    <table id="activeSessionsTable">
+        <thead>
+            <tr>
+                <th>TR</th>
+                <th>Name</th>
+                <th>Check-in Time</th>
+            </tr>
+        </thead>
+        <tbody id="active-sessions-body">
+            </tbody>
+    </table>
+</div>
+
+
+
     </div>
+
+
 </section>
 
     <section id="fitness-test-section" class="page-section hidden">
@@ -414,61 +480,42 @@
             }
         }
 
-        async function checkTR() {
-            const tr = elements.trInput.value.trim();
-            if (!tr) return;
+// Replace your old checkTR function with this one
+async function checkTR() {
+    const tr = elements.trInput.value.trim();
+    if (!tr) return;
 
-            toggleButtonSpinner(elements.checkTrButton, true);
-            resetForm(); // Reset previous student's data
-            elements.trInput.value = tr; // Keep the value in the input
+    toggleButtonSpinner(elements.checkTrButton, true);
+    // Hide any previously shown info cards
+    elements.studentInfoCard.classList.add('hidden');
+    elements.planHistorySection.classList.add('hidden');
+    
+    try {
+        const res = await fetch(`/api/verify-tr/${tr}`);
+        const data = await res.json();
 
-            try {
-                const res = await fetch(`/api/verify-tr/${tr}`);
-                const data = await res.json();
-
-                if (!data.valid) {
-                    throw new Error(data.message || 'This TR is invalid or membership expired!');
-                }
-
-                currentValidTR = data.data.TR;
-                elements.slotInfo.textContent = data.data.SlotName ? `Slot: ${data.data.SlotName}` : 'No slot assigned';
-                elements.goalInfo.textContent = `Goal: ${data.data.Goal}`;
-                elements.studentInfoCard.classList.remove('hidden');
-                elements.workoutEntryForm.classList.remove('hidden');
-                elements.submitButton.disabled = false;
-
-                        // Initialize Choices.js now that the element is visible, but only if it hasn't been already.
-                    if (!bodyPartsChoices) {
-                        bodyPartsChoices = new Choices('#bodyParts', {
-                            removeItemButton: true,
-                            placeholderValue: 'Select trained body parts...',
-                            searchEnabled: false,
-                            shouldSort: false,
-                        });
-                    }
-                
-                await loadTrainingPlans(currentValidTR);
-
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: `✅ Welcome ${data.data.Name}!`,
-                    text: 'You can now mark attendance and log the workout.',
-                    timer: 2500,
-                    showConfirmButton: false,
-                });
-
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Invalid TR',
-                    text: error.message,
-                });
-            } finally {
-                toggleButtonSpinner(elements.checkTrButton, false);
-            }
+        if (!data.valid) {
+            throw new Error(data.message || 'This TR is invalid or membership expired!');
         }
+
+        // --- ✅ NEW INTEGRATION ---
+        // Instead of showing a form, we immediately launch the interactive popup
+        // and pass the student's TR and Name to it.
+        await promptForWorkoutAndSubmit(data.data.TR, data.data.Name);
+        
+        // After the popup is closed (or submitted), clear the TR input for the next student.
+        elements.trInput.value = '';
+
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid TR',
+            text: error.message,
+        });
+    } finally {
+        toggleButtonSpinner(elements.checkTrButton, false);
+    }
+}
 
         async function loadTrainingPlans(tr) {
             try {
@@ -490,71 +537,7 @@
             }
         }
 
-        async function submitAttendanceAndPlan(e) {
-            e.preventDefault();
-            if (elements.submitButton.disabled) return;
-            
-            toggleButtonSpinner(elements.submitButton, true);
 
-            const selectedOptions = bodyPartsChoices.getValue(true);
-
-            try {
-                // Determine WeekID
-                const today = new Date();
-                const weekStart = new Date(today);
-                const day = weekStart.getDay();
-                const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
-                weekStart.setDate(diff);
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 6);
-                
-                const weekResponse = await fetch('/api/get-or-create-week', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        WeekStartDate: weekStart.toISOString().split('T')[0],
-                        WeekEndDate: weekEnd.toISOString().split('T')[0]
-                    })
-                });
-                const weekData = await weekResponse.json();
-                const WeekID = weekData.WeekID;
-
-                // Submit attendance (assuming present)
-                const attendanceRes = await fetch('/api/attendance-manual', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ TR: currentValidTR, WeekID, IsPresent: 1 })
-                });
-                const attendanceData = await attendanceRes.json();
-                if (!attendanceRes.ok) throw new Error(attendanceData.error || 'Attendance submission failed');
-
-                // Submit training plan if parts selected
-                if (selectedOptions.length > 0) {
-                    const planRes = await fetch('/api/log-training-plan', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ TR: currentValidTR, BodyParts: selectedOptions })
-                    });
-                    const planData = await planRes.json();
-                    if (!planRes.ok) throw new Error(planData.message || 'Plan logging failed');
-                }
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Attendance and workout plan logged successfully.',
-                }).then(resetForm);
-
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Submission Error',
-                    text: error.message,
-                });
-            } finally {
-                toggleButtonSpinner(elements.submitButton, false);
-            }
-        }
 
 async function loadDailyAttendance() {
     elements.dailyAttendanceSection.classList.toggle('hidden');
@@ -617,12 +600,11 @@ async function loadDailyAttendance() {
                     checkTR();
                 }
             });
-            elements.attendanceForm.addEventListener('submit', submitAttendanceAndPlan);
+            
             elements.viewAttendanceBtn.addEventListener('click', loadDailyAttendance);
         });
 
-    </script>
-    <script type="module">
+
 document.getElementById('logoutLink').addEventListener('click', function (e) {
     // Prevent the link from navigating to trainer-login.html immediately
     e.preventDefault();
@@ -648,9 +630,7 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
         alert('Could not connect to the server to log out.');
     });
 });
-</script>
 
-<script type="module">
     // --- DOM Element References ---
     const testingArea = document.getElementById('testing-area');
     const addStudentsBtn = document.getElementById('addStudentsBtn');
@@ -878,14 +858,127 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
 
 
 
-    // Add this new event listener to your trainer dashboard's script
+    // Add this new function to your main script block
+async function promptForWorkoutAndSubmit(tr, studentName) {
+    const bodyParts = ['Cardio', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Core'];
+    
+    // Create the HTML for our clickable chips
+    const bodyPartsHtml = bodyParts.map(part => 
+        `<div class="body-part-chip" data-part="${part}">${part}</div>`
+    ).join('');
+
+    const swalResult = await Swal.fire({
+        title: `Workout for ${studentName}`,
+        html: `
+            <p>Select body parts to train today.</p>
+            <div class="body-parts-container">${bodyPartsHtml}</div>
+            <div id="max-selection-warning"></div>
+        `,
+        confirmButtonText: 'Log Attendance & Workout',
+        showCancelButton: true,
+        focusConfirm: false,
+        width: '600px',
+        didOpen: () => {
+            const container = document.querySelector('.body-parts-container');
+            const chips = container.querySelectorAll('.body-part-chip');
+            const warningEl = document.getElementById('max-selection-warning');
+
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const selectedCount = container.querySelectorAll('.selected').length;
+                    
+                    if (chip.classList.contains('selected')) {
+                        chip.classList.remove('selected');
+                        warningEl.textContent = '';
+                    } else if (selectedCount < 3) {
+                        chip.classList.add('selected');
+                        warningEl.textContent = '';
+                    } else {
+                        // Show a temporary warning if they try to select more than 3
+                        warningEl.textContent = 'Maximum of 3 parts can be selected.';
+                        setTimeout(() => { warningEl.textContent = ''; }, 2000);
+                    }
+                });
+            });
+        },
+        preConfirm: () => {
+            // This runs when the user clicks "Confirm"
+            const selectedChips = document.querySelectorAll('.body-part-chip.selected');
+            return Array.from(selectedChips).map(chip => chip.dataset.part);
+        }
+    });
+
+    // If the user clicked "Confirm" and didn't cancel
+    if (swalResult.isConfirmed) {
+        const selectedParts = swalResult.value;
+
+        Swal.fire({
+            title: 'Submitting...',
+            text: 'Please wait while we log the session.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        try {
+            // Determine WeekID (using your existing logic)
+            const today = new Date();
+            const weekStart = new Date(today);
+            const day = weekStart.getDay();
+            const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+            weekStart.setDate(diff);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            const weekResponse = await fetch('/api/get-or-create-week', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    WeekStartDate: weekStart.toISOString().split('T')[0],
+                    WeekEndDate: weekEnd.toISOString().split('T')[0]
+                })
+            });
+            const weekData = await weekResponse.json();
+            const WeekID = weekData.WeekID;
+
+            // Submit attendance
+            const attendanceRes = await fetch('/api/attendance-manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ TR: tr, WeekID, IsPresent: 1 })
+            });
+            const attendanceData = await attendanceRes.json();
+            if (!attendanceRes.ok) throw new Error(attendanceData.error || 'Attendance submission failed');
+
+            // Submit training plan if parts were selected
+            if (selectedParts.length > 0) {
+                const planRes = await fetch('/api/log-training-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ TR: tr, BodyParts: selectedParts })
+                });
+                const planData = await planRes.json();
+                if (!planRes.ok) throw new Error(planData.message || 'Plan logging failed');
+            }
+
+            Swal.fire('Success!', 'Attendance and workout plan logged successfully.', 'success');
+
+        } catch (error) {
+            Swal.fire('Submission Error', error.message, 'error');
+        }
+    }
+}
+
+// Source: trainer dashboard.txt, replace script for checkout-btn
 document.getElementById('checkout-btn').addEventListener('click', async () => {
     const trInput = document.getElementById('checkout-tr-input');
+    const checkoutBtn = document.getElementById('checkout-btn');
     const tr = trInput.value.trim();
 
     if (!tr) {
         return Swal.fire('Missing TR', 'Please enter a TR number to check out.', 'warning');
     }
+
+    toggleButtonSpinner(checkoutBtn, true);
 
     try {
         const res = await fetch('/api/checkout', {
@@ -897,18 +990,33 @@ document.getElementById('checkout-btn').addEventListener('click', async () => {
         const data = await res.json();
 
         if (!res.ok) {
-            // Handle errors from the API, like "student not checked in"
             throw new Error(data.message);
         }
 
-        // On success, show the detailed message from the server
+        // --- ▼▼▼ NEW DYNAMIC MESSAGE LOGIC ▼▼▼ ---
+        
+        let messageHtml = `Session: ${data.inTime} - ${data.outTime}`;
+        
+        // Check if the duration is more than 30 minutes
+        if (data.duration > 30) {
+            // If yes, create the special green, bold, multi-line message
+            messageHtml += `<br><strong style="color: #10b981; font-size: 1.2em;">Great session! (${data.duration} minutes)</strong>`;
+        } else {
+            // Otherwise, just show the normal duration on a new line
+            messageHtml += `<br><strong>(${data.duration} minutes)</strong>`;
+        }
+
         Swal.fire({
             icon: 'success',
             title: 'Check-out Complete!',
-            text: data.message,
+            html: messageHtml, // Use the 'html' property for custom styling
+        }).then(() => {
+            loadActiveSessions(); 
         });
 
-        trInput.value = ''; // Clear the input field
+        // --- END OF NEW LOGIC ---
+
+        trInput.value = '';
 
     } catch (err) {
         Swal.fire({
@@ -916,6 +1024,8 @@ document.getElementById('checkout-btn').addEventListener('click', async () => {
             title: 'Check-out Failed',
             text: err.message,
         });
+    } finally {
+        toggleButtonSpinner(checkoutBtn, false);
     }
 });
 
@@ -932,43 +1042,89 @@ document.getElementById('checkout-tr-input').addEventListener('keydown', (e) => 
     }
 });
     
-</script>
-<script type="module">
+
+// Replace your existing function with this one
+async function loadActiveSessions() {
+    const tableBody = document.getElementById('active-sessions-body');
+    tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>`;
+
+    try {
+        const res = await fetch('/api/active-sessions', { credentials: 'include' });
+        const result = await res.json();
+
+        if (!result.success) throw new Error(result.error);
+
+        tableBody.innerHTML = ''; // Clear loading message
+
+        if (result.data.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No students are currently checked in.</td></tr>`;
+            return;
+        }
+
+        result.data.forEach(session => {
+            // ▼▼▼ THE LIKELY SOURCE OF THE ERROR IS A TYPO IN ONE OF THESE TWO PLACES ▼▼▼
+
+            // 1. The variable is DECLARED here. Check the capitalization.
+            const checkInTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format("h:mm A");
+            
+            // 2. The variable is USED here. The name must be an exact match.
+            const row = `
+                <tr>
+                    <td>${session.TR}</td>
+                    <td>${session.Name}</td>
+                    <td>${checkInTime}</td>
+                </tr>`;
+            
+            tableBody.insertAdjacentHTML('beforeend', row);
+        });
+    } catch (err) {
+        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Failed to load data.</td></tr>`;
+        console.error('Failed to load active sessions:', err);
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('.nav-link');
     const pageSections = document.querySelectorAll('.page-section');
 
-    navLinks.forEach(link => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault(); // Stop the link from navigating away
+// Source: trainer dashboard.txt, replace lines 509-525
+navLinks.forEach(link => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault();
 
-            const targetId = link.id.replace('nav-', '') + '-section';
+        const targetId = link.id.replace('nav-', '') + '-section';
 
-            // Update the 'active' class on the nav links
-            navLinks.forEach(nav => nav.classList.remove('active'));
-            link.classList.add('active');
+        // Update the 'active' class on the nav links
+        navLinks.forEach(nav => nav.classList.remove('active'));
+        link.classList.add('active');
 
-            // Show the target section and hide the others
-            pageSections.forEach(section => {
-                if (section.id === targetId) {
-                    section.classList.remove('hidden');
+        // Show the target section and hide the others
+        pageSections.forEach(section => {
+            if (section.id === targetId) {
+                section.classList.remove('hidden');
 
-                    // Focus input if it's Attendance or Checkout section
-                    if (section.id === 'checkout-section') {
-                        const input = section.querySelector('#checkout-tr-input');
-                        if (input) input.focus();
-                    } else if (section.id === 'attendance-section') {
-                        const input = section.querySelector('#tr-input');
-                        if (input) input.focus();
-                    }
+                // Focus input if it's Attendance or Checkout section
+                if (section.id === 'checkout-section') {
+                    const input = section.querySelector('#checkout-tr-input');
+                    if (input) input.focus();
+                    
+                    // --- ✅ THIS IS THE FIX ---
+                    // This line ensures the data is fetched every time you click the checkout tab.
+                    loadActiveSessions(); 
+                    // --- END FIX ---
 
-                } else {
-                    section.classList.add('hidden');
+                } else if (section.id === 'attendance-section') {
+                    const input = section.querySelector('#tr-input');
+                    if (input) input.focus();
                 }
-            });
+
+            } else {
+                section.classList.add('hidden');
+            }
         });
     });
-
+});
     // Optional: Focus Attendance input on page load if Attendance is active by default
     const attendanceSection = document.querySelector('#attendance-section');
     if (attendanceSection && !attendanceSection.classList.contains('hidden')) {
