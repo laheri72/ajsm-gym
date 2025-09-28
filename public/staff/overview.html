@@ -37,62 +37,94 @@
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
-    <div class="dashboard">
-        <div class="navbar">
-            <a href="overview.html" id="tab-overview">📊 Overview</a>
-            <a href="entry.html" id="tab-entry">Slot Entry</a>
-            <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-            <a href="records.html" id="tab-record">Active Students</a>
-            <a href="progress.html" id="tab-Progress">Track Progress</a>
-            <a href="test.html" id="tab-test">Fitness Test</a>
-            <a href="attendance.html" id="tab-attendance">Attendance</a>
-            <a href="#" id="logoutLink">Logout</a>
-        </div>
-      
-        <div class="content">
-                        <section id="overview-section">
-                  <div class="stat-cards-container">
-                      <div class="stat-card">
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
+            </div>
+
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav class="navbar" id="navbar">
+                <a href="overview.html" id="tab-overview" class="active">📊 Overview</a>
+                <a href="entry.html" id="tab-entry">Slot Entry</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="records.html" id="tab-record">Active Students</a>
+                <a href="progress.html" id="tab-Progress">Track Progress</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="attendance.html" id="tab-attendance">Attendance</a>
+                <a href="#" id="logoutLink">Logout</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="content">
+                 <section id="overview-section">
+                    <div class="stat-cards-container">
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-active-students">--</div>
                           <div class="stat-label">Active Students</div>
-                      </div>
-                      <div class="stat-card">
+                        </div>
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-waiting-list">--</div>
                           <div class="stat-label">In Waiting List</div>
-                      </div>
-                      <div class="stat-card">
+                        </div>
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-inactive-students">--</div>
                           <div class="stat-label">Inactive Students</div>
-                      </div>
-                      <div class="stat-card">
+                        </div>
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-slots">--</div>
                           <div class="stat-label">Total Slots</div>
-                      </div>
-                      <div class="stat-card">
+                        </div>
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-todays-logs">--</div>
                           <div class="stat-label">Today's Training Logs</div>
-                      </div>
-                      <div class="stat-card">
+                        </div>
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-fitness-tests">--</div>
                           <div class="stat-label">Fitness Tests Taken</div>
-                      </div>
-                      <div class="stat-card">
+                        </div>
+                        <div class="stat-card">
                           <div class="stat-value" id="stat-users">--</div>
                           <div class="stat-label">Staff & Trainers</div>
-                      </div>
-                  </div>
-              </section>
-
-
+                        </div>
+                    </div>
+                </section>
             </div>
-    </div>  
+        </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/overview.js"></script>
-</body>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const navOverlay = document.getElementById('nav-overlay');
+        const navbar = document.getElementById('navbar');
+
+        function toggleNav() {
+            document.body.classList.toggle('nav-open');
+        }
+
+        if (hamburgerBtn) {
+            hamburgerBtn.addEventListener('click', toggleNav);
+        }
+
+        if (navOverlay) {
+            navOverlay.addEventListener('click', toggleNav);
+        }
+    });
+</script>
+    </body>
 </html>

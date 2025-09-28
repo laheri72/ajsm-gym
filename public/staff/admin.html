@@ -36,93 +36,128 @@
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
-    <div class="dashboard">
-        <div class="navbar">
-            <a href="overview.html" id="tab-overview">📊 Overview</a>
-            <a href="entry.html" id="tab-entry">Slot Entry</a>
-            <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-            <a href="records.html" id="tab-record">Active Students</a>
-            <a href="progress.html" id="tab-Progress">Track Progress</a>
-            <a href="test.html" id="tab-test">Fitness Test</a>
-            <a href="attendance.html" id="tab-attendance">Attendance</a>
-            <a href="#" id="logoutLink">Logout</a>
-        </div>
-      
-        <div class="content">
-
- <section id="Admin-base" style="padding: 20px;">
-
-
-        <section class="card mt-4 p-3">
-  <h2>👑 Role Management Panel</h2>
-  <p id="adminBranchInfo">
-  Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch.
-</p>
-
-
-  <div style="overflow-x: auto;">
-  <!-- Table (read-only) -->
-  <table id="adminUserTable" border="1" cellspacing="0" cellpadding="5">
-    <thead>
-      <tr>
-        <th>Username</th>
-        <th>Gender</th>
-        <th>Role</th>
-         <th>Action</th> 
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  </div>
-  <!-- Add New User -->
-  <h3>Add New User</h3>
-  <form id="adminAddForm" class="form-group">
-    <input type="text" placeholder="Username" id="newUsername" required />
-    <input type="text" placeholder="Password" id="newPassword" required />
-    <select id="newGender">
-      <option value="Male">Male</option>
-      <option value="Female">Female</option>
-    </select>
-    <select id="newRole">
-      <option value="Trainer">Trainer</option>
-      <option value="Staff">Staff</option>
-    </select>
-    <button type="submit" class="btn btn-success mb-3">Add User</button>
-  </form>
-  </section>
-
-
-  <section id="inactive-student-record" class="card">
-  <div class="container mt-5">
-    <h2>Inactive Students (Admin View)</h2>
-    <div style="overflow-x: auto;">
-      <table id="inactiveStudentTable">
-        <thead>
-          <tr>
-            <th>Tr No</th>
-            <th>Name</th>
-            <th>Darajah</th>
-            <th>Preferred Goal</th>
-            <th>Slot</th>
-            <th>Activate</th> 
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-</section>
-
-
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
             </div>
-    </div>  
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="navbar" id="navbar">
+                <a href="overview.html" id="tab-overview">📊 Overview</a>
+                <a href="entry.html" id="tab-entry">Slot Entry</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="records.html" id="tab-record">Active Students</a>
+                <a href="progress.html" id="tab-Progress">Track Progress</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="attendance.html" id="tab-attendance">Attendance</a>
+                <a href="#" id="logoutLink">Logout</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="content">
+                <section id="Admin-base" style="padding: 20px;">
+                    <section class="card mt-4 p-3">
+                        <h2>👑 Role Management Panel</h2>
+                        <p id="adminBranchInfo">
+                            Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch.
+                        </p>
+                        <div style="overflow-x: auto;">
+                            <table id="adminUserTable" border="1" cellspacing="0" cellpadding="5">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Gender</th>
+                                        <th>Role</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <h3>Add New User</h3>
+                        <form id="adminAddForm" class="form-group">
+                            <input type="text" placeholder="Username" id="newUsername" required />
+                            <input type="text" placeholder="Password" id="newPassword" required />
+                            <select id="newGender">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                            <select id="newRole">
+                                <option value="Trainer">Trainer</option>
+                                <option value="Staff">Staff</option>
+                            </select>
+                            <button type="submit" class="btn btn-success mb-3">Add User</button>
+                        </form>
+                    </section>
+
+                    <section id="inactive-student-record" class="card">
+                        <div class="container mt-5">
+                            <h2>Inactive Students (Admin View)</h2>
+                            <div style="overflow-x: auto;">
+                                <table id="inactiveStudentTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Tr No</th>
+                                            <th>Name</th>
+                                            <th>Darajah</th>
+                                            <th>Preferred Goal</th>
+                                            <th>Slot</th>
+                                            <th>Activate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </section>
+                </div>
+        </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/admin.js"></script> 
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navOverlay = document.getElementById('nav-overlay');
+            
+            function toggleNav() {
+                document.body.classList.toggle('nav-open');
+            }
+
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', toggleNav);
+            }
+
+            if (navOverlay) {
+                navOverlay.addEventListener('click', toggleNav);
+            }
+
+            // Logic to set the 'active' class on the correct nav link
+            const currentPage = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.navbar a');
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.href.includes(currentPage)) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
     <script type="module" src="js/auth.js"></script>  <script type="module" src="js/admin.js"></script> </body>
 </html>

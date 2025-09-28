@@ -40,164 +40,196 @@
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
-    <div class="dashboard">
-        <div class="navbar">
-            <a href="overview.html" id="tab-overview">📊 Overview</a>
-            <a href="entry.html" id="tab-entry">Slot Entry</a>
-            <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-            <a href="records.html" id="tab-record">Active Students</a>
-            <a href="progress.html" id="tab-Progress">Track Progress</a>
-            <a href="test.html" id="tab-test">Fitness Test</a>
-            <a href="attendance.html" id="tab-attendance">Attendance</a>
-            <a href="#" id="logoutLink">Logout</a>
-        </div>
-      
-<div class="content">
-
-    <section class="card" style="padding: 20px; margin-bottom: 20px;">
-        <div class="container mt-5">
-            <h2>📅 Training Plan Analytics</h2>
-            
-            <div class="stat-cards-container mb-5">
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-workouts-this-week">--</div>
-                    <div class="stat-label">Workouts This Week</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-workouts-change">--%</div>
-                    <div class="stat-label">Change from Last Week</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-most-trained">--</div>
-                    <div class="stat-label">Most Popular This Week</div>
-                </div>
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
             </div>
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="navbar" id="navbar">
+                <a href="overview.html" id="tab-overview">📊 Overview</a>
+                <a href="entry.html" id="tab-entry">Slot Entry</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="records.html" id="tab-record">Active Students</a>
+                <a href="progress.html" id="tab-Progress">Track Progress</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="attendance.html" id="tab-attendance">Attendance</a>
+                <a href="#" id="logoutLink">Logout</a>
+            </nav>
+        </header>
 
-            <div class="mb-5">
-                 <h3>Body Part Focus (All Time)</h3>
-                 <canvas id="bodyPartChart"></canvas>
-            </div>
-
-            <h3>Member Workout Data</h3>
-            <div class="view-controls mb-4">
-                <button id="viewLogsBtn" class="btn active">View All Logs</button>
-                <button id="viewSummaryBtn" class="btn">View Summary by Body Part</button>
-                
-                <div id="training-summary-filter-container" style="display: none; margin-top: 1rem;">
-                    <label for="trainingBodyPartFilter" class="form-label">Select Body Part to Rank:</label>
-                    <select id="trainingBodyPartFilter" class="form-control" style="width: auto;"></select>
+        <main class="main-content">
+            <div class="content">
+                <section class="card" style="padding: 20px; margin-bottom: 20px;">
+                    <div class="container mt-5">
+                        <h2>📅 Training Plan Analytics</h2>
+                        <div class="stat-cards-container mb-5">
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-workouts-this-week">--</div>
+                                <div class="stat-label">Workouts This Week</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-workouts-change">--%</div>
+                                <div class="stat-label">Change from Last Week</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-most-trained">--</div>
+                                <div class="stat-label">Most Popular This Week</div>
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <h3>Body Part Focus (All Time)</h3>
+                            <canvas id="bodyPartChart"></canvas>
+                        </div>
+                        <h3>Member Workout Data</h3>
+                        <div class="view-controls mb-4">
+                            <button id="viewLogsBtn" class="btn active">View All Logs</button>
+                            <button id="viewSummaryBtn" class="btn">View Summary by Body Part</button>
+                            <div id="training-summary-filter-container" style="display: none; margin-top: 1rem;">
+                                <label for="trainingBodyPartFilter" class="form-label">Select Body Part to Rank:</label>
+                                <select id="trainingBodyPartFilter" class="form-control" style="width: auto;"></select>
+                            </div>
+                        </div>
+                        <div id="logs-view">
+                            <button id="exportTrainingPlansBtn" class="btn btn-success mb-3">Export to Excel</button>
+                            <div style="overflow-x: auto;">
+                                <table id="training-plans-table" class="table table-striped table-bordered nowrap" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>TR</th>
+                                            <th>Name</th>
+                                            <th>Body Parts</th>
+                                            <th>Days Since Last Workout</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="summary-view" style="display: none;">
+                            <div style="overflow-x: auto;">
+                                <table id="summary-table" class="table table-striped table-bordered nowrap" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>TR</th>
+                                            <th>Name</th>
+                                            <th>Total Workouts</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="card" style="padding: 20px; margin-bottom: 20px;">
+                    <div class="container mt-5">
+                        <h2>⏱️ Session Duration Analytics</h2>
+                        <div class="stat-cards-container mb-5">
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-avg-duration">--</div>
+                                <div class="stat-label">Avg. Session Duration (Mins)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-busiest-slot">--</div>
+                                <div class="stat-label">Busiest Slot (by Hours)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-total-hours">--</div>
+                                <div class="stat-label">Total Hours Logged This Week</div>
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <h3>Peak Gym Hours (This Month)</h3>
+                            <canvas id="peakHoursChart"></canvas>
+                        </div>
+                        <h3>Member Engagement & Goal Alignment</h3>
+                        <div class="view-controls mb-4">
+                            <button id="viewEngagementBtn" class="btn active">View Engagement Report</button>
+                            <button id="viewGoalBtn" class="btn">View Goal Alignment</button>
+                        </div>
+                        <div id="engagement-view">
+                            <div style="overflow-x: auto;">
+                                <table id="engagement-table" class="table table-striped table-bordered nowrap" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Total Hours (Month)</th>
+                                            <th>Avg. Duration (Mins)</th>
+                                            <th>Days Since Last Visit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="goal-view" style="display: none;">
+                            <div class="d-flex gap-3 mb-3">
+                                <select id="goalAlignmentGoalFilter" class="form-control" style="width: auto;"></select>
+                                <select id="goalAlignmentBodyPartFilter" class="form-control" style="width: auto;"></select>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table id="goal-alignment-table" class="table table-striped table-bordered nowrap" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Goal</th>
+                                            <th>Times Trained Selected Part</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
                 </div>
-            </div>
+        </main>
+    </div>
 
-            <div id="logs-view">
-                <button id="exportTrainingPlansBtn" class="btn btn-success mb-3">Export to Excel</button>
-                <div style="overflow-x: auto;">
-                    <table id="training-plans-table" class="table table-striped table-bordered nowrap" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>TR</th>
-                                <th>Name</th> 
-                                <th>Body Parts</th>
-                                <th>Days Since Last Workout</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="summary-view" style="display: none;">
-                 <div style="overflow-x: auto;">
-                    <table id="summary-table" class="table table-striped table-bordered nowrap" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>TR</th>
-                                <th>Name</th>
-                                <th>Total Workouts</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="card" style="padding: 20px; margin-bottom: 20px;">
-        <div class="container mt-5">
-            <h2>⏱️ Session Duration Analytics</h2>
-            
-            <div class="stat-cards-container mb-5">
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-avg-duration">--</div>
-                    <div class="stat-label">Avg. Session Duration (Mins)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-busiest-slot">--</div>
-                    <div class="stat-label">Busiest Slot (by Hours)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-total-hours">--</div>
-                    <div class="stat-label">Total Hours Logged This Week</div>
-                </div>
-            </div>
-
-            <div class="mb-5">
-                 <h3>Peak Gym Hours (This Month)</h3>
-                 <canvas id="peakHoursChart"></canvas>
-            </div>
-
-            <h3>Member Engagement & Goal Alignment</h3>
-            <div class="view-controls mb-4">
-                <button id="viewEngagementBtn" class="btn active">View Engagement Report</button>
-                <button id="viewGoalBtn" class="btn">View Goal Alignment</button>
-            </div>
-
-            <div id="engagement-view">
-                <div style="overflow-x: auto;">
-                    <table id="engagement-table" class="table table-striped table-bordered nowrap" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Total Hours (Month)</th>
-                                <th>Avg. Duration (Mins)</th>
-                                <th>Days Since Last Visit</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="goal-view" style="display: none;">
-                <div class="d-flex gap-3 mb-3">
-                    <select id="goalAlignmentGoalFilter" class="form-control" style="width: auto;"></select>
-                    <select id="goalAlignmentBodyPartFilter" class="form-control" style="width: auto;"></select>
-                </div>
-                <div style="overflow-x: auto;">
-                   <table id="goal-alignment-table" class="table table-striped table-bordered nowrap" style="width:100%">
-                       <thead>
-                           <tr>
-                               <th>Name</th>
-                               <th>Goal</th>
-                               <th>Times Trained Selected Part</th>
-                           </tr>
-                       </thead>
-                       <tbody></tbody>
-                   </table>
-               </div>
-            </div>
-        </div>
-    </section>
-</div>
-</div>
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script type="module" src="js/auth.js"></script> <script type="module" src="js/progress.js"></script> </body>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/progress.js"></script> 
+    <script type ="module">
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navOverlay = document.getElementById('nav-overlay');
+            
+            function toggleNav() {
+                document.body.classList.toggle('nav-open');
+            }
+
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', toggleNav);
+            }
+
+            if (navOverlay) {
+                navOverlay.addEventListener('click', toggleNav);
+            }
+
+            // Logic to set the 'active' class on the correct nav link
+            const currentPage = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.navbar a');
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.href.includes(currentPage)) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
 </html>

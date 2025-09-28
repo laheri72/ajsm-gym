@@ -36,120 +36,157 @@
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
-    <div class="dashboard">
-        <div class="navbar">
-            <a href="overview.html" id="tab-overview">📊 Overview</a>
-            <a href="entry.html" id="tab-entry">Slot Entry</a>
-            <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-            <a href="records.html" id="tab-record">Active Students</a>
-            <a href="progress.html" id="tab-Progress">Track Progress</a>
-            <a href="test.html" id="tab-test">Fitness Test</a>
-            <a href="attendance.html" id="tab-attendance">Attendance</a>
-            <a href="#" id="logoutLink">Logout</a>
-        </div>
-      
-        <div class="content">
-                    <section id="attendance-summary" class="card" style="padding: 1rem; margin-bottom: 1rem;">
-
-        <section id="edit-attendance" class="card mt-4 p-3">
-          <h2> Attendance Module</h2>
-
-          <div class="row mb-2">
-            <div class="col-md-3">
-              <label for="editTR">TR Number</label>
-              <input type="number" class="form-control" id="editTR" required>
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
             </div>
-            <div class="col-md-3">
-              <label for="editDate">Date</label>
-              <input type="date" class="form-control" id="editDate" required>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
-            </div>
-          </div>
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="navbar" id="navbar">
+                <a href="overview.html" id="tab-overview">📊 Overview</a>
+                <a href="entry.html" id="tab-entry">Slot Entry</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="records.html" id="tab-record">Active Students</a>
+                <a href="progress.html" id="tab-Progress">Track Progress</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="attendance.html" id="tab-attendance">Attendance</a>
+                <a href="#" id="logoutLink">Logout</a>
+            </nav>
+        </header>
 
-            <div id="attendanceEditor" style="display: none;">
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label>Current Status</label>
-                        <input type="text" class="form-control" id="currentStatus" readonly>
+        <main class="main-content">
+            <div class="content">
+                <section id="attendance-summary" class="card">
+                    <section id="edit-attendance" class="card mt-4 p-3">
+                        <h2>Attendance Module</h2>
+                        <div class="row mb-2">
+                            <div class="col-md-3">
+                                <label for="editTR">TR Number</label>
+                                <input type="number" class="form-control" id="editTR" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="editDate">Date</label>
+                                <input type="date" class="form-control" id="editDate" required>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
+                            </div>
+                        </div>
+                        <div id="attendanceEditor" style="display: none;">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label>Current Status</label>
+                                    <input type="text" class="form-control" id="currentStatus" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="newStatusSelect">Change Status To</label>
+                                    <select class="form-control" id="newStatusSelect">
+                                        <option value="on_leave">On Leave</option>
+                                        <option value="present">Present</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button class="btn btn-success w-100" id="updateAttendanceBtn">Save Changes</button>
+                                </div>
+                            </div>
+                            <h3>
+                                <p id="editMessage" class="text-info mt-3"></p>
+                            </h3>
+                        </div>
+                    </section>
+
+                    <section id="bulk-attendance" class="card mt-4 p-3">
+                        <h2>Bulk Attendance Actions</h2>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="bulkLeaveDate">Select Date for University Event</label>
+                                <input type="date" class="form-control" id="bulkLeaveDate">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-warning w-100" id="bulkLeaveBtn">Mark All as On Leave</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="container mt-5">
+                        <h2>Weekly Attendance</h2>
+                        <div class="form-group">
+                            <label for="weekSelect">Select Week</label>
+                            <select id="weekSelect" class="form-control" required>
+                                <option value="" disabled selected>Loading Weeks...</option>
+                            </select>
+                            <button class="btn" id="loadAttendanceBtn" style="margin-top: 0.5rem;">Load Attendance</button>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Tr No</th>
+                                        <th>Name</th>
+                                        <th>Slot</th>
+                                        <th>Monday</th>
+                                        <th>Tuesday</th>
+                                        <th>Wednesday</th>
+                                        <th>Thursday</th>
+                                        <th>Friday</th>
+                                        <th>Saturday</th>
+                                        <th>Total Absences</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label for="newStatusSelect">Change Status To</label>
-                        <select class="form-control" id="newStatusSelect">
-                            <option value="on_leave">On Leave</option>
-                            <option value="present">Present</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button class="btn btn-success w-100" id="updateAttendanceBtn">Save Changes</button>
-                    </div>
+                </section>
                 </div>
-                <h3><p id="editMessage" class="text-info mt-3"></p></h3>
-            </div>
-        </section>
-        <section id="bulk-attendance" class="card mt-4 p-3">
-          <h2>Bulk Attendance Actions</h2>
-          <div class="row">
-              <div class="col-md-4">
-                  <label for="bulkLeaveDate">Select Date for University Event</label>
-                  <input type="date" class="form-control" id="bulkLeaveDate">
-              </div>
-              <div class="col-md-4 d-flex align-items-end">
-                  <button class="btn btn-warning w-100" id="bulkLeaveBtn">Mark All as On Leave</button>
-              </div>
-          </div>
-      </section>
+        </main>
+    </div>
 
-       
-
-      <div class="container mt-5">
-          <h2>Weekly Attendance</h2>
-          <div class="form-group">
-            <label for="weekSelect">Select Week</label>
-            <select id="weekSelect" class="form-control" required>
-              <option value="" disabled selected>Loading Weeks...</option>
-            </select>
-            
-            <button class="btn" id="loadAttendanceBtn" style="margin-top: 0.5rem;">Load Attendance</button>
-          </div>
-        
-            <!-- Export Button -->
-            <div class="d-flex justify-content-end">
-            <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
-          </div>
-
-
-            <!-- Attendance Table -->
-              <div style="overflow-x: auto;">
-                  <table id="attendanceTable" class="table table-striped table-bordered nowrap" style="margin-top: 1rem; width: 100%;">
-                      <thead>
-                          <tr>
-                              <th>Tr No</th>
-                              <th>Name</th>
-                              <th>Slot</th> 
-                              <th>Monday</th>
-                              <th>Tuesday</th>
-                              <th>Wednesday</th>
-                              <th>Thursday</th>
-                              <th>Friday</th>
-                              <th>Saturday</th>
-                              <th>Total Absences</th>
-                          </tr>
-                      </thead>
-                      <tbody></tbody>
-                  </table>
-              </div>
-        </div>
-
-        </section>
-            </div>
-    </div>  
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script type="module" src="js/auth.js"></script> <script type="module" src="js/attendance.js"></script> </body>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/attendance.js"></script>
+
+    <script type ="module">
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navOverlay = document.getElementById('nav-overlay');
+            
+            function toggleNav() {
+                document.body.classList.toggle('nav-open');
+            }
+
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', toggleNav);
+            }
+
+            if (navOverlay) {
+                navOverlay.addEventListener('click', toggleNav);
+            }
+
+            // Logic to set the 'active' class on the correct nav link
+            const currentPage = window.location.pathname.split('/').pop();
+            const navLinks = document.querySelectorAll('.navbar a');
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.href.includes(currentPage)) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
 </html>
