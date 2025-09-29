@@ -497,3 +497,43 @@ body.nav-open .nav-overlay {
         width: 100%;
     }
 }
+/* === NEW & ROBUST: Stackable Card View for Tables === */
+
+@media (max-width: 768px) {
+    .stacking-card-table thead {
+        /* Hide the original table headers on mobile */
+        display: none;
+    }
+
+    .stacking-card-table tbody tr {
+        /* Each row becomes a card */
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        padding: 0.5rem;
+    }
+    
+    .stacking-card-table td {
+        display: flex;
+        justify-content: space-between; /* Puts label on left, data on right */
+        align-items: center;
+        text-align: right; /* Aligns data to the right */
+        padding: 0.75rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .stacking-card-table tr:last-child td:last-child {
+        border-bottom: none;
+    }
+
+    /* Use the data-label to show the header text */
+    .stacking-card-table td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        text-align: left;
+        padding-right: 1rem;
+        color: var(--primary);
+    }
+}

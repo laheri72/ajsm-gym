@@ -2,10 +2,29 @@ document.addEventListener("DOMContentLoaded", () => {
     // This variable will hold our DataTable instance so we don't re-create it
     let studentDataTable = null;
 
+        function makeTableResponsive(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        const headers = [];
+        table.querySelectorAll('thead th').forEach(th => {
+            headers.push(th.textContent.trim());
+        });
+
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.querySelectorAll('td').forEach((td, index) => {
+                if (headers[index]) {
+                    td.setAttribute('data-label', headers[index]);
+                }
+            });
+        });
+    }
     /**
      * Loads the active student records into the DataTable.
      * If the table is already initialized, it just reloads the data.
      */
+    // In js/records.js, replace the entire function
+// In js/records.js, replace your existing loadStudentRecords function with this:
     async function loadStudentRecords() {
         if (studentDataTable) {
             studentDataTable.ajax.reload();
@@ -15,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
         studentDataTable = $('#studentTable').DataTable({
             ajax: {
                 url: '/api/students',
-                dataSrc: 'data' // The API response has the student array in a 'data' property
+                dataSrc: 'data'
             },
             columns: [
                 { data: 'TR' },
@@ -25,14 +44,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 { 
                     data: 'SlotName',
                     render: function(data, type, row) {
-                        let displayText = '';
-                        if (!row.SlotID) {
-                            displayText = `<span class="text-muted">No slot assigned</span>`;
-                        } else {
-                            // In the original file, there was logic for 'Inactive' status.
-                            // Since this page is only for Active students, we simplify it.
-                            displayText = `<span class="slot-text">${data}</span>`;
-                        }
+                        let displayText = !row.SlotID
+                            ? `<span class="text-muted">No slot assigned</span>`
+                            : `<span class="slot-text">${data}</span>`;
                         return `${displayText} <button class="btn btn-sm btn-outline-secondary edit-slot-btn" data-tr="${row.TR}">✏️</button>`;
                     }
                 },
@@ -45,7 +59,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             ],
             responsive: true,
-            destroy: true
+            destroy: true,
+            // --- ▼▼▼ THIS IS THE KEY CHANGE ▼▼▼ ---
+            // 'drawCallback' is a DataTables function that runs every time the table is drawn,
+            // including after the initial load and after AJAX reloads.
+            drawCallback: function(settings) {
+                makeTableResponsive('studentTable');
+            }
         });
     }
 
