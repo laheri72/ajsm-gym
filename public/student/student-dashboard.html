@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Student Dashboard - FitTracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="../images/favicon.png" type="image/png">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -110,7 +111,7 @@
           </div>
     
        
-    
+          <div class="table-responsive">
         <table id="attendanceTable" style="margin-top: 1rem;">
             <thead>
               <tr>
@@ -126,6 +127,7 @@
             </thead>
             <tbody></tbody>
           </table>
+</div>
 
           </table>
            <div id="attendanceSummaryCard" class="attendance-summary-card" style="display: none;">
@@ -164,10 +166,10 @@
 
 <section class="card" id="logs-low" style="display: none;">
     <div class="analytics-tabs">
-        <div class="tab-nav">
+        <div class="tab-nav" style="overflow-x: auto;">
             <button class="tab-link active" data-tab="overview">📈 Performance Overview</button>
             <button class="tab-link" data-tab="logs">📓 Workout Logs</button>
-            <button class="tab-link" data-tab="history"> history Session History</button>
+            <button class="tab-link" data-tab="history">📜 Session History</button>
             <button class="tab-link" data-tab="progression">🏋️ Fitness Progression</button>
         </div>
 
@@ -583,6 +585,7 @@
 
               <div style="margin-top: 20px;">
                 <h2>Need guidance on specific body part workouts?</h2>
+                <label for="bodyPartSelect" class="form-label">Select a Body Part for Tips:</label>
                 <select id="bodyPartSelect" class="form-select">
                   <option value="">-- Select Body Part --</option>
                   <option value="Cardio">Cardio</option>
