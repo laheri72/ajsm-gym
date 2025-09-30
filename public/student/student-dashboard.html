@@ -104,7 +104,10 @@
   </div>
 
   <div class="text-center mt-4">
-    <button id="savePlanBtn" type="button" class="btn btn-primary me-2">Save</button>
+    <button id="savePlanBtn" class="btn btn-primary">
+  <span class="button-text">Save</span>
+  <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+</button>
     <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
       Apply Last Week’s Plan
     </button>
@@ -635,7 +638,7 @@
    <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
 
-<script type="module" src="/js/student.min.js"></script>
+<script type="module" src="/js/student.js"></script>
 
 
 

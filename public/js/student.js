@@ -472,21 +472,49 @@ function savePlan() {
   const cards = document.querySelectorAll('.day-card');
   const plan = {};
 
+  let hasContent = false;
   cards.forEach(card => {
     const day = card.getAttribute('data-day');
-    const content = DOMPurify.sanitize(card.innerHTML.trim()); // Sanitize user input
+    const content = DOMPurify.sanitize(card.innerHTML.trim());
     plan[day] = content;
+    if (content) hasContent = true;
   });
 
-  fetch('/save-workout-plan', {
+  if (!hasContent) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Empty Plan',
+      text: 'Please add at least one workout to your weekly plan.',
+    });
+    return;
+  }
+
+  const saveButton = document.getElementById('savePlanBtn');
+  const buttonText = saveButton.querySelector('.button-text');
+  const spinner = saveButton.querySelector('.spinner-border');
+
+  // Show spinner, hide text, disable button
+  buttonText.classList.add('d-none');
+  spinner.classList.remove('d-none');
+  saveButton.disabled = true;
+
+  fetch('/api/save-workout-plan', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
+    credentials: 'include',
     body: JSON.stringify(plan)
   })
     .then(res => {
-      if (!res.ok) throw new Error('Server error');
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error('Workout plan endpoint not found. Check if the backend server is running on port 10000.');
+        } else if (res.status === 401) {
+          throw new Error('Unauthorized. Please log in again.');
+        }
+        throw new Error(`Server error: ${res.status}`);
+      }
       return res.json();
     })
     .then(data => {
@@ -502,20 +530,25 @@ function savePlan() {
         Swal.fire({
           icon: 'error',
           title: 'Save Failed',
-          text: 'Please try again.',
+          text: data.message || 'Please try again.',
         });
       }
     })
     .catch(err => {
-      console.error(err);
+      console.error('Save error:', err);
       Swal.fire({
         icon: 'error',
-        title: 'Network Error',
-        text: 'Could not save. Check your connection.',
+        title: 'Error',
+        text: err.message || 'Could not save. Check your connection or server status.',
       });
+    })
+    .finally(() => {
+      // Restore button state
+      buttonText.classList.remove('d-none');
+      spinner.classList.add('d-none');
+      saveButton.disabled = false;
     });
 }
-
 
 async function loadWeeklyPlan() {
   try {

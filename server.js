@@ -1408,7 +1408,7 @@ app.get('/api/all-test-records', async (req, res) => {
 
 
 //--------------------------------------------------------------------------------------------------------
-app.post('/save-workout-plan', async (req, res) => {
+app.post('/api/save-workout-plan', async (req, res) => {
   try {
     const plan = req.body; // { Monday: '...', Tuesday: '...', ... }
     const { TR, Branch, Gender } = req.session.user;
