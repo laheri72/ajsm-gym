@@ -5,10 +5,10 @@
   "main": "server.js",
   "scripts": {
     "dev": "vite",
-    "build": "npm run minify-js && vite build && npm run minify-css",
     "start": "node server.js",
     "minify-css": "cleancss -o public/css/new-styles.min.css public/css/new-styles.css && cleancss -o public/css/stu-styles.min.css public/css/stu-styles.css && cleancss -o public/css/style1.min.css public/css/style1.css",
-    "minify-js": "node minify-js.js"
+    "minify-js": "node minify-js.js",
+    "build": "npm run minify-js && vite build && npm run minify-css"
   },
   "repository": {
     "type": "git",
