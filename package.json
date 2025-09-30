@@ -5,10 +5,10 @@
   "main": "server.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run minify-css && npm run minify-js",
+    "build": "npm run minify-js && vite build && npm run minify-css",
     "start": "node server.js",
     "minify-css": "cleancss -o public/css/new-styles.min.css public/css/new-styles.css && cleancss -o public/css/stu-styles.min.css public/css/stu-styles.css && cleancss -o public/css/style1.min.css public/css/style1.css",
-    "minify-js": "npx terser public/js/*.js -o public/js/all.min.js --compress --mangle"
+    "minify-js": "node minify-js.js"
   },
   "repository": {
     "type": "git",
@@ -35,6 +35,7 @@
   "devDependencies": {
     "chokidar-cli": "^3.0.0",
     "clean-css-cli": "^5.6.3",
+    "glob": "^11.0.3",
     "terser": "^5.44.0",
     "vite": "^7.1.7",
     "vite-plugin-minify": "^2.1.0"
