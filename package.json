@@ -7,7 +7,7 @@
     "dev": "vite",
     "start": "node server.js",
     "minify-css": "cleancss -o public/css/new-styles.min.css public/css/new-styles.css && cleancss -o public/css/stu-styles.min.css public/css/stu-styles.css && cleancss -o public/css/style1.min.css public/css/style1.css",
-    "minify-js": "node minify-js.js",
+    "minify-js": "npx terser public/js/new-site.js -o public/js/new-site.min.js --compress --mangle && npx terser public/js/student.js -o public/js/student.min.js --compress --mangle",
     "build": "npm run minify-js && vite build && npm run minify-css"
   },
   "repository": {
