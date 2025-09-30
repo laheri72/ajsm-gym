@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "> A project by **Raudat ul Ikhwaan**,  \r > under the University of **Al Jamea Tus Saifiyah**, Marol Campus.\r ### 🔹 Developed by\r   - Mulla Idris Bh Laheri\r      - Mulla Abizer Bh Dewas",
   "main": "server.js",
-"scripts": {
-  "dev": "vite",
-  "build": "vite build && npm run minify-css",
-  "start": "node server.js",
-  "minify-css": "cleancss -o public/css/new-styles.min.css public/css/new-styles.css && cleancss -o public/css/stu-styles.min.css public/css/stu-styles.css && cleancss -o public/css/style1.min.css public/css/style1.css"
-},
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && npm run minify-css && npm run minify-js",
+    "start": "node server.js",
+    "minify-css": "cleancss -o public/css/new-styles.min.css public/css/new-styles.css && cleancss -o public/css/stu-styles.min.css public/css/stu-styles.css && cleancss -o public/css/style1.min.css public/css/style1.css",
+    "minify-js": "for %f in (public/js/*.js) do npx terser %f -o public/js/%~nf.min.js --compress --mangle",
+    "watch-js": "chokidar 'public/js/*.js' -c 'npx terser public/js/student.js -o public/js/student.min.js --compress --mangle'"
+
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/laheri72/ajsm-gym.git"
@@ -32,8 +35,10 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "chokidar-cli": "^3.0.0",
     "clean-css-cli": "^5.6.3",
-    "vite": "^7.1.7"
+    "terser": "^5.44.0",
+    "vite": "^7.1.7",
+    "vite-plugin-minify": "^2.1.0"
   }
 }
-

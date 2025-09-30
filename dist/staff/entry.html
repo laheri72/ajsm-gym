@@ -3,148 +3,171 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Student & Slot Entry</title> <link rel="icon" href="images/favicon.png" type="image/png">
+    <title>Student & Slot Entry</title> <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
+
+        <script>
+        // This script runs instantly, before anything is displayed.
+        try {
+            const userString = localStorage.getItem('staffUser');
+            if (userString) {
+                const user = JSON.parse(userString);
+                const classList = [];
+
+                if (user.Role === 'Admin') {
+                    classList.push('is-admin');
+                }
+                if (user.Branch === 'Marol' && user.Gender === 'Male') {
+                    classList.push('is-marol-male');
+                }
+
+                if (classList.length > 0) {
+                    document.documentElement.className = classList.join(' ');
+                }
+            }
+        } catch (e) {
+            // If something fails, do nothing and let the main script handle it.
+            console.error('Bootstrap script failed:', e);
+        }
+    </script>
     
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" crossorigin href="/assets/dashboard-B9AilMqz.css">
+  <script type="module" crossorigin src="/assets/staffEntry-CJeEIwsp.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-Uy2uqpHD.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-BFNLAv5t.css">
 </head>
 <body>
-    <div class="dashboard">
-        <div class="navbar">
-            <a href="overview.html" id="tab-overview">📊 Overview</a>
-            <a href="entry.html" id="tab-entry">Slot Entry</a>
-            <a href="admin.html" id="tab-admin" style="display: none;">👑 Admin Panel</a>
-            <a href="records.html" id="tab-record">Active Students</a>
-            <a href="progress.html" id="tab-Progress">Track Progress</a>
-            <a href="test.html" id="tab-test" style="display: none;">Fitness Test</a>
-            <a href="attendance.html" id="tab-attendance">Attendance</a>
-            <a href="#" id="logoutLink">Logout</a>
-        </div>
-      
-        <div class="content">
-                    <section id="student-entry" class="card">
-          <h2>Student Entry - waiting list</h2>
-          <h4 id="welcomeText"></h4>
-
-              <form id="studentEntryForm">
-                <div class="form-group">
-                  <label for="trNo">Tr No</label>
-                  <input type="text" id="trNo" class="form-control" required />
-                </div>
-                <div class="form-group">
-                  <label for="studentName">Name</label>
-                  <input type="text" id="studentName" class="form-control" required />
-                </div>
-                <div class="form-group">
-                  <label for="darajah">Darajah</label>
-                  <select id="darajah" class="form-control" required>
-                    <option value="" disabled selected>Select Darajah</option>
-                    <option value="Class 5 AM">Class 5 AM</option>
-                    <option value="Class 5 BM">Class 5 BM</option>
-                    <option value="Class 6 AM">Class 6 AM</option>
-                    <option value="Class 6 BM">Class 6 BM</option>
-                    <option value="Class 7 AM">Class 7 AM</option>
-                    <option value="Class 7 BM">Class 7 BM</option>
-                    <option value="Class 8 AM">Class 8 AM</option>
-                    <option value="Class 9 AM">Class 9 AM</option>
-                    <option value="Class 10 AM">Class 10 AM</option>
-                    <option value="Class 11 AM">Class 11 AM</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="goal">Preferred Goal</label>
-                  <select id="goal" class="form-control" required>
-                    <option value="" disabled selected>Select Goal</option>
-                    <option value="Muscle Gain">Muscle Gain</option>
-                    <option value="Fat Loss">Fat Loss</option>
-                    <option value="Increase Fitness Level">Increase Fitness Level</option>
-                  </select>
-                </div>
-                <button type="submit" class="btn">Add Student</button>
-              </form>
-
-<!--   
-          <div class="form-group" style="margin-top: 2rem;">
-            <label for="csvFile">Bulk Import CSV</label>
-            <input type="file" id="csvFile" accept=".csv" class="form-control" />
-            <button type="button" id="importCsvBtn" class="btn" style="margin-top: 0.5rem;">Import CSV</button>
-            <div id="importStatus" style="margin-top: 0.5rem; font-weight: 600;"></div>
-          </div> -->
-          <br />
-
-          <section id="waiting-list" class="card">
-            <h2>Waiting List</h2>
-
-            <div style="overflow-x:auto;">
-              <table id="waitingListTable">
-                <thead>
-                  <tr>
-                    <th>Waiting ID</th>
-                    <th>TR</th>
-                    <th>Name</th>
-                    <th>Darajah</th>
-                    <th>Goal</th>
-                    <th>Added On</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <!-- Filled dynamically -->
-                </tbody>
-              </table>
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
             </div>
-          </section>
-          <br />
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="navbar" id="navbar">
+                <a href="overview.html" id="tab-overview">📊 Overview</a>
+                <a href="entry.html" id="tab-entry">Slot Entry</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="records.html" id="tab-record">Active Students</a>
+                <a href="progress.html" id="tab-Progress">Track Progress</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="attendance.html" id="tab-attendance">Attendance</a>
+                <a href="#" id="logoutLink">Logout</a>
+            </nav>
+        </header>
 
+        <main class="main-content">
+            <div class="content">
+                <section id="student-entry" class="card">
+                    <h2>Student Entry - waiting list</h2>
+                    <h4 id="welcomeText"></h4>
 
-            <section id="slot-management" class="card">
-                    <h2>Slot Management</h2>
-
-                    <!-- Create New Slot Form -->
-                    <form id="createSlotForm">
-                      <div class="form-group">
-                        <label for="slotName">Slot Name / Time</label>
-                        <input type="text" id="slot" class="form-control" placeholder="e.g., 4:00-4:40 PM" required />
-                      </div>
-                      <div class="form-group">
-                        <label for="maxCapacity">Max Capacity</label>
-                        <input type="number" id="maxCapacity" class="form-control" min="1" required />
-                      </div>
-                      <button type="submit" class="btn">Create Slot</button>
+                    <form id="studentEntryForm">
+                        <div class="form-group">
+                            <label for="trNo">Tr No</label>
+                            <input type="text" id="trNo" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="studentName">Name</label>
+                            <input type="text" id="studentName" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="darajah">Darajah</label>
+                            <select id="darajah" class="form-control" required>
+                                <option value="" disabled selected>Select Darajah</option>
+                                <option value="Class 5 AM">Class 5 AM</option>
+                                <option value="Class 5 BM">Class 5 BM</option>
+                                <option value="Class 6 AM">Class 6 AM</option>
+                                <option value="Class 6 BM">Class 6 BM</option>
+                                <option value="Class 7 AM">Class 7 AM</option>
+                                <option value="Class 7 BM">Class 7 BM</option>
+                                <option value="Class 8 AM">Class 8 AM</option>
+                                <option value="Class 9 AM">Class 9 AM</option>
+                                <option value="Class 10 AM">Class 10 AM</option>
+                                <option value="Class 11 AM">Class 11 AM</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="goal">Preferred Goal</label>
+                            <select id="goal" class="form-control" required>
+                                <option value="" disabled selected>Select Goal</option>
+                                <option value="Muscle Gain">Muscle Gain</option>
+                                <option value="Fat Loss">Fat Loss</option>
+                                <option value="Increase Fitness Level">Increase Fitness Level</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">Add Student</button>
                     </form>
+                </section>
 
-                    <!-- Existing Slots Table -->
-                    <div style="margin-top: 2rem; overflow-x:auto;">
-                      <table id="slotTable">
-                        <thead>
-                          <tr>
-                            <th>Slot ID</th>
-                            <th>Slot Name</th>
-                            <th>Max Capacity</th>
-                            <th>Assigned</th>
-                            <th>Available</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <!-- Filled dynamically -->
-                        </tbody>
-                      </table>
+                <section id="waiting-list" class="card">
+                    <h2>Waiting List</h2>
+                    <div style="overflow-x:auto;">
+                        <table id="waitingListTable">
+                            <thead>
+                                <tr>
+                                    <th>Waiting ID</th>
+                                    <th>TR</th>
+                                    <th>Name</th>
+                                    <th>Darajah</th>
+                                    <th>Goal</th>
+                                    <th>Added On</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
                     </div>
-                  </section>
+                </section>
 
+                <section id="slot-management" class="card">
+                    <h2>Slot Management</h2>
+                    <form id="createSlotForm">
+                        <div class="form-group">
+                            <label for="slotName">Slot Name / Time</label>
+                            <input type="text" id="slot" class="form-control" placeholder="e.g., 4:00-4:40 PM" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="maxCapacity">Max Capacity</label>
+                            <input type="number" id="maxCapacity" class="form-control" min="1" required />
+                        </div>
+                        <button type="submit" class="btn">Create Slot</button>
+                    </form>
+                    <div style="margin-top: 2rem; overflow-x:auto;">
+                        <table id="slotTable">
+                            <thead>
+                                <tr>
+                                    <th>Slot ID</th>
+                                    <th>Slot Name</th>
+                                    <th>Max Capacity</th>
+                                    <th>Assigned</th>
+                                    <th>Available</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </section>
+                </div>
+        </main>
+    </div>
 
-        </section>
-            </div>
-    </div>  
+    <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script src="js/auth.js"></script> <script src="js/entry.js"></script>  </body>
+
+    
+</body>
 </html>
