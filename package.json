@@ -8,7 +8,7 @@
     "build": "vite build && npm run minify-css && npm run minify-js",
     "start": "node server.js",
     "minify-css": "cleancss -o public/css/new-styles.min.css public/css/new-styles.css && cleancss -o public/css/stu-styles.min.css public/css/stu-styles.css && cleancss -o public/css/style1.min.css public/css/style1.css",
-    "minify-js": "for %f in (public/js/*.js) do npx terser %f -o public/js/%~nf.min.js --compress --mangle",
+    "minify-js": "npx terser public/js/*.js -o public/js/all.min.js --compress --mangle",
     "watch-js": "chokidar 'public/js/*.js' -c 'npx terser public/js/student.js -o public/js/student.min.js --compress --mangle'"
 
   },
