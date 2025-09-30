@@ -1,3 +1,4 @@
+
 /* =================================================================== */
 /* 1. GLOBAL & ROOT STYLES
 /* =================================================================== */
@@ -117,11 +118,18 @@ h2 {
 .navbar {
     display: flex; /* This remains the same */
     justify-content: center;
-    background-color: #2c3e50;
     border-top: 1px solid #465a70;
 }
 
-.navbar a {
+.navbar-nav {
+    width: 100%;
+}
+
+.navbar-nav .nav-item {
+    flex: 1;
+}
+
+.navbar-nav .nav-link {
     color: #ecf0f1;
     text-decoration: none;
     padding: 15px 20px; /* Increased padding for a taller, more modern feel */
@@ -129,14 +137,13 @@ h2 {
     transition: all 0.2s ease-in-out;
     text-align: center;
     border-bottom: 3px solid transparent; /* Prepare for the active state indicator */
-    flex-grow: 1; /* NEW: This makes the links spread out evenly to fill the bar */
 }
 
-.navbar a:hover {
+.navbar .nav-link:hover {
     background-color: #3b5066;
 }
 
-.navbar a.active {
+.navbar .nav-link.active {
     color: #00FFEA; /* Bright color for active link text */
     background-color: #1f2c39;
     border-bottom-color: #00FFEA; /* A clear indicator for the active tab */
@@ -450,12 +457,8 @@ td iframe {
     }
 
     /* --- Navigation on Mobile --- */
-    .navbar {
-        flex-direction: column; /* Stack nav links vertically */
-        align-items: stretch; /* Make links full-width */
-    }
-
-    .navbar a {
+    /* Bootstrap handles the collapse, so remove custom stacking */
+    .navbar .nav-link {
         border-bottom: 1px solid #465a70;
         border-radius: 0;
     }

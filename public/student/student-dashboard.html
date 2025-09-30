@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
-    <link rel="stylesheet" href="../css/stu-styles.css">
+    <link rel="stylesheet" href="../css/stu-styles.min.css">
 
 
 </head>
@@ -35,11 +35,28 @@
 
 
 
-        <nav class="navbar">
-            <a href="#" class="active" id="planner-main">Workout Planner</a>
-            <a href="#" id="logs-main">Analysis</a>
-            <a href="#" id="attendance-main">Attendance</a>
-            <a href="#" id="tips-main">Tips</a>
+        <nav class="navbar navbar-expand-md navbar-dark" style="background-color: #2c3e50;">
+            <div class="container-fluid">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav w-100">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active" id="planner-main">Workout Planner</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" id="logs-main">Analysis</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" id="attendance-main">Attendance</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" id="tips-main">Tips</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </nav>
                 <div class="info-bar">
             <div id="studentGoal" class="info-item goal"></div>
@@ -1555,3 +1572,6 @@ function logout() {
 
 </body>
 </html>
+
+
+
