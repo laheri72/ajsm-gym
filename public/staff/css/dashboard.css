@@ -537,3 +537,13 @@ body.nav-open .nav-overlay {
         color: var(--primary);
     }
 }
+.swal-list {
+    max-height: 150px; 
+    overflow-y: auto; 
+    padding-left: 20px; 
+    margin-top: 5px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    padding-top: 10px;
+    background-color: #f9f9f9;
+}

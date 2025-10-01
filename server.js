@@ -101,6 +101,132 @@ app.post('/api/add-student', async (req, res) => {
     }
 });
 
+
+// API:
+
+// --- ✅ 1. NEW VALIDATION ENDPOINT ---
+// Receives a list of students, checks them against the Master table,
+// Server API file
+
+// MODIFIED VALIDATION ENDPOINT
+app.post('/api/bulk-validate-students', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ message: 'Unauthorized.' });
+        }
+        const { students } = req.body;
+        if (!students || !Array.isArray(students) || students.length === 0) {
+            return res.status(400).json({ message: 'No student data provided.' });
+        }
+
+        const invalidRows = [];
+        const structurallyValidStudents = [];
+
+        // 1. First pass: Check for missing data in each row
+        students.forEach((student, index) => {
+            const { TR, Name, Darajah, Goal } = student;
+            if (!TR || !Name || !Darajah || !Goal) {
+                let reason = "Missing required fields.";
+                if (!TR) reason = "Missing TR.";
+                else if (!Name) reason = "Missing Name.";
+                else if (!Darajah) reason = "Missing Darajah.";
+                else if (!Goal) reason = "Missing Goal.";
+                
+                invalidRows.push({ 
+                    rowData: { TR: TR || 'N/A', Name: Name || 'N/A' }, 
+                    reason: reason,
+                    // Add 2 to index because spreadsheets are 1-based and we have a header row
+                    fileRow: index + 2 
+                });
+            } else {
+                structurallyValidStudents.push(student);
+            }
+        });
+
+        if (structurallyValidStudents.length === 0) {
+            return res.json({ validStudents: [], duplicateTRs: [], invalidRows });
+        }
+        
+        // 2. Second pass: Check for duplicates only on structurally valid students
+        const incomingTRs = structurallyValidStudents.map(s => s.TR);
+        const request = pool.request();
+        const params = incomingTRs.map((tr, index) => `@TR${index}`);
+        incomingTRs.forEach((tr, index) => request.input(`TR${index}`, sql.Int, tr));
+        
+        const result = await request.query(`SELECT TR FROM Master WHERE TR IN (${params.join(',')})`);
+        
+        const existingTRs = new Set(result.recordset.map(r => r.TR));
+
+        // 3. Partition the results
+        const validStudents = structurallyValidStudents.filter(s => !existingTRs.has(s.TR));
+        const duplicateTRs = structurallyValidStudents.filter(s => existingTRs.has(s.TR));
+
+        res.json({ validStudents, duplicateTRs, invalidRows });
+
+    } catch (err) {
+        console.error('Bulk validation error:', err);
+        res.status(500).json({ message: 'Server error during validation.' });
+    }
+});
+
+// --- ✅ 2. NEW COMMIT ENDPOINT ---
+// Receives a pre-validated list of students and performs a bulk insert.
+app.post('/api/bulk-commit-students', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ message: 'Unauthorized.' });
+        }
+        const { students } = req.body;
+        if (!students || !Array.isArray(students) || students.length === 0) {
+            return res.status(400).json({ message: 'No valid students to commit.' });
+        }
+
+        const { Branch, Gender } = req.session.user;
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // Prepare a statement for inserting multiple rows
+            const request = new sql.Request(transaction);
+
+            // Constructing a single bulk INSERT statement is most efficient
+            let valuesClauses = [];
+            students.forEach((student, index) => {
+                const trParam = `TR${index}`, nameParam = `Name${index}`, darajahParam = `Darajah${index}`, goalParam = `Goal${index}`;
+                
+                request.input(trParam, sql.Int, student.TR);
+                request.input(nameParam, sql.NVarChar(100), student.Name);
+                request.input(darajahParam, sql.NVarChar(50), student.Darajah);
+                request.input(goalParam, sql.NVarChar(100), student.Goal);
+
+                valuesClauses.push(`(@${trParam}, @${nameParam}, @${darajahParam}, @${goalParam}, @Branch, @Gender)`);
+            });
+            
+            // Add Branch and Gender once, as they are the same for the whole batch
+            request.input('Branch', sql.NVarChar(50), Branch);
+            request.input('Gender', sql.NVarChar(10), Gender);
+            
+            const query = `
+                INSERT INTO WaitingList (TR, Name, Darajah, Goal, Branch, Gender)
+                VALUES ${valuesClauses.join(', ')}
+            `;
+
+            await request.query(query);
+            await transaction.commit();
+
+            res.json({ success: true, count: students.length });
+
+        } catch (err) {
+            await transaction.rollback(); // Rollback on error
+            throw err; // Re-throw to be caught by the outer catch block
+        }
+    } catch (err) {
+        console.error('Bulk commit error:', err);
+        res.status(500).json({ success: false, message: 'Failed to add students to the waiting list.' });
+    }
+});
+
+
 app.get('/api/waiting-list', async (req, res) => {
   try {
     // Ensure user is logged in

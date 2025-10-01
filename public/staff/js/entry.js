@@ -237,6 +237,189 @@ $('#waitingListTable tbody').on('click', '.assign-btn', async function () {
         updateDarajahOptionsBasedOnGender(user.Gender);
     }
 
+ // --- START: NEW BULK IMPORT LOGIC ---
+
+    const bulkAddBtn = document.getElementById('bulkAddBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    // 1. When "Import" button is clicked, trigger the hidden file input
+    bulkAddBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+// js/entry.js
+
+// 2. When a file is selected, process it
+fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const students = XLSX.utils.sheet_to_json(firstSheet);
+            
+            if (students.length === 0) {
+                Swal.fire('Empty File', 'The selected file has no student data.', 'warning');
+                return;
+            }
+
+            // --- START: NEW Client-Side TR Validation ---
+            const invalidTRRows = [];
+            // Regex to ensure the string contains only whole numbers from start to finish.
+            const integerRegex = /^\d+$/; 
+
+            students.forEach((student, index) => {
+                // Check if TR exists and if it's a valid integer string.
+                // We use .toString() to safely handle cases where Excel might interpret a number as a numeric type.
+                if (!student.TR || !integerRegex.test(student.TR.toString())) {
+                    // Add 2 to index to match the actual row number in the Excel file (1-based + header row)
+                    invalidTRRows.push(index + 2);
+                }
+            });
+
+            // If any invalid TRs were found, show an error and stop everything.
+            if (invalidTRRows.length > 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid TR Number Format',
+                    html: `The following rows in your file have an invalid TR number. <br><b>TR must be a whole number only (e.g., 12345).</b><br><br>Invalid row(s): <strong>${invalidTRRows.join(', ')}</strong>`,
+                });
+                return; // Stop processing before calling the backend
+            }
+            // --- END: NEW Client-Side TR Validation ---
+
+
+            // If we get here, all TRs are in the correct format, so we can proceed to the backend.
+            await validateAndPreview(students);
+
+        } catch (err) {
+            console.error('File parsing error:', err);
+            Swal.fire('Error', 'Could not read or parse the file. Please ensure it is a valid Excel file.', 'error');
+        } finally {
+            // Reset file input to allow re-selection of the same file
+            fileInput.value = '';
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// MODIFIED function inside the DOMContentLoaded listener
+async function validateAndPreview(students) {
+    Swal.fire({
+        title: 'Validating Students...',
+        text: 'Please wait while we check for duplicates and errors.',
+        didOpen: () => { Swal.showLoading() }
+    });
+
+    const res = await fetch('/api/bulk-validate-students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students })
+    });
+    const result = await res.json();
+
+    if (!res.ok) {
+        Swal.fire('Validation Error', result.message || 'An unknown error occurred.', 'error');
+        return;
+    }
+
+    // NEW: Handle the more detailed response
+    const { validStudents, duplicateTRs, invalidRows } = result;
+
+    // Build the HTML for the SweetAlert summary
+    let summaryHtml = `<div style="text-align: left; margin-top: 1rem;">`;
+
+    if (validStudents.length > 0) {
+        summaryHtml += `<p class="text-success"><strong>✅ Students to be added: ${validStudents.length}</strong></p>`;
+    }
+
+    if (duplicateTRs.length > 0) {
+        summaryHtml += `
+            <hr>
+            <p class="text-warning"><strong>⚠️ Skipping ${duplicateTRs.length} duplicate(s):</strong></p>
+            <ul class="swal-list">
+                ${duplicateTRs.map(s => `<li>TR <strong>${s.TR}</strong> (${s.Name}) already exists.</li>`).join('')}
+            </ul>`;
+    }
+    
+    if (invalidRows.length > 0) {
+        summaryHtml += `
+            <hr>
+            <p class="text-danger"><strong>❌ Skipping ${invalidRows.length} invalid row(s):</strong></p>
+            <ul class="swal-list">
+                ${invalidRows.map(row => `<li>Row ${row.fileRow}: ${row.rowData.Name} - <strong>${row.reason}</strong></li>`).join('')}
+            </ul>`;
+    }
+
+    summaryHtml += `</div>`;
+
+    // Show the confirmation dialog
+    Swal.fire({
+        title: 'Import Summary',
+        html: summaryHtml,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#4CAF50',
+        cancelButtonColor: '#d33',
+        confirmButtonText: `Yes, add ${validStudents.length} students!`,
+        preConfirm: () => {
+            if (validStudents.length === 0) {
+                Swal.showValidationMessage('There are no new students to import.');
+                return false;
+            }
+            return true;
+        }
+    }).then((action) => {
+        if (action.isConfirmed) {
+            commitBulkAdd(validStudents);
+        }
+    });
+}
+    
+    // 8. Function to send the final, validated list for insertion
+    async function commitBulkAdd(validStudents) {
+        const res = await fetch('/api/bulk-commit-students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ students: validStudents })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            Swal.fire('Success!', `${data.count} students have been added to the waiting list.`, 'success');
+            refreshSlotEntryPage(); // Use your existing function to refresh tables!
+        } else {
+            Swal.fire('Error!', 'Could not add students: ' + data.message, 'error');
+        }
+    }
+
+
+const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+
+    downloadTemplateBtn.addEventListener('click', () => {
+        // Define the headers for the template file
+        const headers = [
+            ["TR", "Name", "Darajah", "Goal"]
+        ];
+
+        // Create a new worksheet from the headers
+        const ws = XLSX.utils.aoa_to_sheet(headers);
+        
+        // Create a new workbook
+        const wb = XLSX.utils.book_new();
+
+        // Append the worksheet to the workbook
+        XLSX.utils.book_append_sheet(wb, ws, "WaitingList");
+
+        // Trigger the download of the file
+        XLSX.writeFile(wb, "Fittracker_WL_Template.xlsx");
+    });
+    // --- END: NEW BULK IMPORT LOGIC ---
+
     loadWaitingList();
     loadSlotTable();
 });

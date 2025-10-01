@@ -63,9 +63,24 @@
             <div class="content">
                 <section id="student-entry" class="card">
                     <h2>Student Entry - waiting list</h2>
+                        <div class="bulk-import-container mb-4 border-bottom pb-3">
+                        <h5>Bulk Import from Excel</h5>
+                        <p class="text-muted small">Import multiple students at once. Use the template below to format your data:</p>
+                            <div class="btn-group" role="group">
+                                <button id="bulkAddBtn" class="btn btn-secondary">
+                                    Import Students
+                                </button>
+                                <span class="mx-2 align-self-center"></span>
+                                <button id="downloadTemplateBtn" class="btn btn-outline-secondary" style="background-color: rgb(79, 130, 197);">
+                                    Download Template
+                                </button>
+                            </div>
+                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display: none;" />
+                    </div>
                     <h4 id="welcomeText"></h4>
 
                     <form id="studentEntryForm">
+                        <h4> Manual Entry</h4>
                         <div class="form-group">
                             <label for="trNo">Tr No</label>
                             <input type="text" id="trNo" class="form-control" required />
