@@ -44,7 +44,37 @@ const config = {
     }
 };
 
+// (HELPER FUNCTION) to find or create a week for a given date
+const getOrCreateWeekIdByDate = async (date, transactionOrPool) => {
+    const request = transactionOrPool.request();
 
+    // moment.js calculates the start and end of the week (assuming Monday is the first day)
+    const leaveDate = moment(date);
+    const weekStart = leaveDate.clone().startOf('isoWeek').format('YYYY-MM-DD');
+    const weekEnd = leaveDate.clone().endOf('isoWeek').format('YYYY-MM-DD');
+
+    request.input('WeekStartDate', sql.Date, weekStart);
+    request.input('WeekEndDate', sql.Date, weekEnd);
+
+    // Check if the week already exists
+    let weekResult = await request.query(`
+        SELECT WeekID FROM AttendanceWeek WHERE WeekStartDate = @WeekStartDate
+    `);
+
+    if (weekResult.recordset.length > 0) {
+        return weekResult.recordset[0].WeekID; // Return existing week ID
+    } else {
+        // If not, create it
+        await request.query(`
+            INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate) VALUES (@WeekStartDate, @WeekEndDate)
+        `);
+        // Fetch the newly created week ID
+        weekResult = await request.query(`
+            SELECT WeekID FROM AttendanceWeek WHERE WeekStartDate = @WeekStartDate
+        `);
+        return weekResult.recordset[0].WeekID;
+    }
+};
 
     
 // ----------------------------------------------------------------
@@ -2713,7 +2743,324 @@ app.get('/api/students-list', async (req, res) => {
     }
 });
 
+// =================================================================
+// --- 🍃 LEAVE MANAGEMENT API ---
+// =================================================================
 
+// --- STUDENT-FACING ROUTES ---
+
+// ✅ GET: Fetch a student's leave history, current month status, and remaining leaves
+app.get('/api/student/leaves', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+    const { TR } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query('SELECT * FROM LeaveRequests WHERE TR = @TR ORDER BY RequestedAt DESC');
+        
+        const now = moment.tz("Asia/Kolkata");
+        const startOfMonth = now.clone().startOf('month');
+        const endOfMonth = now.clone().endOf('month');
+        
+        let approvedLeaveDaysThisMonth = 0;
+        const currentMonthRequests = [];
+        const historyRequests = [];
+
+        result.recordset.forEach(request => {
+            const leaveStart = moment(request.LeaveStartDate);
+            // Categorize requests into current month vs history
+            if (leaveStart.isBetween(startOfMonth, endOfMonth, null, '[]')) {
+                currentMonthRequests.push(request);
+            } else {
+                historyRequests.push(request);
+            }
+
+            // Calculate approved days for the monthly limit
+            if (request.Status === 'Approved') {
+                let current = leaveStart.clone();
+                while (current.isSameOrBefore(request.LeaveEndDate)) {
+                    if (current.isBetween(startOfMonth, endOfMonth, null, '[]')) {
+                        approvedLeaveDaysThisMonth++;
+                    }
+                    current.add(1, 'day');
+                }
+            }
+        });
+
+        res.json({
+            success: true,
+            leavesTaken: approvedLeaveDaysThisMonth,
+            leavesRemaining: 4 - approvedLeaveDaysThisMonth,
+            currentMonthRequests,
+            historyRequests
+        });
+
+    } catch (err) {
+        console.error('Error fetching student leaves:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch leave data.' });
+    }
+});
+
+
+// ✅ POST: Submit a new leave request
+app.post('/api/student/leaves', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+    
+    const { TR } = req.session.user;
+    const { leaveStartDate, leaveEndDate, reason } = req.body;
+
+    // --- 🕒 Time-based Validation Logic ---
+    const now = moment.tz("Asia/Kolkata");
+    const hour = now.hour();
+
+    if (hour < 15 || hour >= 20) { // 3 PM to 8 PM (20:00)
+        return res.status(403).json({ success: false, message: 'You can only apply for leave between 3 PM and 8 PM.' });
+    }
+
+    const requestedStartDate = moment.tz(leaveStartDate, "Asia/Kolkata").startOf('day');
+    const tomorrow = moment.tz("Asia/Kolkata").add(1, 'day').startOf('day');
+    const maxDate = moment.tz("Asia/Kolkata").add(15, 'days').endOf('day');
+    
+    if (requestedStartDate.isBefore(tomorrow)) {
+        return res.status(400).json({ success: false, message: "Leave can only be requested for tomorrow onwards." });
+    }
+    if (requestedStartDate.isAfter(maxDate)) {
+        return res.status(400).json({ success: false, message: 'You can only apply for leave up to 15 days in advance.' });
+    }
+    // --- End Validation ---
+
+    try {
+        // Additional check for monthly limit before submitting
+        const newLeaveDays = moment(leaveEndDate).diff(moment(leaveStartDate), 'days') + 1;
+
+        // Fetch existing approved leaves for the month
+        const startOfMonth = requestedStartDate.clone().startOf('month').format('YYYY-MM-DD');
+        const endOfMonth = requestedStartDate.clone().endOf('month').format('YYYY-MM-DD');
+
+        const leavesResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('StartOfMonth', sql.Date, startOfMonth)
+            .input('EndOfMonth', sql.Date, endOfMonth)
+            .query(`
+                SELECT LeaveStartDate, LeaveEndDate FROM LeaveRequests 
+                WHERE TR = @TR AND Status = 'Approved' 
+                AND (LeaveStartDate BETWEEN @StartOfMonth AND @EndOfMonth OR LeaveEndDate BETWEEN @StartOfMonth AND @EndOfMonth)
+            `);
+        
+        let approvedDaysCount = 0;
+        // This logic correctly handles multi-day leaves spanning across months
+        leavesResult.recordset.forEach(leave => {
+            let current = moment.max(moment(leave.LeaveStartDate), moment(startOfMonth));
+            let end = moment.min(moment(leave.LeaveEndDate), moment(endOfMonth));
+            approvedDaysCount += end.diff(current, 'days') + 1;
+        });
+
+        if (approvedDaysCount + newLeaveDays > 4) {
+            return res.status(403).json({ success: false, message: `You only have ${4-approvedDaysCount} leaves remaining this month.` });
+        }
+
+        // Insert new leave request
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('LeaveStartDate', sql.Date, leaveStartDate)
+            .input('LeaveEndDate', sql.Date, leaveEndDate)
+            .input('Reason', sql.NVarChar(500), reason)
+            .query(`
+                INSERT INTO LeaveRequests (TR, LeaveStartDate, LeaveEndDate, Reason)
+                VALUES (@TR, @LeaveStartDate, @LeaveEndDate, @Reason)
+            `);
+        
+        res.json({ success: true, message: 'Leave request submitted successfully.' });
+
+    } catch (err) {
+        console.error('Error submitting leave request:', err);
+        res.status(500).json({ success: false, message: 'Server error during leave submission.' });
+    }
+});
+
+
+// ✅ DELETE: Allow a student to cancel a PENDING leave request
+app.delete('/api/student/leaves/:id', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+    const { TR } = req.session.user;
+    const { id } = req.params; // This is LeaveID
+
+    try {
+        const result = await pool.request()
+            .input('LeaveID', sql.Int, id)
+            .input('TR', sql.Int, TR)
+            .query(`
+                DELETE FROM LeaveRequests 
+                WHERE LeaveID = @LeaveID AND TR = @TR AND Status = 'Pending'
+            `);
+        
+        if (result.rowsAffected[0] > 0) {
+            res.json({ success: true, message: 'Leave request cancelled.' });
+        } else {
+            res.status(404).json({ success: false, message: 'Request not found or cannot be cancelled.' });
+        }
+    } catch (err) {
+        console.error('Error cancelling leave:', err);
+        res.status(500).json({ success: false, message: 'Failed to cancel leave request.' });
+    }
+});
+
+
+// --- STAFF-FACING ROUTES ---
+
+
+
+// ✅ GET: Fetch all PENDING and ON HOLD leave requests for the staff's branch/gender
+app.get('/api/staff/leaves/pending', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in as staff.' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT 
+                    L.LeaveID, L.TR, L.LeaveStartDate, L.LeaveEndDate, L.Reason, L.RequestedAt,
+                    L.Status, -- <<-- 1. ADDED THIS LINE
+                    M.Name AS StudentName
+                FROM LeaveRequests L
+                JOIN Master M ON L.TR = M.TR
+                WHERE L.Status IN ('Pending', 'On Hold') AND M.Branch = @Branch AND M.Gender = @Gender -- <<-- 2. MODIFIED THIS LINE
+                ORDER BY L.RequestedAt ASC
+            `);
+        
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching pending leaves:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch pending leave requests.' });
+    }
+});
+
+
+// ✅ PUT: Approve, Reject, or put On Hold a leave request
+app.put('/api/staff/leaves/:id/status', async (req, res) => {
+    if (!req.session.user || !req.session.user.Username) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in as staff.' });
+    }
+
+    const { id } = req.params; // LeaveID
+    const { status, remarks } = req.body;
+    const { Username, Branch, Gender } = req.session.user;
+
+    const validStatuses = ['Approved', 'Rejected', 'On Hold'];
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid status provided.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+
+        // Step 1: Update the leave request status
+        const updateRequest = new sql.Request(transaction);
+        updateRequest.input('LeaveID', sql.Int, id);
+        updateRequest.input('Status', sql.NVarChar(20), status);
+        updateRequest.input('Remarks', sql.NVarChar(500), remarks || null);
+        updateRequest.input('ReviewedBy', sql.NVarChar(50), Username);
+
+        const updateResult = await updateRequest.query(`
+            UPDATE LeaveRequests 
+            SET Status = @Status, Remarks = @Remarks, ReviewedBy = @ReviewedBy, ReviewedAt = GETUTCDATE()
+            OUTPUT INSERTED.TR, INSERTED.LeaveStartDate, INSERTED.LeaveEndDate
+            WHERE LeaveID = @LeaveID;
+        `);
+
+        if (updateResult.recordset.length === 0) {
+            throw new Error('Leave request not found or already processed.');
+        }
+
+        // Step 2: If approved, update the attendance table
+        if (status === 'Approved') {
+            const { TR, LeaveStartDate, LeaveEndDate } = updateResult.recordset[0];
+            
+            let currentDate = moment(LeaveStartDate);
+            const lastDate = moment(LeaveEndDate);
+
+            while (currentDate.isSameOrBefore(lastDate)) {
+                const dateStr = currentDate.format('YYYY-MM-DD');
+                // Use our helper to ensure the week exists
+                const weekId = await getOrCreateWeekIdByDate(dateStr, transaction);
+                
+                // Use MERGE to insert/update attendance, just like in your other APIs
+                const mergeRequest = new sql.Request(transaction);
+                mergeRequest.input('TR', sql.Int, TR);
+                mergeRequest.input('WeekID', sql.Int, weekId);
+                mergeRequest.input('Date', sql.Date, dateStr);
+                mergeRequest.input('Branch', sql.NVarChar(50), Branch);
+                mergeRequest.input('Gender', sql.NVarChar(10), Gender);
+
+                await mergeRequest.query(`
+                    MERGE Attendance AS target
+                    USING (SELECT @TR AS TR, @Date AS CreatedAt) AS source
+                    ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = source.CreatedAt)
+                    WHEN MATCHED THEN
+                        UPDATE SET IsPresent = 0, OnLeave = 1, Branch = @Branch, Gender = @Gender, WeekID = @WeekID
+                    WHEN NOT MATCHED THEN
+                        INSERT (TR, WeekID, IsPresent, CreatedAt, Branch, Gender, OnLeave)
+                        VALUES (@TR, @WeekID, 0, @Date, @Branch, @Gender, 1);
+                `);
+                
+                currentDate.add(1, 'day');
+            }
+        }
+        
+        await transaction.commit();
+        res.json({ success: true, message: `Leave request has been ${status.toLowerCase()}.` });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error('Error updating leave status:', err);
+        res.status(500).json({ success: false, message: err.message || 'Failed to update leave status.' });
+    }
+});
+
+
+// ✅ GET: Fetch all PROCESSED leaves (Approved, Rejected, On Hold) for the staff's section
+app.get('/api/staff/leaves/history', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in as staff.' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT 
+                    L.LeaveID, L.TR, L.LeaveStartDate, L.LeaveEndDate, L.Reason, 
+                    L.Status, L.ReviewedBy, L.ReviewedAt, L.Remarks,
+                    M.Name AS StudentName
+                FROM LeaveRequests L
+                JOIN Master M ON L.TR = M.TR
+                WHERE L.Status <> 'Pending' AND M.Branch = @Branch AND M.Gender = @Gender
+                ORDER BY L.ReviewedAt DESC
+            `);
+        
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching leave history:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch leave history.' });
+    }
+});
+// =================================================================
 
 
 

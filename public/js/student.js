@@ -650,6 +650,10 @@ mainNav.addEventListener('click', (e) => {
                 loadWorkoutConsistency();
                 loadSessionAnalytics();
             }
+            // Inside the mainNav click listener
+            if (sectionId === 'leaves-low') {
+                loadLeaveData(); // Load data when the section is shown
+            }
         }
     }
 });
@@ -869,6 +873,161 @@ async function showLeaderboard() {
     }
 }
 
+// =================================================================== //
+// 🍃 LEAVE MANAGEMENT SCRIPT
+// =================================================================== //
+
+let allLeaveRequests = []; // Cache all requests to avoid multiple API calls
+
+/**
+ * Main function to fetch all leave data for the student from the server.
+ */
+async function loadLeaveData() {
+    try {
+        const res = await fetch('/api/student/leaves', { credentials: 'include' });
+        const data = await res.json();
+        if (data.success) {
+            allLeaveRequests = data.currentMonthRequests.concat(data.historyRequests);
+            document.getElementById('leavesTakenCount').textContent = data.leavesTaken;
+            renderLeaveTable(allLeaveRequests);
+        } else {
+            Swal.fire('Error', 'Could not load your leave data.', 'error');
+        }
+    } catch (err) {
+        console.error('Error fetching leave data:', err);
+    }
+}
+
+/**
+ * Renders the provided leave requests into the status table.
+ * @param {Array} leaves - An array of leave request objects.
+ */
+function renderLeaveTable(leaves) {
+    const tbody = document.querySelector('#leaveStatusTable tbody');
+    tbody.innerHTML = '';
+
+    if (leaves.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">You have no leave requests.</td></tr>`;
+        return;
+    }
+
+    leaves.forEach(leave => {
+        const tr = document.createElement('tr');
+        const start = moment(leave.LeaveStartDate).format('MMM D');
+        const end = moment(leave.LeaveEndDate).format('MMM D');
+        const dates = start === end ? start : `${start} to ${end}`;
+
+        const statusColors = {
+            'Approved': 'status-approved',
+            'Rejected': 'status-rejected',
+            'On Hold': 'status-on-hold',
+            'Pending': 'status-pending'
+        };
+        const statusClass = statusColors[leave.Status] || '';
+
+        tr.innerHTML = `
+            <td>${dates}</td>
+            <td><span class="status-badge ${statusClass}">${leave.Status}</span></td>
+            <td>${leave.Reason}</td>
+            <td>${leave.Remarks || 'N/A'}</td>
+            <td>
+                ${leave.Status === 'Pending' ? `<button class="btn btn-sm btn-danger cancel-leave-btn" data-id="${leave.LeaveID}">Cancel</button>` : 'N/A'}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * Handles the submission of the leave request form.
+ * @param {Event} e - The form submission event.
+ */
+async function handleLeaveSubmit(e) {
+    e.preventDefault();
+    const startDate = document.getElementById('leaveStartDate').value;
+    const endDate = document.getElementById('leaveEndDate').value;
+    const reason = document.getElementById('leaveReason').value.trim();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    if (!startDate || !endDate || !reason) {
+        Swal.fire('Missing Information', 'Please fill out all fields.', 'warning');
+        return;
+    }
+    if (moment(endDate).isBefore(moment(startDate))) {
+        Swal.fire('Invalid Dates', 'End date cannot be before the start date.', 'error');
+        return;
+    }
+
+    // Show spinner and disable button
+    submitBtn.disabled = true;
+    submitBtn.querySelector('.button-text').classList.add('d-none');
+    submitBtn.querySelector('.spinner-border').classList.remove('d-none');
+
+    try {
+        const res = await fetch('/api/student/leaves', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                leaveStartDate: startDate,
+                leaveEndDate: endDate,
+                reason: reason
+            })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.message);
+
+        Swal.fire('Success', 'Your leave request has been submitted.', 'success');
+        e.target.reset(); // Clear the form
+        loadLeaveData(); // Refresh the data
+
+    } catch (err) {
+        Swal.fire('Submission Failed', err.message, 'error');
+    } finally {
+        // Hide spinner and re-enable button
+        submitBtn.disabled = false;
+        submitBtn.querySelector('.button-text').classList.remove('d-none');
+        submitBtn.querySelector('.spinner-border').classList.add('d-none');
+    }
+}
+
+/**
+ * Handles the click event for cancelling a pending leave request.
+ * @param {Event} e - The click event.
+ */
+function handleLeaveCancel(e) {
+    if (!e.target.classList.contains('cancel-leave-btn')) return;
+    
+    const leaveID = e.target.dataset.id;
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, cancel it!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/api/student/leaves/${leaveID}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+                
+                Swal.fire('Cancelled!', 'Your leave request has been cancelled.', 'success');
+                loadLeaveData(); // Refresh the list
+            } catch (err) {
+                Swal.fire('Error', `Could not cancel request: ${err.message}`, 'error');
+            }
+        }
+    });
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
@@ -879,7 +1038,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // document.getElementById('tips-main').addEventListener('click', () => showSection('tips'));
     // document.getElementById('attendance-main').addEventListener('click', () => showSection('attendance'));
     // document.getElementById('logs-main').addEventListener('click', () => showSection('logs'));
-
+    // Inside the DOMContentLoaded listener
+    document.getElementById('leaveRequestForm').addEventListener('submit', handleLeaveSubmit);
+    document.querySelector('#leaveStatusTable tbody').addEventListener('click', handleLeaveCancel);
     // Planner buttons
     document.getElementById('savePlanBtn').addEventListener('click', savePlan);
     document.getElementById('applyLastWeekBtn').addEventListener('click', applyLastWeeksPlan);

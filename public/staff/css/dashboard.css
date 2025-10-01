@@ -389,7 +389,8 @@ html.is-marol-male #tab-test {
 .navbar a {
     display: block;
     /* TWEAK: Reduced padding for less spacing */
-    padding: 0.8rem 1.5rem; 
+        padding-left: 1.5rem;
+    padding-right: 1.5rem;
     /* TWEAK: Lighter text color for dark background */
     color: #f5f7fa; 
     text-decoration: none;
@@ -477,7 +478,7 @@ body.nav-open .nav-overlay {
 .navbar a {
     border-bottom: none;
     border-radius: 8px;
-    padding: 0.5rem 0.8rem; 
+    padding: 0.8rem 0.8rem; 
     font-size: 0.9rem;
     /* TWEAK: Reset text color for the desktop view */
     color: var(--dark); 
@@ -546,4 +547,67 @@ body.nav-open .nav-overlay {
     border-radius: 5px;
     padding-top: 10px;
     background-color: #f9f9f9;
+}
+/* =================================================================== */
+/* PERMANENT CARD VIEW FOR LEAVE MANAGEMENT PAGE
+/* =================================================================== */
+
+/* Target only the tables inside the leave management section */
+#leave-management-section .stacking-card-table thead {
+    display: none;
+}
+
+#leave-management-section .stacking-card-table tbody tr {
+    display: block;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+    padding: 0.5rem;
+    background-color: #ffffff;
+}
+
+#leave-management-section .stacking-card-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: right;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#leave-management-section .stacking-card-table tr td:last-child {
+    border-bottom: none;
+}
+
+/* This adds the column labels */
+#leave-management-section .stacking-card-table td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    text-align: left;
+    padding-right: 1rem;
+    color: var(--primary);
+}
+
+/* --- Button Styling and Spacing for Leave Cards --- */
+#leave-management-section .btn-group {
+    display: flex;
+    gap: 0.5rem; /* Adds space between buttons */
+    width: 100%;
+    justify-content: flex-end;
+}
+
+#leave-management-section .approve-btn {
+    background-color: var(--primary) !important;
+    color: white !important;
+}
+
+#leave-management-section .on-hold-btn {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+#leave-management-section .reject-btn {
+    background-color: var(--danger) !important;
+    color: white !important;
 }

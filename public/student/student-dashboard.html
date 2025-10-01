@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
-    <link rel="stylesheet" href="../css/stu-styles.min.css">
+    <link rel="stylesheet" href="../css/stu-styles.css">
 
 
 </head>
@@ -49,6 +49,9 @@
                         </li>
                         <li class="nav-item">
                             <a href="#" class="nav-link" id="attendance-main">Attendance</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" id="leaves-main">Leave Management</a>
                         </li>
                         <li class="nav-item">
                             <a href="#" class="nav-link" id="tips-main">Tips</a>
@@ -629,6 +632,61 @@
   
       </section>
 
+      <section class="card" id="leaves-low" style="display: none;">
+    <h2 class="text-center mb-4">Leave Management</h2>
+
+    <div class="leave-grid">
+        <div class="leave-form-container">
+            <h4>Request a Leave of Absence</h4>
+            <form id="leaveRequestForm">
+                <div class="mb-3">
+                    <label for="leaveStartDate" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="leaveStartDate" required>
+                </div>
+                <div class="mb-3">
+                    <label for="leaveEndDate" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="leaveEndDate" required>
+                </div>
+                <div class="mb-3">
+                    <label for="leaveReason" class="form-label">Reason for Leave</label>
+                    <textarea class="form-control" id="leaveReason" rows="3" required placeholder="e.g., University exam, family event..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <span class="button-text">Submit Request</span>
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
+                <p class="form-text text-center mt-3">
+                    Note: Leave can only be requested for the next 15 days, between <strong>3 PM and 8 PM</strong>.
+                </p>
+            </form>
+        </div>
+
+        <div class="leave-status-container">
+            <div class="leave-counter-card">
+                <div class="counter-value"><span id="leavesTakenCount">0</span> / 4</div>
+                <div class="counter-label">Leaves Taken This Month</div>
+            </div>
+
+            <h4>Your Leave Requests</h4>
+            <div class="table-responsive">
+                <table id="leaveStatusTable" class="styled-plan-table">
+                    <thead>
+                        <tr>
+                            <th>Leave Dates</th>
+                            <th>Status</th>
+                            <th>Reason</th>
+                            <th>Staff Remarks</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
 
 </div>
 
@@ -638,7 +696,7 @@
    <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
 
-<script type="module" src="/js/student.min.js"></script>
+<script type="module" src="/js/student.js"></script>
 
 
 
