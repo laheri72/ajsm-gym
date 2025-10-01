@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
 
-  <script type="module" crossorigin src="/assets/studentDashboard-DRD81Lmw.js"></script>
+  <script type="module" crossorigin src="/assets/studentDashboard-Bs-UKMX8.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
   <link rel="stylesheet" crossorigin href="/assets/studentDashboard-BZIEwgfH.css">
 </head>
@@ -106,7 +106,10 @@
   </div>
 
   <div class="text-center mt-4">
-    <button id="savePlanBtn" type="button" class="btn btn-primary me-2">Save</button>
+    <button id="savePlanBtn" class="btn btn-primary">
+  <span class="button-text">Save</span>
+  <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+</button>
     <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
       Apply Last Week’s Plan
     </button>
