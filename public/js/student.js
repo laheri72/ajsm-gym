@@ -866,7 +866,7 @@ async function showLeaderboard() {
             // Hide it after 7 seconds
             setTimeout(() => {
                 toastElement.classList.remove('show');
-            }, 7000);
+            }, 3000);
         }
     } catch (err) {
         console.error("Could not load leaderboard:", err);
@@ -1076,6 +1076,69 @@ function setupAnalyticsTabs() {
             }
         });
     }
+}
+
+// Add this code inside your DOMContentLoaded event listener in student.js
+
+const workoutAccordion = document.getElementById('workoutAccordion');
+
+if (workoutAccordion) {
+    workoutAccordion.addEventListener('click', function(e) {
+        // Check if an "Add to Plan" button was clicked
+        if (e.target.classList.contains('add-to-plan-btn')) {
+            e.preventDefault();
+            
+            const exerciseName = e.target.dataset.exercise;
+
+            // Use SweetAlert2 to show a dropdown for selecting the day
+            Swal.fire({
+                title: `Add "${exerciseName}" to which day?`,
+                input: 'select',
+                inputOptions: {
+                    'Monday': 'Monday',
+                    'Tuesday': 'Tuesday',
+                    'Wednesday': 'Wednesday',
+                    'Thursday': 'Thursday',
+                    'Friday': 'Friday',
+                    'Saturday': 'Saturday',
+                    'Sunday': 'Sunday'
+                },
+                inputPlaceholder: 'Select a day',
+                showCancelButton: true,
+                confirmButtonText: 'Add Exercise',
+                confirmButtonColor: '#4CAF50'
+            }).then((result) => {
+                // If a day was selected
+                if (result.isConfirmed && result.value) {
+                    const selectedDay = result.value;
+                    
+                    // Find the correct day-card in the planner section
+                    const dayCard = document.querySelector(`.day-card[data-day="${selectedDay}"]`);
+
+                    if (dayCard) {
+                        // Check if the card already has content
+                        if (dayCard.innerHTML.trim() !== '') {
+                            // If it has content, add a line break before the new exercise
+                            dayCard.innerHTML += `<br>${exerciseName}`;
+                        } else {
+                            // If it's empty, just add the exercise name
+                            dayCard.innerHTML = exerciseName;
+                        }
+
+                        // Show a success toast
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: `Added to ${selectedDay}!`,
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+                }
+            });
+        }
+    });
 }
 
 // And call this new function inside DOMContentLoaded
