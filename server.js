@@ -3075,26 +3075,28 @@ app.get('/api/staff/leaves/history', async (req, res) => {
  * THE ACHIEVEMENT ENGINE
  * This protected API is triggered by the cron scheduler to evaluate and award badges.
  */
+// REPLACE your existing '/api/achievements/evaluate' route with this corrected version
+
 app.post('/api/achievements/evaluate', async (req, res) => {
     // A simple secret to ensure this heavy process isn't triggered accidentally
-    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') {
+    if (req.headers['x-internal-secret'] !== 'your-secret-cron-key') { // Remember to use your actual secret key here
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
-        const request = new sql.Request(transaction);
 
         // --- 1. Social Butterfly (Previous Week Leaderboard) ---
         const lastWeekStart = moment.tz("Asia/Kolkata").subtract(1, 'weeks').startOf('isoWeek').toDate();
         const lastWeekEnd = moment.tz("Asia/Kolkata").subtract(1, 'weeks').endOf('isoWeek').toDate();
 
-        const leaderboardResult = await request
+        // FIX: Create a dedicated request for the leaderboard query
+        const leaderboardRequest = new sql.Request(transaction);
+        const leaderboardResult = await leaderboardRequest
             .input('WeekStart', sql.DateTime, lastWeekStart)
             .input('WeekEnd', sql.DateTime, lastWeekEnd)
             .query(`
-                -- This is your existing leaderboard logic, but for a specific past date range
                 WITH AttendanceScores AS (
                     SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 GROUP BY TR
                 ), LogScores AS (
@@ -3107,60 +3109,72 @@ app.post('/api/achievements/evaluate', async (req, res) => {
                 ORDER BY COALESCE(A.AttendanceCount, 0) DESC, COALESCE(T.WorkoutDays, 0) DESC, COALESCE(T.TotalBodyParts, 0) DESC;
             `);
 
-        const socialButterflyID = 3; // The ID for "Social Butterfly" in your Achievements table
+        const socialButterflyID = 3;
         for (const winner of leaderboardResult.recordset) {
-            // Check if they already earned it in the last 7 days
-            const checkRes = await request.input('TR_Check', winner.TR).query(`
-                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR_Check AND DateEarned > DATEADD(day, -7, GETUTCDATE())
+            // FIX: Create a new request object inside the loop
+            const checkSocialRequest = new sql.Request(transaction);
+            const checkRes = await checkSocialRequest.input('TR', winner.TR).query(`
+                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR AND DateEarned > DATEADD(day, -7, GETUTCDATE())
             `);
             if (checkRes.recordset.length === 0) {
-                await request.input('TR_Insert', winner.TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR_Insert, ${socialButterflyID})`);
+                // FIX: Create another new request object for the insert
+                const insertSocialRequest = new sql.Request(transaction);
+                await insertSocialRequest.input('TR', winner.TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${socialButterflyID})`);
             }
         }
 
         // --- 2. Evaluate Individual Achievements (Perfect Month, Consistency King) ---
-        const studentsResult = await request.query(`SELECT TR FROM Master WHERE Status = 'Active'`);
+        const studentsResult = await new sql.Request(transaction).query(`SELECT TR FROM Master WHERE Status = 'Active'`);
+        
         for (const student of studentsResult.recordset) {
             const tr = student.TR;
-
+            
             // --- 2a. Perfect Month Check ---
             const prevMonthStart = moment.tz("Asia/Kolkata").subtract(1, 'month').startOf('month');
             const prevMonthEnd = moment.tz("Asia/Kolkata").subtract(1, 'month').endOf('month');
             const context = prevMonthStart.format('MMMM YYYY');
-            const perfectMonthID = 1; // ID for "Perfect Month"
+            const perfectMonthID = 1;
 
-            const checkPerfect = await request.input('TR_Check_PM', tr).input('Context_Check_PM', context).query(`
-                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR_Check_PM AND Context = @Context_Check_PM
+            // FIX: Create a new request object
+            const checkPerfectRequest = new sql.Request(transaction);
+            const checkPerfect = await checkPerfectRequest.input('TR', tr).input('Context', context).query(`
+                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR AND Context = @Context
             `);
 
             if (checkPerfect.recordset.length === 0) {
                 let workingDays = 0;
                 let currentDay = prevMonthStart.clone();
                 while (currentDay.isSameOrBefore(prevMonthEnd)) {
-                    if (currentDay.day() !== 0) { // 0 is Sunday
-                        workingDays++;
-                    }
+                    if (currentDay.day() !== 0) { workingDays++; }
                     currentDay.add(1, 'day');
                 }
-
-                const attendanceCountRes = await request.input('TR_Att_PM', tr).input('Start_Att_PM', prevMonthStart.toDate()).input('End_Att_PM', prevMonthEnd.toDate()).query(`
-                    SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR_Att_PM AND CreatedAt BETWEEN @Start_Att_PM AND @End_Att_PM AND (IsPresent = 1 OR OnLeave = 1)
+                
+                // FIX: Create a new request object
+                const attendanceCountRequest = new sql.Request(transaction);
+                const attendanceCountRes = await attendanceCountRequest.input('TR', tr).input('Start', prevMonthStart.toDate()).input('End', prevMonthEnd.toDate()).query(`
+                    SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR AND CreatedAt BETWEEN @Start AND @End AND (IsPresent = 1 OR OnLeave = 1)
                 `);
 
                 if (attendanceCountRes.recordset[0]?.AttendedDays >= workingDays) {
-                    await request.input('TR_Insert_PM', tr).input('Context_Insert_PM', context).query(`INSERT INTO StudentAchievements (TR, AchievementID, Context) VALUES (@TR_Insert_PM, ${perfectMonthID}, @Context_Insert_PM)`);
+                    // FIX: Create a new request object
+                    const insertPerfectRequest = new sql.Request(transaction);
+                    await insertPerfectRequest.input('TR', tr).input('Context', context).query(`INSERT INTO StudentAchievements (TR, AchievementID, Context) VALUES (@TR, ${perfectMonthID}, @Context)`);
                 }
             }
-
+            
             // --- 2b. Consistency King Check ---
-            const consistencyKingID = 2; // ID for "Consistency King"
-            const checkConsistency = await request.input('TR_Check_CK', tr).query(`
-                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR_Check_CK AND DateEarned > DATEADD(day, -30, GETUTCDATE())
+            const consistencyKingID = 2;
+            // FIX: Create a new request object
+            const checkConsistencyRequest = new sql.Request(transaction);
+            const checkConsistency = await checkConsistencyRequest.input('TR', tr).query(`
+                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())
             `);
 
             if (checkConsistency.recordset.length === 0) {
-                const workoutDatesRes = await request.input('TR_Dates_CK', tr).query(`
-                    SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR_Dates_CK ORDER BY workoutDate ASC
+                // FIX: Create a new request object
+                const workoutDatesRequest = new sql.Request(transaction);
+                const workoutDatesRes = await workoutDatesRequest.input('TR', tr).query(`
+                    SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate ASC
                 `);
                 
                 const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
@@ -3168,14 +3182,16 @@ app.post('/api/achievements/evaluate', async (req, res) => {
                     let streak = 1;
                     for (let i = 0; i < workoutDates.length - 1; i++) {
                         const diff = workoutDates[i+1].diff(workoutDates[i], 'days');
-                        if (diff === 1 || (diff === 2 && workoutDates[i].day() === 6)) { // If gap is 1 day, OR 2 days after a Saturday
+                        if (diff === 1 || (diff === 2 && workoutDates[i].day() === 6)) {
                             streak++;
                         } else {
-                            streak = 1; // Reset streak
+                            streak = 1;
                         }
                         if (streak >= 10) {
-                            await request.input('TR_Insert_CK', tr).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR_Insert_CK, ${consistencyKingID})`);
-                            break; // Awarded, no need to check further for this student
+                            // FIX: Create a new request object
+                            const insertConsistencyRequest = new sql.Request(transaction);
+                            await insertConsistencyRequest.input('TR', tr).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
+                            break;
                         }
                     }
                 }
@@ -3190,7 +3206,6 @@ app.post('/api/achievements/evaluate', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to evaluate achievements.' });
     }
 });
-
 
 /**
  * STUDENT'S TROPHY CASE
