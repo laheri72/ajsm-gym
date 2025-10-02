@@ -473,6 +473,8 @@ td iframe {
         flex-direction: column; /* Ensure day cards stack in a single column */
     }
 
+    
+
 }
 
 /* --- UPDATED: Leaderboard Toast Styling --- */
@@ -724,9 +726,11 @@ td iframe {
 /* 10. LEAVE MANAGEMENT SECTION
 /* =================================================================== */
 
+/* Replace with this block */
 .leave-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    /* This new line is more responsive */
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: 2rem;
     align-items: start;
 }
@@ -777,8 +781,4 @@ td iframe {
 .status-on-hold { background-color: #ffc107; color: #212529; }
 .status-pending { background-color: #6c757d; }
 
-@media (max-width: 992px) {
-    .leave-grid {
-        grid-template-columns: 1fr;
-    }
-}
+
