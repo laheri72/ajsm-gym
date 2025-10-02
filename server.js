@@ -1326,7 +1326,7 @@ app.get('/api/training-plans/:tr', async (req, res) => {
     }
 });
 
-// Replace the entire /api/student/session-analytics function with this new sequential version
+// Replace the entire /api/student/session-analytics - with this new sequential version
 app.get('/api/student/session-analytics', async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
@@ -3067,22 +3067,12 @@ app.get('/api/staff/leaves/history', async (req, res) => {
 // =================================================================
 
 
-// =================================================================
-// --- 🏆 ACHIEVEMENTS & GAMIFICATION API ---
-// =================================================================
+// =================================================================== //
+// --- 🏆 ACHIEVEMENT ENGINE (CORRECTED "FIRE-AND-FORGET" VERSION) ---
+// =================================================================== //
 
-/**
- * THE ACHIEVEMENT ENGINE
- * This protected API is triggered by the cron scheduler to evaluate and award badges.
- */
-// REPLACE your existing '/api/achievements/evaluate' route with this corrected version
-
-app.post('/api/achievements/evaluate', async (req, res) => {
-    // A simple secret to ensure this heavy process isn't triggered accidentally
-    if (req.headers['x-internal-secret'] !== 'your-secret-cron-key') { // Remember to use your actual secret key here
-        return res.status(403).json({ success: false, message: 'Forbidden' });
-    }
-
+// This is the complete, long-running process, now safely in its own function.
+async function runAchievementEvaluation() {
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
@@ -3091,7 +3081,6 @@ app.post('/api/achievements/evaluate', async (req, res) => {
         const lastWeekStart = moment.tz("Asia/Kolkata").subtract(1, 'weeks').startOf('isoWeek').toDate();
         const lastWeekEnd = moment.tz("Asia/Kolkata").subtract(1, 'weeks').endOf('isoWeek').toDate();
 
-        // FIX: Create a dedicated request for the leaderboard query
         const leaderboardRequest = new sql.Request(transaction);
         const leaderboardResult = await leaderboardRequest
             .input('WeekStart', sql.DateTime, lastWeekStart)
@@ -3111,13 +3100,11 @@ app.post('/api/achievements/evaluate', async (req, res) => {
 
         const socialButterflyID = 3;
         for (const winner of leaderboardResult.recordset) {
-            // FIX: Create a new request object inside the loop
             const checkSocialRequest = new sql.Request(transaction);
             const checkRes = await checkSocialRequest.input('TR', winner.TR).query(`
                 SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR AND DateEarned > DATEADD(day, -7, GETUTCDATE())
             `);
             if (checkRes.recordset.length === 0) {
-                // FIX: Create another new request object for the insert
                 const insertSocialRequest = new sql.Request(transaction);
                 await insertSocialRequest.input('TR', winner.TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${socialButterflyID})`);
             }
@@ -3135,7 +3122,6 @@ app.post('/api/achievements/evaluate', async (req, res) => {
             const context = prevMonthStart.format('MMMM YYYY');
             const perfectMonthID = 1;
 
-            // FIX: Create a new request object
             const checkPerfectRequest = new sql.Request(transaction);
             const checkPerfect = await checkPerfectRequest.input('TR', tr).input('Context', context).query(`
                 SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR AND Context = @Context
@@ -3149,14 +3135,12 @@ app.post('/api/achievements/evaluate', async (req, res) => {
                     currentDay.add(1, 'day');
                 }
                 
-                // FIX: Create a new request object
                 const attendanceCountRequest = new sql.Request(transaction);
                 const attendanceCountRes = await attendanceCountRequest.input('TR', tr).input('Start', prevMonthStart.toDate()).input('End', prevMonthEnd.toDate()).query(`
                     SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR AND CreatedAt BETWEEN @Start AND @End AND (IsPresent = 1 OR OnLeave = 1)
                 `);
 
                 if (attendanceCountRes.recordset[0]?.AttendedDays >= workingDays) {
-                    // FIX: Create a new request object
                     const insertPerfectRequest = new sql.Request(transaction);
                     await insertPerfectRequest.input('TR', tr).input('Context', context).query(`INSERT INTO StudentAchievements (TR, AchievementID, Context) VALUES (@TR, ${perfectMonthID}, @Context)`);
                 }
@@ -3164,14 +3148,12 @@ app.post('/api/achievements/evaluate', async (req, res) => {
             
             // --- 2b. Consistency King Check ---
             const consistencyKingID = 2;
-            // FIX: Create a new request object
             const checkConsistencyRequest = new sql.Request(transaction);
             const checkConsistency = await checkConsistencyRequest.input('TR', tr).query(`
                 SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())
             `);
 
             if (checkConsistency.recordset.length === 0) {
-                // FIX: Create a new request object
                 const workoutDatesRequest = new sql.Request(transaction);
                 const workoutDatesRes = await workoutDatesRequest.input('TR', tr).query(`
                     SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate ASC
@@ -3188,7 +3170,6 @@ app.post('/api/achievements/evaluate', async (req, res) => {
                             streak = 1;
                         }
                         if (streak >= 10) {
-                            // FIX: Create a new request object
                             const insertConsistencyRequest = new sql.Request(transaction);
                             await insertConsistencyRequest.input('TR', tr).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
                             break;
@@ -3199,12 +3180,28 @@ app.post('/api/achievements/evaluate', async (req, res) => {
         }
 
         await transaction.commit();
-        res.json({ success: true, message: 'Achievement evaluation complete.' });
+        console.log('✅ Background achievement evaluation completed successfully.');
     } catch (err) {
-        await transaction.rollback();
-        console.error("Achievement evaluation transaction error:", err);
-        res.status(500).json({ success: false, message: 'Failed to evaluate achievements.' });
+        if (transaction.active) {
+            await transaction.rollback();
+        }
+        console.error("❌ Background achievement evaluation failed:", err);
     }
+}
+
+// THE "FIRE-AND-FORGET" API ROUTE
+app.post('/api/achievements/evaluate', (req, res) => {
+    // 1. Check the secret key
+    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') { 
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    // 2. Immediately send a success response so the client/cron-job doesn't time out
+    res.status(202).json({ success: true, message: 'Achievement evaluation process has been initiated in the background.' });
+
+    // 3. Start the long process without awaiting it. The server will now work on this
+    //    while the client has already received its "OK" response.
+    runAchievementEvaluation();
 });
 
 /**
