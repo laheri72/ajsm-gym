@@ -56,12 +56,11 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
     columns: [
         { 
             data: 'StudentName',
-            // ADD THIS RENDER FUNCTION to display a badge for 'On Hold' status
             render: (data, type, row) => {
                 if (row.Status === 'On Hold') {
                     return `${data} <span class="badge bg-warning text-dark">On Hold</span>`;
                 }
-                return data; // Otherwise, just return the name
+                return data;
             }
         },
         { data: 'TR' },
@@ -76,14 +75,25 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
         { data: 'Reason' },
         { data: 'RequestedAt', render: (data) => moment(data).format('MMM D, h:mm A') },
         {
-            data: 'LeaveID', orderable: false,
-            render: (data, type, row) => `
-                <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-success approve-btn" data-id="${data}" data-name="${row.StudentName}">Approve</button>
-                    <button class="btn btn-sm btn-warning on-hold-btn" data-id="${data}" data-name="${row.StudentName}">On Hold</button>
-                    <button class="btn btn-sm btn-danger reject-btn" data-id="${data}" data-name="${row.StudentName}">Reject</button>
-                </div>
-            `
+            data: 'LeaveID', 
+            orderable: false,
+            // --- ▼▼▼ THIS IS THE ONLY CHANGE ▼▼▼ ---
+            render: (data, type, row) => {
+                // Conditionally create the 'On Hold' button.
+                // If the status is 'On Hold', this variable will be an empty string.
+                const onHoldButton = row.Status !== 'On Hold' 
+                    ? `<button class="btn btn-sm btn-warning on-hold-btn" data-id="${data}" data-name="${row.StudentName}">On Hold</button>` 
+                    : '';
+
+                // Return the full button group HTML, which now may or may not include the On Hold button.
+                return `
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-success approve-btn" data-id="${data}" data-name="${row.StudentName}">Approve</button>
+                        ${onHoldButton}
+                        <button class="btn btn-sm btn-danger reject-btn" data-id="${data}" data-name="${row.StudentName}">Reject</button>
+                    </div>
+                `;
+            }
         }
     ],
     responsive: true, 
