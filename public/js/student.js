@@ -654,6 +654,9 @@ mainNav.addEventListener('click', (e) => {
             if (sectionId === 'leaves-low') {
                 loadLeaveData(); // Load data when the section is shown
             }
+            if (sectionId === 'fame-low') {
+                loadHallOfFameData(); // Load data when this section is shown
+            }
         }
     }
 });
@@ -1027,13 +1030,155 @@ function handleLeaveCancel(e) {
     });
 }
 
+// =================================================================== //
+// 🏆 HALL OF FAME (LEADERBOARD & ACHIEVEMENTS) SCRIPT
+// =================================================================== //
+
+/**
+ * Main function to load all data for the Hall of Fame section.
+ */
+// Find and replace the existing loadHallOfFameData function
+async function loadHallOfFameData() {
+    // All three functions can run in parallel for faster loading
+    await Promise.all([
+        loadAchievementLeaderboard(),
+        loadStudentAchievements(),
+        loadAchievementProgress() // <-- ADD THIS LINE
+    ]);
+}
+
+/**
+ * Fetches and renders the main achievement leaderboard.
+ */
+async function loadAchievementLeaderboard() {
+    const listElement = document.getElementById('achievementLeaderboardList');
+    listElement.innerHTML = '<li class="loading">Loading Leaderboard...</li>'; // Show loader
+    try {
+        const res = await fetch('/api/achievements/leaderboard', { credentials: 'include' });
+        const result = await res.json();
+        
+        if (result.success && result.data.length > 0) {
+            listElement.innerHTML = ''; // Clear loader
+            const medals = ['🥇', '🥈', '🥉'];
+            
+            result.data.forEach((player, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="rank">${medals[index] || index + 1}</div>
+                    <div class="name">${player.Name}</div>
+                    <div class="score">${player.TotalAchievements} Badges</div>
+                `;
+                listElement.appendChild(li);
+            });
+        } else {
+            listElement.innerHTML = '<li class="loading">No leaderboard data available yet.</li>';
+        }
+    } catch (err) {
+        console.error("Could not load achievement leaderboard:", err);
+        listElement.innerHTML = '<li class="loading">Error loading leaderboard.</li>';
+    }
+}
+
+/**
+ * Fetches and renders the logged-in student's earned achievements.
+ */
+async function loadStudentAchievements() {
+    const gridElement = document.getElementById('achievementsGrid');
+    gridElement.innerHTML = '<div class="loading">Loading your achievements...</div>'; // Show loader
+    try {
+        const res = await fetch('/api/student/achievements', { credentials: 'include' });
+        const result = await res.json();
+
+        if (result.success && result.data.length > 0) {
+            gridElement.innerHTML = ''; // Clear loader
+            result.data.forEach(badge => {
+                const badgeCard = document.createElement('div');
+                badgeCard.className = 'badge-card';
+                
+                // Add a little sparkle effect container
+                badgeCard.innerHTML = `
+                    <div class="sparkle-wrapper">
+                        <img src="${badge.BadgeImageURL}" alt="${badge.AchievementName}" class="badge-image">
+                    </div>
+                    <div class="badge-info">
+                        <h5 class="badge-name">${badge.AchievementName}</h5>
+                        <p class="badge-description">${badge.Description}</p>
+                        <p class="badge-earned">Earned on: ${moment(badge.DateEarned).format('MMM D, YYYY')}</p>
+                    </div>
+                `;
+                gridElement.appendChild(badgeCard);
+            });
+        } else {
+            gridElement.innerHTML = '<div class="loading">You haven\'t earned any badges yet. Keep going!</div>';
+        }
+    } catch (err) {
+        console.error("Could not load student achievements:", err);
+        gridElement.innerHTML = '<div class="loading">Error loading your achievements.</div>';
+    }
+}
+
+/**
+ * Fetches and renders the live progress towards achievements.
+ */
+// REPLACE the old loadAchievementProgress function with this one
+async function loadAchievementProgress() {
+    try {
+        const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
+        const result = await res.json();
+
+        if (result.success) {
+            const progress = result.data;
+            
+            // 1. Update Consistency King
+            let consistencyPercent = (progress.consistency.current / progress.consistency.target) * 100;
+            document.getElementById('consistency-progress-fill').style.width = `${Math.min(consistencyPercent, 100)}%`;
+            if (consistencyPercent >= 100) {
+                document.getElementById('consistency-progress-text').textContent = "Goal Met! Awaiting Sunday's Award";
+            } else {
+                document.getElementById('consistency-progress-text').textContent = `${progress.consistency.current} / ${progress.consistency.target} Day Streak`;
+            }
+
+            // 2. Update Perfect Month
+            let monthPercent = (progress.perfectMonth.current / progress.perfectMonth.target) * 100;
+            document.getElementById('perfect-month-progress-fill').style.width = `${Math.min(monthPercent, 100)}%`;
+            if (monthPercent >= 100 && progress.perfectMonth.target > 0) {
+                document.getElementById('perfect-month-progress-text').textContent = "All Days Attended! Awaiting Sunday's Award";
+            } else {
+                document.getElementById('perfect-month-progress-text').textContent = `${progress.perfectMonth.current} / ${progress.perfectMonth.target} Days Attended This Month`;
+            }
+            
+            // 3. Update Social Butterfly
+            let rank = progress.socialButterfly.current_rank;
+            let butterflyPercent = (rank > 0 && rank <= 3) ? 100 : (rank > 3 && rank <= 10 ? (10 - rank) / 7 * 80 : 10);
+            document.getElementById('social-butterfly-progress-fill').style.width = `${butterflyPercent}%`;
+            if (rank > 0 && rank <= 3) {
+                document.getElementById('social-butterfly-progress-text').textContent = `Rank #${rank} - Awaiting Sunday's Award!`;
+            } else {
+                document.getElementById('social-butterfly-progress-text').textContent = `Current Rank: #${rank || 'N/A'}`;
+            }
+            
+            // 4. Update Milestone Lift
+            let milestonePercent = (progress.milestoneLift.current / progress.milestoneLift.target) * 100;
+            document.getElementById('milestone-lift-progress-fill').style.width = `${Math.min(milestonePercent, 100)}%`;
+            document.getElementById('milestone-lift-progress-text').textContent = `${progress.milestoneLift.current} / ${progress.milestoneLift.target} Days to Next Progress Check`;
+        }
+    } catch (err) {
+        console.error("Could not load achievement progress:", err);
+    }
+}
+//----------------------------------------------------------------------------------------------------------
+// --- DOM CONTENT LOADED EVENT ---
+//----------------------------------------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
     document.getElementById('logoutBtn').addEventListener('click', logout);
 
-    
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
     // document.getElementById('planner-main').addEventListener('click', () => showSection('planner'));
     // document.getElementById('tips-main').addEventListener('click', () => showSection('tips'));
     // document.getElementById('attendance-main').addEventListener('click', () => showSection('attendance'));

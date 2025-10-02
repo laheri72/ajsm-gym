@@ -15,6 +15,10 @@ const moment = require('moment-timezone');
 // Set up the port
 const port = 10000;
 
+
+
+
+
 // Middleware
 app.use(cors({
   origin: 'https://ajsm-gym.onrender.com',
@@ -3062,6 +3066,309 @@ app.get('/api/staff/leaves/history', async (req, res) => {
 });
 // =================================================================
 
+
+// =================================================================
+// --- 🏆 ACHIEVEMENTS & GAMIFICATION API ---
+// =================================================================
+
+/**
+ * THE ACHIEVEMENT ENGINE
+ * This protected API is triggered by the cron scheduler to evaluate and award badges.
+ */
+app.post('/api/achievements/evaluate', async (req, res) => {
+    // A simple secret to ensure this heavy process isn't triggered accidentally
+    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+
+        // --- 1. Social Butterfly (Previous Week Leaderboard) ---
+        const lastWeekStart = moment.tz("Asia/Kolkata").subtract(1, 'weeks').startOf('isoWeek').toDate();
+        const lastWeekEnd = moment.tz("Asia/Kolkata").subtract(1, 'weeks').endOf('isoWeek').toDate();
+
+        const leaderboardResult = await request
+            .input('WeekStart', sql.DateTime, lastWeekStart)
+            .input('WeekEnd', sql.DateTime, lastWeekEnd)
+            .query(`
+                -- This is your existing leaderboard logic, but for a specific past date range
+                WITH AttendanceScores AS (
+                    SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 GROUP BY TR
+                ), LogScores AS (
+                    SELECT P.TR, COUNT(L.LogID) as TotalBodyParts, COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays FROM TrainingPlan P JOIN TrainingLog L ON P.PlanID = L.PlanID WHERE P.CreatedAt BETWEEN @WeekStart AND @WeekEnd GROUP BY P.TR
+                )
+                SELECT TOP 3 M.TR FROM Master M
+                LEFT JOIN AttendanceScores A ON M.TR = A.TR
+                LEFT JOIN LogScores T ON M.TR = T.TR
+                WHERE M.Status = 'Active'
+                ORDER BY COALESCE(A.AttendanceCount, 0) DESC, COALESCE(T.WorkoutDays, 0) DESC, COALESCE(T.TotalBodyParts, 0) DESC;
+            `);
+
+        const socialButterflyID = 3; // The ID for "Social Butterfly" in your Achievements table
+        for (const winner of leaderboardResult.recordset) {
+            // Check if they already earned it in the last 7 days
+            const checkRes = await request.input('TR_Check', winner.TR).query(`
+                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR_Check AND DateEarned > DATEADD(day, -7, GETUTCDATE())
+            `);
+            if (checkRes.recordset.length === 0) {
+                await request.input('TR_Insert', winner.TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR_Insert, ${socialButterflyID})`);
+            }
+        }
+
+        // --- 2. Evaluate Individual Achievements (Perfect Month, Consistency King) ---
+        const studentsResult = await request.query(`SELECT TR FROM Master WHERE Status = 'Active'`);
+        for (const student of studentsResult.recordset) {
+            const tr = student.TR;
+
+            // --- 2a. Perfect Month Check ---
+            const prevMonthStart = moment.tz("Asia/Kolkata").subtract(1, 'month').startOf('month');
+            const prevMonthEnd = moment.tz("Asia/Kolkata").subtract(1, 'month').endOf('month');
+            const context = prevMonthStart.format('MMMM YYYY');
+            const perfectMonthID = 1; // ID for "Perfect Month"
+
+            const checkPerfect = await request.input('TR_Check_PM', tr).input('Context_Check_PM', context).query(`
+                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR_Check_PM AND Context = @Context_Check_PM
+            `);
+
+            if (checkPerfect.recordset.length === 0) {
+                let workingDays = 0;
+                let currentDay = prevMonthStart.clone();
+                while (currentDay.isSameOrBefore(prevMonthEnd)) {
+                    if (currentDay.day() !== 0) { // 0 is Sunday
+                        workingDays++;
+                    }
+                    currentDay.add(1, 'day');
+                }
+
+                const attendanceCountRes = await request.input('TR_Att_PM', tr).input('Start_Att_PM', prevMonthStart.toDate()).input('End_Att_PM', prevMonthEnd.toDate()).query(`
+                    SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR_Att_PM AND CreatedAt BETWEEN @Start_Att_PM AND @End_Att_PM AND (IsPresent = 1 OR OnLeave = 1)
+                `);
+
+                if (attendanceCountRes.recordset[0]?.AttendedDays >= workingDays) {
+                    await request.input('TR_Insert_PM', tr).input('Context_Insert_PM', context).query(`INSERT INTO StudentAchievements (TR, AchievementID, Context) VALUES (@TR_Insert_PM, ${perfectMonthID}, @Context_Insert_PM)`);
+                }
+            }
+
+            // --- 2b. Consistency King Check ---
+            const consistencyKingID = 2; // ID for "Consistency King"
+            const checkConsistency = await request.input('TR_Check_CK', tr).query(`
+                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR_Check_CK AND DateEarned > DATEADD(day, -30, GETUTCDATE())
+            `);
+
+            if (checkConsistency.recordset.length === 0) {
+                const workoutDatesRes = await request.input('TR_Dates_CK', tr).query(`
+                    SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR_Dates_CK ORDER BY workoutDate ASC
+                `);
+                
+                const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
+                if (workoutDates.length >= 10) {
+                    let streak = 1;
+                    for (let i = 0; i < workoutDates.length - 1; i++) {
+                        const diff = workoutDates[i+1].diff(workoutDates[i], 'days');
+                        if (diff === 1 || (diff === 2 && workoutDates[i].day() === 6)) { // If gap is 1 day, OR 2 days after a Saturday
+                            streak++;
+                        } else {
+                            streak = 1; // Reset streak
+                        }
+                        if (streak >= 10) {
+                            await request.input('TR_Insert_CK', tr).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR_Insert_CK, ${consistencyKingID})`);
+                            break; // Awarded, no need to check further for this student
+                        }
+                    }
+                }
+            }
+        }
+
+        await transaction.commit();
+        res.json({ success: true, message: 'Achievement evaluation complete.' });
+    } catch (err) {
+        await transaction.rollback();
+        console.error("Achievement evaluation transaction error:", err);
+        res.status(500).json({ success: false, message: 'Failed to evaluate achievements.' });
+    }
+});
+
+
+/**
+ * STUDENT'S TROPHY CASE
+ * Fetches all earned achievements for the logged-in student.
+ */
+app.get('/api/student/achievements', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT A.AchievementName, A.Description, A.BadgeImageURL, SA.DateEarned, SA.Context
+                FROM StudentAchievements SA
+                JOIN Achievements A ON SA.AchievementID = A.AchievementID
+                WHERE SA.TR = @TR
+                ORDER BY SA.DateEarned DESC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error("Error fetching student achievements:", err);
+        res.status(500).json({ success: false, message: 'Failed to fetch achievements.' });
+    }
+});
+
+
+/**
+ * HALL OF FAME LEADERBOARD
+ * Ranks students by the number of achievements earned, filtered by branch/gender.
+ */
+app.get('/api/achievements/leaderboard', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT TOP 10
+                    M.Name,
+                    COUNT(SA.StudentAchievementID) AS TotalAchievements
+                FROM Master M
+                JOIN StudentAchievements SA ON M.TR = SA.TR
+                WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
+                GROUP BY M.Name
+                ORDER BY TotalAchievements DESC, MIN(SA.DateEarned) ASC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error("Error fetching achievement leaderboard:", err);
+        res.status(500).json({ success: false, message: 'Failed to fetch leaderboard.' });
+    }
+});
+
+
+// =================================================================== //
+// --- 🏆 ACHIEVEMENT PROGRESS API (THE "GAME MODE" ENGINE) ---
+// =================================================================== //
+
+// This single API calculates and returns the student's live progress for all achievements.
+app.get('/api/student/achievements/progress', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+
+    try {
+        const [consistency, perfectMonth, socialButterfly, milestoneLift] = await Promise.all([
+            getConsistencyProgress(TR),
+            getPerfectMonthProgress(TR),
+            getSocialButterflyProgress(TR),
+            getMilestoneLiftProgress(TR)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                consistency,
+                perfectMonth,
+                socialButterfly,
+                milestoneLift
+            }
+        });
+    } catch (err) {
+        console.error("Error fetching achievement progress:", err);
+        res.status(500).json({ success: false, message: 'Failed to fetch progress data.' });
+    }
+});
+
+
+// --- Helper functions for the progress API ---
+
+async function getConsistencyProgress(tr) {
+    const workoutDatesRes = await pool.request().input('TR', sql.Int, tr)
+        .query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate DESC`);
+    
+    const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
+    if (workoutDates.length === 0) return { current: 0, target: 10 };
+
+    // Check if the last workout was today or yesterday (or Saturday if today is Monday)
+    const today = moment.tz("Asia/Kolkata").startOf('day');
+    const lastWorkout = workoutDates[0];
+    const diffFromToday = today.diff(lastWorkout, 'days');
+    
+    let currentStreak = 0;
+    if (diffFromToday <= 1 || (diffFromToday === 2 && today.day() === 1)) {
+        currentStreak = 1;
+        for (let i = 0; i < workoutDates.length - 1; i++) {
+            const diff = workoutDates[i].diff(workoutDates[i+1], 'days');
+            if (diff === 1 || (diff === 2 && workoutDates[i].day() === 1)) { // Gap after a Sunday
+                 currentStreak++;
+            } else {
+                break;
+            }
+        }
+    }
+    return { current: currentStreak, target: 10 };
+}
+
+async function getPerfectMonthProgress(tr) {
+    const today = moment.tz("Asia/Kolkata");
+    const startOfMonth = today.clone().startOf('month');
+    let totalWorkingDaysSoFar = 0;
+    
+    let day = startOfMonth.clone();
+    while (day.isSameOrBefore(today)) {
+        if (day.day() !== 0) { // Not Sunday
+            totalWorkingDaysSoFar++;
+        }
+        day.add(1, 'day');
+    }
+
+    const attendanceRes = await pool.request().input('TR', sql.Int, tr)
+        .input('StartOfMonth', sql.Date, startOfMonth.toDate())
+        .input('Today', sql.Date, today.toDate())
+        .query(`SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as count FROM Attendance WHERE TR = @TR AND (IsPresent = 1 OR OnLeave = 1) AND CreatedAt BETWEEN @StartOfMonth AND @Today`);
+    
+    return { current: attendanceRes.recordset[0]?.count || 0, target: totalWorkingDaysSoFar };
+}
+
+async function getSocialButterflyProgress(tr) {
+    // This query ranks ALL active students for today's leaderboard to find the user's specific rank
+    const rankRes = await pool.request().input('TR', sql.Int, tr)
+        .query(`
+            DECLARE @Today DATE = CAST(DATEADD(MINUTE, 330, GETUTCDATE()) AS DATE);
+            WITH Scores AS (
+                SELECT M.TR, (ISNULL(A.AttendanceCount, 0) + ISNULL(L.WorkoutDays, 0)) AS Score
+                FROM Master M
+                LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CAST(CreatedAt AS DATE) = @Today AND IsPresent = 1 GROUP BY TR) A ON M.TR = A.TR
+                LEFT JOIN (SELECT TR, COUNT(*) AS WorkoutDays FROM TrainingPlan WHERE CAST(CreatedAt AS DATE) = @Today GROUP BY TR) L ON M.TR = L.TR
+                WHERE M.Status = 'Active'
+            ),
+            Ranks AS (
+                SELECT TR, RANK() OVER (ORDER BY Score DESC) as rank FROM Scores
+            )
+            SELECT rank FROM Ranks WHERE TR = @TR;
+        `);
+    
+    return { current_rank: rankRes.recordset[0]?.rank || 'N/A', target_rank: 3 };
+}
+
+async function getMilestoneLiftProgress(tr) {
+    const lastTestRes = await pool.request().input('TR', sql.Int, tr)
+        .query(`SELECT MAX(CreatedAt) as lastTestDate FROM TestRecords WHERE TR = @TR`);
+    
+    const lastTestDate = lastTestRes.recordset[0]?.lastTestDate;
+    if (!lastTestDate) return { current: 0, target: 90 };
+
+    const daysSince = moment.tz("Asia/Kolkata").diff(moment(lastTestDate), 'days');
+    return { current: daysSince, target: 90 };
+}
+
+// =================================================================
 
 
 // code for install anything via terminal 
