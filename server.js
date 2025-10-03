@@ -884,13 +884,36 @@ app.post('/api/student-login', async (req, res) => {
 });
 
 
-app.get('/api/student-session', (req, res) => {
-  if (req.session.user) {
-    res.json({ success: true, user: req.session.user });
+// ✅ Updated /api/student-session route
+app.get('/api/student-session', async (req, res) => {
+  if (req.session.user && req.session.user.TR) {
+    try {
+      const { TR } = req.session.user;
+
+      // Fetch the latest Level and XP info from Master
+      const result = await pool.request()
+        .input('TR', sql.Int, TR)
+        .query(`
+          SELECT FitnessLevel, CurrentXP 
+          FROM Master 
+          WHERE TR = @TR
+        `);
+
+      const userProfile = {
+        ...req.session.user,
+        ...result.recordset[0]  // merge DB info into session user
+      };
+
+      res.json({ success: true, user: userProfile });
+    } catch (err) {
+      console.error("❌ Error fetching session profile:", err);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
   } else {
     res.json({ success: false });
   }
 });
+
 
 
 
@@ -1110,17 +1133,16 @@ app.get('/api/daily-attendance', async (req, res) => {
     }
 });
 
+// ✅ Log Training Plan API with XP integration
 app.post('/api/log-training-plan', async (req, res) => {
     const { TR, BodyParts } = req.body;
     const { Branch, Gender } = req.session.user;
 
-    // A transaction is crucial for multi-step database operations
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
 
-        // Step 1: Insert a single record into the main TrainingPlan table to create a "session"
-        // We get back the new PlanID that was just created.
+        // Step 1: Insert into TrainingPlan
         const planResult = await new sql.Request(transaction)
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
@@ -1130,12 +1152,11 @@ app.post('/api/log-training-plan', async (req, res) => {
                 OUTPUT INSERTED.PlanID
                 VALUES (@TR, @Branch, @Gender);
             `);
-        
+
         const newPlanID = planResult.recordset[0].PlanID;
 
-        // Step 2: Loop through the array of body parts sent from the frontend
+        // Step 2: Insert each body part into TrainingLog
         for (const partName of BodyParts) {
-            // For each body part, insert a new row into our junction table (TrainingLog)
             await new sql.Request(transaction)
                 .input('PlanID', sql.Int, newPlanID)
                 .input('PartName', sql.NVarChar(50), partName)
@@ -1144,18 +1165,30 @@ app.post('/api/log-training-plan', async (req, res) => {
                     SELECT @PlanID, BodyPartID FROM BodyParts WHERE Name = @PartName;
                 `);
         }
-        
-        // If all inserts were successful, commit the transaction
+
+        // --- ✅ NEW XP integration ---
+        const xpToAward = 10 + (BodyParts.length > 1 ? (BodyParts.length - 1) * 3 : 0);
+        const levelUpInfo = await awardXP(TR, xpToAward, transaction);
+
+        // Commit if all inserts + XP succeed
         await transaction.commit();
-        res.json({ success: true, message: 'Training plan logged successfully' });
+
+        res.json({ 
+            success: true, 
+            message: 'Training plan logged successfully',
+            levelUpInfo // ← Extra info about XP/level up
+        });
 
     } catch (err) {
-        // If any step failed, roll back the entire transaction
-        await transaction.rollback();
+        // Rollback if anything fails
+        if (transaction._aborted === false) {
+            await transaction.rollback();
+        }
         console.error('❌ Error logging training plan:', err);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
+
 
 
 app.get('/api/student/training-analytics', async (req, res) => {
@@ -2179,53 +2212,52 @@ app.post('/api/attendance-manual', async (req, res) => {
     }
 });
 
+// ✅ Checkout API with XP integration (existing logic preserved)
 app.post('/api/checkout', async (req, res) => {
     const { TR } = req.body;
-    // 'moment-timezone' should be required at the top of your server.js file.
 
     if (!TR) {
         return res.status(400).json({ success: false, message: 'TR number is required.' });
     }
 
+    // Transaction for safety
+    const transaction = new sql.Transaction(pool);
+
     try {
-        const request = pool.request();
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+
         request.input('TR', sql.Int, TR);
 
-        // --- ✅ REFINED LOGIC ---
-        // 1. Define the start and end of the current day in the IST timezone.
+        // --- ORIGINAL TIME LOGIC ---
         const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day');
         const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day');
-
-        // 2. Convert these IST boundaries to UTC for the database query.
         const startUTC = startOfTodayIST.utc().toDate();
         const endUTC = endOfTodayIST.utc().toDate();
-        
-        // 3. Pass the UTC range as parameters.
+
         request.input('StartUTC', sql.DateTime, startUTC);
         request.input('EndUTC', sql.DateTime, endUTC);
-        // --- END REFINEMENT ---
 
-        // Find the open session (where OutTime is NULL) for this student on the current IST day
+        // Find open session
         const openSession = await request.query(`
             SELECT AttendanceID, CreatedAt FROM Attendance
             WHERE TR = @TR 
               AND OutTime IS NULL 
-              -- 4. The query now uses the correct time range instead of just the date.
               AND CreatedAt BETWEEN @StartUTC AND @EndUTC;
         `);
 
         if (openSession.recordset.length === 0) {
+            await transaction.rollback();
             return res.status(404).json({ success: false, message: 'This student is not currently checked in. Please mark their attendance first.' });
         }
 
-        // The rest of your logic for calculating duration and formatting the response is perfect.
+        // Original duration logic
         const { AttendanceID, CreatedAt } = openSession.recordset[0];
-
         const inTime = moment.utc(CreatedAt);
         const outTime = moment.utc();  
-
         const duration = outTime.diff(inTime, 'minutes');
 
+        // Update attendance record
         await request
             .input('OutTime', sql.DateTime, outTime.toDate())
             .input('Duration', sql.Int, duration)
@@ -2236,17 +2268,29 @@ app.post('/api/checkout', async (req, res) => {
                 WHERE AttendanceID = @AttendanceID;
             `);
 
+        // --- ✅ NEW XP Integration ---
+        const levelUpInfo = await awardXP(TR, duration, transaction);
+
+        // Commit transaction
+        await transaction.commit();
+
+        // Format times
         const inTimeFormatted = inTime.tz("Asia/Kolkata").format("h:mm A");
         const outTimeFormatted = outTime.tz("Asia/Kolkata").format("h:mm A");
 
-          res.json({ 
-              success: true, 
-              duration: duration,
-              inTime: inTimeFormatted,
-              outTime: outTimeFormatted
-          });
+        // Send response
+        res.json({ 
+            success: true, 
+            duration: duration,
+            inTime: inTimeFormatted,
+            outTime: outTimeFormatted,
+            levelUpInfo // ← Extra info about XP/level up
+        });
 
     } catch (err) {
+        if (transaction._aborted === false) {
+            await transaction.rollback();
+        }
         console.error('Check-out error:', err);
         res.status(500).json({ success: false, message: 'Server error during check-out.' });
     }
@@ -2627,6 +2671,31 @@ app.get('/api/testmaster/me', async (req, res) => {
     }
 });
 
+// --------------- for trainers ----------------------------
+
+// NEW route: fetch TestMaster by TR (for trainer dashboard)
+app.get('/api/testmaster/:tr', async (req, res) => {
+  const { tr } = req.params;
+
+  try {
+    const result = await pool.request()
+      .input('TR', sql.Int, tr)
+      .query(`
+        SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
+        FROM TestMaster WHERE TR = @TR
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.json(result.recordset[0]);
+  } catch (err) {
+    console.error('❌ Error fetching TestMaster by TR:', err);
+    res.status(500).json({ error: 'Failed to fetch student data' });
+  }
+});
+
 
 
 app.post('/api/testrecords', async (req, res) => {
@@ -2635,8 +2704,12 @@ app.post('/api/testrecords', async (req, res) => {
         BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade
     } = req.body;
 
+    const transaction = new sql.Transaction(pool);
+
     try {
-        const request = pool.request();         // ✅ define request BEFORE using it
+        await transaction.begin();
+        const request = new sql.Request(transaction);  // Use transaction-scoped request
+
         request.input('TR', sql.Int, TR);
         request.input('DOB', sql.Date, DOB);
         request.input('Age', sql.Int, Age);
@@ -2653,18 +2726,26 @@ app.post('/api/testrecords', async (req, res) => {
         request.input('VO2Max', sql.Float, VO2Max === "N/A" ? null : VO2Max);
         request.input('Total', sql.Float, Total);
         request.input('Grade', sql.NVarChar(2), Grade);
-        
-     
+
         await request.query(`
             INSERT INTO TestRecords 
             (TR, DOB, Age, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade) 
             VALUES (@TR, @DOB, @Age, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade)
         `);
-            
-            
 
-        res.status(200).json({ message: "Test record saved successfully" });
+        // --- ✅ NEW: Award XP for student test ---
+        const levelUpInfo = await awardXP(TR, 100, transaction);
+
+        await transaction.commit();
+        res.status(200).json({ 
+            message: "Test record saved successfully",
+            levelUpInfo
+        });
+
     } catch (err) {
+        if (transaction._aborted === false) {
+            await transaction.rollback();
+        }
         console.error("Error saving test record:", err);
         res.status(500).json({ error: "Server error saving test record" });
     }
@@ -2692,12 +2773,9 @@ app.get('/api/testrecords/me', async (req, res) => {
 
 
 
-// Add this new route to your API file
 app.post('/api/trainer-test-records', async (req, res) => {
-    // Expect an array of records in the request body
     const records = req.body;
-    
-    // Check for authorization (ensure user is a trainer)
+
     if (req.session.user?.Role !== 'Trainer' && req.session.user?.Role !== 'Admin') {
         return res.status(403).json({ error: 'Unauthorized' });
     }
@@ -2705,7 +2783,7 @@ app.post('/api/trainer-test-records', async (req, res) => {
     if (!Array.isArray(records) || records.length === 0) {
         return res.status(400).json({ error: 'Request body must be a non-empty array of test records.' });
     }
-    
+
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
@@ -2718,10 +2796,7 @@ app.post('/api/trainer-test-records', async (req, res) => {
 
         for (const record of records) {
             const request = new sql.Request(transaction);
-            
-            // Validate required fields for each record here if necessary
 
-            // Set inputs from the record object
             request.input('TR', sql.Int, record.TR);
             request.input('DOB', sql.Date, record.DOB);
             request.input('Age', sql.Int, record.Age);
@@ -2738,20 +2813,26 @@ app.post('/api/trainer-test-records', async (req, res) => {
             request.input('VO2Max', sql.Float, record.VO2Max === "N/A" ? null : record.VO2Max);
             request.input('Total', sql.Float, record.Total);
             request.input('Grade', sql.NVarChar(2), record.Grade);
-            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer'); // Hardcoded value
+            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer');
 
             await request.query(insertQuery);
+
+            // --- ✅ NEW: Award XP for trainer test ---
+            await awardXP(record.TR, 150, transaction);
         }
 
         await transaction.commit();
         res.status(200).json({ message: `${records.length} test records saved successfully.` });
 
     } catch (err) {
-        await transaction.rollback();
+        if (transaction._aborted === false) {
+            await transaction.rollback();
+        }
         console.error("Error saving trainer test records:", err);
         res.status(500).json({ error: "Server error during bulk insert." });
     }
 });
+
 
 // API to get all students formatted for a dropdown selector
 app.get('/api/students-list', async (req, res) => {
@@ -3097,15 +3178,15 @@ app.get('/api/staff/leaves/history', async (req, res) => {
 // This is the complete, long-running process with updated logic.
 async function runAchievementEvaluation() {
     const transaction = new sql.Transaction(pool);
+
     try {
         await transaction.begin();
 
-        // --- 1. Social Butterfly (Previous Week Leaderboard with DENSE_RANK for ties) ---
+        // --- 1. Social Butterfly (Leaderboard) ---
         const lastWeekStart = moment.tz("Asia/Kolkata").subtract(1, 'weeks').startOf('isoWeek').toDate();
         const lastWeekEnd = moment.tz("Asia/Kolkata").subtract(1, 'weeks').endOf('isoWeek').toDate();
 
         const leaderboardRequest = new sql.Request(transaction);
-        // REVISED LOGIC: Uses DENSE_RANK() to correctly handle ties.
         const leaderboardResult = await leaderboardRequest
             .input('WeekStart', sql.DateTime, lastWeekStart)
             .input('WeekEnd', sql.DateTime, lastWeekEnd)
@@ -3113,66 +3194,111 @@ async function runAchievementEvaluation() {
                 WITH Scores AS (
                     SELECT M.TR, (ISNULL(A.AttendanceCount, 0) + ISNULL(L.WorkoutDays, 0)) AS Score
                     FROM Master M
-                    LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 GROUP BY TR) A ON M.TR = A.TR
-                    LEFT JOIN (SELECT TR, COUNT(*) AS WorkoutDays FROM TrainingPlan WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd GROUP BY TR) L ON M.TR = L.TR
+                    LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount 
+                               FROM Attendance 
+                               WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 
+                               GROUP BY TR) A ON M.TR = A.TR
+                    LEFT JOIN (SELECT TR, COUNT(*) AS WorkoutDays 
+                               FROM TrainingPlan 
+                               WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd 
+                               GROUP BY TR) L ON M.TR = L.TR
                     WHERE M.Status = 'Active'
                 ),
                 Ranks AS (
-                    SELECT TR, DENSE_RANK() OVER (ORDER BY Score DESC) as rank FROM Scores WHERE Score > 0
+                    SELECT TR, DENSE_RANK() OVER (ORDER BY Score DESC) as rank 
+                    FROM Scores WHERE Score > 0
                 )
                 SELECT TR FROM Ranks WHERE rank <= 3;
             `);
 
         const socialButterflyID = 3;
+
         for (const winner of leaderboardResult.recordset) {
             const checkSocialRequest = new sql.Request(transaction);
-            const checkRes = await checkSocialRequest.input('TR', winner.TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR AND DateEarned > DATEADD(day, -7, GETUTCDATE())`);
+            const checkRes = await checkSocialRequest
+                .input('TR', winner.TR)
+                .query(`SELECT 1 FROM StudentAchievements 
+                        WHERE AchievementID = ${socialButterflyID} AND TR = @TR 
+                          AND DateEarned > DATEADD(day, -7, GETUTCDATE())`);
+
             if (checkRes.recordset.length === 0) {
                 const insertSocialRequest = new sql.Request(transaction);
-                await insertSocialRequest.input('TR', winner.TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${socialButterflyID})`);
+                await insertSocialRequest.input('TR', winner.TR)
+                    .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${socialButterflyID})`);
+
+                // --- NEW: Award XP for earning Social Butterfly ---
+                await awardXP(winner.TR, 50, transaction);
             }
         }
 
-        // --- 2. Evaluate Individual Achievements for all active students ---
+        // --- 2. Evaluate Individual Achievements ---
         const studentsResult = await new sql.Request(transaction).query(`SELECT TR, JoinedAt FROM Master WHERE Status = 'Active'`);
-        
+
         for (const student of studentsResult.recordset) {
             const { TR, JoinedAt } = student;
-            
-            // --- 2a. "Your Perfect 30 Days" Check (Formerly Perfect Month) ---
+
+            // --- 2a. Perfect 30 Days ---
             const perfectMonthID = 1;
-            // REVISED LOGIC: Checks for perfect attendance in a rolling 30-day period.
             const thirtyDaysAgo = moment.tz("Asia/Kolkata").subtract(30, 'days').toDate();
-            if (moment(JoinedAt).isBefore(thirtyDaysAgo)) { // Only check for students who have been members for at least 30 days.
+
+            if (moment(JoinedAt).isBefore(thirtyDaysAgo)) {
                 const checkPerfectRequest = new sql.Request(transaction);
-                const checkPerfect = await checkPerfectRequest.input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())`);
+                const checkPerfect = await checkPerfectRequest.input('TR', TR)
+                    .query(`SELECT 1 FROM StudentAchievements 
+                            WHERE AchievementID = ${perfectMonthID} AND TR = @TR 
+                              AND DateEarned > DATEADD(day, -30, GETUTCDATE())`);
 
                 if (checkPerfect.recordset.length === 0) {
                     const attendanceCountRequest = new sql.Request(transaction);
-                    const attendanceCountRes = await attendanceCountRequest.input('TR', TR).input('StartDate', thirtyDaysAgo).query(`
-                        SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR AND CreatedAt >= @StartDate AND (IsPresent = 1 OR OnLeave = 1)
-                    `);
-                    
-                    if (attendanceCountRes.recordset[0]?.AttendedDays >= 26) { // 26 working days is a good benchmark for a month
+                    const attendanceCountRes = await attendanceCountRequest
+                        .input('TR', TR)
+                        .input('StartDate', thirtyDaysAgo)
+                        .query(`
+                            SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays 
+                            FROM Attendance 
+                            WHERE TR = @TR AND CreatedAt >= @StartDate 
+                              AND (IsPresent = 1 OR OnLeave = 1)
+                        `);
+
+                    if (attendanceCountRes.recordset[0]?.AttendedDays >= 26) {
                         const insertPerfectRequest = new sql.Request(transaction);
-                        await insertPerfectRequest.input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${perfectMonthID})`);
+                        await insertPerfectRequest.input('TR', TR)
+                            .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${perfectMonthID})`);
+
+                        // --- NEW: Award XP for Perfect 30 Days ---
+                        await awardXP(TR, 50, transaction);
                     }
                 }
             }
-            
-            // --- 2b. Consistency King Check (with Holiday & Personal Best logic) ---
+
+            // --- 2b. Consistency King ---
             const consistencyKingID = 2;
             const workoutDatesRequest = new sql.Request(transaction);
-            const workoutDatesRes = await workoutDatesRequest.input('TR', TR).query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate ASC`);
+            const workoutDatesRes = await workoutDatesRequest.input('TR', TR)
+                .query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate 
+                        FROM TrainingPlan 
+                        WHERE TR = @TR 
+                        ORDER BY workoutDate ASC`);
             const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
 
             if (workoutDates.length > 0) {
                 let currentStreak = 1;
                 let longestStreak = 1;
 
-                // REVISED LOGIC: Holiday check integration
+                // Fetch holidays
                 const holidayCheckRequest = new sql.Request(transaction);
-                const gymHolidaysRes = await holidayCheckRequest.query(`SELECT DISTINCT CAST(A.CreatedAt AS DATE) as holidayDate FROM Attendance A JOIN (SELECT CAST(CreatedAt AS DATE) as date, COUNT(TR) as leaveCount FROM Attendance WHERE OnLeave = 1 GROUP BY CAST(CreatedAt AS DATE)) AS LeaveCounts ON CAST(A.CreatedAt AS DATE) = LeaveCounts.date WHERE LeaveCounts.leaveCount > (SELECT COUNT(*) FROM Master WHERE Status='Active') * 0.5`);
+                const gymHolidaysRes = await holidayCheckRequest.query(`
+                    SELECT DISTINCT CAST(A.CreatedAt AS DATE) as holidayDate 
+                    FROM Attendance A 
+                    JOIN (
+                        SELECT CAST(CreatedAt AS DATE) as date, COUNT(TR) as leaveCount 
+                        FROM Attendance 
+                        WHERE OnLeave = 1 
+                        GROUP BY CAST(CreatedAt AS DATE)
+                    ) AS LeaveCounts 
+                    ON CAST(A.CreatedAt AS DATE) = LeaveCounts.date 
+                    WHERE LeaveCounts.leaveCount > (SELECT COUNT(*) FROM Master WHERE Status='Active') * 0.5
+                `);
                 const gymHolidays = new Set(gymHolidaysRes.recordset.map(r => moment(r.holidayDate).format('YYYY-MM-DD')));
 
                 for (let i = 0; i < workoutDates.length - 1; i++) {
@@ -3180,7 +3306,6 @@ async function runAchievementEvaluation() {
                     if (diff === 1 || (diff === 2 && workoutDates[i].day() === 6)) {
                         currentStreak++;
                     } else if (diff > 1) {
-                        // Check if days in between were holidays
                         let isHolidayGap = true;
                         for (let d = 1; d < diff; d++) {
                             const checkDate = workoutDates[i].clone().add(d, 'day');
@@ -3189,29 +3314,40 @@ async function runAchievementEvaluation() {
                                 break;
                             }
                         }
-                        if (isHolidayGap) { currentStreak++; } 
-                        else { currentStreak = 1; }
+                        if (isHolidayGap) currentStreak++;
+                        else currentStreak = 1;
                     }
-                    if (currentStreak > longestStreak) { longestStreak = currentStreak; }
+                    if (currentStreak > longestStreak) longestStreak = currentStreak;
                 }
 
-                // Award badge if they hit a 10-day streak
                 const checkConsistencyRequest = new sql.Request(transaction);
-                const checkConsistency = await checkConsistencyRequest.input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())`);
+                const checkConsistency = await checkConsistencyRequest.input('TR', TR)
+                    .query(`SELECT 1 FROM StudentAchievements 
+                            WHERE AchievementID = ${consistencyKingID} AND TR = @TR 
+                              AND DateEarned > DATEADD(day, -30, GETUTCDATE())`);
+
                 if (longestStreak >= 10 && checkConsistency.recordset.length === 0) {
                     const insertConsistencyRequest = new sql.Request(transaction);
-                    await insertConsistencyRequest.input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
+                    await insertConsistencyRequest.input('TR', TR)
+                        .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
+
+                    // --- NEW: Award XP for Consistency King ---
+                    await awardXP(TR, 50, transaction);
                 }
 
-                // Update Personal Best record
+                // Update personal best
                 const updateBestStreakRequest = new sql.Request(transaction);
-                await updateBestStreakRequest.input('TR', TR).input('LongestStreak', longestStreak).query(`UPDATE Master SET BestStreak = @LongestStreak WHERE TR = @TR AND BestStreak < @LongestStreak`);
+                await updateBestStreakRequest
+                    .input('TR', TR)
+                    .input('LongestStreak', longestStreak)
+                    .query(`UPDATE Master SET BestStreak = @LongestStreak WHERE TR = @TR AND BestStreak < @LongestStreak`);
             }
 
-            // --- 2c. Milestone Lift Check (New Logic) ---
+            // --- 2c. Milestone Lift ---
             const milestoneLiftID = 4;
             const testRecordsRequest = new sql.Request(transaction);
-            const testRecordsRes = await testRecordsRequest.input('TR', TR).query(`SELECT TOP 2 Total FROM TestRecords WHERE TR = @TR ORDER BY CreatedAt DESC`);
+            const testRecordsRes = await testRecordsRequest.input('TR', TR)
+                .query(`SELECT TOP 2 Total FROM TestRecords WHERE TR = @TR ORDER BY CreatedAt DESC`);
 
             if (testRecordsRes.recordset.length === 2) {
                 const latestScore = testRecordsRes.recordset[0].Total;
@@ -3220,14 +3356,23 @@ async function runAchievementEvaluation() {
 
                 if (improvement >= 5) {
                     const checkMilestoneRequest = new sql.Request(transaction);
-                    const checkMilestone = await checkMilestoneRequest.input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${milestoneLiftID} AND TR = @TR AND DateEarned > DATEADD(day, -90, GETUTCDATE())`);
+                    const checkMilestone = await checkMilestoneRequest.input('TR', TR)
+                        .query(`SELECT 1 FROM StudentAchievements 
+                                WHERE AchievementID = ${milestoneLiftID} AND TR = @TR 
+                                  AND DateEarned > DATEADD(day, -90, GETUTCDATE())`);
+
                     if (checkMilestone.recordset.length === 0) {
                         const insertMilestoneRequest = new sql.Request(transaction);
-                        await insertMilestoneRequest.input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${milestoneLiftID})`);
+                        await insertMilestoneRequest.input('TR', TR)
+                            .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${milestoneLiftID})`);
+
+                        // --- NEW: Award XP for Milestone Lift ---
+                        await awardXP(TR, 50, transaction);
                     }
                 }
             }
         }
+
         await transaction.commit();
         console.log('✅ Background achievement evaluation completed successfully.');
     } catch (err) {
@@ -3235,6 +3380,7 @@ async function runAchievementEvaluation() {
         console.error("❌ Background achievement evaluation failed:", err);
     }
 }
+
 
 // THE "FIRE-AND-FORGET" API ROUTE (No changes here, remains the same)
 app.post('/api/achievements/evaluate', (req, res) => {
@@ -3437,7 +3583,51 @@ async function getMilestoneLiftProgress(tr) {
 }
 
 // =================================================================
+// =================================================================== //
+// --- 🏆 XP & LEVEL-UP HELPER FUNCTION ---
+// =================================================================== //
 
+/**
+ * Awards XP to a student and handles leveling up.
+ * @param {number} tr - The student's TR number.
+ * @param {number} xpAmount - The amount of XP to award.
+ * @param {sql.Transaction} transaction - The active SQL transaction.
+ * @returns {Promise<{levelledUp: boolean, newLevel: number, newXP: number}>} - Info on level-up status.
+ */
+async function awardXP(tr, xpAmount, transaction) {
+    const request = new sql.Request(transaction);
+    request.input('TR', sql.Int, tr);
+
+    // 1. Get current level and XP
+    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM Master WHERE TR = @TR');
+    if (result.recordset.length === 0) return { levelledUp: false };
+
+    let { FitnessLevel, CurrentXP } = result.recordset[0];
+    CurrentXP += xpAmount;
+
+    // 2. Calculate XP needed for the next level
+    let xpForNextLevel = FitnessLevel * 100;
+    let levelledUp = false;
+
+    // 3. Loop to handle multiple level-ups from a single XP gain
+    while (CurrentXP >= xpForNextLevel) {
+        levelledUp = true;
+        FitnessLevel++;
+        CurrentXP -= xpForNextLevel;
+        xpForNextLevel = FitnessLevel * 100;
+    }
+
+    // 4. Update the database with the new level and XP
+    const updateRequest = new sql.Request(transaction);
+    updateRequest.input('TR', sql.Int, tr);
+    updateRequest.input('NewLevel', sql.Int, FitnessLevel);
+    updateRequest.input('NewXP', sql.Int, CurrentXP);
+    await updateRequest.query('UPDATE Master SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
+
+    return { levelledUp, newLevel: FitnessLevel, newXP: CurrentXP };
+}
+
+//------------------------------------------------------------------------------------------------
 
 // code for install anything via terminal 
 // Set-ExecutionPolicy RemoteSigned -Scope CurrentUser

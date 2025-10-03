@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
-    <link rel="stylesheet" href="../css/stu-styles.css">
+    <link rel="stylesheet" href="../css/stu-styles.min.css">
 
 
 </head>
@@ -63,12 +63,24 @@
                 </div>
             </div>
         </nav>
-                <div class="info-bar">
-            <div id="studentGoal" class="info-item goal"></div>
-            <div class="info-item">Slot: <span id="studentSlot"></span></div>
-            <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
-            <div class="info-item">TR: <span id="studentTR"></span></div>
+<div class="info-bar">
+    <div class="xp-level-container">
+        <div class="level-display">
+            LEVEL <span id="fitnessLevel">1</span>
         </div>
+        <div class="xp-bar-wrapper">
+            <div class="xp-bar-fill" id="xpBarFill"></div>
+            <div class="xp-bar-text" id="xpBarText">0 / 100 XP</div>
+        </div>
+    </div>
+
+    <div class="info-item-group">
+        <div id="studentGoal" class="info-item goal"></div>
+        <div class="info-item">Slot: <span id="studentSlot"></span></div>
+        <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
+        <div class="info-item">TR: <span id="studentTR"></span></div>
+    </div>
+</div>
 
     </div>
 
@@ -717,6 +729,9 @@
         <h1>🏆 Hall of Fame</h1>
         <p>Celebrate your consistency and hard work. See how you rank among your peers!</p>
     </div>
+
+
+
     <div class="progress-trackers-container">
 
     <div class="progress-card">
@@ -819,7 +834,7 @@
    <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
 
-<script type="module" src="/js/student.js"></script>
+<script type="module" src="/js/student.min.js"></script>
 
 
 

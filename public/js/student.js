@@ -4,13 +4,53 @@ let bodyPartChart = null;
 let fitnessProgressChart = null;
 let weeklyHoursChart = null;
 
+
+// ADD THESE TWO NEW FUNCTIONS TO student.js
+
+/**
+ * Updates the XP bar UI with the student's current level and XP.
+ * @param {number} level - The student's current fitness level.
+ * @param {number} xp - The student's current XP.
+ */
+function updateXPBarUI(level, xp) {
+    const xpForNextLevel = level * 100;
+    const progressPercent = (xp / xpForNextLevel) * 100;
+
+    document.getElementById('fitnessLevel').textContent = level;
+    document.getElementById('xpBarFill').style.width = `${progressPercent}%`;
+    document.getElementById('xpBarText').textContent = `${xp} / ${xpForNextLevel} XP`;
+}
+
+/**
+ * Displays a celebratory "Level Up!" animation.
+ * @param {number} newLevel - The new level the student has reached.
+ */
+function showLevelUpAnimation(newLevel) {
+    Swal.fire({
+        title: 'LEVEL UP!',
+        html: `
+            <div class="level-up-animation">
+                <span class="level-up-number">${newLevel}</span>
+            </div>
+            <h3 style="color:#00FFEA; margin-top:1rem;">You've reached Level ${newLevel}!</h3>
+            <p style="color:#bdc3c7;">Your hard work is paying off. Keep pushing!</p>
+        `,
+        background: '#2c3e50',
+        color: '#ffffff',
+        showConfirmButton: true,
+        confirmButtonText: 'Let\'s Go!',
+        confirmButtonColor: '#4CAF50'
+    });
+}
+
+// REPLACE your existing getStudentSession function with this one
+
 async function getStudentSession() {
   try {
     const res = await fetch('/api/student-session', {
       method: 'GET',
-      credentials: 'include' // ✅ Include cookies
+      credentials: 'include'
     });
-
     const data = await res.json();
 
     if (!data.success) {
@@ -25,47 +65,42 @@ async function getStudentSession() {
     branch = user.Branch;
     gender = user.Gender;
 
+    // --- NEW: Check for Level-Up on page load ---
+    const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
+    if (user.FitnessLevel > lastSeenLevel) {
+        showLevelUpAnimation(user.FitnessLevel);
+        localStorage.setItem('lastSeenLevel', user.FitnessLevel);
+    }
+    
+    // --- NEW: Update the XP Bar UI ---
+    updateXPBarUI(user.FitnessLevel, user.CurrentXP);
+
     // Update welcome UI
     document.getElementById('studentName').innerText = studentName || 'Student';
     document.getElementById('welcomeText').innerText =
       `Fitness ${studentName} | ${branch.toUpperCase()} | ${gender.toUpperCase()}`;
 
-
     // Load extra info (Darajah, Goal etc.)
     fetch(`/api/student-info/me`, {
       method: 'GET',
-      credentials: 'include' // ✅ Include cookies here too
+      credentials: 'include'
     })
       .then(res => res.json()) 
-      .then(data => {
-        if (data.success) {
-          const stu = data.student;
-
-          document.getElementById('studentSlot').innerText =
-            stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
-
+      .then(infoData => {
+        if (infoData.success) {
+          const stu = infoData.student;
+          document.getElementById('studentSlot').innerText = stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
           document.getElementById('studentDarajah').innerText = stu.Darajah;
           document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
           document.getElementById('studentTR').innerText = studentTR;
-
           loadTip(stu.Goal);
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Oops...',
-            text: 'Student info not found.',
-          });
         }
       });
-
-
-
   } catch (err) {
     console.error('Error fetching student session:', err);
     window.location.href = '../Forbidden.html';
   }
 }
-
 
 
 

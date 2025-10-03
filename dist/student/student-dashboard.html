@@ -16,9 +16,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
 
-  <script type="module" crossorigin src="/assets/studentDashboard-BVh5wkTw.js"></script>
+  <script type="module" crossorigin src="/assets/studentDashboard-1JvH7orV.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-CRBlDZpo.css">
+  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-29abooJJ.css">
 </head>
 <body>
 
@@ -66,6 +66,15 @@
             </div>
         </nav>
                 <div class="info-bar">
+                      <div class="xp-level-container">
+                <div class="level-display">
+                    LEVEL <span id="fitnessLevel">1</span>
+                </div>
+                <div class="xp-bar-wrapper">
+                    <div class="xp-bar-fill" id="xpBarFill"></div>
+                    <div class="xp-bar-text" id="xpBarText">0 / 100 XP</div>
+                </div>
+            </div>
             <div id="studentGoal" class="info-item goal"></div>
             <div class="info-item">Slot: <span id="studentSlot"></span></div>
             <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
@@ -719,6 +728,9 @@
         <h1>🏆 Hall of Fame</h1>
         <p>Celebrate your consistency and hard work. See how you rank among your peers!</p>
     </div>
+
+
+
     <div class="progress-trackers-container">
 
     <div class="progress-card">
@@ -735,20 +747,23 @@
             <div class="progress-bar-container">
                 <div class="progress-bar-fill" id="consistency-progress-fill"></div>
             </div>
-            <p class="progress-text" id="consistency-progress-text">0 / 10 Day Streak</p>
+            <p class="progress-text" id="consistency-progress-text">
+                <span id="current-streak">0 / 10 Day Streak</span>
+                <span class="personal-best-streak" id="best-streak"></span>
+            </p>
         </div>
     </div>
 
-    <div class="progress-card">
-        <img src="/assets/perfect-month-DIfjwbNo.png" alt="Perfect Month" class="progress-badge-img">
-        <div class="progress-info">
-            <h4>Perfect Month
-              <span class="info-icon" 
+<div class="progress-card">
+    <img src="/assets/perfect-month-DIfjwbNo.png" alt="Perfect 30 Days" class="progress-badge-img">
+    <div class="progress-info">
+        <h4>
+            Perfect 30 Days <span class="info-icon" 
                   data-bs-toggle="tooltip" 
                   data-bs-placement="top"
-                  title="Attend the gym (or be on approved leave) for all working days (Mon-Sat) in a single calendar month. Badges are awarded weekly.">
-                  &#9432;
-            </h4>
+                  title="Attend on 26 working days (Mon-Sat) within any 30-day period. Badges are awarded weekly."> &#9432;
+            </span>
+        </h4>
             <div class="progress-bar-container">
                 <div class="progress-bar-fill" id="perfect-month-progress-fill"></div>
             </div>
@@ -773,22 +788,22 @@
         </div>
     </div>
 
-    <div class="progress-card">
-        <img src="/assets/milestone-lift-zEwHNZv9.png" alt="Milestone Lift" class="progress-badge-img">
-        <div class="progress-info">
-            <h4>Milestone Lift
-              <span class="info-icon" 
-                  data-bs-toggle="tooltip" 
-                  data-bs-placement="top"
-                  title="Complete a new fitness test roughly every 90 days to track your improvement and work towards this badge.">
-                  &#9432;
-            </h4>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill" id="milestone-lift-progress-fill"></div>
-            </div>
-            <p class="progress-text" id="milestone-lift-progress-text">0 / 90 Days to Next Test</p>
-        </div>
-    </div>
+      <div class="progress-card">
+          <img src="/assets/milestone-lift-zEwHNZv9.png" alt="Milestone Lift" class="progress-badge-img">
+          <div class="progress-info">
+              <h4>
+                  Milestone Lift
+                  <span class="info-icon" 
+                        data-bs-toggle="tooltip" 
+                        data-bs-placement="top"
+                        title="Achieve a 5% or greater 'Total' score improvement between two fitness tests."> &#9432;
+                  </span>
+              </h4>
+              <div class="progress-bar-container">
+                  <div class="progress-bar-fill" id="milestone-lift-progress-fill"></div>
+              </div>
+              <p class="progress-text" id="milestone-lift-progress-text">Take a test to start tracking!</p> </div>
+      </div>
 </div>
 
     <div class="fame-grid">
