@@ -32,7 +32,7 @@ async function getStudentSession() {
 
 
     // Load extra info (Darajah, Goal etc.)
-    fetch(`/api/student-info/${studentTR}`, {
+    fetch(`/api/student-info/me`, {
       method: 'GET',
       credentials: 'include' // ✅ Include cookies here too
     })
@@ -94,11 +94,13 @@ function loadAttendance() {
         return;
     }
 
-    fetch(`/api/student-attendance/${selectedWeek}/${studentTR}`)
-        .then(res => res.json())
-        .then(data => {
-            const tbody = document.querySelector('#attendanceTable tbody');
-            tbody.innerHTML = '';
+    fetch(`/api/student-attendance/${selectedWeek}/me`, {
+    method: 'GET',
+    credentials: 'include'
+}).then(res => res.json())
+  .then(data => {
+      const tbody = document.querySelector('#attendanceTable tbody');
+      tbody.innerHTML = '';
 
             if (data.length > 0) {
                 const student = data[0];

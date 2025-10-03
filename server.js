@@ -584,8 +584,13 @@ app.put('/api/students/status/:TR', async (req, res) => {
 });
 
 
-app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
-    const { weekId, tr } = req.params;
+app.get('/api/student-attendance/:weekId/me', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+
+    const { weekId } = req.params;
+    const { TR } = req.session.user;
 
     try {
         // Get week start date
@@ -603,7 +608,7 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
         // Fetch IsPresent and OnLeave flags for each day in the week
         const result = await pool.request()
             .input('WeekID', sql.Int, weekId)
-            .input('TR', sql.Int, tr)
+            .input('TR', sql.Int, TR)
             .query(`
                 SELECT 
                     M.Name,
@@ -620,7 +625,7 @@ app.get('/api/student-attendance/:weekId/:tr', async (req, res) => {
         
         // Create a clean record for the student
         const record = {
-            TR: tr,
+            TR: TR,
             Name: studentName,
             WeekStartDate: startDate,
             Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: ''
@@ -662,12 +667,16 @@ app.get('/api/weeks', async (req, res) => {
     }
 });
 
-app.get('/api/student-info/:tr', async (req, res) => {
-  const { tr } = req.params;
+app.get('/api/student-info/me', async (req, res) => {
+  if (!req.session.user || !req.session.user.TR) {
+    return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+  }
 
+  const { TR } = req.session.user;
+  
   try {
     const result = await pool.request()
-      .input('TR', sql.Int, tr)
+      .input('TR', sql.Int, TR)   // <-- FIXED here, using TR not tr
       .query(`
         SELECT 
           M.Name, 
@@ -690,6 +699,7 @@ app.get('/api/student-info/:tr', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 
 app.get('/api/student/eligible-weeks', async (req, res) => {
@@ -1036,7 +1046,7 @@ app.post('/api/test-login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        req.session.currentTR = username; // Save TR as session
+        req.session.user = { TR: username };
         return res.json({ message: 'Login successful' });
     } catch (err) {
         console.error(err);
@@ -1503,10 +1513,10 @@ app.post('/api/get-or-create-week', async (req, res) => {
 
 
 app.get('/api/current-tr', (req, res) => {
-    if (!req.session.currentTR) {
+    if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ message: 'Not logged in' });
     }
-    res.json({ tr: req.session.currentTR });
+    res.json({ tr: req.session.user.TR });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -2595,21 +2605,28 @@ app.post('/api/attendance/bulk-leave', async (req, res) => {
 //-------------------------------------------------------------------------------------------
 
 // CORRECTED FITNESS TEST ROUTE
-app.get('/api/testmaster/:tr', async (req, res) => {
-    const tr = req.params.tr;
+app.get('/api/testmaster/me', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+
+    const TR = req.session.user.TR; // ✅ from session
+
     try {
         const result = await pool.request() 
-            .input('tr', sql.Int, tr)
+            .input('TR', sql.Int, TR)
             .query(`
                 SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
-                FROM TestMaster WHERE TR = @tr
+                FROM TestMaster WHERE TR = @TR
             `);
+
         res.json(result.recordset[0] || {});
     } catch (err) {
         console.error('Error fetching TestMaster:', err);
         res.status(500).json({ error: 'Failed to fetch student data' });
     }
 });
+
 
 
 app.post('/api/testrecords', async (req, res) => {
@@ -2654,11 +2671,16 @@ app.post('/api/testrecords', async (req, res) => {
 });
 
 
-app.get('/api/testrecords/:tr', async (req, res) => {
-    const tr = req.params.tr;
+app.get('/api/testrecords/me', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+
+    const TR = req.session.user.TR; // ✅ from session
+
     try {
         const result = await pool.request()
-            .input('TR', sql.Int, tr)
+            .input('TR', sql.Int, TR)
             .query('SELECT * FROM TestRecords WHERE TR = @TR ORDER BY TestLog DESC');
 
         res.status(200).json(result.recordset);
@@ -2667,6 +2689,7 @@ app.get('/api/testrecords/:tr', async (req, res) => {
         res.status(500).json({ error: "Failed to fetch test records" });
     }
 });
+
 
 
 // Add this new route to your API file

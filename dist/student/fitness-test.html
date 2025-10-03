@@ -565,7 +565,10 @@ async function validateStudentSession() {
 
     // Fetch student info from TestMaster
     try {
-      const res = await fetch(`/api/testmaster/${tr}`);
+      const res = await fetch(`/api/testmaster/me`, {
+        method: 'GET',
+        credentials: 'include'
+      });
       const student = await res.json();
 
       if (!student || !student.Name) throw new Error("Student not found in TestMaster");
@@ -1081,10 +1084,13 @@ function renderProgressBar(records) {
 }
 
 
-async function loadTestHistory(tr) {
+async function loadTestHistory() {
     // Swal.showLoading();
     try {
-        const response = await fetch(`/api/testrecords/${tr}`);
+        const response = await fetch(`/api/testrecords/me`, {
+            method: 'GET',
+            credentials: 'include'
+        });
         const records = await response.json();
         const saveBtn = document.getElementById('saveBtn');
         const saveWarning = document.getElementById('saveWarning');
