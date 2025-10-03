@@ -1081,23 +1081,31 @@ async function loadAchievementLeaderboard() {
     }
 }
 
-/**
- * Fetches and renders the logged-in student's earned achievements.
- */
+// REPLACE your old loadStudentAchievements function with this one
+
 async function loadStudentAchievements() {
     const gridElement = document.getElementById('achievementsGrid');
-    gridElement.innerHTML = '<div class="loading">Loading your achievements...</div>'; // Show loader
+    gridElement.innerHTML = '<div class="loading">Loading your achievements...</div>';
     try {
         const res = await fetch('/api/student/achievements', { credentials: 'include' });
         const result = await res.json();
 
         if (result.success && result.data.length > 0) {
-            gridElement.innerHTML = ''; // Clear loader
+            gridElement.innerHTML = '';
+            
+            // --- Check for New Badges ---
+            const earnedBadgeIDs = result.data.map(b => b.AchievementName); // Use name as unique ID
+            const seenBadges = JSON.parse(localStorage.getItem('seenBadges') || '[]');
+            
             result.data.forEach(badge => {
+                // If this badge has NOT been seen before, show animation
+                if (!seenBadges.includes(badge.AchievementName)) {
+                    showBadgeUnlockAnimation(badge);
+                }
+                
+                // Render the badge card in the trophy case
                 const badgeCard = document.createElement('div');
                 badgeCard.className = 'badge-card';
-                
-                // Add a little sparkle effect container
                 badgeCard.innerHTML = `
                     <div class="sparkle-wrapper">
                         <img src="${badge.BadgeImageURL}" alt="${badge.AchievementName}" class="badge-image">
@@ -1110,6 +1118,10 @@ async function loadStudentAchievements() {
                 `;
                 gridElement.appendChild(badgeCard);
             });
+            
+            // Update localStorage with all currently earned badges
+            localStorage.setItem('seenBadges', JSON.stringify(earnedBadgeIDs));
+
         } else {
             gridElement.innerHTML = '<div class="loading">You haven\'t earned any badges yet. Keep going!</div>';
         }
@@ -1122,7 +1134,9 @@ async function loadStudentAchievements() {
 /**
  * Fetches and renders the live progress towards achievements.
  */
-// REPLACE the old loadAchievementProgress function with this one
+
+// REPLACE your old loadAchievementProgress function with this one
+
 async function loadAchievementProgress() {
     try {
         const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
@@ -1131,42 +1145,67 @@ async function loadAchievementProgress() {
         if (result.success) {
             const progress = result.data;
             
-            // 1. Update Consistency King
+            // 1. Update Consistency King (with Personal Best)
             let consistencyPercent = (progress.consistency.current / progress.consistency.target) * 100;
             document.getElementById('consistency-progress-fill').style.width = `${Math.min(consistencyPercent, 100)}%`;
-            if (consistencyPercent >= 100) {
-                document.getElementById('consistency-progress-text').textContent = "Goal Met! Awaiting Sunday's Award";
-            } else {
-                document.getElementById('consistency-progress-text').textContent = `${progress.consistency.current} / ${progress.consistency.target} Day Streak`;
+            document.getElementById('current-streak').textContent = `${progress.consistency.current} / ${progress.consistency.target} Day Streak`;
+            if(progress.consistency.personalBest > 0) {
+                 document.getElementById('best-streak').textContent = `Best: ${progress.consistency.personalBest}`;
             }
 
-            // 2. Update Perfect Month
+            // 2. Update Perfect 30 Days
             let monthPercent = (progress.perfectMonth.current / progress.perfectMonth.target) * 100;
             document.getElementById('perfect-month-progress-fill').style.width = `${Math.min(monthPercent, 100)}%`;
-            if (monthPercent >= 100 && progress.perfectMonth.target > 0) {
-                document.getElementById('perfect-month-progress-text').textContent = "All Days Attended! Awaiting Sunday's Award";
+            if (monthPercent >= 100) {
+                document.getElementById('perfect-month-progress-text').textContent = "Goal Met! Awaiting Sunday's Award";
             } else {
-                document.getElementById('perfect-month-progress-text').textContent = `${progress.perfectMonth.current} / ${progress.perfectMonth.target} Days Attended This Month`;
+                document.getElementById('perfect-month-progress-text').textContent = `${progress.perfectMonth.current} / ${progress.perfectMonth.target} Days in last 30`;
             }
             
-            // 3. Update Social Butterfly
+            // 3. Update Social Butterfly (with weekly rank)
             let rank = progress.socialButterfly.current_rank;
             let butterflyPercent = (rank > 0 && rank <= 3) ? 100 : (rank > 3 && rank <= 10 ? (10 - rank) / 7 * 80 : 10);
             document.getElementById('social-butterfly-progress-fill').style.width = `${butterflyPercent}%`;
-            if (rank > 0 && rank <= 3) {
-                document.getElementById('social-butterfly-progress-text').textContent = `Rank #${rank} - Awaiting Sunday's Award!`;
+             if (rank > 0 && rank <= 3) {
+                document.getElementById('social-butterfly-progress-text').textContent = `Rank #${rank} (Weekly) - Awaiting Award!`;
             } else {
-                document.getElementById('social-butterfly-progress-text').textContent = `Current Rank: #${rank || 'N/A'}`;
+                document.getElementById('social-butterfly-progress-text').textContent = `Current Weekly Rank: #${rank || 'N/A'}`;
             }
             
-            // 4. Update Milestone Lift
-            let milestonePercent = (progress.milestoneLift.current / progress.milestoneLift.target) * 100;
+            // 4. Update Milestone Lift (with % improvement)
+            const { current_improvement, target_improvement, previous_score, current_score } = progress.milestoneLift;
+            let milestonePercent = (current_improvement / target_improvement) * 100;
             document.getElementById('milestone-lift-progress-fill').style.width = `${Math.min(milestonePercent, 100)}%`;
-            document.getElementById('milestone-lift-progress-text').textContent = `${progress.milestoneLift.current} / ${progress.milestoneLift.target} Days to Next Progress Check`;
+            if(current_score === 'N/A'){
+                 document.getElementById('milestone-lift-progress-text').textContent = "Take 2+ tests to see progress";
+            } else {
+                 document.getElementById('milestone-lift-progress-text').textContent = `Prev: ${previous_score}, Current: ${current_score} (+${current_improvement.toFixed(1)}%)`;
+            }
         }
     } catch (err) {
         console.error("Could not load achievement progress:", err);
     }
+}
+
+
+// ADD this new function to student.js
+
+function showBadgeUnlockAnimation(badge) {
+    Swal.fire({
+        title: 'BADGE UNLOCKED!',
+        html: `
+            <div class="badge-unlocked-animation">
+                <img src="${badge.BadgeImageURL}" alt="${badge.AchievementName}" class="badge-unlocked-image">
+            </div>
+            <h3 style="color:#00FFEA; margin-top:1rem;">${badge.AchievementName}</h3>
+            <p style="color:#bdc3c7;">${badge.Description}</p>
+        `,
+        background: '#2c3e50',
+        color: '#ffffff',
+        showConfirmButton: true,
+        confirmButtonText: 'Awesome!',
+        confirmButtonColor: '#4CAF50'
+    });
 }
 //----------------------------------------------------------------------------------------------------------
 // --- DOM CONTENT LOADED EVENT ---

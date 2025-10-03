@@ -988,3 +988,62 @@ td iframe {
     margin: 0;
     font-weight: 500;
 }
+/* =================================================================== */
+/* 13. ENHANCED GAMIFICATION STYLES
+/* =================================================================== */
+
+/* For the Consistency King personal best stat */
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.personal-best-streak {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* For the info icon tooltip */
+.info-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    color: #6c757d;
+    text-align: center;
+    line-height: 16px;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+/* Badge Unlocked Animation */
+.badge-unlocked-animation {
+    padding: 2rem 0;
+}
+.badge-unlocked-image {
+    width: 150px;
+    height: 150px;
+    animation: badge-reveal 0.8s ease-out forwards, float 3s 0.8s ease-in-out infinite;
+}
+
+@keyframes badge-reveal {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+    80% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+    }
+}

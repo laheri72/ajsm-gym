@@ -3090,140 +3090,158 @@ app.get('/api/staff/leaves/history', async (req, res) => {
 // =================================================================
 
 
-// =================================================================== //
-// --- 🏆 ACHIEVEMENT ENGINE (CORRECTED "FIRE-AND-FORGET" VERSION) ---
-// =================================================================== //
+// ======================================================================================= //
+// --- 🏆 ACHIEVEMENTS & GAMIFICATION API (REVISED & ENHANCED LOGIC) ---
+// ======================================================================================= //
 
-// This is the complete, long-running process, now safely in its own function.
+// This is the complete, long-running process with updated logic.
 async function runAchievementEvaluation() {
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
 
-        // --- 1. Social Butterfly (Previous Week Leaderboard) ---
+        // --- 1. Social Butterfly (Previous Week Leaderboard with DENSE_RANK for ties) ---
         const lastWeekStart = moment.tz("Asia/Kolkata").subtract(1, 'weeks').startOf('isoWeek').toDate();
         const lastWeekEnd = moment.tz("Asia/Kolkata").subtract(1, 'weeks').endOf('isoWeek').toDate();
 
         const leaderboardRequest = new sql.Request(transaction);
+        // REVISED LOGIC: Uses DENSE_RANK() to correctly handle ties.
         const leaderboardResult = await leaderboardRequest
             .input('WeekStart', sql.DateTime, lastWeekStart)
             .input('WeekEnd', sql.DateTime, lastWeekEnd)
             .query(`
-                WITH AttendanceScores AS (
-                    SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 GROUP BY TR
-                ), LogScores AS (
-                    SELECT P.TR, COUNT(L.LogID) as TotalBodyParts, COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays FROM TrainingPlan P JOIN TrainingLog L ON P.PlanID = L.PlanID WHERE P.CreatedAt BETWEEN @WeekStart AND @WeekEnd GROUP BY P.TR
+                WITH Scores AS (
+                    SELECT M.TR, (ISNULL(A.AttendanceCount, 0) + ISNULL(L.WorkoutDays, 0)) AS Score
+                    FROM Master M
+                    LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 GROUP BY TR) A ON M.TR = A.TR
+                    LEFT JOIN (SELECT TR, COUNT(*) AS WorkoutDays FROM TrainingPlan WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd GROUP BY TR) L ON M.TR = L.TR
+                    WHERE M.Status = 'Active'
+                ),
+                Ranks AS (
+                    SELECT TR, DENSE_RANK() OVER (ORDER BY Score DESC) as rank FROM Scores WHERE Score > 0
                 )
-                SELECT TOP 3 M.TR FROM Master M
-                LEFT JOIN AttendanceScores A ON M.TR = A.TR
-                LEFT JOIN LogScores T ON M.TR = T.TR
-                WHERE M.Status = 'Active'
-                ORDER BY COALESCE(A.AttendanceCount, 0) DESC, COALESCE(T.WorkoutDays, 0) DESC, COALESCE(T.TotalBodyParts, 0) DESC;
+                SELECT TR FROM Ranks WHERE rank <= 3;
             `);
 
         const socialButterflyID = 3;
         for (const winner of leaderboardResult.recordset) {
             const checkSocialRequest = new sql.Request(transaction);
-            const checkRes = await checkSocialRequest.input('TR', winner.TR).query(`
-                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR AND DateEarned > DATEADD(day, -7, GETUTCDATE())
-            `);
+            const checkRes = await checkSocialRequest.input('TR', winner.TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${socialButterflyID} AND TR = @TR AND DateEarned > DATEADD(day, -7, GETUTCDATE())`);
             if (checkRes.recordset.length === 0) {
                 const insertSocialRequest = new sql.Request(transaction);
                 await insertSocialRequest.input('TR', winner.TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${socialButterflyID})`);
             }
         }
 
-        // --- 2. Evaluate Individual Achievements (Perfect Month, Consistency King) ---
-        const studentsResult = await new sql.Request(transaction).query(`SELECT TR FROM Master WHERE Status = 'Active'`);
+        // --- 2. Evaluate Individual Achievements for all active students ---
+        const studentsResult = await new sql.Request(transaction).query(`SELECT TR, JoinedAt FROM Master WHERE Status = 'Active'`);
         
         for (const student of studentsResult.recordset) {
-            const tr = student.TR;
+            const { TR, JoinedAt } = student;
             
-            // --- 2a. Perfect Month Check ---
-            const prevMonthStart = moment.tz("Asia/Kolkata").subtract(1, 'month').startOf('month');
-            const prevMonthEnd = moment.tz("Asia/Kolkata").subtract(1, 'month').endOf('month');
-            const context = prevMonthStart.format('MMMM YYYY');
+            // --- 2a. "Your Perfect 30 Days" Check (Formerly Perfect Month) ---
             const perfectMonthID = 1;
+            // REVISED LOGIC: Checks for perfect attendance in a rolling 30-day period.
+            const thirtyDaysAgo = moment.tz("Asia/Kolkata").subtract(30, 'days').toDate();
+            if (moment(JoinedAt).isBefore(thirtyDaysAgo)) { // Only check for students who have been members for at least 30 days.
+                const checkPerfectRequest = new sql.Request(transaction);
+                const checkPerfect = await checkPerfectRequest.input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())`);
 
-            const checkPerfectRequest = new sql.Request(transaction);
-            const checkPerfect = await checkPerfectRequest.input('TR', tr).input('Context', context).query(`
-                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${perfectMonthID} AND TR = @TR AND Context = @Context
-            `);
-
-            if (checkPerfect.recordset.length === 0) {
-                let workingDays = 0;
-                let currentDay = prevMonthStart.clone();
-                while (currentDay.isSameOrBefore(prevMonthEnd)) {
-                    if (currentDay.day() !== 0) { workingDays++; }
-                    currentDay.add(1, 'day');
-                }
-                
-                const attendanceCountRequest = new sql.Request(transaction);
-                const attendanceCountRes = await attendanceCountRequest.input('TR', tr).input('Start', prevMonthStart.toDate()).input('End', prevMonthEnd.toDate()).query(`
-                    SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR AND CreatedAt BETWEEN @Start AND @End AND (IsPresent = 1 OR OnLeave = 1)
-                `);
-
-                if (attendanceCountRes.recordset[0]?.AttendedDays >= workingDays) {
-                    const insertPerfectRequest = new sql.Request(transaction);
-                    await insertPerfectRequest.input('TR', tr).input('Context', context).query(`INSERT INTO StudentAchievements (TR, AchievementID, Context) VALUES (@TR, ${perfectMonthID}, @Context)`);
+                if (checkPerfect.recordset.length === 0) {
+                    const attendanceCountRequest = new sql.Request(transaction);
+                    const attendanceCountRes = await attendanceCountRequest.input('TR', TR).input('StartDate', thirtyDaysAgo).query(`
+                        SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays FROM Attendance WHERE TR = @TR AND CreatedAt >= @StartDate AND (IsPresent = 1 OR OnLeave = 1)
+                    `);
+                    
+                    if (attendanceCountRes.recordset[0]?.AttendedDays >= 26) { // 26 working days is a good benchmark for a month
+                        const insertPerfectRequest = new sql.Request(transaction);
+                        await insertPerfectRequest.input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${perfectMonthID})`);
+                    }
                 }
             }
             
-            // --- 2b. Consistency King Check ---
+            // --- 2b. Consistency King Check (with Holiday & Personal Best logic) ---
             const consistencyKingID = 2;
-            const checkConsistencyRequest = new sql.Request(transaction);
-            const checkConsistency = await checkConsistencyRequest.input('TR', tr).query(`
-                SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())
-            `);
+            const workoutDatesRequest = new sql.Request(transaction);
+            const workoutDatesRes = await workoutDatesRequest.input('TR', TR).query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate ASC`);
+            const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
 
-            if (checkConsistency.recordset.length === 0) {
-                const workoutDatesRequest = new sql.Request(transaction);
-                const workoutDatesRes = await workoutDatesRequest.input('TR', tr).query(`
-                    SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate ASC
-                `);
-                
-                const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
-                if (workoutDates.length >= 10) {
-                    let streak = 1;
-                    for (let i = 0; i < workoutDates.length - 1; i++) {
-                        const diff = workoutDates[i+1].diff(workoutDates[i], 'days');
-                        if (diff === 1 || (diff === 2 && workoutDates[i].day() === 6)) {
-                            streak++;
-                        } else {
-                            streak = 1;
+            if (workoutDates.length > 0) {
+                let currentStreak = 1;
+                let longestStreak = 1;
+
+                // REVISED LOGIC: Holiday check integration
+                const holidayCheckRequest = new sql.Request(transaction);
+                const gymHolidaysRes = await holidayCheckRequest.query(`SELECT DISTINCT CAST(A.CreatedAt AS DATE) as holidayDate FROM Attendance A JOIN (SELECT CAST(CreatedAt AS DATE) as date, COUNT(TR) as leaveCount FROM Attendance WHERE OnLeave = 1 GROUP BY CAST(CreatedAt AS DATE)) AS LeaveCounts ON CAST(A.CreatedAt AS DATE) = LeaveCounts.date WHERE LeaveCounts.leaveCount > (SELECT COUNT(*) FROM Master WHERE Status='Active') * 0.5`);
+                const gymHolidays = new Set(gymHolidaysRes.recordset.map(r => moment(r.holidayDate).format('YYYY-MM-DD')));
+
+                for (let i = 0; i < workoutDates.length - 1; i++) {
+                    const diff = workoutDates[i+1].diff(workoutDates[i], 'days');
+                    if (diff === 1 || (diff === 2 && workoutDates[i].day() === 6)) {
+                        currentStreak++;
+                    } else if (diff > 1) {
+                        // Check if days in between were holidays
+                        let isHolidayGap = true;
+                        for (let d = 1; d < diff; d++) {
+                            const checkDate = workoutDates[i].clone().add(d, 'day');
+                            if (checkDate.day() !== 0 && !gymHolidays.has(checkDate.format('YYYY-MM-DD'))) {
+                                isHolidayGap = false;
+                                break;
+                            }
                         }
-                        if (streak >= 10) {
-                            const insertConsistencyRequest = new sql.Request(transaction);
-                            await insertConsistencyRequest.input('TR', tr).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
-                            break;
-                        }
+                        if (isHolidayGap) { currentStreak++; } 
+                        else { currentStreak = 1; }
+                    }
+                    if (currentStreak > longestStreak) { longestStreak = currentStreak; }
+                }
+
+                // Award badge if they hit a 10-day streak
+                const checkConsistencyRequest = new sql.Request(transaction);
+                const checkConsistency = await checkConsistencyRequest.input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${consistencyKingID} AND TR = @TR AND DateEarned > DATEADD(day, -30, GETUTCDATE())`);
+                if (longestStreak >= 10 && checkConsistency.recordset.length === 0) {
+                    const insertConsistencyRequest = new sql.Request(transaction);
+                    await insertConsistencyRequest.input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
+                }
+
+                // Update Personal Best record
+                const updateBestStreakRequest = new sql.Request(transaction);
+                await updateBestStreakRequest.input('TR', TR).input('LongestStreak', longestStreak).query(`UPDATE Master SET BestStreak = @LongestStreak WHERE TR = @TR AND BestStreak < @LongestStreak`);
+            }
+
+            // --- 2c. Milestone Lift Check (New Logic) ---
+            const milestoneLiftID = 4;
+            const testRecordsRequest = new sql.Request(transaction);
+            const testRecordsRes = await testRecordsRequest.input('TR', TR).query(`SELECT TOP 2 Total FROM TestRecords WHERE TR = @TR ORDER BY CreatedAt DESC`);
+
+            if (testRecordsRes.recordset.length === 2) {
+                const latestScore = testRecordsRes.recordset[0].Total;
+                const previousScore = testRecordsRes.recordset[1].Total;
+                const improvement = ((latestScore - previousScore) / previousScore) * 100;
+
+                if (improvement >= 5) {
+                    const checkMilestoneRequest = new sql.Request(transaction);
+                    const checkMilestone = await checkMilestoneRequest.input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${milestoneLiftID} AND TR = @TR AND DateEarned > DATEADD(day, -90, GETUTCDATE())`);
+                    if (checkMilestone.recordset.length === 0) {
+                        const insertMilestoneRequest = new sql.Request(transaction);
+                        await insertMilestoneRequest.input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${milestoneLiftID})`);
                     }
                 }
             }
         }
-
         await transaction.commit();
         console.log('✅ Background achievement evaluation completed successfully.');
     } catch (err) {
-        if (transaction.active) {
-            await transaction.rollback();
-        }
+        if (transaction.active) await transaction.rollback();
         console.error("❌ Background achievement evaluation failed:", err);
     }
 }
 
-// THE "FIRE-AND-FORGET" API ROUTE
+// THE "FIRE-AND-FORGET" API ROUTE (No changes here, remains the same)
 app.post('/api/achievements/evaluate', (req, res) => {
-    // 1. Check the secret key
-    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') { 
+    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') { // Use your actual secret key
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
-
-    // 2. Immediately send a success response so the client/cron-job doesn't time out
     res.status(202).json({ success: true, message: 'Achievement evaluation process has been initiated in the background.' });
-
-    // 3. Start the long process without awaiting it. The server will now work on this
-    //    while the client has already received its "OK" response.
     runAchievementEvaluation();
 });
 
@@ -3324,67 +3342,77 @@ app.get('/api/student/achievements/progress', async (req, res) => {
 // --- Helper functions for the progress API ---
 
 async function getConsistencyProgress(tr) {
-    const workoutDatesRes = await pool.request().input('TR', sql.Int, tr)
-        .query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR ORDER BY workoutDate DESC`);
-    
-    const workoutDates = workoutDatesRes.recordset.map(r => moment(r.workoutDate));
-    if (workoutDates.length === 0) return { current: 0, target: 10 };
+    // Single query: fetch workout dates and personal best
+    const res = await pool.request()
+        .input('TR', sql.Int, tr)
+        .query(`
+            SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate
+            FROM TrainingPlan
+            WHERE TR = @TR
+            ORDER BY workoutDate DESC;
 
-    // Check if the last workout was today or yesterday (or Saturday if today is Monday)
+            SELECT BestStreak FROM Master WHERE TR = @TR;
+        `);
+
+    // First result set: workout dates
+    const workoutDates = res.recordsets[0].map(r => moment(r.workoutDate));
+    // Second result set: personal best
+    const personalBest = res.recordsets[1][0]?.BestStreak || 0;
+
+    if (workoutDates.length === 0) {
+        return { current: 0, target: 10, personalBest };
+    }
+
+    // Compute current streak
     const today = moment.tz("Asia/Kolkata").startOf('day');
     const lastWorkout = workoutDates[0];
     const diffFromToday = today.diff(lastWorkout, 'days');
-    
+
     let currentStreak = 0;
     if (diffFromToday <= 1 || (diffFromToday === 2 && today.day() === 1)) {
         currentStreak = 1;
         for (let i = 0; i < workoutDates.length - 1; i++) {
-            const diff = workoutDates[i].diff(workoutDates[i+1], 'days');
-            if (diff === 1 || (diff === 2 && workoutDates[i].day() === 1)) { // Gap after a Sunday
-                 currentStreak++;
+            const diff = workoutDates[i].diff(workoutDates[i + 1], 'days');
+            if (diff === 1 || (diff === 2 && workoutDates[i].day() === 1)) {
+                currentStreak++;
             } else {
                 break;
             }
         }
     }
-    return { current: currentStreak, target: 10 };
+
+    return { current: currentStreak, target: 10, personalBest };
 }
 
-async function getPerfectMonthProgress(tr) {
-    const today = moment.tz("Asia/Kolkata");
-    const startOfMonth = today.clone().startOf('month');
-    let totalWorkingDaysSoFar = 0;
-    
-    let day = startOfMonth.clone();
-    while (day.isSameOrBefore(today)) {
-        if (day.day() !== 0) { // Not Sunday
-            totalWorkingDaysSoFar++;
-        }
-        day.add(1, 'day');
-    }
 
+async function getPerfectMonthProgress(tr) {
+    // REVISED LOGIC: Calculate progress towards the rolling 30-day goal
+    const thirtyDaysAgo = moment.tz("Asia/Kolkata").subtract(30, 'days').toDate();
     const attendanceRes = await pool.request().input('TR', sql.Int, tr)
-        .input('StartOfMonth', sql.Date, startOfMonth.toDate())
-        .input('Today', sql.Date, today.toDate())
-        .query(`SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as count FROM Attendance WHERE TR = @TR AND (IsPresent = 1 OR OnLeave = 1) AND CreatedAt BETWEEN @StartOfMonth AND @Today`);
+        .input('StartDate', sql.Date, thirtyDaysAgo)
+        .query(`SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as count FROM Attendance WHERE TR = @TR AND (IsPresent = 1 OR OnLeave = 1) AND CreatedAt >= @StartDate`);
     
-    return { current: attendanceRes.recordset[0]?.count || 0, target: totalWorkingDaysSoFar };
+    return { current: attendanceRes.recordset[0]?.count || 0, target: 26 };
 }
 
 async function getSocialButterflyProgress(tr) {
-    // This query ranks ALL active students for today's leaderboard to find the user's specific rank
+    // REVISED LOGIC: Calculate rank for the current week so far, not just today
+    const weekStart = moment.tz("Asia/Kolkata").startOf('isoWeek').toDate();
+    const today = moment.tz("Asia/Kolkata").toDate();
+
     const rankRes = await pool.request().input('TR', sql.Int, tr)
+        .input('WeekStart', sql.Date, weekStart)
+        .input('Today', sql.Date, today)
         .query(`
-            DECLARE @Today DATE = CAST(DATEADD(MINUTE, 330, GETUTCDATE()) AS DATE);
             WITH Scores AS (
                 SELECT M.TR, (ISNULL(A.AttendanceCount, 0) + ISNULL(L.WorkoutDays, 0)) AS Score
                 FROM Master M
-                LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE CAST(CreatedAt AS DATE) = @Today AND IsPresent = 1 GROUP BY TR) A ON M.TR = A.TR
-                LEFT JOIN (SELECT TR, COUNT(*) AS WorkoutDays FROM TrainingPlan WHERE CAST(CreatedAt AS DATE) = @Today GROUP BY TR) L ON M.TR = L.TR
+                LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE IsPresent = 1 AND CreatedAt BETWEEN @WeekStart AND @Today GROUP BY TR) A ON M.TR = A.TR
+                LEFT JOIN (SELECT TR, COUNT(DISTINCT CAST(CreatedAt AS DATE)) AS WorkoutDays FROM TrainingPlan WHERE CreatedAt BETWEEN @WeekStart AND @Today GROUP BY TR) L ON M.TR = L.TR
                 WHERE M.Status = 'Active'
             ),
             Ranks AS (
-                SELECT TR, RANK() OVER (ORDER BY Score DESC) as rank FROM Scores
+                SELECT TR, DENSE_RANK() OVER (ORDER BY Score DESC) as rank FROM Scores
             )
             SELECT rank FROM Ranks WHERE TR = @TR;
         `);
@@ -3393,14 +3421,19 @@ async function getSocialButterflyProgress(tr) {
 }
 
 async function getMilestoneLiftProgress(tr) {
-    const lastTestRes = await pool.request().input('TR', sql.Int, tr)
-        .query(`SELECT MAX(CreatedAt) as lastTestDate FROM TestRecords WHERE TR = @TR`);
-    
-    const lastTestDate = lastTestRes.recordset[0]?.lastTestDate;
-    if (!lastTestDate) return { current: 0, target: 90 };
+    // REVISED LOGIC: Calculate % improvement instead of 90-day countdown
+    const testRecordsRes = await pool.request().input('TR', sql.Int, tr)
+        .query(`SELECT TOP 2 Total FROM TestRecords WHERE TR = @TR ORDER BY CreatedAt DESC`);
+        
+    if (testRecordsRes.recordset.length < 2) {
+        return { current_improvement: 0, target_improvement: 5, previous_score: testRecordsRes.recordset[0]?.Total || 'N/A', current_score: 'N/A' };
+    }
 
-    const daysSince = moment.tz("Asia/Kolkata").diff(moment(lastTestDate), 'days');
-    return { current: daysSince, target: 90 };
+    const latestScore = testRecordsRes.recordset[0].Total;
+    const previousScore = testRecordsRes.recordset[1].Total;
+    const improvement = previousScore > 0 ? ((latestScore - previousScore) / previousScore) * 100 : 0;
+
+    return { current_improvement: improvement, target_improvement: 5, previous_score: previousScore, current_score: latestScore };
 }
 
 // =================================================================
