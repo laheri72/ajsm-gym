@@ -327,57 +327,57 @@ const partTips = {
   "Cardio": {
     desc: "Cardio helps burn calories and improve heart health. Aim for 20–30 minutes of moderate to high-intensity cardio, 3–5 times per week.",
     exercises: [
-      { name: "Treadmill Running", img : "../gifs/kory-wagonmaker.gif" },
-      { name: "Jump Rope", img: "../gifs/jumping-rope-brandon-william.gif" }
+      { name: "Treadmill Running", img : "/gifs/kory-wagonmaker.gif" },
+      { name: "Jump Rope", img: "/gifs/jumping-rope-brandon-william.gif" }
     ]
   },
   "Chest": {
     desc: "Chest exercises develop your pectoral muscles and improve upper body strength. Include both pressing and fly movements.",
     exercises: [
-      { name: "Bench Press", img: "../gifs/Barbell-Bench-press.gif" },
-      { name: "Chest Fly", img: "../gifs/03081301-Dumbbell-Fly_Chest-FIX_360.gif" }
+      { name: "Bench Press", img: "/gifs/Barbell-Bench-press.gif" },
+      { name: "Chest Fly", img: "/gifs/03081301-Dumbbell-Fly_Chest-FIX_360.gif" }
     ]
   },
   "Back": {
     desc: "Back training improves posture and builds pulling strength. Mix vertical and horizontal pulling exercises.",
     exercises: [
-      { name: "Pull-Ups", img: "../gifs/butterfly-kipping-pull-up-gif-oblique-slow-motion-butterfly-kipping-pull-up-technique.gif" },
-      { name: "Bent-over Row", img: "../gifs/bai-tap-bent-over-barbell-row.gif" }
+      { name: "Pull-Ups", img: "/gifs/butterfly-kipping-pull-up-gif-oblique-slow-motion-butterfly-kipping-pull-up-technique.gif" },
+      { name: "Bent-over Row", img: "/gifs/bai-tap-bent-over-barbell-row.gif" }
     ]
   },
   "Shoulders": {
     desc: "Target all three deltoid heads (front, side, rear) for well-rounded shoulder strength.",
     exercises: [
-      { name: "Shoulder Press", img: "../gifs/dumbbell-shoulder-press.gif" },
-      { name: "Lateral Raise", img: "../gifs/DB_LAT_RAISE.gif" }
+      { name: "Shoulder Press", img: "/gifs/dumbbell-shoulder-press.gif" },
+      { name: "Lateral Raise", img: "/gifs/DB_LAT_RAISE.gif" }
     ]
   },
   "Biceps": {
     desc: "Biceps curls and pulling movements help build strong, toned arms.",
     exercises: [
-      { name: "Barbell Curl", img: "../gifs/barbellcurl-1509456994.gif" },
-      { name: "Hammer Curl", img: "../gifs/hammer curl.gif" }
+      { name: "Barbell Curl", img: "/gifs/barbellcurl-1509456994.gif" },
+      { name: "Hammer Curl", img: "/gifs/hammer curl.gif" }
     ]
   },
   "Triceps": {
     desc: "Triceps are key for arm size and pushing strength. Use isolation and compound lifts.",
     exercises: [
-      { name: "Triceps Pushdown", img: "../gifs/triceps-pushdown-gif.gif" },
-      { name: "Overhead Extension", img: "../gifs/5e22347fc864160c82d10bfe_overhead-extension-kettlebell-exericse-anabolic-aliens.gif" }
+      { name: "Triceps Pushdown", img: "/gifs/triceps-pushdown-gif.gif" },
+      { name: "Overhead Extension", img: "/gifs/5e22347fc864160c82d10bfe_overhead-extension-kettlebell-exericse-anabolic-aliens.gif" }
     ]
   },
   "Legs": {
     desc: "Leg training builds strength, balance, and coordination. Include squats, lunges, and deadlifts.",
     exercises: [
-      { name: "Squats", img: "../gifs/air-squat-gif-side-view-air-squat-technique.gif" },
-      { name: "Lunges", img: "../gifs/9c198f0c2f2b714d4f7e920bd4ac615e.gif" }
+      { name: "Squats", img: "/gifs/air-squat-gif-side-view-air-squat-technique.gif" },
+      { name: "Lunges", img: "/gifs/9c198f0c2f2b714d4f7e920bd4ac615e.gif" }
     ]
   },
   "Core": {
     desc: "Core workouts improve stability, posture, and total-body strength. Mix planks, crunches, and rotational moves.",
     exercises: [
-      { name: "Plank", img: "../gifs/Plank.gif" },
-      { name: "Russian Twist", img: "../gifs/russian twist.gif" }
+      { name: "Plank", img: "/gifs/Plank.gif" },
+      { name: "Russian Twist", img: "/gifs/russian twist.gif" }
     ]
   }
 };
