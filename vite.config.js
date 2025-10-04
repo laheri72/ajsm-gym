@@ -43,6 +43,7 @@ export default defineConfig({
         staffTest: resolve(__dirname, 'public/staff/test.html'),
         staffAttendance: resolve(__dirname, 'public/staff/attendance.html'),
         staffLeaves: resolve(__dirname, 'public/staff/leaves.html'),
+        staffProfile: resolve(__dirname, 'public/staff/profile.html'),
       },
     },
   },

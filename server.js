@@ -3170,6 +3170,127 @@ app.get('/api/staff/leaves/history', async (req, res) => {
 });
 // =================================================================
 
+// ======================================================================================= //
+// --- Student Profile APIS ---
+// ======================================================================================= //
+// Add this new route to your server.js file
+
+app.get('/api/staff/student-search', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { q } = req.query; // The search term from the frontend
+    const { Branch, Gender } = req.session.user;
+
+    if (!q || q.length < 2) {
+        return res.json({ success: true, data: [] }); // Return empty if query is too short
+    }
+
+    try {
+        const result = await pool.request()
+            .input('SearchTerm', sql.NVarChar, `%${q}%`) // Use wildcards for partial matching
+            .input('Branch', sql.NVarChar, Branch)
+            .input('Gender', sql.NVarChar, Gender)
+            .query(`
+                SELECT TOP 10 TR, Name 
+                FROM Master
+                WHERE (CAST(TR AS NVARCHAR(20)) LIKE @SearchTerm OR Name LIKE @SearchTerm)
+                  AND Branch = @Branch
+                  AND Gender = @Gender
+                ORDER BY Name ASC;
+            `);
+        
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error("Error during student search:", err);
+        res.status(500).json({ success: false, message: 'Failed to search for students.' });
+    }
+});
+
+// Add this new route to your server.js file
+
+app.get('/api/staff/student-profile/:tr', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { tr } = req.params;
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        // First, verify this staff member is allowed to view this student
+        const authRequest = pool.request();
+        const authResult = await authRequest
+            .input('TR', sql.Int, tr)
+            .input('Branch', sql.NVarChar, Branch)
+            .input('Gender', sql.NVarChar, Gender)
+            .query(`SELECT 1 FROM Master WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+        
+        if (authResult.recordset.length === 0) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to view this student.' });
+        }
+
+        // Run all queries in parallel for efficiency
+        const [
+            progress,
+            basicInfoRes,
+            achievementsRes,
+            workoutCalendarRes,
+            workoutLogsRes,
+            fitnessTestsRes,
+            attendanceHistoryRes,
+            leaveHistoryRes
+        ] = await Promise.all([
+            // 1. Get Progress Data (re-using our helper functions)
+            Promise.all([
+                getConsistencyProgress(tr),
+                getPerfectMonthProgress(tr),
+                getSocialButterflyProgress(tr),
+                getMilestoneLiftProgress(tr)
+            ]).then(([consistency, perfectMonth, socialButterfly, milestoneLift]) => ({ consistency, perfectMonth, socialButterfly, milestoneLift })),
+            
+            // 2. Get Basic Info
+            pool.request().input('TR', sql.Int, tr).query(`SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName FROM Master M LEFT JOIN Slots S ON M.SlotID = S.SlotID WHERE M.TR = @TR;`),
+            
+            // 3. Get Earned Achievements
+            pool.request().input('TR', sql.Int, tr).query(`SELECT A.AchievementName, A.Description, A.BadgeImageURL, SA.DateEarned FROM StudentAchievements SA JOIN Achievements A ON SA.AchievementID = A.AchievementID WHERE SA.TR = @TR ORDER BY SA.DateEarned DESC;`),
+            
+            // 4. Get Workout Calendar Data (for Heatmap)
+            pool.request().input('TR', sql.Int, tr).query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate FROM TrainingPlan WHERE TR = @TR AND CreatedAt > DATEADD(month, -6, GETDATE());`),
+            
+            // 5. Get Workout Log History
+            pool.request().input('TR', sql.Int, tr).query(`SELECT P.CreatedAt AS LogDate, STRING_AGG(B.Name, ', ') AS BodyParts FROM TrainingPlan P JOIN TrainingLog L ON P.PlanID = L.PlanID JOIN BodyParts B ON L.BodyPartID = B.BodyPartID WHERE P.TR = @TR GROUP BY P.PlanID, P.CreatedAt ORDER BY P.CreatedAt DESC;`),
+            
+            // 6. Get Fitness Test History
+            pool.request().input('TR', sql.Int, tr).query(`SELECT * FROM TestRecords WHERE TR = @TR ORDER BY CreatedAt ASC;`),
+            
+            // 7. Get Full Attendance History
+            pool.request().input('TR', sql.Int, tr).query(`SELECT CreatedAt, IsPresent, OnLeave, DurationInMinutes FROM Attendance WHERE TR = @TR ORDER BY CreatedAt DESC;`),
+            
+            // 8. Get Leave Request History
+            pool.request().input('TR', sql.Int, tr).query(`SELECT * FROM LeaveRequests WHERE TR = @TR ORDER BY LeaveStartDate DESC;`)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                progress: progress,
+                basicInfo: basicInfoRes.recordset[0],
+                achievements: achievementsRes.recordset,
+                workoutCalendar: workoutCalendarRes.recordset.map(r => r.workoutDate),
+                workoutLogs: workoutLogsRes.recordset,
+                fitnessTests: fitnessTestsRes.recordset,
+                attendanceHistory: attendanceHistoryRes.recordset,
+                leaveHistory: leaveHistoryRes.recordset
+            }
+        });
+
+    } catch (err) {
+        console.error("Error fetching full student profile:", err);
+        res.status(500).json({ success: false, message: 'Failed to fetch student profile.' });
+    }
+});
 
 // ======================================================================================= //
 // --- 🏆 ACHIEVEMENTS & GAMIFICATION API (REVISED & ENHANCED LOGIC) ---
