@@ -1,6 +1,7 @@
 // Import required modules
 
 const express = require('express');
+const bcrypt = require('bcrypt');
 const sql = require('mssql');
 const router = express.Router();
 const cors = require('cors');
@@ -931,75 +932,78 @@ app.get('/api/session-user', (req, res) => {
 
 
 
-app.post('/api/trainer-login', async (req, res) => {
-  const { username, password } = req.body;
+// Replace the old /api/trainer-login route
+app.post('/api/trainer-login', async (req, res, next) => {
+    const { username, password } = req.body;
+    try {
+        // Step 1: Find the user by username ONLY
+        const result = await pool.request()
+            .input('Username', sql.NVarChar(50), username)
+            .query('SELECT Username, Password, Branch, Gender, Role FROM PassBank WHERE Username = @Username');
 
-  try {
-    const request = pool.request();
-    request.input('Username', sql.NVarChar(50), username);
-    request.input('Password', sql.NVarChar(50), password);
+        if (result.recordset.length === 0) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
 
-    const result = await request.query(`
-      SELECT Username, Branch, Gender, Role FROM PassBank
-      WHERE Username = @Username AND Password = @Password
-    `);
+        const user = result.recordset[0];
+        const hashedPassword = user.Password;
 
-    if (result.recordset.length === 1) {
-      const { Username, Branch, Gender, Role } = result.recordset[0];
+        // Step 2: Compare the provided password with the stored hash
+        const match = await bcrypt.compare(password, hashedPassword);
 
-      if (Role !== 'Trainer') {
-        return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
-      }
-
-      req.session.user = { Username, Branch, Gender, Role };
-
-      return res.json({ success: true, role: Role });
-
-    } else {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        if (match) {
+            // Passwords match
+            if (user.Role !== 'Trainer') {
+                return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
+            }
+            req.session.user = { Username: user.Username, Branch: user.Branch, Gender: user.Gender, Role: user.Role };
+            return res.json({ success: true, role: user.Role });
+        } else {
+            // Passwords do not match
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+    } catch (err) {
+        next(err);
     }
-  } catch (err) {
-    console.error('Trainer login error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
 });
 
 
 
 
+// Replace the old /api/staff-login route
+app.post('/api/staff-login', async (req, res, next) => {
+    const { username, password } = req.body;
+    try {
+        // Step 1: Find the user by username ONLY
+        const result = await pool.request()
+            .input('Username', sql.NVarChar(50), username)
+            .query('SELECT Username, Password, Branch, Gender, Role FROM PassBank WHERE Username = @Username');
 
+        if (result.recordset.length === 0) {
+            // Security: Use a generic error message for both wrong username and wrong password
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
 
-app.post('/api/staff-login', async (req, res) => {
-  const { username, password } = req.body;
+        const user = result.recordset[0];
+        const hashedPassword = user.Password;
 
-  try {
-    const request = pool.request();
-    request.input('Username', sql.NVarChar(50), username);
-    request.input('Password', sql.NVarChar(50), password);
+        // Step 2: Compare the provided password with the stored hash
+        const match = await bcrypt.compare(password, hashedPassword);
 
-    const result = await request.query(`
-      SELECT Username, Branch, Gender, Role FROM PassBank
-      WHERE Username = @Username AND Password = @Password
-    `);
-
-    if (result.recordset.length === 1) {
-      const { Username, Branch, Gender, Role } = result.recordset[0];
-
-      if (Role === 'Trainer') {
-        return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
-      }
-
-      req.session.user = { Username, Branch, Gender, Role };
-
-      return res.json({ success: true, user: { Username, Branch, Gender, Role } });
-
-    } else {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        if (match) {
+            // Passwords match
+            if (user.Role === 'Trainer') {
+                return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
+            }
+            req.session.user = { Username: user.Username, Branch: user.Branch, Gender: user.Gender, Role: user.Role };
+            return res.json({ success: true, user: req.session.user });
+        } else {
+            // Passwords do not match
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+    } catch (err) {
+        next(err);
     }
-  } catch (err) {
-    console.error('Staff login error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
 });
 
 
@@ -1019,12 +1023,31 @@ app.get('/api/admin/users/:branch', async (req, res) => {
     }
 });
 
-app.post('/api/admin/add-user', async (req, res) => {
+// Replace the old /api/admin/add-user route
+app.post('/api/admin/add-user', async (req, res, next) => {
     const { username, password, gender, role, branch } = req.body;
     try {
-        await pool.request() 
+        // --- NEW: Check for duplicate username BEFORE doing anything else ---
+        const checkRequest = pool.request();
+        checkRequest.input('username', sql.NVarChar(50), username);
+        const existingUser = await checkRequest.query('SELECT 1 FROM PassBank WHERE Username = @username');
+
+        if (existingUser.recordset.length > 0) {
+            // If a user is found, send a specific, user-friendly error
+            return res.status(409).json({ 
+                success: false, 
+                message: 'This username is already taken. Please choose a different one.' 
+            });
+        }
+        // --- End of new check ---
+
+        // If the username is unique, proceed with hashing and inserting
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        await pool.request()
             .input('username', sql.NVarChar(50), username)
-            .input('password', sql.NVarChar(50), password)
+            .input('password', sql.NVarChar(100), hashedPassword)
             .input('gender', sql.NVarChar(10), gender)
             .input('role', sql.NVarChar(20), role)
             .input('branch', sql.NVarChar(50), branch)
@@ -1034,7 +1057,7 @@ app.post('/api/admin/add-user', async (req, res) => {
             `);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Add user failed' });
+        next(err); // Pass any other errors to the centralized handler
     }
 });
 

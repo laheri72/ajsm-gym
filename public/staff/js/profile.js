@@ -114,43 +114,43 @@ function renderHeader(info) {
     document.getElementById('profileNextLevelXp').textContent = xpForNextLevel;
     document.getElementById('profileXpBarFill').style.width = `${progressPercent}%`;
 }
-// REPLACE your old placeholder renderProgressTrackers function with this one
+
+
 
 function renderProgressTrackers(progress) {
     const container = document.getElementById('profile-progress-trackers');
     if (!container) return;
 
     // --- Calculate percentages and text for each achievement ---
+    const { consistency, perfectMonth, socialButterfly, milestoneLift } = progress;
 
     // 1. Consistency King
-    const consistencyPercent = Math.min((progress.consistency.current / progress.consistency.target) * 100, 100);
-    const consistencyText = `${progress.consistency.current} / ${progress.consistency.target} Day Streak`;
+    const consistencyPercent = Math.min((consistency.current / consistency.target) * 100, 100);
+    const consistencyText = `${consistency.current} / ${consistency.target} Day Streak`;
 
     // 2. Perfect 30 Days
-    const monthPercent = Math.min((progress.perfectMonth.current / progress.perfectMonth.target) * 100, 100);
-    const monthText = (monthPercent >= 100 && progress.perfectMonth.target > 0)
+    const monthPercent = Math.min((perfectMonth.current / perfectMonth.target) * 100, 100);
+    const monthText = (monthPercent >= 100 && perfectMonth.target > 0)
         ? "Goal Met! Awaiting Award"
-        : `${progress.perfectMonth.current} / ${progress.perfectMonth.target} Days in last 30`;
+        : `${perfectMonth.current} / ${perfectMonth.target} Days in last 30`;
 
-    // 3. Social Butterfly
-    const rank = progress.socialButterfly.current_rank;
-    const butterflyPercent = (rank > 0 && rank <= 3) ? 100 : (rank > 3 && rank <= 10 ? (10 - rank) / 7 * 80 : 10);
-    const butterflyText = (rank > 0 && rank <= 3)
-        ? `Rank #${rank} (Weekly) - Awaiting Award!`
-        : `Current Weekly Rank: #${rank || 'N/A'}`;
+    // 3. Social Butterfly (REVISED LOGIC)
+    const butterflyPercent = Math.min((socialButterfly.current / socialButterfly.target) * 100, 100);
+    const butterflyText = (butterflyPercent >= 100)
+        ? `Weekly Score: ${socialButterfly.current} / ${socialButterfly.target} - Great work!`
+        : `Weekly Score: ${socialButterfly.current} / ${socialButterfly.target}`;
 
     // 4. Milestone Lift
-    const { current_improvement, target_improvement, previous_score, current_score } = progress.milestoneLift;
+    const { current_improvement, target_improvement, previous_score, current_score } = milestoneLift;
     const milestonePercent = Math.min((current_improvement / target_improvement) * 100, 100);
     const milestoneText = (current_score === 'N/A')
         ? "Take 2+ tests to see progress"
         : `Prev: ${previous_score}, Current: ${current_score} (+${current_improvement.toFixed(1)}%)`;
 
     // --- Generate the HTML ---
-
     container.innerHTML = `
         <div class="progress-card">
-            <img src="/images/badges/consistency-king.png" alt="Consistency King" class="progress-badge-img">
+            <img src="/images/badges/consistency-king.png" class="progress-badge-img" alt="Consistency King">
             <div class="progress-info">
                 <h4>Consistency King</h4>
                 <div class="progress-bar-container"><div class="progress-bar-fill" style="width: ${consistencyPercent}%;"></div></div>
@@ -158,7 +158,7 @@ function renderProgressTrackers(progress) {
             </div>
         </div>
         <div class="progress-card">
-            <img src="/images/badges/perfect-month.png" alt="Perfect 30 Days" class="progress-badge-img">
+            <img src="/images/badges/perfect-month.png" class="progress-badge-img" alt="Perfect 30 Days">
             <div class="progress-info">
                 <h4>Perfect 30 Days</h4>
                 <div class="progress-bar-container"><div class="progress-bar-fill" style="width: ${monthPercent}%;"></div></div>
@@ -166,7 +166,7 @@ function renderProgressTrackers(progress) {
             </div>
         </div>
         <div class="progress-card">
-            <img src="/images/badges/social-butterfly.png" alt="Social Butterfly" class="progress-badge-img">
+            <img src="/images/badges/social-butterfly.png" class="progress-badge-img" alt="Social Butterfly">
             <div class="progress-info">
                 <h4>Social Butterfly</h4>
                 <div class="progress-bar-container"><div class="progress-bar-fill" style="width: ${butterflyPercent}%;"></div></div>
@@ -174,7 +174,7 @@ function renderProgressTrackers(progress) {
             </div>
         </div>
         <div class="progress-card">
-            <img src="/images/badges/milestone-lift.png" alt="Milestone Lift" class="progress-badge-img">
+            <img src="/images/badges/milestone-lift.png" class="progress-badge-img" alt="Milestone Lift">
             <div class="progress-info">
                 <h4>Milestone Lift</h4>
                 <div class="progress-bar-container"><div class="progress-bar-fill" style="width: ${milestonePercent}%;"></div></div>
@@ -182,6 +182,12 @@ function renderProgressTrackers(progress) {
             </div>
         </div>
     `;
+
+    // Initialize tooltips after rendering the HTML
+    const tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 }
 
     function renderTrophyCase(achievements) {

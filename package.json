@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/laheri72/ajsm-gym#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "connect-mssql": "^1.5.0",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
