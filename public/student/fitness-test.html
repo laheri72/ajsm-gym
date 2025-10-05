@@ -372,7 +372,16 @@
             <form id="testForm">
                 <h5>Enter Fitness Test Data:</h5>
                 <br>
-
+                        <div class="row mb-3">
+                        <div class="col">
+                            <label>Gender</label>
+                            <select name="Gender" class="form-control" required>
+                            <option value="">Select...</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            </select>
+                        </div>
+                        </div>
                 <div class="row mb-3">
                     <div class="col">
                         <label>Weight (kg)</label>
@@ -699,6 +708,9 @@ function generateReport() {
     const Hips = parseFloat(form.querySelector('[name="Hips"]').value);
     const Neck = parseFloat(form.querySelector('[name="Neck"]').value);
     const PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
+    const Gender = form.querySelector('[name="Gender"]').value;
+
+    const Age = studentData?.Age ? parseInt(studentData.Age) : 18; // fallback if missing
 
     const PushUps = parseInt(form.querySelector('[name="PushUps"]').value) || 0;
     const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
@@ -711,7 +723,9 @@ function generateReport() {
         Waist,
         Hips,
         Neck,
-        PulseRate
+        PulseRate,
+        Gender,
+        Age
     };
 
     // BMI + Status
@@ -726,24 +740,31 @@ function generateReport() {
         else calculated.BMIStatus = "Obese";
     }
 
-    // Body Fat %
-    if (Waist && Hips && Neck && Height) {
-        calculated.BodyFat = (
-            495 /
-                (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) -
-            450
-        ).toFixed(1);
+    // Body Fat % → different formula for male/female
+    if (Waist && Neck && Height) {
+        if (Gender === "male") {
+            calculated.BodyFat = (
+                495 / (1.0324 - 0.19077 * Math.log10(Waist - Neck) + 0.15456 * Math.log10(Height)) - 450
+            ).toFixed(1);
+        } else if (Gender === "female" && Hips) {
+            calculated.BodyFat = (
+                495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450
+            ).toFixed(1);
+        }
     }
 
-    // BMR + Calorie Intake
+    // BMR (Mifflin-St Jeor)
     if (Weight && Height) {
-        calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * 18 + 5);
+        if (Gender === "male") {
+            calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age + 5);
+        } else {
+            calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age - 161);
+        }
         calculated.CalorieIntake = Math.round(calculated.BMR * 1.55);
     }
-
-    // VO2 Max
+    // VO2 Max (use actual Age instead of hardcoded 18)
     if (PulseRate) {
-        calculated.VO2Max = Math.round(15 * (220 - 18) / PulseRate);
+        calculated.VO2Max = Math.round(15 * (220 - Age) / PulseRate);
     } else {
         calculated.VO2Max = "N/A";
     }
@@ -887,22 +908,25 @@ async function saveRecord() {
     };
 
     // 🔹 Confirmation SweetAlert before actual save
-    Swal.fire({
-        title: 'Confirm Submission',
-        html: `
-            <p>Please confirm your details before submitting:</p>
-            <ul style="text-align:left">
-                <li><b>Weight:</b> ${body.Weight} kg</li>
-                <li><b>Height:</b> ${body.Height} cm</li>
-                <li><b>BMI:</b> ${body.BMI.toFixed(2)} (${body.BMIStatus})</li>
-                <li><b>Body Fat %:</b> ${body.BodyFat.toFixed(2)}</li>
-                <li><b>BMR:</b> ${body.BMR.toFixed(1)}</li>
-                <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
-                <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
-                <li><b>Grade:</b> ${body.Grade}</li>
-            </ul>
-            <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
-        `,
+Swal.fire({
+    title: 'Confirm Submission',
+    html: `
+        <p>Please confirm your details before submitting:</p>
+        <ul style="text-align:left">
+            <li><b>Age:</b> ${calculated.Age} years</li>
+            <li><b>Gender:</b> ${calculated.Gender || 'Not specified'}</li>
+            <li><b>Weight:</b> ${body.Weight} kg</li>
+            <li><b>Height:</b> ${body.Height} cm</li>
+            <li><b>BMI:</b> ${body.BMI.toFixed(2)} (${body.BMIStatus})</li>
+            <li><b>Body Fat %:</b> ${body.BodyFat.toFixed(2)}</li>
+            <li><b>BMR:</b> ${body.BMR.toFixed(1)}</li>
+            <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
+            <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
+            <li><b>Grade:</b> ${body.Grade}</li>
+        </ul>
+        <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
+    `,
+
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Yes, Submit',
