@@ -1197,14 +1197,14 @@ async function loadAchievementProgress() {
                 document.getElementById('perfect-month-progress-text').textContent = `${progress.perfectMonth.current} / ${progress.perfectMonth.target} Days in last 30`;
             }
             
-            // 3. Update Social Butterfly (with weekly rank)
-            let rank = progress.socialButterfly.current_rank;
-            let butterflyPercent = (rank > 0 && rank <= 3) ? 100 : (rank > 3 && rank <= 10 ? (10 - rank) / 7 * 80 : 10);
-            document.getElementById('social-butterfly-progress-fill').style.width = `${butterflyPercent}%`;
-             if (rank > 0 && rank <= 3) {
-                document.getElementById('social-butterfly-progress-text').textContent = `Rank #${rank} (Weekly) - Awaiting Award!`;
+            // 3. Update Social Butterfly (with new score logic)
+            const { current, target } = progress.socialButterfly;
+            let butterflyPercent = (current / target) * 100;
+            document.getElementById('social-butterfly-progress-fill').style.width = `${Math.min(butterflyPercent, 100)}%`;
+            if (butterflyPercent >= 100) {
+                 document.getElementById('social-butterfly-progress-text').textContent = `Weekly Score: ${current} / ${target} - Great work!`;
             } else {
-                document.getElementById('social-butterfly-progress-text').textContent = `Current Weekly Rank: #${rank || 'N/A'}`;
+                 document.getElementById('social-butterfly-progress-text').textContent = `Weekly Score: ${current} / ${target}`;
             }
             
             // 4. Update Milestone Lift (with % improvement)

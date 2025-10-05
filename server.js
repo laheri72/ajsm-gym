@@ -3662,29 +3662,24 @@ async function getPerfectMonthProgress(tr) {
     return { current: attendanceRes.recordset[0]?.count || 0, target: 26 };
 }
 
-async function getSocialButterflyProgress(tr) {
-    // REVISED LOGIC: Calculate rank for the current week so far, not just today
-    const weekStart = moment.tz("Asia/Kolkata").startOf('isoWeek').toDate();
-    const today = moment.tz("Asia/Kolkata").toDate();
 
-    const rankRes = await pool.request().input('TR', sql.Int, tr)
+async function getSocialButterflyProgress(tr) {
+    // REVISED LOGIC: Calculate the user's personal score for the current week so far.
+    const weekStart = moment.tz("Asia/Kolkata").startOf('isoWeek').toDate();
+    const today = moment.tz("Asia/Kolkata").endOf('day').toDate(); // Use end of day for accuracy
+
+    const scoreRes = await pool.request()
+        .input('TR', sql.Int, tr)
         .input('WeekStart', sql.Date, weekStart)
         .input('Today', sql.Date, today)
         .query(`
-            WITH Scores AS (
-                SELECT M.TR, (ISNULL(A.AttendanceCount, 0) + ISNULL(L.WorkoutDays, 0)) AS Score
-                FROM Master M
-                LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount FROM Attendance WHERE IsPresent = 1 AND CreatedAt BETWEEN @WeekStart AND @Today GROUP BY TR) A ON M.TR = A.TR
-                LEFT JOIN (SELECT TR, COUNT(DISTINCT CAST(CreatedAt AS DATE)) AS WorkoutDays FROM TrainingPlan WHERE CreatedAt BETWEEN @WeekStart AND @Today GROUP BY TR) L ON M.TR = L.TR
-                WHERE M.Status = 'Active'
-            ),
-            Ranks AS (
-                SELECT TR, DENSE_RANK() OVER (ORDER BY Score DESC) as rank FROM Scores
-            )
-            SELECT rank FROM Ranks WHERE TR = @TR;
+            SELECT 
+                (ISNULL((SELECT COUNT(*) FROM Attendance WHERE TR = @TR AND IsPresent = 1 AND CreatedAt BETWEEN @WeekStart AND @Today), 0) + 
+                 ISNULL((SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) FROM TrainingPlan WHERE TR = @TR AND CreatedAt BETWEEN @WeekStart AND @Today), 0)) AS TotalScore;
         `);
     
-    return { current_rank: rankRes.recordset[0]?.rank || 'N/A', target_rank: 3 };
+    // The API now returns a simple score out of a target of 8.
+    return { current: scoreRes.recordset[0]?.TotalScore || 0, target: 8 };
 }
 
 async function getMilestoneLiftProgress(tr) {
