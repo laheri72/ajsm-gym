@@ -95,7 +95,8 @@ document.addEventListener('submit', async function(e) {
     }
 });
 
-// --- NEW: Add Click Handler for the Forgot Password Link ---
+// Replace your existing 'forgotPasswordLink' event listener with this one
+
 document.getElementById('forgotPasswordLink').addEventListener('click', function(e) {
     e.preventDefault();
     const tr = document.getElementById('trNumber').value.trim();
@@ -107,20 +108,49 @@ document.getElementById('forgotPasswordLink').addEventListener('click', function
 
     const adminEmail = 'sports.marol@jameasaifiyah.edu';
     const subject = `Password Reset Request for TR: ${tr}`;
-    const body = `
-Dear Admin,
+    const body = `Tasleemaat Janab,\n\nI have forgotten my FitTracker Login password. Please reset my Password.\n\nMy Details:\nName: [Please enter your full name here]\nTR Number: ${tr}\n\nShukran.`;
+    const mailtoLink = `mailto:${adminEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-I have forgotten my password. Please reset my account.
+    Swal.fire({
+        title: 'Request Password Reset',
+        html: `
+            <p style="text-align:left;">Your browser might not have a default email client set up. You can either try to open your email app automatically, or manually copy the details.</p>
+            <div style="margin-top:20px; text-align:left;">
+                <strong>To:</strong>
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" value="${adminEmail}" readonly>
+                    <button class="btn btn-outline-secondary" id="copyEmailBtn">Copy</button>
+                </div>
+                <strong>Message:</strong>
+                <textarea class="form-control" rows="6" readonly>${body}</textarea>
+                <button class="btn btn-outline-secondary mt-2" id="copyMessageBtn">Copy Message</button>
+            </div>
+        `,
+        showConfirmButton: true,
+        confirmButtonText: 'Open Email App',
+        showCancelButton: true,
+        cancelButtonText: 'Close',
+        didOpen: () => {
+            // Add click listeners for the copy buttons inside the modal
+            const copyEmailBtn = document.getElementById('copyEmailBtn');
+            const copyMessageBtn = document.getElementById('copyMessageBtn');
 
-My Details:
-Name: [Please enter your full name here]
-TR Number: ${tr}
+            copyEmailBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(adminEmail);
+                copyEmailBtn.textContent = 'Copied!';
+            });
 
-Thank you.
-    `;
-
-    // Create the mailto link and trigger it
-    window.location.href = `mailto:${adminEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            copyMessageBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(body);
+                copyMessageBtn.textContent = 'Copied!';
+            });
+        }
+    }).then((result) => {
+        // If the user clicks "Open Email App", try to use the mailto link
+        if (result.isConfirmed) {
+            window.location.href = mailtoLink;
+        }
+    });
 });
 </script>
 
