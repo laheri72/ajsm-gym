@@ -146,3 +146,10 @@ html, body {
         transform: translateY(0);
     }
 }
+.forgot-link {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    color: #00aaff;
+    font-size: 0.9rem;
+}
