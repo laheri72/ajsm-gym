@@ -80,6 +80,13 @@ async function getStudentSession() {
     document.getElementById('welcomeText').innerText =
       `Fitness ${studentName} | ${branch.toUpperCase()} | ${gender.toUpperCase()}`;
 
+        // --- NEW: Check if password change is needed ---
+    if (data.user.HasLoggedInBefore === false) {
+        const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
+        passwordModal.show();
+        handleInitialPasswordSet(); // Set up the form listener
+    }
+
     // Load extra info (Darajah, Goal etc.)
     fetch(`/api/student-info/me`, {
       method: 'GET',
@@ -102,7 +109,37 @@ async function getStudentSession() {
   }
 }
 
+// Add this new function to student.js
+function handleInitialPasswordSet() {
+    const form = document.getElementById('setPasswordForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
 
+        if (newPassword !== confirmPassword) {
+            return Swal.fire('Error', 'Passwords do not match.', 'error');
+        }
+
+        try {
+            const res = await fetch('/api/student/set-initial-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ newPassword })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            
+            Swal.fire('Success!', 'Your new password has been set.', 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('forcePasswordChangeModal'));
+            modal.hide();
+
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
+}
 
 function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;

@@ -17,11 +17,15 @@
       <p>Log in to track your progress</p>
 
       <form id="loginForm">
-        <div class="form-group">
-          <label for="username">TR Number</label>
-          <input type="text" id="username" required>
-        </div>
-        <button type="submit" class="login-btn">Login</button>
+          <div class="form-group">
+              <label for="trNumber">TR Number</label>
+              <input type="text" id="trNumber" required>
+          </div>
+          <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" required>
+          </div>
+          <button type="submit" class="login-btn">Login</button>
       </form>
 
       <a href="../homepage.html" class="return-link">Return to Main Page</a>
@@ -34,10 +38,9 @@
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const username = document.getElementById('username').value.trim();
-    // const password = document.getElementById('password').value.trim();
+    const tr = document.getElementById('trNumber').value.trim();
+    const password = document.getElementById('password').value; // Get the password value
 
-    // 🔄 Toast while processing
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
@@ -55,12 +58,13 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const response = await fetch('/api/student-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tr: username})
+            // Send both the TR and the password
+            body: JSON.stringify({ tr: tr, password: password })
         });
 
         const data = await response.json();
 
-        if (data.success) {
+        if (response.ok && data.success) {
             Toast.fire({
                 icon: 'success',
                 title: '✅ Login successful'

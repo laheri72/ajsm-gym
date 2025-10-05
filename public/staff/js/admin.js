@@ -106,6 +106,47 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+
+    // Add this new code block to admin.js
+
+document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const trInput = document.getElementById('studentTrReset');
+    const tr = trInput.value;
+
+    if (!tr) {
+        return Swal.fire('Error', 'Please enter a student TR number.', 'error');
+    }
+
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `This will reset the password for student TR ${tr}. They will need to use their TR number to log in again.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        confirmButtonText: 'Yes, Reset It!',
+        cancelButtonColor: '#6c757d',
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/api/staff/reset-student-password/${tr}`, {
+                    method: 'PUT'
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    Swal.fire('Success!', data.message, 'success');
+                    trInput.value = ''; // Clear the input field
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                Swal.fire('Operation Failed', err.message, 'error');
+            }
+        }
+    });
+});
+
     // --- INACTIVE STUDENT MANAGEMENT LOGIC ---
 
     async function loadInactiveStudents() {

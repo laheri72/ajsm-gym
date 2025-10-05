@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
      <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-  <script type="module" crossorigin src="/assets/staffProfile-DIBbzmXr.js"></script>
+  <script type="module" crossorigin src="/assets/staffProfile-DkMfRshH.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-B7fFkFW6.js">
   <link rel="stylesheet" crossorigin href="/assets/auth-DSe57uew.css">
@@ -189,10 +189,52 @@
 
     <div class="tab-content">
         <div id="overview-pane" class="tab-pane active">
-            <div class="card">
-                <h3>Live Achievement Progress</h3>
-                <div id="profile-progress-trackers" class="progress-trackers-container"></div>
+<div class="card">
+    <h3>Live Achievement Progress</h3>
+    <div id="profile-progress-trackers" class="progress-trackers-container">
+        <div class="progress-card">
+            <img src="/assets/consistency-king-DkYQPIsJ.png" alt="Consistency King" class="progress-badge-img">
+            <div class="progress-info">
+                <h4>Consistency King</h4>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="consistency-progress-fill"></div></div>
+                <p class="progress-text" id="consistency-progress-text"></p>
             </div>
+        </div>
+
+        <div class="progress-card">
+            <img src="/assets/perfect-month-DIfjwbNo.png" alt="Perfect 30 Days" class="progress-badge-img">
+            <div class="progress-info">
+                <h4>Perfect 30 Days</h4>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="perfect-month-progress-fill"></div></div>
+                <p class="progress-text" id="perfect-month-progress-text"></p>
+            </div>
+        </div>
+
+        <div class="progress-card">
+            <img src="/assets/social-butterfly-fyZIfnkb.png" alt="Social Butterfly" class="progress-badge-img">
+            <div class="progress-info">
+                <h4>
+                    Social Butterfly
+                    <span class="info-icon" data-bs-toggle="tooltip" data-bs-placement="top"
+                          title="Represents the student's personal score for the current week. The top 3 performers are awarded the badge on Sunday.">
+                          &#9432;
+                    </span>
+                </h4>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="social-butterfly-progress-fill"></div></div>
+                <p class="progress-text" id="social-butterfly-progress-text">Weekly Score: 0 / 8</p>
+            </div>
+        </div>
+
+        <div class="progress-card">
+            <img src="/assets/milestone-lift-zEwHNZv9.png" alt="Milestone Lift" class="progress-badge-img">
+            <div class="progress-info">
+                <h4>Milestone Lift</h4>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="milestone-lift-progress-fill"></div></div>
+                <p class="progress-text" id="milestone-lift-progress-text"></p>
+            </div>
+        </div>
+    </div>
+</div>
             <div class="card">
                 <h3>Trophy Case</h3>
                 <div id="profile-achievements-grid" class="achievements-grid"></div>

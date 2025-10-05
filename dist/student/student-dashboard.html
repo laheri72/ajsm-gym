@@ -16,7 +16,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
 
-  <script type="module" crossorigin src="/assets/studentDashboard-CXW__zP6.js"></script>
+  <script type="module" crossorigin src="/assets/studentDashboard-KyOGz2hm.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
   <link rel="stylesheet" crossorigin href="/assets/studentDashboard-BsQ5S7R2.css">
 </head>
@@ -850,6 +850,29 @@
         </ol>
 </div>
 
+<div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Your New Password</h5>
+            </div>
+            <div class="modal-body">
+                <p>For your security, you must create a new password for your account.</p>
+                <form id="setPasswordForm">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                     <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Set Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
 

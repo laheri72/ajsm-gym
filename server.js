@@ -842,46 +842,115 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
 //.............................LOGIN INFO...........................................................
 //--------------------------------------------------------------------------------------------------
 
-app.post('/api/student-login', async (req, res) => {
-  const { tr } = req.body;
+// =================================================================== //
+// --- 🔐 SECURE STUDENT LOGIN & PASSWORD MANAGEMENT ---
+// =================================================================== //
 
-  try {
-    const result = await pool.request()
-      .input('TR', sql.Int, tr)
-      .query(`
-        SELECT Name, Branch, Gender, Status 
-        FROM Master 
-        WHERE TR = @TR
-      `);
+// 1. REPLACE your existing /api/student-login route with this
+app.post('/api/student-login', async (req, res, next) => {
+    const { tr, password } = req.body;
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, tr)
+            .query('SELECT TR, Name, Branch, Gender, Status, Password FROM Master WHERE TR = @TR');
 
-    if (result.recordset.length > 0) {
-      const student = result.recordset[0];
+        if (result.recordset.length === 0) {
+            return res.status(401).json({ success: false, message: 'Invalid TR or password' });
+        }
 
-      if (student.Status !== 'Active') {
-        return res.json({ success: false, message: 'Your account is inactive. Please contact admin.' });
-      }
+        const student = result.recordset[0];
+        if (student.Status !== 'Active') {
+            return res.status(403).json({ success: false, message: 'Your account is inactive. Please contact admin.' });
+        }
 
-      // ✅ Set session
-      req.session.user = {
-        TR: tr,
-        Name: student.Name,
-        Branch: student.Branch,
-        Gender: student.Gender
-      };
+        let forcePasswordChange = false;
+        let isLoginSuccessful = false;
 
-      res.json({
-        success: true,
-        name: student.Name,
-        branch: student.Branch,
-        gender: student.Gender
-      });
-    } else {
-      res.json({ success: false, message: 'TR not found' });
+        // Check for first-time login (Password field is NULL in DB)
+        if (student.Password === null) {
+            if (password === student.TR.toString()) {
+                isLoginSuccessful = true;
+                forcePasswordChange = true; // Flag to force change on the frontend
+            }
+        } else {
+            // Regular login: Compare hashed password
+            const match = await bcrypt.compare(password, student.Password);
+            if (match) {
+                isLoginSuccessful = true;
+            }
+        }
+
+        if (isLoginSuccessful) {
+            req.session.user = { TR: student.TR, Name: student.Name, Branch: student.Branch, Gender: student.Gender };
+            return res.json({ success: true, forcePasswordChange });
+        } else {
+            return res.status(401).json({ success: false, message: 'Invalid TR or password' });
+        }
+    } catch (err) {
+        next(err);
     }
-  } catch (err) {
-    console.error('Student login error:', err.message);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+});
+
+// 2. ADD THIS NEW route for the initial password set
+app.post('/api/student/set-initial-password', async (req, res, next) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('HashedPassword', sql.NVarChar(100), hashedPassword)
+            .query('UPDATE Master SET Password = @HashedPassword, HasLoggedInBefore = 1 WHERE TR = @TR');
+        
+        res.json({ success: true, message: 'Password updated successfully!' });
+    } catch (err) {
+        next(err);
+    }
+});
+
+
+// Replace the old /api/staff/reset-student-password/:tr route
+app.put('/api/staff/reset-student-password/:tr', async (req, res, next) => {
+    // Only allow Admins to perform this action
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
+    }
+    
+    const { tr } = req.params;
+    const { Branch: adminBranch } = req.session.user;
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, tr);
+
+        // --- NEW: Verify the student belongs to the admin's branch before resetting ---
+        const studentResult = await request.query('SELECT Branch FROM Master WHERE TR = @TR');
+
+        if (studentResult.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'Student TR not found.' });
+        }
+
+        const studentBranch = studentResult.recordset[0].Branch;
+        if (studentBranch !== adminBranch) {
+            return res.status(403).json({ success: false, message: `Forbidden: You can only reset passwords for students in your own branch (${adminBranch}).` });
+        }
+        // --- End of new security check ---
+
+        // If authorized, proceed with the reset
+        await request.query('UPDATE Master SET Password = NULL, HasLoggedInBefore = 0 WHERE TR = @TR');
+        
+        res.json({ success: true, message: `Password for TR ${tr} has been reset. The student can now log in using their TR as the password.` });
+    } catch (err) {
+        next(err);
+    }
 });
 
 
@@ -895,7 +964,7 @@ app.get('/api/student-session', async (req, res) => {
       const result = await pool.request()
         .input('TR', sql.Int, TR)
         .query(`
-          SELECT FitnessLevel, CurrentXP 
+          SELECT FitnessLevel, CurrentXP, HasLoggedInBefore 
           FROM Master 
           WHERE TR = @TR
         `);
