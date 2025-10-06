@@ -108,6 +108,7 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/test.js"></script>
@@ -141,5 +142,28 @@
             });
         });
     </script>
+    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Your New Password</h5>
+            </div>
+            <div class="modal-body">
+                <p>Welcome! For your security, you must create a new password for your account.</p>
+                <form id="setPasswordForm">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

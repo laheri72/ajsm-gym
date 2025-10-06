@@ -22,9 +22,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
      <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-  <script type="module" crossorigin src="/assets/staffProfile-DkMfRshH.js"></script>
+  <script type="module" crossorigin src="/assets/staffProfile-Ddmvq9lw.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-B7fFkFW6.js">
+  <link rel="modulepreload" crossorigin href="/assets/auth-Bf0L6rOZ.js">
   <link rel="stylesheet" crossorigin href="/assets/auth-DSe57uew.css">
 </head>
 <body>
@@ -151,6 +151,7 @@
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <template id="profile-details-template">
     <div class="profile-header card">
@@ -280,5 +281,28 @@
         </div>
     </div>
 </template>
+<div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Your New Password</h5>
+            </div>
+            <div class="modal-body">
+                <p>Welcome! For your security, you must create a new password for your account.</p>
+                <form id="setPasswordForm">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

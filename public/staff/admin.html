@@ -82,19 +82,21 @@
                             </table>
                         </div>
                         <h3>Add New User</h3>
-                        <form id="adminAddForm" class="form-group">
-                            <input type="text" placeholder="Username" id="newUsername" required />
-                            <input type="text" placeholder="Password" id="newPassword" required />
-                            <select id="newGender">
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                            <select id="newRole">
-                                <option value="Trainer">Trainer</option>
-                                <option value="Staff">Staff</option>
-                            </select>
-                            <button type="submit" class="btn btn-success mb-3">Add User</button>
-                        </form>
+                            <form id="adminAddForm" class="form-group">
+                                <input type="text" placeholder="Username" id="newUsername" required />
+                                <select id="newGender">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                                <select id="newRole">
+                                    <option value="Trainer">Trainer</option>
+                                    <option value="Staff">Staff</option>
+                                </select>
+                                <button type="submit" class="btn btn-success mb-3">Add User</button>
+                            </form>
+                            <p class="text-muted small">
+                                Note: A new user's default password will be "<strong>jamea1446</strong>". They will be required to change it upon their first login.
+                            </p>
                     </section>
 
 
@@ -114,6 +116,24 @@
                                 </form>
                             </section>
 
+                            <section class="card mt-4 p-3">
+                                <h2>🔒 Change Your Admin Password</h2>
+                                <form id="changeMyPasswordForm">
+                                    <div class="form-group">
+                                        <label for="currentPassword">Current Password</label>
+                                        <input type="password" id="currentPassword" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newAdminPassword">New Password (min. 6 characters)</label>
+                                        <input type="password" id="newAdminPassword" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="confirmAdminPassword">Confirm New Password</label>
+                                        <input type="password" id="confirmAdminPassword" class="form-control" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Update My Password</button>
+                                </form>
+                            </section>
 
                             
                     <section id="inactive-student-record" class="card">

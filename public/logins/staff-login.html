@@ -39,7 +39,7 @@
         e.preventDefault();
 
         const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value.trim();
+        const password = document.getElementById('password').value; // Don't trim password
 
         const Toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false,
@@ -63,6 +63,8 @@
                 // We now receive a full 'user' object from the API.
                 // We save it directly to localStorage. It's now perfect from the start.
                 localStorage.setItem('staffUser', JSON.stringify(data.user));
+                                // NEW: Save the flag to sessionStorage
+                sessionStorage.setItem('isDefaultPassword', data.isDefaultPassword);
                 // --- END OF CHANGE ---
 
                 Toast.fire({ icon: 'success', title: '✅ Login successful' });

@@ -7,6 +7,7 @@
     <link rel="icon" href="../images/favicon.png" type="image/png">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
@@ -403,7 +404,7 @@
                 </div>
                 </section>
     </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
         // --- DOM Element References ---
         const elements = {
@@ -587,6 +588,11 @@ async function loadDailyAttendance() {
         
         // --- Event Listeners and Initializers ---
         document.addEventListener("DOMContentLoaded", () => {
+                if (sessionStorage.getItem('isDefaultPassword') === 'true') {
+                        const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
+                        passwordModal.show();
+                        handleInitialPasswordSet();
+                    }
             validateTrainerSession();
             elements.currentDateDisplay.textContent = new Date().toISOString().split('T')[0];
 
@@ -1083,6 +1089,42 @@ async function loadActiveSessions() {
     }
 }
 
+// Add this to the main script in trainer-dashboard.html
+
+function handleInitialPasswordSet() {
+    // Logic for submitting the new password form
+    document.getElementById('setPasswordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            return Swal.fire('Error', 'Passwords do not match.', 'error');
+        }
+
+        try {
+            const res = await fetch('/api/staff/set-initial-password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ newPassword })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            
+            Swal.fire('Success!', 'Your new password has been set.', 'success');
+            const modalEl = document.getElementById('forcePasswordChangeModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            sessionStorage.removeItem('isDefaultPassword'); // Clear the flag
+
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
+}
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('.nav-link');
@@ -1134,5 +1176,28 @@ navLinks.forEach(link => {
 });
 
 </script>
+<div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Your New Password</h5>
+            </div>
+            <div class="modal-body">
+                <p>Welcome! For your security, you must create a new password for your account.</p>
+                <form id="setPasswordForm">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

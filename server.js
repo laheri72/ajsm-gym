@@ -1001,86 +1001,141 @@ app.get('/api/session-user', (req, res) => {
 
 
 
-// Replace the old /api/trainer-login route
+// REPLACE your old /api/trainer-login route
 app.post('/api/trainer-login', async (req, res, next) => {
     const { username, password } = req.body;
     try {
-        // Step 1: Find the user by username ONLY
-        const result = await pool.request()
-            .input('Username', sql.NVarChar(50), username)
-            .query('SELECT Username, Password, Branch, Gender, Role FROM PassBank WHERE Username = @Username');
+        const result = await pool.request().input('Username', sql.NVarChar(50), username)
+            .query('SELECT * FROM PassBank WHERE Username = @Username');
 
         if (result.recordset.length === 0) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         const user = result.recordset[0];
-        const hashedPassword = user.Password;
-
-        // Step 2: Compare the provided password with the stored hash
-        const match = await bcrypt.compare(password, hashedPassword);
+        const match = await bcrypt.compare(password, user.Password);
 
         if (match) {
-            // Passwords match
             if (user.Role !== 'Trainer') {
                 return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
             }
             req.session.user = { Username: user.Username, Branch: user.Branch, Gender: user.Gender, Role: user.Role };
-            return res.json({ success: true, role: user.Role });
+            // Return the flag
+            return res.json({ success: true, user: req.session.user, isDefaultPassword: user.IsDefaultPassword });
         } else {
-            // Passwords do not match
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-    } catch (err) {
-        next(err);
-    }
+    } catch (err) { next(err); }
 });
 
 
 
-
-// Replace the old /api/staff-login route
+// REPLACE your old /api/staff-login route
 app.post('/api/staff-login', async (req, res, next) => {
     const { username, password } = req.body;
     try {
-        // Step 1: Find the user by username ONLY
-        const result = await pool.request()
-            .input('Username', sql.NVarChar(50), username)
-            .query('SELECT Username, Password, Branch, Gender, Role FROM PassBank WHERE Username = @Username');
+        const result = await pool.request().input('Username', sql.NVarChar(50), username)
+            .query('SELECT * FROM PassBank WHERE Username = @Username');
 
         if (result.recordset.length === 0) {
-            // Security: Use a generic error message for both wrong username and wrong password
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         const user = result.recordset[0];
-        const hashedPassword = user.Password;
-
-        // Step 2: Compare the provided password with the stored hash
-        const match = await bcrypt.compare(password, hashedPassword);
+        const match = await bcrypt.compare(password, user.Password);
 
         if (match) {
-            // Passwords match
             if (user.Role === 'Trainer') {
                 return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
             }
             req.session.user = { Username: user.Username, Branch: user.Branch, Gender: user.Gender, Role: user.Role };
-            return res.json({ success: true, user: req.session.user });
+            // Return the flag
+            return res.json({ success: true, user: req.session.user, isDefaultPassword: user.IsDefaultPassword });
         } else {
-            // Passwords do not match
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
+    } catch (err) { next(err); }
+});
+
+
+
+
+// ADD these two new routes for password changes
+
+// For the first-time password change modal
+app.put('/api/staff/set-initial-password', async (req, res, next) => {
+    if (!req.session.user || !req.session.user.Username) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { Username } = req.session.user;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.request()
+            .input('Username', sql.NVarChar, Username)
+            .input('HashedPassword', sql.NVarChar, hashedPassword)
+            .query('UPDATE PassBank SET Password = @HashedPassword, IsDefaultPassword = 0 WHERE Username = @Username');
+        
+        res.json({ success: true, message: 'Password updated successfully!' });
     } catch (err) {
         next(err);
     }
 });
 
+// For an Admin to change their own password later
+app.put('/api/admin/change-my-password', async (req, res, next) => {
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Admin access required.' });
+    }
+    const { Username } = req.session.user;
+    const { currentPassword, newPassword } = req.body;
 
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
+    }
+
+    try {
+        const result = await pool.request().input('Username', sql.NVarChar, Username).query('SELECT Password FROM PassBank WHERE Username = @Username');
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        const match = await bcrypt.compare(currentPassword, result.recordset[0].Password);
+        if (!match) {
+            return res.status(401).json({ success: false, message: 'Incorrect current password.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.request()
+            .input('Username', sql.NVarChar, Username)
+            .input('HashedPassword', sql.NVarChar, hashedPassword)
+            .query('UPDATE PassBank SET Password = @HashedPassword WHERE Username = @Username');
+        
+        res.json({ success: true, message: 'Your password has been changed successfully.' });
+
+    } catch (err) {
+        next(err);
+    }
+});
 // ------------------------------------------------------------------------------------------------------
 
 
 // CORRECTED ADMIN ROUTES
-app.get('/api/admin/users/:branch', async (req, res) => {
+// REPLACE your three existing admin routes with these secure versions
+
+// 1. SECURED: Get all users
+app.get('/api/admin/users/:branch', async (req, res, next) => {
+    // --- NEW: Security Check ---
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ error: 'Forbidden: Admin access required.' });
+    }
+    // --- End Security Check ---
+
     const branch = req.params.branch;
     try {
         const result = await pool.request() 
@@ -1088,49 +1143,52 @@ app.get('/api/admin/users/:branch', async (req, res) => {
             .query(`SELECT Username, Gender, Role FROM PassBank WHERE Branch = @branch`);
         res.json(result.recordset);
     } catch (err) {
-        res.status(500).json({ error: 'Server error' });
+        next(err);
     }
 });
 
-// Replace the old /api/admin/add-user route
+// REPLACE your old /api/admin/add-user route
 app.post('/api/admin/add-user', async (req, res, next) => {
-    const { username, password, gender, role, branch } = req.body;
+        if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
+    }
+    const { username, gender, role, branch } = req.body;
     try {
-        // --- NEW: Check for duplicate username BEFORE doing anything else ---
         const checkRequest = pool.request();
         checkRequest.input('username', sql.NVarChar(50), username);
         const existingUser = await checkRequest.query('SELECT 1 FROM PassBank WHERE Username = @username');
 
         if (existingUser.recordset.length > 0) {
-            // If a user is found, send a specific, user-friendly error
-            return res.status(409).json({ 
-                success: false, 
-                message: 'This username is already taken. Please choose a different one.' 
-            });
+            return res.status(409).json({ success: false, message: 'This username is already taken.' });
         }
-        // --- End of new check ---
 
-        // If the username is unique, proceed with hashing and inserting
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        // Hash the default password
+        const defaultPassword = "jamea1446";
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
         await pool.request()
             .input('username', sql.NVarChar(50), username)
-            .input('password', sql.NVarChar(100), hashedPassword)
+            .input('password', sql.NVarChar(100), hashedPassword) // Use the hashed default password
             .input('gender', sql.NVarChar(10), gender)
             .input('role', sql.NVarChar(20), role)
             .input('branch', sql.NVarChar(50), branch)
             .query(`
-                INSERT INTO PassBank (Username, Password, Gender, Role, Branch)
-                VALUES (@username, @password, @gender, @role, @branch)
+                INSERT INTO PassBank (Username, Password, Gender, Role, Branch, IsDefaultPassword)
+                VALUES (@username, @password, @gender, @role, @branch, 1) -- Set the flag to 1
             `);
         res.json({ success: true });
     } catch (err) {
-        next(err); // Pass any other errors to the centralized handler
+        next(err);
     }
 });
 
 app.delete('/api/admin/delete-user/:username', async (req, res) => {
+        // --- NEW: Security Check ---
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ error: 'Forbidden: Admin access required.' });
+    }
+    // --- End Security Check ---
+
     const username = req.params.username;
     try {
         await pool.request()

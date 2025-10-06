@@ -1,9 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+        const user = JSON.parse(localStorage.getItem('staffUser'));
+    if (!user || user.Role !== 'Admin') {
+        // If the user is not an admin, redirect them immediately.
+        window.location.href = 'overview.html'; 
+        return; // Stop executing any further code on this page.
+    }
+
     // --- PAGE INITIALIZATION ---
 
     // Get user info stored by auth.js to display branch name
-    const user = JSON.parse(localStorage.getItem('staffUser'));
+  
     if (user && user.Branch) {
         const branchNameEl = document.getElementById('branch-name');
         if (branchNameEl) {
@@ -56,33 +63,36 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Event listener for adding a new user
-    document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newUser = {
-            username: document.getElementById('newUsername').value.trim(),
-            password: document.getElementById('newPassword').value,
-            gender: document.getElementById('newGender').value,
-            role: document.getElementById('newRole').value,
-            branch: user.Branch
-        };
-        const res = await fetch('/api/admin/add-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newUser)
-        });
-        const data = await res.json();
-        if (data.success) {
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'success',
-                title: 'User Added Successfully!', showConfirmButton: false, timer: 3000
+                // Event listener for adding a new user
+            // Replace the existing event listener in admin.js
+            document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newUser = {
+                    username: document.getElementById('newUsername').value.trim(),
+                    // The password line is now removed, as the backend handles it
+                    gender: document.getElementById('newGender').value,
+                    role: document.getElementById('newRole').value,
+                    branch: user.Branch // 'user' is defined at the top of your admin.js
+                };
+                
+                // The rest of the fetch call and Swal logic remains exactly the same
+                const res = await fetch('/api/admin/add-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newUser)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        toast: true, position: 'top-end', icon: 'success',
+                        title: 'User Added Successfully!', showConfirmButton: false, timer: 3000
+                    });
+                    loadAdminUsers(); // Refresh the user list
+                    e.target.reset();
+                } else {
+                    Swal.fire('Error', 'Failed to add user: ' + data.message, 'error');
+                }
             });
-            loadAdminUsers(); // Refresh the user list
-            e.target.reset();
-        } else {
-            Swal.fire('Error', 'Failed to add user: ' + data.message, 'error');
-        }
-    });
 
     // Delegated event listener for deleting a user
     $('#adminUserTable').on('click', '.delete-user-btn', function() {
@@ -146,6 +156,34 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async (e
         }
     });
 });
+
+        // Add this to admin.js
+        document.getElementById('changeMyPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newAdminPassword').value;
+            const confirmPassword = document.getElementById('confirmAdminPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                return Swal.fire('Error', 'New passwords do not match.', 'error');
+            }
+
+            try {
+                const res = await fetch('/api/admin/change-my-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+
+                Swal.fire('Success!', data.message, 'success');
+                e.target.reset(); // Clear the form
+            } catch (err) {
+                Swal.fire('Update Failed', err.message, 'error');
+            }
+        });
 
     // --- INACTIVE STUDENT MANAGEMENT LOGIC ---
 
