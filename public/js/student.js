@@ -12,31 +12,79 @@ let weeklyHoursChart = null;
  * @param {number} level - The student's current fitness level.
  * @param {number} xp - The student's current XP.
  */
+// REPLACE your old updateXPBarUI function in student.js
+
+// REPLACE your old updateXPBarUI function in student.js
+
 function updateXPBarUI(level, xp) {
     const xpForNextLevel = level * 100;
     const progressPercent = (xp / xpForNextLevel) * 100;
 
+    const xpContainer = document.querySelector('.xp-level-container');
+    const rankTag = document.getElementById('rankTag');
+    
+    // 1. Determine the current tier and rank name
+    let tierClass = 'xp-tier-bronze';
+    let rankName = 'Challenger'; // Default from Level 5
+
+    if (level < 5) {
+        rankName = 'Rookie';
+    }
+    if (level >= 10) {
+        tierClass = 'xp-tier-silver';
+        rankName = 'Athlete';
+    }
+    if (level >= 20) {
+        tierClass = 'xp-tier-gold';
+        rankName = 'Pro';
+    }
+    if (level >= 30) {
+        tierClass = 'xp-tier-emerald';
+        rankName = 'Elite';
+    }
+
+    // 2. Update the tier class on the main container
+    xpContainer.classList.remove('xp-tier-bronze', 'xp-tier-silver', 'xp-tier-gold', 'xp-tier-emerald');
+    xpContainer.classList.add(tierClass);
+
+    // 3. Update the Rank Tag's text and class
+    if (rankTag) {
+        rankTag.textContent = rankName;
+        rankTag.className = `rank-tag ${tierClass}`; // Use the same tier class for color
+    }
+
+    // 4. Update the rest of the UI elements
     document.getElementById('fitnessLevel').textContent = level;
     document.getElementById('xpBarFill').style.width = `${progressPercent}%`;
     document.getElementById('xpBarText').textContent = `${xp} / ${xpForNextLevel} XP`;
 }
-
 /**
  * Displays a celebratory "Level Up!" animation.
  * @param {number} newLevel - The new level the student has reached.
  */
+// REPLACE your old showLevelUpAnimation function in student.js
+
 function showLevelUpAnimation(newLevel) {
+    // 1. Determine the tier class based on the new level
+    let tierClass = '';
+    if (newLevel >= 10 && newLevel < 20) tierClass = 'swal-tier-silver';
+    if (newLevel >= 20 && newLevel < 30) tierClass = 'swal-tier-gold';
+    if (newLevel >= 30) tierClass = 'swal-tier-emerald';
+
     Swal.fire({
         title: 'LEVEL UP!',
         html: `
             <div class="level-up-animation">
                 <span class="level-up-number">${newLevel}</span>
             </div>
-            <h3 style="color:#00FFEA; margin-top:1rem;">You've reached Level ${newLevel}!</h3>
-            <p style="color:#bdc3c7;">Your hard work is paying off. Keep pushing!</p>
+            <h3 class="level-up-title">You've reached Level ${newLevel}!</h3>
+            <p class="level-up-text">Your hard work is paying off. Keep pushing!</p>
         `,
-        background: '#2c3e50',
-        color: '#ffffff',
+        // 2. Apply the custom class to the pop-up
+        customClass: {
+            popup: tierClass
+        },
+        background: '#2c3e50', // Default background
         showConfirmButton: true,
         confirmButtonText: 'Let\'s Go!',
         confirmButtonColor: '#4CAF50'

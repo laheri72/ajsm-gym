@@ -1171,3 +1171,153 @@ td iframe {
     flex-wrap: wrap;
     gap: 25px; /* The original gap between your info items */
 }
+/* =================================================================== */
+/* 17. XP BAR TIER STYLES
+/* =================================================================== */
+
+/* Define the base shimmer animation */
+@keyframes shimmer-base {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+/* --- Bronze Tier (Levels 1-9) - Default style with a subtle shimmer --- */
+/* (Assuming your base .xp-bar-fill is already green) */
+.xp-bar-fill {
+    background-image: linear-gradient(to right, #00FFEA 0%, #17a2b8 40%, #00FFEA 100%); /* Adjusted base for shimmer */
+    background-size: 200px 100%;
+    animation: shimmer-base 2s infinite linear; /* Apply shimmer */
+}
+.level-display {
+    background: linear-gradient(135deg, #28a745, #218838); /* Default green for bronze */
+    color: white;
+}
+
+
+/* --- Silver Tier (Levels 10-19) --- */
+.xp-tier-silver .level-display {
+    background: linear-gradient(135deg, #b0bec5, #78909c);
+    color: #37474f;
+}
+.xp-tier-silver .xp-bar-fill {
+    background-image: linear-gradient(to right, #cfd8dc 0%, #607d8b 40%, #cfd8dc 100%);
+    background-size: 200px 100%;
+    animation: shimmer-base 2s infinite linear;
+}
+
+
+/* --- Gold Tier (Levels 20-29) --- */
+.xp-tier-gold .level-display {
+    background: linear-gradient(135deg, #ffeb3b, #fbc02d);
+    color: #212121;
+}
+.xp-tier-gold .xp-bar-fill {
+    background-image: linear-gradient(to right, #ffecb3 0%, #ffc107 40%, #ffecb3 100%);
+    background-size: 200px 100%;
+    animation: shimmer-base 2s infinite linear;
+}
+.xp-tier-gold .xp-bar-wrapper { /* Keep the subtle glow for Gold */
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.4);
+}
+
+
+/* --- Emerald Tier (Levels 30+) --- */
+.xp-tier-emerald .level-display {
+    background: linear-gradient(135deg, #1de9b6, #00bfa5);
+    color: white;
+}
+.xp-tier-emerald .xp-bar-fill {
+    background-image: linear-gradient(to right, #64ffda 0%, #009688 40%, #64ffda 100%);
+    background-size: 200px 100%;
+    animation: shimmer-base 2s infinite linear; /* Use the same base shimmer */
+}
+.xp-tier-emerald .xp-bar-wrapper { /* Optional: Enhanced glow for top tier */
+    box-shadow: 0 0 15px rgba(0, 255, 234, 0.6);
+}
+/* =================================================================== */
+/* 16. TIERED LEVEL-UP MODAL STYLES
+/* =================================================================== */
+
+.level-up-title {
+    color: #00FFEA; /* Default title color */
+    margin-top: 1rem;
+}
+.level-up-text {
+    color: #bdc3c7;
+}
+
+/* --- Silver Tier --- */
+.swal-tier-silver.swal2-popup {
+    background: linear-gradient(145deg, #607d8b, #37474f) !important;
+}
+.swal-tier-silver .level-up-number {
+    color: #eceff1;
+    border-color: #eceff1;
+    text-shadow: 0 0 20px #b0bec5;
+}
+.swal-tier-silver .level-up-title {
+    color: #eceff1;
+}
+
+/* --- Gold Tier --- */
+.swal-tier-gold.swal2-popup {
+    background: linear-gradient(145deg, #594700, #2b2100) !important;
+}
+.swal-tier-gold .level-up-number {
+    color: #ffca28;
+    border-color: #ffca28;
+    text-shadow: 0 0 25px #ffab00;
+}
+.swal-tier-gold .level-up-title {
+    color: #ffca28;
+}
+
+/* --- Emerald Tier --- */
+.swal-tier-emerald.swal2-popup {
+    background: linear-gradient(145deg, #004d40, #00251a) !important;
+}
+.swal-tier-emerald .level-up-number {
+    color: #64ffda;
+    border-color: #64ffda;
+    text-shadow: 0 0 30px #1de9b6;
+}
+.swal-tier-emerald .level-up-title {
+    color: #64ffda;
+}
+/* =================================================================== */
+/* 17. RANK TAG STYLES
+/* =================================================================== */
+
+.rank-tag {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    color: white; /* Default text color */
+}
+
+/* Color definitions for each tier */
+.rank-tag.xp-tier-bronze {
+    background-color: #6c757d; /* Default/Rookie gray */
+}
+
+.xp-tier-bronze .rank-tag {
+    background-color: #28a745; /* Challenger Green */
+}
+
+.xp-tier-silver .rank-tag {
+    background-color: #607d8b; /* Athlete Silver/Blue */
+}
+
+.xp-tier-gold .rank-tag {
+    background-color: #ffc107; /* Pro Gold */
+    color: #212121; /* Dark text for better contrast on gold */
+}
+
+.xp-tier-emerald .rank-tag {
+    background-color: #009688; /* Elite Emerald */
+}

@@ -1394,63 +1394,67 @@ app.get('/api/student/training-plans', async (req, res) => {
     }
 });
 
-app.get('/api/leaderboard', async (req, res) => {
+// REPLACE your old /api/leaderboard route with this new, improved version
+
+app.get('/api/leaderboard', async (req, res, next) => {
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
     const { Branch, Gender } = req.session.user;
 
     try {
+        // --- NEW LOGIC: Define the start and end of YESTERDAY in IST, converted to UTC ---
+        const yesterdayStart = moment.tz("Asia/Kolkata").subtract(1, 'day').startOf('day').utc().toDate();
+        const yesterdayEnd = moment.tz("Asia/Kolkata").subtract(1, 'day').endOf('day').utc().toDate();
+
         const request = pool.request();
         request.input('Branch', sql.NVarChar(50), Branch);
         request.input('Gender', sql.NVarChar(10), Gender);
+        request.input('YesterdayStart', sql.DateTime, yesterdayStart);
+        request.input('YesterdayEnd', sql.DateTime, yesterdayEnd);
 
         const result = await request.query(`
-            DECLARE @CurrentWeekID INT;
-            DECLARE @CurrentWeekStart DATE;
-            DECLARE @CurrentWeekEnd DATE;
-
-            SELECT TOP 1
-                @CurrentWeekID = WeekID,
-                @CurrentWeekStart = WeekStartDate,
-                @CurrentWeekEnd = WeekEndDate
-            FROM AttendanceWeek 
-            -- --- ✅ REFINED LOGIC ---
-            -- This line now uses the current IST time to find the correct week.
-            WHERE DATEADD(MINUTE, 330, GETUTCDATE()) BETWEEN WeekStartDate AND WeekEndDate;
-            -- --- END REFINEMENT ---
-
-            -- The rest of your query logic is perfect and remains unchanged.
-            WITH AttendanceScores AS (
-                SELECT TR, COUNT(*) AS AttendanceCount
+            -- Common Table Expression for calculating total workout duration yesterday
+            WITH DurationScores AS (
+                SELECT 
+                    TR, 
+                    SUM(ISNULL(DurationInMinutes, 0)) AS TotalDuration
                 FROM Attendance
-                WHERE WeekID = @CurrentWeekID AND IsPresent = 1
+                WHERE CreatedAt BETWEEN @YesterdayStart AND @YesterdayEnd
                 GROUP BY TR
             ),
+            -- Common Table Expression for calculating total body parts trained yesterday
             LogScores AS (
-                SELECT P.TR, COUNT(L.LogID) as TotalBodyParts, COUNT(DISTINCT CAST(P.CreatedAt AS DATE)) as WorkoutDays
+                SELECT 
+                    P.TR, 
+                    COUNT(L.LogID) as TotalBodyParts
                 FROM TrainingPlan P
                 JOIN TrainingLog L ON P.PlanID = L.PlanID
-                WHERE P.CreatedAt BETWEEN @CurrentWeekStart AND DATEADD(day, 1, @CurrentWeekEnd)
+                WHERE P.CreatedAt BETWEEN @YesterdayStart AND @YesterdayEnd
                 GROUP BY P.TR
             )
-            SELECT TOP 3 M.Name, COALESCE(A.AttendanceCount, 0) AS AttendanceScore
+            -- Final selection and ranking
+            SELECT TOP 3 
+                M.Name,
+                COALESCE(D.TotalDuration, 0) AS Score -- The main score is now duration
             FROM Master M
-            LEFT JOIN AttendanceScores A ON M.TR = A.TR
-            LEFT JOIN LogScores T ON M.TR = T.TR
-            WHERE M.Branch = @Branch AND M.Gender = @Gender AND M.Status = 'Active'
+            LEFT JOIN DurationScores D ON M.TR = D.TR
+            LEFT JOIN LogScores L ON M.TR = L.TR
+            WHERE M.Branch = @Branch 
+              AND M.Gender = @Gender 
+              AND M.Status = 'Active'
+              AND (D.TotalDuration > 0 OR L.TotalBodyParts > 0) -- Only include students who were active yesterday
             ORDER BY
-                COALESCE(A.AttendanceCount, 0) DESC,
-                COALESCE(T.WorkoutDays, 0) DESC,
-                COALESCE(T.TotalBodyParts, 0) DESC;
+                COALESCE(D.TotalDuration, 0) DESC, -- 1. Rank by most minutes spent
+                COALESCE(L.TotalBodyParts, 0) DESC; -- 2. Then by most body parts trained
         `);
+        
         res.json({ success: true, data: result.recordset });
+
     } catch (err) {
-        console.error('Error fetching leaderboard:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
+        next(err); // Pass error to the centralized handler
     }
 });
-
 
 
 // API for the Fitness Progression Line Chart
