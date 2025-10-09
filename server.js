@@ -2421,6 +2421,11 @@ app.post('/api/checkout', async (req, res) => {
                 SET OutTime = @OutTime, DurationInMinutes = @Duration
                 WHERE AttendanceID = @AttendanceID;
             `);
+        // Update total minutes in Master table
+        await request.input('TR_Update', sql.Int, TR)
+            .input('Duration_Update', sql.Int, duration)
+            .query('UPDATE Master SET TotalMinutesLogged = TotalMinutesLogged + @Duration_Update WHERE TR = @TR_Update');
+
 
         // --- ✅ NEW XP Integration ---
         const levelUpInfo = await awardXP(TR, duration, transaction);
@@ -2477,8 +2482,8 @@ app.get('/api/active-sessions', async (req, res) => {
                 FROM Attendance A
                 JOIN Master M ON A.TR = M.TR
                 WHERE 
-                    A.Branch = @Branch 
-                    AND A.Gender = @Gender
+                    M.Branch = @Branch 
+                    AND M.Gender = @Gender
                     AND A.OutTime IS NULL -- The key condition: they haven't checked out
                     AND A.CreatedAt BETWEEN @StartUTC AND @EndUTC -- They checked in today (IST)
                 ORDER BY A.CreatedAt ASC; -- Show earliest check-ins first
@@ -2607,89 +2612,59 @@ app.get('/api/students/inactive', async (req, res) => {
 //-------------------------------------------------------------------------------------------
 
 
+// REPLACE your existing /api/attendance-record/:tr/:date route
+
 app.get('/api/attendance-record/:tr/:date', async (req, res) => {
-  const { tr, date } = req.params;
-  const { Branch, Gender } = req.session.user;
+    const { tr, date } = req.params;
+    const { Branch, Gender } = req.session.user;
 
-  if (!Branch || !Gender) {
-    return res.status(401).json({ success: false, error: 'Unauthorized: Session missing branch or gender' });
-  }
-
-  try {
-    const request = pool.request();
-
-    request.input('TR', sql.Int, tr);
-    request.input('Branch', sql.NVarChar(50), Branch);
-    request.input('Gender', sql.NVarChar(10), Gender);
-    request.input('Date', sql.Date, date);
-
-    // Check if student exists
-    const studentCheck = await request.query(`
-      SELECT 
-        m.TR,
-        m.Name,
-        m.Branch,
-        m.Gender,
-        m.SlotID,
-        s.SlotName
-      FROM Master m
-      LEFT JOIN Slots s ON m.SlotID = s.SlotID
-      WHERE m.TR = @TR 
-        AND m.Branch = @Branch 
-        AND m.Gender = @Gender
-    `);
-
-    if (studentCheck.recordset.length === 0) {
-      return res.status(401).json({ success: false, error: 'Unauthorized: TR not found in your branch/gender' });
+    if (!Branch || !Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: Session missing branch or gender' });
     }
 
-    // Fetch Attendance record
-    const result = await request.query(`
-      SELECT 
-        a.AttendanceID, 
-        a.TR, 
-        a.WeekID, 
-        a.IsPresent, 
-        a.CreatedAt, 
-        a.Branch, 
-        a.Gender
-      FROM Attendance a
-      WHERE a.TR = @TR 
-        AND a.Branch = @Branch 
-        AND a.Gender = @Gender
-        AND CAST(a.CreatedAt AS DATE) = @Date
-    `);
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, tr);
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+        request.input('Date', sql.Date, date);
 
-    if (result.recordset.length > 0) {
-      return res.json({ success: true, record: result.recordset[0] });
-    } else {
-      // No record found → Absent
-      return res.json({
-        success: true,
-        record: {
-          AttendanceID: null,
-          TR: parseInt(tr),
-          WeekID: null,
-          IsPresent: false,
-          CreatedAt: date,
-          Branch,
-          Gender
+        // First, authorize that the staff member can view this student
+        const studentCheck = await request.query(`SELECT 1 FROM Master WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+        if (studentCheck.recordset.length === 0) {
+            return res.status(403).json({ success: false, error: 'Forbidden: TR not found in your branch/gender' });
         }
-      });
+
+        // Fetch the complete Attendance record, including OnLeave
+        const result = await request.query(`
+            SELECT 
+                AttendanceID, TR, WeekID, IsPresent, CreatedAt, 
+                OnLeave -- <-- THE FIX IS HERE
+            FROM Attendance
+            WHERE TR = @TR AND CAST(CreatedAt AS DATE) = @Date
+        `);
+
+        if (result.recordset.length > 0) {
+            return res.json({ success: true, record: result.recordset[0] });
+        } else {
+            // No record found → return a default "Absent" object
+            return res.json({
+                success: true,
+                record: { IsPresent: false, OnLeave: false }
+            });
+        }
+    } catch (err) {
+        console.error('Error fetching attendance record:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch attendance' });
     }
-  } catch (err) {
-    console.error('Error fetching attendance record:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch attendance' });
-  }
 });
 
 
+// REPLACE your existing /api/attendance-record route
 
-
-// This route now exclusively handles marking a student as "On Leave" for a specific date.
-app.put('/api/attendance-record', async (req, res) => {
-    // We only need TR and the specific date from the frontend.
-    const { TR, CreatedAt } = req.body;
+app.put('/api/attendance-record', async (req, res, next) => {
+    // We now accept IsPresent and OnLeave flags from the frontend
+    const { TR, CreatedAt, IsPresent, OnLeave } = req.body;
     const { Branch, Gender } = req.session.user;
 
     if (!TR || !CreatedAt) {
@@ -2697,45 +2672,50 @@ app.put('/api/attendance-record', async (req, res) => {
     }
 
     try {
-        // First, find the correct WeekID for the given date.
         const weekResult = await pool.request()
             .input('Date', sql.Date, CreatedAt)
             .query('SELECT WeekID FROM AttendanceWeek WHERE @Date BETWEEN WeekStartDate AND WeekEndDate');
 
         if (weekResult.recordset.length === 0) {
-            return res.status(400).json({ success: false, error: 'No valid week found for the selected date.' });
+            // If week doesn't exist, we should create it.
+            // This reuses your helper function for robustness.
+            const newWeekId = await getOrCreateWeekIdByDate(CreatedAt, pool);
+            if (!newWeekId) throw new Error('Could not find or create a valid week for the selected date.');
+            weekId = newWeekId;
+        } else {
+            weekId = weekResult.recordset[0].WeekID;
         }
-        const weekId = weekResult.recordset[0].WeekID;
 
-        // Use a MERGE statement to either UPDATE an existing record or INSERT a new one.
         const request = pool.request();
         request.input('TR', sql.Int, TR);
         request.input('WeekID', sql.Int, weekId);
         request.input('Date', sql.Date, CreatedAt);
         request.input('Branch', sql.NVarChar(50), Branch);
         request.input('Gender', sql.NVarChar(10), Gender);
+        // --- THE FIX IS HERE ---
+        // We now use the values sent from the frontend script
+        request.input('IsPresent', sql.Bit, IsPresent);
+        request.input('OnLeave', sql.Bit, OnLeave);
         
         await request.query(`
             MERGE Attendance AS target
             USING (SELECT @TR AS TR, @Date AS CreatedAt) AS source
             ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = source.CreatedAt)
-            -- If a record for this TR on this day already exists (e.g., they were marked present):
             WHEN MATCHED THEN
-                UPDATE SET IsPresent = 0, OnLeave = 1
-            -- If no record exists for this TR on this day:
+                UPDATE SET 
+                    IsPresent = @IsPresent, 
+                    OnLeave = @OnLeave
             WHEN NOT MATCHED THEN
-                INSERT (TR, WeekID, IsPresent, CreatedAt, Branch, Gender, OnLeave)
-                VALUES (@TR, @WeekID, 0, @Date, @Branch, @Gender, 1);
+                INSERT (TR, WeekID, IsPresent, OnLeave, CreatedAt, Branch, Gender)
+                VALUES (@TR, @WeekID, @IsPresent, @OnLeave, @Date, @Branch, @Gender);
         `);
 
-        res.json({ success: true, message: 'Student successfully marked as "On Leave".' });
+        res.json({ success: true, message: 'Student attendance has been updated.' });
 
     } catch (err) {
-        console.error('Error setting "On Leave" status:', err);
-        res.status(500).json({ success: false, error: 'Failed to update attendance.' });
+        next(err); // Pass error to centralized handler
     }
 });
-
 
 // This new route handles marking all students as "On Leave" for a specific date
 app.post('/api/attendance/bulk-leave', async (req, res) => {
@@ -3401,8 +3381,9 @@ app.get('/api/staff/student-profile/:tr', async (req, res) => {
                 getConsistencyProgress(tr),
                 getPerfectMonthProgress(tr),
                 getSocialButterflyProgress(tr),
-                getMilestoneLiftProgress(tr)
-            ]).then(([consistency, perfectMonth, socialButterfly, milestoneLift]) => ({ consistency, perfectMonth, socialButterfly, milestoneLift })),
+                getMilestoneLiftProgress(tr),
+                getIronDedicationProgress(tr)
+            ]).then(([consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication]) => ({ consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication })),
             
             // 2. Get Basic Info
             pool.request().input('TR', sql.Int, tr).query(`SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName FROM Master M LEFT JOIN Slots S ON M.SlotID = S.SlotID WHERE M.TR = @TR;`),
@@ -3646,6 +3627,30 @@ async function runAchievementEvaluation() {
                     }
                 }
             }
+
+            // Inside the main student loop in runAchievementEvaluation
+
+            // --- NEW: 3. Iron Dedication Check ---
+            const totalHours = student.TotalMinutesLogged / 60;
+            const dedicationAchievements = {
+                'Gold': { id: 7, hours: 50 },   // Assuming ID 6 from INSERT statement
+                'Silver': { id: 6, hours: 25 }, // Assuming ID 5
+                'Bronze': { id: 5, hours: 10 }  // Assuming ID 4
+            };
+
+            for (const tier in dedicationAchievements) {
+                const { id, hours } = dedicationAchievements[tier];
+                if (totalHours >= hours) {
+                    const checkDedication = await new sql.Request(transaction)
+                        .input('TR', TR).query(`SELECT 1 FROM StudentAchievements WHERE AchievementID = ${id} AND TR = @TR`);
+                    
+                    if (checkDedication.recordset.length === 0) {
+                        await new sql.Request(transaction)
+                            .input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${id})`);
+                        await awardXP(TR, 50, transaction); // Award XP for the new badge
+                    }
+                }
+            }
         }
 
         await transaction.commit();
@@ -3737,11 +3742,12 @@ app.get('/api/student/achievements/progress', async (req, res) => {
     const { TR } = req.session.user;
 
     try {
-        const [consistency, perfectMonth, socialButterfly, milestoneLift] = await Promise.all([
+        const [consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication] = await Promise.all([
             getConsistencyProgress(TR),
             getPerfectMonthProgress(TR),
             getSocialButterflyProgress(TR),
-            getMilestoneLiftProgress(TR)
+            getMilestoneLiftProgress(TR),
+            getIronDedicationProgress(TR)
         ]);
 
         res.json({
@@ -3750,7 +3756,9 @@ app.get('/api/student/achievements/progress', async (req, res) => {
                 consistency,
                 perfectMonth,
                 socialButterfly,
-                milestoneLift
+                milestoneLift,
+                ironDedication
+
             }
         });
     } catch (err) {
@@ -3851,6 +3859,36 @@ async function getMilestoneLiftProgress(tr) {
 
     return { current_improvement: improvement, target_improvement: 5, previous_score: previousScore, current_score: latestScore };
 }
+
+// REPLACE the old getIronDedicationProgress helper function
+async function getIronDedicationProgress(tr) {
+    const studentRes = await pool.request().input('TR', sql.Int, tr)
+        .query(`SELECT TotalMinutesLogged FROM Master WHERE TR = @TR`);
+
+    const totalMinutes = studentRes.recordset[0]?.TotalMinutesLogged || 0;
+    const currentHours = totalMinutes / 60;
+
+    let targetHours, tierName, completed = false;
+
+    // This logic now determines the next goal based on current hours
+    if (currentHours < 10) {
+        targetHours = 10;
+        tierName = 'Bronze';
+    } else if (currentHours < 25) {
+        targetHours = 25;
+        tierName = 'Silver';
+    } else if (currentHours < 50) {
+        targetHours = 50;
+        tierName = 'Gold';
+    } else {
+        targetHours = 50;
+        tierName = 'Gold';
+        completed = true;
+    }
+
+    return { current: currentHours, target: targetHours, tierName, completed };
+}
+
 
 // =================================================================
 // =================================================================== //

@@ -1301,6 +1301,24 @@ async function loadAchievementProgress() {
             } else {
                  document.getElementById('milestone-lift-progress-text').textContent = `Prev: ${previous_score}, Current: ${current_score} (+${current_improvement.toFixed(1)}%)`;
             }
+            // Add this block inside your progress rendering function
+
+            // Find and update this block in both student.js and profile.js
+
+            // 5. Update Iron Dedication
+            const { current: dedicationHours, target: dedicationTarget, tierName, completed } = progress.ironDedication;
+
+            if (completed) {
+                document.getElementById('iron-dedication-fill').style.width = '100%';
+                document.getElementById('iron-dedication-text').textContent = `All Tiers Completed! (${dedicationHours.toFixed(1)} Hours)`;
+                document.getElementById('iron-dedication-img').src = '/images/badges/dedication-gold.png';
+            } else {
+                let dedicationPercent = (dedicationHours / dedicationTarget) * 100;
+                document.getElementById('iron-dedication-fill').style.width = `${Math.min(dedicationPercent, 100)}%`;
+                document.getElementById('iron-dedication-text').textContent = `${dedicationHours.toFixed(1)} / ${dedicationTarget} Hours toward ${tierName}`;
+                // This line dynamically updates the badge image to show the next goal
+                document.getElementById('iron-dedication-img').src = `/images/badges/dedication-${tierName.toLowerCase()}.png`;
+            }
         }
     } catch (err) {
         console.error("Could not load achievement progress:", err);

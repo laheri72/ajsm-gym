@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trainer Dashboard - FitTracker</title>
+    <script>
+    // This script runs instantly, before the page content is displayed.
+    try {
+        // The user object is stored here upon login
+        const userString = localStorage.getItem('staffUser');
+        if (userString) {
+            const user = JSON.parse(userString);
+            // Check if the user is a Marol Male trainer
+            if (user.Branch === 'Marol' && user.Gender === 'Male') {
+                // If they are, add a class to the root <html> element
+                document.documentElement.className = 'is-marol-male';
+            }
+        }
+    } catch (e) {
+        console.error('Initial auth script failed:', e);
+    }
+</script>
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
@@ -253,10 +270,18 @@
     margin-top: 10px;
     transition: opacity 0.2s ease;
 }
+/* Add this to your existing <style> block */
+
+#nav-fitness-test {
+    display: none;
+}
+html.is-marol-male #nav-fitness-test {
+    display: block; /* Or 'inline-block' depending on navbar style */
+}
 
 
     </style>
-  <script type="module" crossorigin src="/assets/trainerDashboard-BL_z7d-S.js"></script>
+  <script type="module" crossorigin src="/assets/trainerDashboard-r1gtufa9.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
 </head>
 <body>

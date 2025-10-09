@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trainer Dashboard - FitTracker</title>
+    <script>
+    // This script runs instantly, before the page content is displayed.
+    try {
+        // The user object is stored here upon login
+        const userString = localStorage.getItem('staffUser');
+        if (userString) {
+            const user = JSON.parse(userString);
+            // Check if the user is a Marol Male trainer
+            if (user.Branch === 'Marol' && user.Gender === 'Male') {
+                // If they are, add a class to the root <html> element
+                document.documentElement.className = 'is-marol-male';
+            }
+        }
+    } catch (e) {
+        console.error('Initial auth script failed:', e);
+    }
+</script>
     <link rel="icon" href="../images/favicon.png" type="image/png">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
@@ -253,6 +270,14 @@
     margin-top: 10px;
     transition: opacity 0.2s ease;
 }
+/* Add this to your existing <style> block */
+
+#nav-fitness-test {
+    display: none;
+}
+html.is-marol-male #nav-fitness-test {
+    display: block; /* Or 'inline-block' depending on navbar style */
+}
 
 
     </style>
@@ -465,21 +490,24 @@
         }
 
         // --- Main Logic Functions ---
-        async function validateTrainerSession() {
-            try {
-                const res = await fetch('/api/session-user', { credentials: 'include' });
-                const data = await res.json();
-                if (!data.success || !data.user) {
-                    window.location.href = '../Forbidden.html';
-                    return;
-                }
-                const { Branch, Gender } = data.user;
-                elements.welcomeText.innerText = `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
-            } catch (err) {
-                console.error('Session validation failed:', err);
-                window.location.href = '../Forbidden.html';
-            }
+// REPLACE your existing validateTrainerSession function with this one
+
+async function validateTrainerSession() {
+    try {
+        const res = await fetch('/api/session-user', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !data.user) {
+            window.location.href = '../Forbidden.html';
+            return;
         }
+        const { Branch, Gender } = data.user;
+        elements.welcomeText.innerText = `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
+
+    } catch (err) {
+        console.error('Session validation failed:', err);
+        window.location.href = '../Forbidden.html';
+    }
+}
 
 // Replace your old checkTR function with this one
 async function checkTR() {
@@ -859,8 +887,8 @@ document.getElementById('logoutLink').addEventListener('click', function (e) {
         }
     }
 
-    // --- Initial page load ---
-    initializeSelector();
+    // // --- Initial page load ---
+    // initializeSelector();
 
 
 
@@ -1159,6 +1187,11 @@ navLinks.forEach(link => {
                 } else if (section.id === 'attendance-section') {
                     const input = section.querySelector('#tr-input');
                     if (input) input.focus();
+                } else if (section.id === 'fitness-test-section') {
+                    const input = section.querySelector('#student-selector');
+                    if (input) input.focus();
+
+                    initializeSelector(); // Ensure the selector is initialized
                 }
 
             } else {

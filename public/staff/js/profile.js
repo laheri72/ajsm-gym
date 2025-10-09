@@ -117,12 +117,18 @@ function renderHeader(info) {
 
 
 
+// REPLACE your old renderProgressTrackers function in profile.js with this one.
+
+// REPLACE your old renderProgressTrackers function in profile.js with this one.
+
 function renderProgressTrackers(progress) {
     const container = document.getElementById('profile-progress-trackers');
     if (!container) return;
 
+    // --- Destructure all progress objects ---
+    const { consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication } = progress;
+
     // --- Calculate percentages and text for each achievement ---
-    const { consistency, perfectMonth, socialButterfly, milestoneLift } = progress;
 
     // 1. Consistency King
     const consistencyPercent = Math.min((consistency.current / consistency.target) * 100, 100);
@@ -134,7 +140,7 @@ function renderProgressTrackers(progress) {
         ? "Goal Met! Awaiting Award"
         : `${perfectMonth.current} / ${perfectMonth.target} Days in last 30`;
 
-    // 3. Social Butterfly (REVISED LOGIC)
+    // 3. Social Butterfly
     const butterflyPercent = Math.min((socialButterfly.current / socialButterfly.target) * 100, 100);
     const butterflyText = (butterflyPercent >= 100)
         ? `Weekly Score: ${socialButterfly.current} / ${socialButterfly.target} - Great work!`
@@ -146,8 +152,18 @@ function renderProgressTrackers(progress) {
     const milestoneText = (current_score === 'N/A')
         ? "Take 2+ tests to see progress"
         : `Prev: ${previous_score}, Current: ${current_score} (+${current_improvement.toFixed(1)}%)`;
+        
+    // 5. Iron Dedication (NEWLY ADDED)
+    const { current: dedicationHours, target: dedicationTarget, tierName, completed } = ironDedication;
+    const dedicationPercent = completed ? 100 : Math.min((dedicationHours / dedicationTarget) * 100, 100);
+    const dedicationText = completed
+        ? `All Tiers Completed! (${dedicationHours.toFixed(1)} Hours)`
+        : `${dedicationHours.toFixed(1)} / ${dedicationTarget} Hours toward ${tierName}`;
+    const dedicationImgSrc = completed
+        ? '/images/badges/dedication-gold.png'
+        : `/images/badges/dedication-${tierName.toLowerCase()}.png`;
 
-    // --- Generate the HTML ---
+    // --- Generate the entire HTML for all five cards ---
     container.innerHTML = `
         <div class="progress-card">
             <img src="/images/badges/consistency-king.png" class="progress-badge-img" alt="Consistency King">
@@ -181,13 +197,15 @@ function renderProgressTrackers(progress) {
                 <p class="progress-text">${milestoneText}</p>
             </div>
         </div>
+        <div class="progress-card">
+            <img src="${dedicationImgSrc}" class="progress-badge-img" alt="Iron Dedication">
+            <div class="progress-info">
+                <h4>Iron Dedication</h4>
+                <div class="progress-bar-container"><div class="progress-bar-fill" style="width: ${dedicationPercent}%;"></div></div>
+                <p class="progress-text">${dedicationText}</p>
+            </div>
+        </div>
     `;
-
-    // Initialize tooltips after rendering the HTML
-    const tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
 }
 
     function renderTrophyCase(achievements) {
