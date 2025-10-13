@@ -884,3 +884,9 @@ body.nav-open .nav-overlay {
     border-radius: 4px;
     transition: width 0.5s ease-in-out;
 }
+/* Ensure the chart canvas has a normal height */
+#profile-fitness-chart {
+  max-height: 400px !important;
+  height: 400px !important;
+  width: 100% !important;
+}

@@ -125,8 +125,16 @@ async function getStudentSession() {
 
     // Update welcome UI
     document.getElementById('studentName').innerText = studentName || 'Student';
+    const title =
+      gender?.toLowerCase() === 'male'
+        ? 'Talabat'
+        : gender?.toLowerCase() === 'female'
+          ? 'Talebaat'
+          : 'Student';
+
     document.getElementById('welcomeText').innerText =
-      `Fitness ${studentName} | ${branch.toUpperCase()} | ${gender.toUpperCase()}`;
+      `Your personal Fitness Dashboard 
+       ${branch} | ${title}`;
 
         // --- NEW: Check if password change is needed ---
     if (data.user.HasLoggedInBefore === false) {

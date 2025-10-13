@@ -3,139 +3,73 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Student Profile</title> 
+    <title>Staff – Student Profile | FitTracker</title>
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
-    
+
+    <!-- No-flicker Role Script -->
     <script>
-        try { // No-flicker role script
+        try {
             const userString = localStorage.getItem('staffUser');
             if (userString) {
                 const user = JSON.parse(userString);
                 if (user.Role === 'Admin') document.documentElement.classList.add('is-admin');
-                if (user.Branch === 'Marol' && user.Gender === 'Male') document.documentElement.classList.add('is-marol-male');
+                if (user.Branch === 'Marol' && user.Gender === 'Male')
+                    document.documentElement.classList.add('is-marol-male');
             }
-        } catch (e) { console.error('Bootstrap script failed:', e); }
+        } catch (e) { console.error('Bootstrap role script failed:', e); }
     </script>
-    
+
+    <!-- Styles -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
-     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-  <script type="module" crossorigin src="/assets/staffProfile-BuTwnqPC.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
+  <script type="module" crossorigin src="/assets/staffProfile-BGoTTq4J.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-Bf0L6rOZ.js">
-  <link rel="stylesheet" crossorigin href="/assets/auth-DSe57uew.css">
+  <link rel="modulepreload" crossorigin href="/assets/auth-B0p6mXTA.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-C3YTSdM4.css">
 </head>
+
 <body>
     <div class="dashboard-container">
+        <!-- ===== HEADER / NAV ===== -->
         <header class="app-header">
             <div class="brand"><a href="overview.html">FitTracker</a></div>
-            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu"><span></span><span></span><span></span></button>
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span><span></span><span></span>
+            </button>
+
             <nav class="navbar" id="navbar">
                 <a href="overview.html" id="tab-overview">📊 Overview</a>
                 <a href="entry.html" id="tab-entry">Slot Entry</a>
                 <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
                 <a href="records.html" id="tab-record">Active Students</a>
-                <a href="progress.html" id="tab-Progress">Analysis</a>
+                <a href="progress.html" id="tab-progress">Analysis</a>
                 <a href="test.html" id="tab-test">Fitness Test</a>
                 <a href="attendance.html" id="tab-attendance">Attendance</a>
                 <a href="leaves.html" id="tab-leaves">Leave Management</a>
-                <a href="profile.html" id="tab-profile">👤 Profile</a>
+                <a href="profile.html" id="tab-profile" class="active">👤 Profile</a>
                 <a href="#" id="logoutLink">Logout</a>
             </nav>
         </header>
 
+        <!-- ===== MAIN CONTENT ===== -->
         <main class="main-content">
             <div class="content">
                 <div id="profile-content-area">
 
+                    <!-- SEARCH SECTION -->
                     <section id="profile-search-section" class="card">
                         <h2>View Student Profile</h2>
                         <p class="text-muted">Start typing a student's name or TR number to find their profile.</p>
-                        
                         <div class="profile-search-container">
                             <input type="text" id="studentSearchInput" class="form-control" placeholder="Search by Name or TR..." autocomplete="off">
-                            <div id="searchResults" class="search-results-dropdown">
-                                </div>
+                            <div id="searchResults" class="search-results-dropdown"></div>
                         </div>
                     </section>
 
-<section id="profile-details-section" style="display: none;">
-    <div class="profile-header card">
-        <div class="profile-main-info">
-            <h2 id="profileName">Student Name</h2>
-            <span id="profileStatus" class="status-badge"></span>
-            <p><strong>TR:</strong> <span id="profileTR"></span> | <strong>Joined:</strong> <span id="profileJoined"></span></p>
-        </div>
-        <div class="profile-secondary-info">
-            <p><strong>Goal:</strong> <span id="profileGoal"></span></p>
-            <p><strong>Slot:</strong> <span id="profileSlot"></span></p>
-            <p><strong>Darajah:</strong> <span id="profileDarajah"></span></p>
-        </div>
-    </div>
-
-    <nav class="tab-nav profile-tabs">
-        <button class="tab-link active" data-tab="overview-pane">Overview</button>
-        <button class="tab-link" data-tab="attendance-pane">Attendance & Logs</button>
-        <button class="tab-link" data-tab="fitness-pane">Fitness History</button>
-        <button class="tab-link" data-tab="admin-pane">Admin Records</button>
-    </nav>
-
-    <div class="tab-content">
-        <div id="overview-pane" class="tab-pane active">
-            <div class="card">
-                <h3>Live Achievement Progress</h3>
-                <div id="profile-progress-trackers" class="progress-trackers-container">
-                    </div>
-            </div>
-            <div class="card">
-                <h3>Trophy Case</h3>
-                <div id="profile-achievements-grid" class="achievements-grid">
-                    </div>
-            </div>
-        </div>
-        <div id="attendance-pane" class="tab-pane">
-            <div class="card">
-                <h3>Workout Consistency</h3>
-                <div id="profile-consistency-heatmap"  style="overflow-x: auto;"></div>
-            </div>
-             <div class="card">
-                <h3>Workout Log History</h3>
-                <div class="table-responsive">
-                    <table id="profile-workout-log-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-        </div>
-        <div id="fitness-pane" class="tab-pane">
-            <div class="card">
-                <h3>Fitness Test Progression</h3>
-                <canvas id="profile-fitness-chart"></canvas>
-            </div>
-            <div class="card">
-                <h3>Fitness Test History</h3>
-                <div class="table-responsive">
-                    <table id="profile-fitness-history-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-        </div>
-        <div id="admin-pane" class="tab-pane">
-            <div class="card">
-                <h3>Full Attendance History</h3>
-                 <div class="table-responsive">
-                    <table id="profile-attendance-history-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Leave Request History</h3>
-                <div class="table-responsive">
-                    <table id="profile-leave-history-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
+                    <!-- DETAILS SECTION (injected dynamically) -->
+                    <section id="profile-details-section" style="display:none;"></section>
                 </div>
             </div>
         </main>
@@ -143,173 +77,140 @@
 
     <div class="nav-overlay" id="nav-overlay"></div>
 
+    <!-- ===== LIBRARIES ===== -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+
+    <!-- ===== APP SCRIPTS ===== -->
+
+    <!-- Mobile Menu Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navOverlay = document.getElementById('nav-overlay');
+            const toggleNav = () => document.body.classList.toggle('nav-open');
+            if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleNav);
+            if (navOverlay) navOverlay.addEventListener('click', toggleNav);
+        });
+    </script>
+
+    <!-- ===== PROFILE DETAILS TEMPLATE ===== -->
     <template id="profile-details-template">
-    <div class="profile-header card">
-        <div class="profile-main-info">
-            <h2 id="profileName"></h2>
-            <span id="profileStatus" class="status-badge"></span>
-            <p><strong>TR:</strong> <span id="profileTR"></span> | <strong>Joined:</strong> <span id="profileJoined"></span></p>
-        </div>
-<div class="profile-secondary-info">
-    <p><strong>Goal:</strong> <span id="profileGoal"></span></p>
-    <p><strong>Slot:</strong> <span id="profileSlot"></span></p>
-    <p><strong>Darajah:</strong> <span id="profileDarajah"></span></p>
-
-    <div class="xp-level-container profile-header-xp">
-        <div class="level-badge">
-            LVL <span id="profileFitnessLevel">1</span>
-        </div>
-        <div class="progress-details">
-            <div class="xp-text">
-                <span id="profileCurrentXp">0</span> / <span id="profileNextLevelXp">100</span> XP
+        <div class="profile-header card">
+            <div class="profile-main-info">
+                <h2 id="profileName">Student Name</h2>
+                <span id="profileStatus" class="status-badge"></span>
+                <p><strong>TR:</strong> <span id="profileTR"></span> | <strong>Joined:</strong> <span id="profileJoined"></span></p>
             </div>
-            <div class="progress-bar">
-                <div class="progress-bar-fill" id="profileXpBarFill"></div>
-            </div>
-        </div>
-    </div>
-</div>
-    </div>
-
-    <nav class="tab-nav profile-tabs"  style="overflow-x: auto;">
-        <button class="tab-link active" data-tab="overview-pane">Overview</button>
-        <button class="tab-link" data-tab="attendance-pane">Attendance & Logs</button>
-        <button class="tab-link" data-tab="fitness-pane">Fitness History</button>
-        <button class="tab-link" data-tab="admin-pane">Admin Records</button>
-    </nav>
-
-    <div class="tab-content">
-        <div id="overview-pane" class="tab-pane active">
-<div class="card">
-    <h3>Live Achievement Progress</h3>
-    <div id="profile-progress-trackers" class="progress-trackers-container">
-        <div class="progress-card">
-            <img src="/assets/consistency-king-DkYQPIsJ.png" alt="Consistency King" class="progress-badge-img">
-            <div class="progress-info">
-                <h4>Consistency King</h4>
-                <div class="progress-bar-container"><div class="progress-bar-fill" id="consistency-progress-fill"></div></div>
-                <p class="progress-text" id="consistency-progress-text"></p>
-            </div>
-        </div>
-
-        <div class="progress-card">
-            <img src="/assets/perfect-month-DIfjwbNo.png" alt="Perfect 30 Days" class="progress-badge-img">
-            <div class="progress-info">
-                <h4>Perfect 30 Days</h4>
-                <div class="progress-bar-container"><div class="progress-bar-fill" id="perfect-month-progress-fill"></div></div>
-                <p class="progress-text" id="perfect-month-progress-text"></p>
-            </div>
-        </div>
-
-        <div class="progress-card">
-            <img src="/assets/social-butterfly-fyZIfnkb.png" alt="Social Butterfly" class="progress-badge-img">
-            <div class="progress-info">
-                <h4>
-                    Social Butterfly
-                    <span class="info-icon" data-bs-toggle="tooltip" data-bs-placement="top"
-                          title="Represents the student's personal score for the current week. The top 3 performers are awarded the badge on Sunday.">
-                          &#9432;
-                    </span>
-                </h4>
-                <div class="progress-bar-container"><div class="progress-bar-fill" id="social-butterfly-progress-fill"></div></div>
-                <p class="progress-text" id="social-butterfly-progress-text">Weekly Score: 0 / 8</p>
-            </div>
-        </div>
-
-        <div class="progress-card">
-            <img src="/assets/milestone-lift-zEwHNZv9.png" alt="Milestone Lift" class="progress-badge-img">
-            <div class="progress-info">
-                <h4>Milestone Lift</h4>
-                <div class="progress-bar-container"><div class="progress-bar-fill" id="milestone-lift-progress-fill"></div></div>
-                <p class="progress-text" id="milestone-lift-progress-text"></p>
-            </div>
-        </div>
-        <div class="progress-card">
-            <img src="/images/badges/iron-dedication.png" alt="Iron Dedication" class="progress-badge-img">
-            <div class="progress-info">
-                <h4>Iron Dedication</h4>
-                <div class="progress-bar-container"><div class="progress-bar-fill" id="iron-dedication-progress-fill"></div></div>
-                <p class="progress-text" id="iron-dedication-progress-text"></p>
-            </div>
-    </div>
-</div>
-            <div class="card">
-                <h3>Trophy Case</h3>
-                <div id="profile-achievements-grid" class="achievements-grid"></div>
-            </div>
-        </div>
-        <div id="attendance-pane" class="tab-pane" style="display: none;">
-            <div class="card">
-                <h3>Workout Consistency</h3>
-                <div id="profile-consistency-heatmap" style="overflow-x: auto;"></div>
-            </div>
-            <div class="card">
-                <h3>Workout Log History</h3>
-                <div class="table-responsive">
-                    <table id="profile-workout-log-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-        </div>
-        <div id="fitness-pane" class="tab-pane" style="display: none;">
-            <div class="card">
-                <h3>Fitness Test Progression</h3>
-                <canvas id="profile-fitness-chart"></canvas>
-            </div>
-            <div class="card">
-                <h3>Fitness Test History</h3>
-                <div class="table-responsive">
-                    <table id="profile-fitness-history-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-        </div>
-        <div id="admin-pane" class="tab-pane" style="display: none;">
-            <div class="card">
-                <h3>Full Attendance History</h3>
-                <div class="table-responsive">
-                    <table id="profile-attendance-history-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Leave Request History</h3>
-                <div class="table-responsive">
-                    <table id="profile-leave-history-table" class="table table-striped table-bordered" style="width:100%"></table>
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
-<div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Create Your New Password</h5>
-            </div>
-            <div class="modal-body">
-                <p>Welcome! For your security, you must create a new password for your account.</p>
-                <form id="setPasswordForm">
-                    <div class="mb-3">
-                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
-                        <input type="password" class="form-control" id="newPassword" required>
+            <div class="profile-secondary-info">
+                <p><strong>Goal:</strong> <span id="profileGoal"></span></p>
+                <p><strong>Slot:</strong> <span id="profileSlot"></span></p>
+                <p><strong>Darajah:</strong> <span id="profileDarajah"></span></p>
+                <div class="xp-level-container profile-header-xp">
+                    <div class="level-badge">LVL <span id="profileFitnessLevel">1</span></div>
+                    <div class="progress-details">
+                        <div class="xp-text"><span id="profileCurrentXp">0</span> / <span id="profileNextLevelXp">100</span> XP</div>
+                        <div class="progress-bar"><div class="progress-bar-fill" id="profileXpBarFill"></div></div>
                     </div>
-                    <div class="mb-3">
-                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirmPassword" required>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB NAVIGATION -->
+        <nav class="tab-nav profile-tabs" style="overflow-x:auto;">
+            <button class="tab-link active" data-tab="overview-pane">Overview</button>
+            <button class="tab-link" data-tab="attendance-pane">Attendance & Logs</button>
+            <button class="tab-link" data-tab="fitness-pane">Fitness History</button>
+            <button class="tab-link" data-tab="admin-pane">Admin Records</button>
+        </nav>
+
+        <!-- TAB CONTENT -->
+        <div class="tab-content">
+            <!-- OVERVIEW -->
+            <div id="overview-pane" class="tab-pane active">
+                <div class="card">
+                    <h3>Live Achievement Progress</h3>
+                    <div id="profile-progress-trackers" class="progress-trackers-container"></div>
+                </div>
+                <div class="card">
+                    <h3>Trophy Case</h3>
+                    <div id="profile-achievements-grid" class="achievements-grid"></div>
+                </div>
+            </div>
+
+            <!-- ATTENDANCE -->
+            <div id="attendance-pane" class="tab-pane" style="display:none;">
+                <div class="card">
+                    <h3>Workout Consistency</h3>
+                    <div id="profile-consistency-heatmap" style="overflow-x:auto;"></div>
+                </div>
+                <div class="card">
+                    <h3>Workout Log History</h3>
+                    <div class="table-responsive">
+                        <table id="profile-workout-log-table" class="table table-striped table-bordered" style="width:100%"></table>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
-                </form>
+                </div>
+            </div>
+
+            <!-- FITNESS HISTORY -->
+            <div id="fitness-pane" class="tab-pane" style="display:none;">
+                <div class="card">
+                    <h3>Fitness Test Progression</h3>
+                    <canvas id="profile-fitness-chart"></canvas>
+                </div>
+                <div class="card">
+                    <h3>Fitness Test History</h3>
+                    <div class="table-responsive">
+                        <table id="profile-fitness-history-table" class="table table-striped table-bordered" style="width:100%"></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN RECORDS -->
+            <div id="admin-pane" class="tab-pane" style="display:none;">
+                <div class="card">
+                    <h3>Full Attendance History</h3>
+                    <div class="table-responsive">
+                        <table id="profile-attendance-history-table" class="table table-striped table-bordered" style="width:100%"></table>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Leave Request History</h3>
+                    <div class="table-responsive">
+                        <table id="profile-leave-history-table" class="table table-striped table-bordered" style="width:100%"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- FORCE PASSWORD MODAL -->
+    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Create Your New Password</h5></div>
+                <div class="modal-body">
+                    <p>Welcome! For your security, you must create a new password for your account.</p>
+                    <form id="setPasswordForm">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 </body>
 </html>

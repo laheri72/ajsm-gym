@@ -24,7 +24,7 @@
 
         <header class="header">
             <div class="header-content">
-                <h1>Welcome, <span id="studentName"></span>!</h1>
+                <h1>✨<span id="studentName"></span></h1>
                 <h2 id="welcomeText"></h2>
             </div>
             <div class="header-actions">
@@ -812,7 +812,13 @@
       <div class="progress-card" id="iron-dedication-card">
           <img src="/images/badges/dedication-bronze.png" alt="Iron Dedication" id="iron-dedication-img" class="progress-badge-img">
           <div class="progress-info">
-              <h4>Iron Dedication</h4>
+              <h4>Iron Dedication
+              <span class="info-icon" 
+                    data-bs-toggle="tooltip" 
+                    data-bs-placement="top"
+                    title="Log a total of 10 hours of workout time to earn this badge. Track your progress here."> &#9432;
+              </span>
+              </h4>
               <div class="progress-bar-container">
                   <div class="progress-bar-fill" id="iron-dedication-fill"></div>
               </div>
@@ -849,7 +855,7 @@
    <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
 
-<script type="module" src="/js/student.min.js"></script>
+<script type="module" src="/js/student.js"></script>
 
 
 
