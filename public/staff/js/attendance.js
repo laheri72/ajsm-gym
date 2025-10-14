@@ -165,51 +165,83 @@ document.getElementById('updateAttendanceBtn').addEventListener('click', async (
         }
     }
 
-    document.getElementById('loadAttendanceBtn').addEventListener('click', async () => {
-        const weekId = document.getElementById('weekSelect').value;
-        if (!weekId) {
-            return Swal.fire('No Week Selected', 'Please select a week before loading.', 'warning');
+// REPLACE the entire 'loadAttendanceBtn' event listener in attendance.js
+
+document.getElementById('loadAttendanceBtn').addEventListener('click', async () => {
+    const weekId = document.getElementById('weekSelect').value;
+    if (!weekId) {
+        return Swal.fire('No Week Selected', 'Please select a week.', 'warning');
+    }
+
+    const tbody = document.querySelector('#attendanceTable tbody');
+    tbody.innerHTML = `<tr><td colspan="10" class="loader-cell"><div class="loader"></div></td></tr>`;
+
+    try {
+        const res = await fetch(`/api/weekly-attendance/${weekId}`);
+        const result = await res.json(); // The full response object
+
+        if (!result.success) throw new Error(result.error || 'Failed to fetch data.');
+        
+        const data = result.attendance; // The array of student records
+        const startDate = new Date(result.weekStartDate); // <-- THE FIX IS HERE: Get startDate from the response
+
+        tbody.innerHTML = '';
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center">No attendance records found for this week.</td></tr>`;
+            return;
         }
+        
+        data.forEach(student => {
+            const joinedDate = new Date(student.JoinedAt);
+            joinedDate.setHours(0, 0, 0, 0);
 
-        const tbody = document.querySelector('#attendanceTable tbody');
-        tbody.innerHTML = `<tr><td colspan="10" class="loader-cell"><div class="loader"></div></td></tr>`;
+            let absentCount = 0;
+            const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-        try {
-            const res = await fetch(`/api/weekly-attendance/${weekId}`);
-            const data = await res.json();
-            tbody.innerHTML = '';
-            if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="text-center">No attendance records found for this week.</td></tr>`;
-                return;
-            }
-            
-            data.forEach(student => {
-                let absentCount = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-                    .filter(day => student[day] === 'Absent').length;
+            daysOfWeek.forEach((day, i) => {
+                const currentDate = new Date(startDate); // This now works correctly
+                currentDate.setDate(startDate.getDate() + i);
                 
-                const row = document.createElement('tr');
-                if (absentCount >= 3) {
-                    row.classList.add('attendance-danger-row');
+                if (student[day] === 'Absent' && currentDate >= joinedDate) {
+                    absentCount++;
                 }
-                row.innerHTML = `
-                    <td>${student.TR}</td>
-                    <td>${student.Name}</td>
-                    <td>${student.SlotName}</td>
-                    ${renderAttendanceCell(student.Monday)}
-                    ${renderAttendanceCell(student.Tuesday)}
-                    ${renderAttendanceCell(student.Wednesday)}
-                    ${renderAttendanceCell(student.Thursday)}
-                    ${renderAttendanceCell(student.Friday)}
-                    ${renderAttendanceCell(student.Saturday)}
-                    <td>${absentCount}</td> 
-                `;
-                tbody.appendChild(row);
             });
-        } catch (err) {
-            console.error('Failed to load attendance:', err);
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center" style="color: var(--danger);">Error loading attendance. Please try again.</td></tr>`;
-        }
-    });
+
+            const row = document.createElement('tr');
+            if (absentCount >= 3) {
+                row.classList.add('attendance-danger-row');
+            }
+
+            const renderCellWithJoinDateCheck = (day, status) => {
+                const dayIndex = daysOfWeek.indexOf(day);
+                const cellDate = new Date(startDate); // This also works correctly now
+                cellDate.setDate(startDate.getDate() + dayIndex);
+                
+                if (cellDate < joinedDate) {
+                    return `<td>-</td>`;
+                }
+                return renderAttendanceCell(status);
+            };
+
+            row.innerHTML = `
+                <td>${student.TR}</td>
+                <td>${student.Name}</td>
+                <td>${student.SlotName}</td>
+                ${renderCellWithJoinDateCheck('Monday', student.Monday)}
+                ${renderCellWithJoinDateCheck('Tuesday', student.Tuesday)}
+                ${renderCellWithJoinDateCheck('Wednesday', student.Wednesday)}
+                ${renderCellWithJoinDateCheck('Thursday', student.Thursday)}
+                ${renderCellWithJoinDateCheck('Friday', student.Friday)}
+                ${renderCellWithJoinDateCheck('Saturday', student.Saturday)}
+                <td>${absentCount}</td> 
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (err) {
+        console.error('Failed to load attendance:', err);
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center" style="color: var(--danger);">Error loading attendance. Please try again.</td></tr>`;
+    }
+});
 
     document.getElementById('exportAttendanceBtn').addEventListener('click', () => {
         const table = document.getElementById('attendanceTable');

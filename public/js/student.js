@@ -196,96 +196,97 @@ function handleInitialPasswordSet() {
         }
     });
 }
+// REPLACE your existing loadAttendance function in student.js
 
 function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;
     const loadButton = document.getElementById('loadAttendanceBtn');
     
     if (!selectedWeek) {
-        Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select a week.' });
-        return;
+        return Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select a week.' });
     }
 
     loadButton.textContent = 'Loading...';
     loadButton.disabled = true;
-
-    // ✅ HIDE BOTH CARDS BEFORE LOADING NEW DATA
     document.getElementById('attendanceSummaryCard').style.display = 'none';
     document.getElementById('attendanceWarning').style.display = 'none';
-    document.getElementById('attendanceSpinner').style.display = 'block';  // Show spinner
-
-    if (!studentTR) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Could not find student TR. Please log in again.' });
-        loadButton.textContent = 'Load Attendance';
-        loadButton.disabled = false;
-        document.getElementById('attendanceSpinner').style.display = 'none';  // Hide spinner
-        return;
-    }
+    document.getElementById('attendanceSpinner').style.display = 'block';
 
     fetch(`/api/student-attendance/${selectedWeek}/me`, {
-    method: 'GET',
-    credentials: 'include'
-}).then(res => res.json())
-  .then(data => {
-      const tbody = document.querySelector('#attendanceTable tbody');
-      tbody.innerHTML = '';
+        method: 'GET',
+        credentials: 'include'
+    }).then(res => res.json())
+      .then(result => {
+          if (!result.success) throw new Error(result.error || 'Failed to fetch data.');
 
-            if (data.length > 0) {
-                const student = data[0];
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const weekStartDate = new Date(student.WeekStartDate);
-                const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                
-                let presentCount = 0;
-                let absentCount = 0;
-                let onLeaveCount = 0;
+          const tbody = document.querySelector('#attendanceTable tbody');
+          tbody.innerHTML = '';
+          
+          const data = result.attendance;
+          const weekStartDate = new Date(result.weekStartDate); // <-- Get startDate from the new response structure
 
-                const cells = daysOfWeek.map((day, i) => {
-                    const status = student[day];
-                    const currentDate = new Date(weekStartDate);
-                    currentDate.setDate(currentDate.getDate() + i);
-                    
-                    if (status === 'Present') {
-                        presentCount++;
-                        return `<td class="present">Present</td>`;
-                    } else if (status === 'On Leave') {
-                        onLeaveCount++;
-                        return `<td class="on-leave" style="color: #f59e0b; font-weight: bold;">On Leave</td>`;
-                    } else if (currentDate <= today) {
-                        absentCount++;
-                        return `<td class="absent" style="color: red; font-weight: bold;">Absent</td>`;
-                    } else {
-                        return `<td></td>`;
-                    }
-                });
+          if (data.length > 0) {
+              const student = data[0];
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
 
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${student.TR}</td>
-                    <td>${student.Name}</td>
-                    ${cells.join('')}
-                `;
-                tbody.appendChild(row);
+              const joinedDate = new Date(student.JoinedAt);
+              joinedDate.setHours(0, 0, 0, 0);
+              
+              const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+              
+              let presentCount = 0;
+              let absentCount = 0;
+              let onLeaveCount = 0;
 
-                // Update and show the summary card
-                document.getElementById('presentCount').innerText = presentCount;
-                document.getElementById('absentCount').innerText = absentCount;
-                document.getElementById('onLeaveCount').innerText = onLeaveCount;
-                document.getElementById('attendanceSummaryCard').style.display = 'block';
+              const cells = daysOfWeek.map((day, i) => {
+                  const status = student[day];
+                  const currentDate = new Date(weekStartDate);
+                  currentDate.setDate(weekStartDate.getDate() + i);
+                  
+                  // If the cell's date is BEFORE the student joined, it should be blank.
+                  if (currentDate < joinedDate) {
+                      return `<td>-</td>`;
+                  }
 
-                // ✅ SHOW WARNING IF ABSENCES ARE 2 OR MORE
-                if (absentCount >= 2) {
-                    document.getElementById('attendanceWarning').style.display = 'flex';
-                }
-            }
-        })
-        .catch(err => console.error('Failed to load student attendance:', err))
-        .finally(() => {
-            loadButton.textContent = 'Load Attendance';
-            loadButton.disabled = false;
-            document.getElementById('attendanceSpinner').style.display = 'none';  // Hide spinner
-        });
+                  if (status === 'Present') {
+                      presentCount++;
+                      return `<td class="present">Present</td>`;
+                  } else if (status === 'On Leave') {
+                      onLeaveCount++;
+                      return `<td class="on-leave">On Leave</td>`;
+                  } else if (currentDate <= today) {
+                      absentCount++; // Only count as absent if after join date
+                      return `<td class="absent">Absent</td>`;
+                  } else {
+                      return `<td></td>`; // Future date
+                  }
+              });
+
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${student.TR}</td>
+                  <td>${student.Name}</td>
+                  ${cells.join('')}
+              `;
+              tbody.appendChild(row);
+
+              document.getElementById('presentCount').innerText = presentCount;
+              document.getElementById('absentCount').innerText = absentCount;
+              document.getElementById('onLeaveCount').innerText = onLeaveCount;
+              document.getElementById('attendanceSummaryCard').style.display = 'block';
+
+              if (absentCount >= 2) {
+                  document.getElementById('attendanceWarning').style.display = 'flex';
+              }
+          }
+      })
+      .catch(err => console.error('Failed to load student attendance:', err))
+      .finally(() => {
+          loadButton.textContent = 'Load Attendance';
+          loadButton.disabled = false;
+          document.getElementById('attendanceSpinner').style.display = 'none';
+      });
 }
 //-------------------------------------------------------------------------------------------
 

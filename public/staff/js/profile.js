@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="progress-info">
                     <h4>Iron Dedication</h4>
                     <div class="progress-bar-container"><div class="progress-bar-fill" style="width:${dedicationPercent}%;"></div></div>
-                    <p>${ironDedication.completed ? 'All tiers done!' : `${ironDedication.current} / ${ironDedication.target} hrs`}</p>
+                    <p>${ironDedication.completed ? 'All tiers done!' : `${ironDedication.current.toFixed(2)}hrs / ${ironDedication.target} hrs`}</p>
                 </div>
             </div>`;
     }

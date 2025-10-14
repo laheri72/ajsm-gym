@@ -585,7 +585,9 @@ app.put('/api/students/status/:TR', async (req, res) => {
 });
 
 
-app.get('/api/student-attendance/:weekId/me', async (req, res) => {
+// REPLACE your old /api/student-attendance/:weekId/me route
+
+app.get('/api/student-attendance/:weekId/me', async (req, res, next) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
     }
@@ -594,41 +596,38 @@ app.get('/api/student-attendance/:weekId/me', async (req, res) => {
     const { TR } = req.session.user;
 
     try {
-        // Get week start date
+        // 1. Get both the start and end dates of the week
         const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
-            .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
+            .query(`SELECT WeekStartDate, WeekEndDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
 
         if (weekQuery.recordset.length === 0) {
             return res.status(404).json({ error: 'Week not found' });
         }
+        const { WeekStartDate, WeekEndDate } = weekQuery.recordset[0];
 
-        const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
-
-        // --- CORRECTED LOGIC STARTS HERE ---
-        // Fetch IsPresent and OnLeave flags for each day in the week
+        // 2. Fetch the student's attendance, but also get their JoinedAt date
         const result = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('TR', sql.Int, TR)
+            .input('WeekEndDate', sql.Date, WeekEndDate) // Use the end date for the filter
             .query(`
                 SELECT 
-                    M.Name,
+                    M.Name, M.JoinedAt,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
-                    A.IsPresent,
-                    A.OnLeave  -- <-- Select the new column
+                    A.IsPresent, A.OnLeave
                 FROM Master M
-                LEFT JOIN Attendance A 
-                    ON M.TR = A.TR AND A.WeekID = @WeekID
-                WHERE M.TR = @TR
+                LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
+                WHERE M.TR = @TR AND M.JoinedAt <= @WeekEndDate -- <-- THE FIX IS HERE
             `);
 
-        const studentName = result.recordset.length > 0 ? result.recordset[0].Name : '';
-        
+        const studentData = result.recordset[0] || { Name: '', JoinedAt: null };
+
         // Create a clean record for the student
         const record = {
             TR: TR,
-            Name: studentName,
-            WeekStartDate: startDate,
+            Name: studentData.Name,
+            JoinedAt: studentData.JoinedAt, // Pass the join date to the frontend
             Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: ''
         };
 
@@ -638,18 +637,22 @@ app.get('/api/student-attendance/:weekId/me', async (req, res) => {
                 if (row.IsPresent) {
                     record[row.DayName] = 'Present';
                 } else if (row.OnLeave) {
-                    record[row.DayName] = 'On Leave'; // <-- Set the new status
+                    record[row.DayName] = 'On Leave';
                 }
             }
         }
         
-        res.json([record]);
+        // 3. Send a structured response with all necessary info
+        res.json({
+            success: true,
+            weekStartDate: WeekStartDate,
+            attendance: [record]
+        });
+
     } catch (err) {
-        console.error('Error fetching student attendance:', err.message);
-        res.status(500).json({ error: 'Failed to fetch student attendance' });
+        next(err);
     }
 });
-
 
 app.get('/api/weeks', async (req, res) => {
     try {
@@ -703,7 +706,9 @@ app.get('/api/student-info/me', async (req, res) => {
 
 
 
-app.get('/api/student/eligible-weeks', async (req, res) => {
+// REPLACE your old /api/student/eligible-weeks route with this corrected version
+
+app.get('/api/student/eligible-weeks', async (req, res, next) => {
     // 1. Ensure a student is logged in by checking the session
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
@@ -712,13 +717,10 @@ app.get('/api/student/eligible-weeks', async (req, res) => {
     const { TR } = req.session.user;
 
     try {
-        const request = pool.request();
-        request.input('TR', sql.Int, TR);
-
         // 2. Get the student's official join date from the Master table
-        const studentResult = await request.query(`
-            SELECT JoinedAt FROM Master WHERE TR = @TR
-        `);
+        const studentResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`SELECT JoinedAt FROM Master WHERE TR = @TR`);
 
         if (studentResult.recordset.length === 0 || !studentResult.recordset[0].JoinedAt) {
              return res.status(404).json({ success: false, error: 'Student join date not found.' });
@@ -726,7 +728,7 @@ app.get('/api/student/eligible-weeks', async (req, res) => {
         
         const joinedDate = studentResult.recordset[0].JoinedAt;
         
-        // 3. Fetch only the weeks that started on or after the student joined
+        // 3. Fetch all weeks that END on or after the student joined
         const weeksResult = await pool.request()
             .input('JoinedAt', sql.Date, joinedDate)
             .query(`
@@ -734,52 +736,55 @@ app.get('/api/student/eligible-weeks', async (req, res) => {
                        CONVERT(varchar, WeekStartDate, 23) AS WeekStartDate,
                        CONVERT(varchar, WeekEndDate, 23) AS WeekEndDate
                 FROM AttendanceWeek
-                WHERE WeekStartDate >= @JoinedAt
+                -- THE FIX IS HERE: Use WeekEndDate instead of WeekStartDate
+                WHERE WeekEndDate >= @JoinedAt
                 ORDER BY WeekID ASC
             `);
 
         res.json({ success: true, weeks: weeksResult.recordset });
 
     } catch (err) {
-        console.error('Error fetching eligible weeks:', err.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch eligible weeks' });
+        next(err); // Pass error to centralized handler
     }
 });
 
 
-app.get('/api/weekly-attendance/:weekId', async (req, res) => {
+// REPLACE your old /api/weekly-attendance/:weekId route
+
+app.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
     const { weekId } = req.params;
     
-    // Session check remains the same
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
     }
     const { Branch, Gender } = req.session.user;
 
     try {
-        // This part remains the same: get the start date of the selected week
+        // --- THE FIX IS IN THIS QUERY ---
+        // We now fetch both the start and end dates of the week.
         const weekQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
-            .query(`SELECT WeekStartDate FROM AttendanceWeek WHERE WeekID = @WeekID`);
+            .query(`SELECT WeekStartDate, WeekEndDate FROM AttendanceWeek WHERE WeekID = @WeekID`); // <-- 1. GET WeekEndDate HERE
 
         if (weekQuery.recordset.length === 0) {
             return res.status(404).json({ error: 'Week not found' });
         }
-        const startDate = new Date(weekQuery.recordset[0].WeekStartDate);
+        
+        // --- AND THE FIX IS HERE ---
+        // Destructure both dates from the query result.
+        const { WeekStartDate, WeekEndDate } = weekQuery.recordset[0]; // <-- 2. DEFINE WeekEndDate HERE
+        const startDate = new Date(WeekStartDate);
 
-        // --- THE MAIN QUERY IS UPDATED HERE ---
         const attendanceQuery = await pool.request()
             .input('WeekID', sql.Int, weekId)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
-            // ✅ Pass the week's start date as a parameter to the query
-            .input('WeekStartDate', sql.Date, startDate) 
+            .input('WeekEndDate', sql.Date, WeekEndDate) // This line now works correctly
             .query(`
                 SELECT 
                     M.TR, M.Name, M.JoinedAt, S.SlotName,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
-                    A.IsPresent,
-                    A.OnLeave  -- Corrected: Added OnLeave to be fetched
+                    A.IsPresent, A.OnLeave
                 FROM Master M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
                 LEFT JOIN Slots S ON M.SlotID = S.SlotID
@@ -787,13 +792,10 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
                     M.Branch = @Branch 
                     AND M.Gender = @Gender 
                     AND M.Status = 'Active'
-                    -- ✅ THIS IS THE KEY: Only include members who had joined by the start of this week
-                    AND M.JoinedAt <= @WeekStartDate;
+                    AND M.JoinedAt <= @WeekEndDate;
             `);
 
-        // The rest of your JavaScript logic for processing the results is perfect and does not need to change.
-        // It will now only receive the correctly filtered list of members.
-        
+        // Your existing logic to process the results is correct and does not need to be changed.
         const resultMap = new Map();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -804,16 +806,16 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
                 const record = { 
                     TR: row.TR, 
                     Name: row.Name,
-                    SlotName: row.SlotName || 'N/A'
+                    SlotName: row.SlotName || 'N/A',
+                    JoinedAt: row.JoinedAt // Pass JoinedAt to the frontend
                 };
-                
                 dayNames.forEach((day, i) => {
                     const currentDate = new Date(startDate);
                     currentDate.setDate(startDate.getDate() + i);
                     if (currentDate > today) {
-                        record[day] = null; // Future dates are blank
+                        record[day] = null;
                     } else {
-                        record[day] = 'Absent'; // Default to Absent
+                        record[day] = 'Absent';
                     }
                 });
                 resultMap.set(row.TR, record);
@@ -831,11 +833,15 @@ app.get('/api/weekly-attendance/:weekId', async (req, res) => {
             }
         });
 
-        res.json([...resultMap.values()]);
+        // MODIFIED RESPONSE:
+        res.json({
+            success: true,
+            weekStartDate: WeekStartDate, // <-- ADD THIS LINE
+            attendance: [...resultMap.values()]
+        });
 
     } catch (err) {
-        console.error('Error fetching weekly attendance:', err.message);
-        res.status(500).json({ error: 'Failed to fetch weekly attendance' });
+        next(err); // Pass error to centralized handler
     }
 });
 //--------------------------------------------------------------------------------------------------
