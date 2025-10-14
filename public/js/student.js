@@ -198,6 +198,8 @@ function handleInitialPasswordSet() {
 }
 // REPLACE your existing loadAttendance function in student.js
 
+// REPLACE your old loadAttendance function with this one
+
 function loadAttendance() {
     const selectedWeek = document.getElementById('weekSelect').value;
     const loadButton = document.getElementById('loadAttendanceBtn');
@@ -206,11 +208,13 @@ function loadAttendance() {
         return Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select a week.' });
     }
 
-    loadButton.textContent = 'Loading...';
     loadButton.disabled = true;
     document.getElementById('attendanceSummaryCard').style.display = 'none';
     document.getElementById('attendanceWarning').style.display = 'none';
-    document.getElementById('attendanceSpinner').style.display = 'block';
+
+    const tbody = document.querySelector('#attendanceTable tbody');
+    // --- NEW: Inject the loader directly into the table body ---
+    tbody.innerHTML = `<tr><td colspan="8" class="loader-cell"><div class="loader"></div></td></tr>`;
 
     fetch(`/api/student-attendance/${selectedWeek}/me`, {
         method: 'GET',
@@ -219,13 +223,12 @@ function loadAttendance() {
       .then(result => {
           if (!result.success) throw new Error(result.error || 'Failed to fetch data.');
 
-          const tbody = document.querySelector('#attendanceTable tbody');
-          tbody.innerHTML = '';
-          
-          const data = result.attendance;
-          const weekStartDate = new Date(result.weekStartDate); // <-- Get startDate from the new response structure
+          tbody.innerHTML = ''; // Clear the loader
 
-          if (data.length > 0) {
+          const data = result.attendance;
+          const weekStartDate = new Date(result.weekStartDate);
+
+          if (data.length > 0 && data[0].JoinedAt) {
               const student = data[0];
               const today = new Date();
               today.setHours(0, 0, 0, 0);
@@ -244,11 +247,7 @@ function loadAttendance() {
                   const currentDate = new Date(weekStartDate);
                   currentDate.setDate(weekStartDate.getDate() + i);
                   
-                  // If the cell's date is BEFORE the student joined, it should be blank.
-                  if (currentDate < joinedDate) {
-                      return `<td>-</td>`;
-                  }
-
+                  if (currentDate < joinedDate) return `<td>-</td>`;
                   if (status === 'Present') {
                       presentCount++;
                       return `<td class="present">Present</td>`;
@@ -256,10 +255,10 @@ function loadAttendance() {
                       onLeaveCount++;
                       return `<td class="on-leave">On Leave</td>`;
                   } else if (currentDate <= today) {
-                      absentCount++; // Only count as absent if after join date
+                      absentCount++;
                       return `<td class="absent">Absent</td>`;
                   } else {
-                      return `<td></td>`; // Future date
+                      return `<td></td>`;
                   }
               });
 
@@ -279,13 +278,16 @@ function loadAttendance() {
               if (absentCount >= 2) {
                   document.getElementById('attendanceWarning').style.display = 'flex';
               }
+          } else {
+              tbody.innerHTML = `<tr><td colspan="8" class="text-center">No attendance record found for this week.</td></tr>`;
           }
       })
-      .catch(err => console.error('Failed to load student attendance:', err))
+      .catch(err => {
+          console.error('Failed to load student attendance:', err);
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading data. Please try again.</td></tr>`;
+      })
       .finally(() => {
-          loadButton.textContent = 'Load Attendance';
           loadButton.disabled = false;
-          document.getElementById('attendanceSpinner').style.display = 'none';
       });
 }
 //-------------------------------------------------------------------------------------------
