@@ -23,10 +23,6 @@
     --dark-border: #465a70; /* For borders on dark elements */
 }
 
-html {
-    /* Default is 16px. This value makes the entire UI about 12% smaller. */
-    font-size: 14px; 
-}
 * {
     box-sizing: border-box;
 }
@@ -43,13 +39,6 @@ h2 {
     color: var(--primary);
     margin-top: 0;
     margin-bottom: 1.5rem;
-}
-
-h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--dark);
-    margin: 0;
 }
 
 
@@ -163,7 +152,7 @@ h1 {
 .content {
     flex: 1;
     padding: 2rem;
-    max-width: 1140px;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
 }
@@ -255,7 +244,9 @@ button:disabled {
     background-color: var(--secondary); /* Your darker green for hover: #3e8e41 */
 }
 .btn:hover {
+    background: var(--secondary);
     transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5);
 }
 
 /* Specific rule to make the header's logout button text white */
@@ -390,8 +381,8 @@ td iframe {
 }
 
 .day-wrapper {
-    flex: 1 1 240px;
-    max-width: 260px;
+    flex: 1 1 280px;
+    max-width: 300px;
     display: flex;
     flex-direction: column;
     background: linear-gradient(135deg, #3a3897 50%, #2c2a72 50%, #1a1a4e 100%);
@@ -1015,22 +1006,20 @@ td iframe {
 }
 
 /* For the info icon tooltip */
-/* --- REPLACEMENT for your .info-icon style --- */
 .info-icon {
     display: inline-block;
-    vertical-align: middle; /* Aligns the icon nicely with the text */
-    margin-left: 8px; /* The original margin [cite: 438] */
-    cursor: pointer; /* Shows it's clickable [cite: 438] */
-    color: #adb5bd; /* A subtle, modern gray color */
-    font-size: 1rem; /* Adjust size as needed */
-    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
-
-    /* REMOVED the old background, border, width, height, etc. */
-}
-
-.info-icon:hover {
-    color: var(--primary); /* Use your theme color on hover */
-    transform: scale(1.2); /* Makes the icon pop slightly */
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    color: #6c757d;
+    text-align: center;
+    line-height: 16px;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 8px;
 }
 
 /* Badge Unlocked Animation */

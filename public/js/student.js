@@ -196,8 +196,123 @@ function handleInitialPasswordSet() {
         }
     });
 }
-// REPLACE your existing loadAttendance function in student.js
 
+
+// ADD THIS NEW HELPER FUNCTION
+/**
+ * Programmatically switches the dashboard view to a specific section.
+ * @param {string} targetSectionId - The ID of the content section to show (e.g., 'tips-low').
+ */
+function navigateToSection(targetSectionId) {
+    const mainNav = document.querySelector('.navbar');
+    const contentSections = document.querySelectorAll('.content .card');
+    const targetLink = mainNav.querySelector(`[data-target="${targetSectionId}"]`);
+
+    if (!targetLink) return;
+
+    // Update nav link states
+    mainNav.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
+    targetLink.classList.add('active');
+
+    // Update section visibility
+    contentSections.forEach(section => {
+        section.style.display = (section.id === targetSectionId) ? 'block' : 'none';
+    });
+
+    // Trigger data loading for the new section if needed
+    if (targetSectionId === 'fame-low') loadHallOfFameData();
+    if (targetSectionId === 'leaves-low') loadLeaveData();
+}
+
+
+//-------------------------------------------------------------------------------------------
+// ADD THIS NEW GUIDE FUNCTION
+
+// A flag to track if the user is in the middle of the interactive tour
+let isGuideActive = false;
+
+/**
+ * Launches the FIRST PART of the interactive tour.
+ * This version completely finishes and cleans up after pointing to the 'Add' button.
+ */
+function startPlannerGuide() {
+    if (isGuideActive) return;
+
+    const driver = window.driver.js.driver;
+
+    const driverObj = driver({
+        showProgress: true,
+        onDestroyStarted: () => {
+            // This flag is set when the tour is successfully closed.
+            isGuideActive = true;
+        },
+        steps: [
+            {
+                element: '#tips-main',
+                popover: {
+                    title: 'Step 1: Find Workouts',
+                    description: "Let's go to the 'Tips' section to find exercises."
+                },
+                onHighlightStarted: (element) => element.click()
+            },
+            {
+                element: '#workoutAccordion .accordion-item:first-child',
+                popover: {
+                    title: 'Step 2: Your Turn!',
+                    // --- THE FIX: PART 1 ---
+                    // We add our own button directly into the description HTML.
+                    description: `
+                        <p>Now, click the button below to close this guide, then click any 'Add' button.</p>
+                        <button id="custom-driver-done-btn" class="btn btn-primary btn-sm">Done, I'll Click It!</button>
+                    `,
+                    // We explicitly hide the default buttons to avoid confusion.
+                    showButtons: [], 
+                },
+                // --- THE FIX: PART 2 ---
+                // This hook runs *after* the popover is added to the page.
+                onHighlighted: (element) => {
+                    // Find our custom button that we just created.
+                    const customBtn = document.getElementById('custom-driver-done-btn');
+                    if (customBtn) {
+                        // Attach a standard, reliable click event listener.
+                        customBtn.onclick = () => {
+                            // This command will now reliably destroy the tour and its overlay.
+                            driverObj.destroy();
+                        };
+                    }
+                }
+            }
+        ]
+    });
+
+    driverObj.drive();
+}
+
+/**
+ * Launches the FINAL step of the tour after the user action is complete.
+ */
+function continueAndFinishGuide() {
+    const driver = window.driver.js.driver;
+    const driverObj = driver({
+        showProgress: false,
+        steps: [{
+            element: '#planner-low',
+            popover: {
+                title: 'Great Job!',
+                description: "The exercise has been added to your planner. You're all set!"
+            },
+            onHighlightStarted: () => document.getElementById('planner-main').click()
+        }],
+        onDestroyed: () => {
+            // Final cleanup
+            isGuideActive = false;
+            localStorage.setItem('plannerTourCompleted', 'true');
+        }
+    });
+    driverObj.drive();
+}
+
+//-------------------------------------------------------------------------------------------
 // REPLACE your old loadAttendance function with this one
 
 function loadAttendance() {
@@ -316,6 +431,12 @@ function renderTrainingPlans(plans) {
     const tbody = document.querySelector('#studentPlanTable tbody');
     tbody.innerHTML = ''; // Clear previous
 
+
+        // Destroy the old DataTable instance if it exists to prevent errors
+    if ($.fn.DataTable.isDataTable('#studentPlanTable')) {
+        $('#studentPlanTable').DataTable().destroy();
+    }
+
     plans.forEach(plan => {
         const tr = document.createElement('tr');
 
@@ -340,6 +461,7 @@ function renderTrainingPlans(plans) {
 
         tbody.appendChild(tr);
     });
+    $('#studentPlanTable').DataTable();
 }
 
 
@@ -953,6 +1075,11 @@ function renderSessionHistory(historyData) {
     const tbody = document.getElementById('sessionHistoryBody');
     tbody.innerHTML = ''; // Clear previous
 
+
+        if ($.fn.DataTable.isDataTable('#sessionHistoryTable')) {
+        $('#sessionHistoryTable').DataTable().destroy();
+    }
+
     if (!historyData || historyData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4">No session history found.</td></tr>';
         return;
@@ -972,6 +1099,7 @@ function renderSessionHistory(historyData) {
         `;
         tbody.appendChild(tr);
     });
+    $('#sessionHistoryTable').DataTable();
 }
 
 
@@ -1386,6 +1514,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tips section select dropdown
     document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
 
+
+    document.getElementById('startPlannerGuideBtn').addEventListener('click', startPlannerGuide);
+
     // Add this inside your DOMContentLoaded event listener
 function setupAnalyticsTabs() {
     const tabNav = document.querySelector('.tab-nav');
@@ -1469,7 +1600,15 @@ if (workoutAccordion) {
                             showConfirmButton: false,
                             timer: 2000
                         });
+
+                        if (isGuideActive) {
+                // We need to use a small timeout to allow the SweetAlert to close
+                // before the next Driver.js step tries to appear.
+                setTimeout(() => {
+                    continueAndFinishGuide();
+                }, 500); // 500ms delay
                     }
+                  }
                 }
             });
         }

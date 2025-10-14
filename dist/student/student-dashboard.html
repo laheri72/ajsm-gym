@@ -5,24 +5,26 @@
     <title>Student Dashboard - FitTracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5"></script>
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4.2.2/dist/cal-heatmap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 
 
-  <script type="module" crossorigin src="/assets/studentDashboard-CqbvmPqB.js"></script>
+  <script type="module" crossorigin src="/assets/studentDashboard-BdKZZTXb.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-CUcmU405.css">
+  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-CZwLdZwY.css">
 </head>
 <body>
-
-   <div class="app-header">
 
         <header class="header">
             <div class="header-content">
@@ -87,14 +89,25 @@
     </div>
 </div>
 
-    </div>
 
-
- <div class="content">
+ <main class="content">
 
       <section class="card" id="planner-low">
-  <h1 class="text-center mb-4">Weekly Workout Planner</h1>
+  <h1 class="text-center mb-4">
+    Weekly Workout Planner
+    <span class="info-icon" 
+          data-bs-toggle="tooltip" 
+          data-bs-placement="top"
+          title="These 7 cards are your canvas! You can type your exercises directly into them, or use the 'Add' button from the 'Tips' section to automatically fill them out.">
+      <i class="bi bi-info-circle"></i>
+    </span>
+</h1>
 
+<div class="text-center mb-4">
+    <button id="startPlannerGuideBtn" class="btn btn-sm btn-outline-primary">
+        Show Me How It Works
+    </button>
+</div>
   <div class="planner" >
     <div class="day-wrapper">
       <div class="day-name">Monday</div>
@@ -130,7 +143,7 @@
     <button id="savePlanBtn" class="btn btn-primary">
   <span class="button-text">Save</span>
   <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-</button>
+    </button>
     <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
       Apply Last Week’s Plan
     </button>
@@ -143,9 +156,9 @@
 
 
     <section class="card" id="attendance-low" style="display: none;">
-        <h2>Your Weekly Attendance</h2>
+        <h2 class="text-center mb-4">📅 Your Weekly Attendance</h2>
         <div class="form-group">
-            <label for="weekSelect">Select Range</label>
+            <label for="weekSelect">Select Week from the below dropdown to fetch attendance</label>
             <select id="weekSelect" class="form-control" required>
                 <option value="" disabled selected>Loading Weeks...</option>
               </select>          
@@ -169,14 +182,9 @@
             </thead>
             <tbody></tbody>
           </table>
-          <div id="attendanceSpinner" class="text-center mt-3" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading attendance...</span>
-    </div>
-</div>
+
 </div>
 
-          </table>
            <div id="attendanceSummaryCard" class="attendance-summary-card" style="display: none;">
               <h4 class="summary-title">Week Summary</h4>
               <div class="summary-grid">
@@ -222,19 +230,30 @@
             <div id="overview" class="tab-pane active">
                 <div class="analytics-grid">
                     <div class="analytics-widget stat-card">
-                        <h3>Your Average Session</h3>
+                        <h3>Your Average Session 
+                          <span class="info-icon" data-bs-toggle="tooltip" title="This is your average workout duration, calculated from all your completed gym sessions.">
+                              <i class="bi bi-info-circle-fill"></i>
+                          </span>
+                      </h3>
                         <p id="avg-session-time" class="stat-value">--</p>
                         <span>minutes</span>
                     </div>
-                    <div class="analytics-widget">
-                        <h3>Your Workout Consistency</h3>
-                        <p>Each colored square represents a day you logged a workout.</p>
+                    <div class="analytics-widget stat-card" style="overflow-x: auto;">
+                        <h3>Your Workout Consistency
+                           <span class="info-icon" data-bs-toggle="tooltip" title="This heatmap shows your workout frequency. Each colored square represents a day you logged a workout.">
+                             <i class="bi bi-info-circle-fill"></i>
+                          </span>
+                        </h3>
+                        
                         <div id="consistencyHeatmap"></div>
                     </div>
                 </div>
                 <div class="analytics-widget">
-                    <h3>Your Week in Hours</h3>
-                    <p>Total time spent in the gym over the last several weeks.</p>
+                    <h3>Your Weeks in Hours
+                      <span class="info-icon" data-bs-toggle="tooltip" title="This bar chart displays the total hours you've spent in the gym each week.">
+                        <i class="bi bi-info-circle-fill"></i>
+                      </span>
+                    </h3>
                     <canvas id="weeklyHoursChart"></canvas>
                 </div>
             </div>
@@ -242,31 +261,49 @@
             <div id="logs" class="tab-pane">
                 <div class="analytics-grid">
                     <div class="analytics-widget">
-                        <h3>Workout Focus (by Count)</h3>
+                        <h3>Workout Focus (by Count) 
+                          <span class="info-icon" data-bs-toggle="tooltip" title="This pie chart shows the distribution of body parts you have trained, based on your workout logs.">
+                             <i class="bi bi-info-circle-fill"></i>
+                          </span>
+                        </h3>
                         <div class="chart-container" style="max-width: 400px; margin: auto;">
                             <canvas id="bodyPartChart"></canvas>
                         </div>
                     </div>
                     <div class="analytics-widget">
-                        <h3>Your Training Records</h3>
+                        <h3>Your Training Records 
+                          <span class="info-icon" data-bs-toggle="tooltip" title="This table lists every workout plan you have saved, showing which body parts you focused on each day.">
+                            <i class="bi bi-info-circle-fill"></i>
+                          </span>
+                        </h3>
                         <div class="table-responsive">
-                            <table id="studentPlanTable" class="styled-plan-table">
-                                <thead>
-                                    <tr><th>Date</th><th>Plan</th></tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+              <table id="studentPlanTable" class="table table-striped table-bordered" style="width:100%">
+                  <thead>
+                      <tr>
+                          <th>Date</th>
+                          <th>Plan</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <!-- rows will be inserted dynamically -->
+                  </tbody>
+              </table>
+
             </div>
+        </div>
+    </div>
+</div>
 
             <div id="history" class="tab-pane">
                 <div class="analytics-widget">
-                    <h3>Your Session History</h3>
+                    <h3>Your Session History 
+                      <span class="info-icon" data-bs-toggle="tooltip" title="A detailed record of your gym visits, including check-in, check-out, and total duration.">
+                        <i class="bi bi-info-circle-fill"></i>
+                      </span>
+                    </h3>
                     <p>A log of your recent gym visits.</p>
                     <div class="table-responsive">
-                        <table id="sessionHistoryTable" class="styled-plan-table">
+                        <table id="sessionHistoryTable" class="table table-striped table-bordered" style="width:100%">
                             <thead>
                                 <tr><th>Date</th><th>Check-in</th><th>Check-out</th><th>Duration (min)</th></tr>
                             </thead>
@@ -278,7 +315,11 @@
 
             <div id="progression" class="tab-pane">
                 <div class="analytics-widget">
-                    <h3>Your Fitness Progression</h3>
+                    <h3>Your Fitness Progression 
+                      <span class="info-icon" data-bs-toggle="tooltip" title="This line chart visualizes your progress in weight and body fat percentage across multiple fitness tests.">
+                        <i class="bi bi-info-circle-fill"></i>
+                      </span>
+                    </h3>
                     <p>Tracking key metrics from your fitness tests over time.</p>
                     <canvas id="fitnessProgressChart"></canvas>
                 </div>
@@ -292,7 +333,7 @@
 
         <section class="card mt-4" id="tips-low" style="display: none;">
                         <div class="container my-5">
-                <h2 class="mb-4 text-center">🏋️‍♀️ Gym Workout List</h2>
+                <h2 class="text-center mb-4">🏋️‍♀️ Gym Workout List</h2>
                 <div class="accordion" id="workoutAccordion">
 
                     <!--                 class="embed-link" 
@@ -331,13 +372,14 @@
                 <!-- 💪 CHEST -->
                 <div class="accordion-item">
                   <h2 class="accordion-header" id="headingChest">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChest" aria-expanded="false" aria-controls="collapseChest">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChest" aria-expanded="false" aria-controls="collapseChest">
                       💪 Chest (Pecs, pressing power)
                     </button>
                   </h2>
                   <div id="collapseChest" class="accordion-collapse collapse" aria-labelledby="headingChest" data-bs-parent="#workoutAccordion">
                     <div class="accordion-body p-0">
-                      <table class="table table-bordered mb-0">
+                      <div class="table-responsive">
+                        <table class="table table-bordered mb-0">
                         <thead class="table-light">
                           <tr><th>Exercise</th><th>Benefit</th><th>Link</th><th>Add to plan</th></tr>
                         </thead>
@@ -367,7 +409,8 @@
               </h2>
               <div id="collapseBack" class="accordion-collapse collapse" aria-labelledby="headingBack" data-bs-parent="#workoutAccordion">
                 <div class="accordion-body p-0">
-                  <table class="table table-bordered mb-0">
+                  <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
                     <thead class="table-light"><tr><th>Exercise</th><th>Benefit</th><th>Link</th><th>Add to Plan</th></tr></thead>
                     <tbody>
                       <tr><td>Pull-Ups</td><td>Builds lats & upper back</td><td><a href="https://www.youtube.com/watch?v=eGo4IYlbE5g" target="_blank">Watch</a></td><td><button class="btn btn-sm btn-primary add-to-plan-btn" data-exercise="Pull-Ups">Add</button></td></tr>
@@ -395,7 +438,8 @@
               </h2>
               <div id="collapseShoulders" class="accordion-collapse collapse" aria-labelledby="headingShoulders" data-bs-parent="#workoutAccordion">
                 <div class="accordion-body p-0">
-                  <table class="table table-bordered mb-0">
+                  <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
                     <thead class="table-light"><tr><th>Exercise</th><th>Benefit</th><th>Link</th><th>Add to Plan</th></tr></thead>
                     <tbody>
                       <tr><td>Barbell Shoulder Press</td><td>Builds deltoid power</td><td><a href="https://www.youtube.com/watch?v=qEwKCR5JCog" target="_blank">Watch</a></td><td><button class="btn btn-sm btn-primary add-to-plan-btn" data-exercise="Barbell Shoulder Press">Add</button></td></tr>
@@ -422,7 +466,8 @@
               </h2>
               <div id="collapseBiceps" class="accordion-collapse collapse" aria-labelledby="headingBiceps" data-bs-parent="#workoutAccordion">
                 <div class="accordion-body p-0">
-                  <table class="table table-bordered mb-0">
+                  <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
                     <thead class="table-light">
                       <tr><th>Exercise</th><th>Benefit</th><th>Video</th><th>Add to Plan</th></tr>
                     </thead>
@@ -451,7 +496,8 @@
               </h2>
               <div id="collapseTriceps" class="accordion-collapse collapse" aria-labelledby="headingTriceps" data-bs-parent="#workoutAccordion">
                 <div class="accordion-body p-0">
-                  <table class="table table-bordered mb-0">
+                  <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
                     <thead class="table-light">
                       <tr><th>Exercise</th><th>Benefit</th><th>Video</th><th>Add to Plan</th></tr>
                     </thead>
@@ -481,7 +527,8 @@
               </h2>
               <div id="collapseLegs" class="accordion-collapse collapse" aria-labelledby="headingLegs" data-bs-parent="#workoutAccordion">
                 <div class="accordion-body p-0">
-                  <table class="table table-bordered mb-0">
+                  <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
                     <thead class="table-light">
                       <tr>
                         <th>Exercise</th>
@@ -566,7 +613,8 @@
               </h2>
               <div id="collapseCore" class="accordion-collapse collapse" aria-labelledby="headingCore" data-bs-parent="#workoutAccordion">
                 <div class="accordion-body p-0">
-                  <table class="table table-bordered mb-0">
+                  <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
                     <thead class="table-light">
                       <tr>
                         <th>Exercise</th>
@@ -675,7 +723,7 @@
       </section>
 
       <section class="card" id="leaves-low" style="display: none;">
-    <h2 class="text-center mb-4">Leave Management</h2>
+    <h2 class="text-center mb-4">🍃 Leave Management</h2>
 
     <div class="leave-grid">
         <div class="leave-form-container">
@@ -731,7 +779,7 @@
 
 <section class="card" id="fame-low" style="display: none;">
     <div class="fame-header">
-        <h1>🏆 Hall of Fame</h1>
+        <h2 class="text-center mb-4">🏆 Hall of Fame</h2>
         <p>Celebrate your consistency and hard work. See how you rank among your peers!</p>
     </div>
 
@@ -747,7 +795,7 @@
                   data-bs-toggle="tooltip" 
                   data-bs-placement="top"
                   title="Log a workout on 10 consecutive days (Sundays are skipped). Badges are awarded weekly.">
-                  &#9432;
+                  <i class="bi bi-info-circle"></i> 
             </span>
             </h4>
             <div class="progress-bar-container">
@@ -767,7 +815,8 @@
             Perfect 30 Days <span class="info-icon" 
                   data-bs-toggle="tooltip" 
                   data-bs-placement="top"
-                  title="Attend on 26 working days (Mon-Sat) within any 30-day period. Badges are awarded weekly."> &#9432;
+                  title="Attend on 26 working days (Mon-Sat) within any 30-day period. Badges are awarded weekly."> 
+                  <i class="bi bi-info-circle"></i>
             </span>
         </h4>
             <div class="progress-bar-container">
@@ -785,7 +834,8 @@
                 <span class="info-icon" 
                       data-bs-toggle="tooltip" 
                       data-bs-placement="top"
-                      title="Earn a high personal score each week to be a top contender. Badges are awarded to the top 3 performers every Sunday."> &#9432;
+                      title="Earn a high personal score each week to be a top contender. Badges are awarded to the top 3 performers every Sunday."> 
+                      <i class="bi bi-info-circle"></i>
                 </span>
             </h4>
             <div class="progress-bar-container">
@@ -803,7 +853,8 @@
                   <span class="info-icon" 
                         data-bs-toggle="tooltip" 
                         data-bs-placement="top"
-                        title="Achieve a 5% or greater 'Total' score improvement between two fitness tests."> &#9432;
+                        title="Achieve a 5% or greater 'Total' score improvement between two fitness tests."> 
+                        <i class="bi bi-info-circle"></i>
                   </span>
               </h4>
               <div class="progress-bar-container">
@@ -818,7 +869,8 @@
               <span class="info-icon" 
                     data-bs-toggle="tooltip" 
                     data-bs-placement="top"
-                    title="Log a total of 10 hours of workout time to earn this badge. Track your progress here."> &#9432;
+                    title="Log a total of 10 hours of workout time to earn this badge. Track your progress here."> 
+                    <i class="bi bi-info-circle"></i>
               </span>
               </h4>
               <div class="progress-bar-container">
@@ -849,20 +901,30 @@
         </div>
     </div>
 </section>
-</div>
+</main>
 
 
 
 
    <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
-
+    <p><a href="/privacy-policy.html" style="color: #090909; text-decoration: underline;">Privacy Policy</a> | <a href="/terms-of-service.html" style="color: #000000; text-decoration: underline;">Terms of Service</a></p>
+  </footer>
 
 
 
+
+<!-- All scripts placed at the end of the document so the pages load faster -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+
 
 <div id="leaderboard-toast">
     <h3>🏆 Today's Leaderboard</h3>
