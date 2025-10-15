@@ -4,6 +4,104 @@ let bodyPartChart = null;
 let fitnessProgressChart = null;
 let weeklyHoursChart = null;
 
+// Add this new data structure at the top of your student.js file
+// REPLACE your old exerciseDatabase object with this complete version.
+const exerciseDatabase = [
+    // Cardio
+    { name: 'Jump Rope', difficulty: 'Beginner', primaryMuscle: 'Cardio', secondaryMuscles: ['Calves'] },
+    { name: 'Running', difficulty: 'Beginner', primaryMuscle: 'Cardio', secondaryMuscles: ['Legs'] },
+    { name: 'High Knees', difficulty: 'Beginner', primaryMuscle: 'Cardio', secondaryMuscles: ['Core'] },
+    { name: 'Mountain Climbers', difficulty: 'Intermediate', primaryMuscle: 'Cardio', secondaryMuscles: ['Core', 'Shoulders'] },
+    { name: 'Jumping Jacks', difficulty: 'Beginner', primaryMuscle: 'Cardio', secondaryMuscles: ['Full Body'] },
+    { name: 'Burpees', difficulty: 'Advanced', primaryMuscle: 'Cardio', secondaryMuscles: ['Full Body'] },
+    { name: 'Cycling', difficulty: 'Beginner', primaryMuscle: 'Cardio', secondaryMuscles: ['Legs'] },
+    { name: 'Rowing Machine', difficulty: 'Intermediate', primaryMuscle: 'Cardio', secondaryMuscles: ['Back', 'Legs'] },
+    { name: 'Shadow Boxing', difficulty: 'Intermediate', primaryMuscle: 'Cardio', secondaryMuscles: ['Shoulders', 'Core'] },
+    { name: 'Stair Climbing', difficulty: 'Beginner', primaryMuscle: 'Cardio', secondaryMuscles: ['Glutes'] },
+
+    // Chest
+    { name: 'Push-Ups', difficulty: 'Beginner', primaryMuscle: 'Chest', secondaryMuscles: ['Shoulders', 'Triceps'] },
+    { name: 'Barbell Bench Press', difficulty: 'Intermediate', primaryMuscle: 'Chest', secondaryMuscles: ['Shoulders', 'Triceps'] },
+    { name: 'Dumbbell Bench Press', difficulty: 'Intermediate', primaryMuscle: 'Chest', secondaryMuscles: ['Shoulders', 'Triceps'] },
+    { name: 'Incline Bench Press', difficulty: 'Intermediate', primaryMuscle: 'Chest', secondaryMuscles: ['Shoulders'] },
+    { name: 'Decline Bench Press', difficulty: 'Intermediate', primaryMuscle: 'Chest', secondaryMuscles: [] },
+    { name: 'Cable Chest Fly', difficulty: 'Intermediate', primaryMuscle: 'Chest', secondaryMuscles: [] },
+    { name: 'Dumbbell Fly', difficulty: 'Advanced', primaryMuscle: 'Chest', secondaryMuscles: [] },
+    { name: 'Chest Dips', difficulty: 'Advanced', primaryMuscle: 'Chest', secondaryMuscles: ['Triceps'] },
+    { name: 'Machine Press', difficulty: 'Beginner', primaryMuscle: 'Chest', secondaryMuscles: [] },
+    { name: 'Plyo Push-Ups', difficulty: 'Advanced', primaryMuscle: 'Chest', secondaryMuscles: ['Shoulders', 'Triceps'] },
+
+    // Back
+    { name: 'Pull-Ups', difficulty: 'Intermediate', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Chin-Ups', difficulty: 'Intermediate', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Lat Pulldown', difficulty: 'Beginner', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Barbell Bent-over Rows', difficulty: 'Intermediate', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Dumbbell Rows', difficulty: 'Beginner', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Deadlifts', difficulty: 'Advanced', primaryMuscle: 'Back', secondaryMuscles: ['Legs', 'Glutes', 'Core'] },
+    { name: 'Seated Cable Row', difficulty: 'Beginner', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'T-Bar Row', difficulty: 'Intermediate', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Inverted Rows', difficulty: 'Beginner', primaryMuscle: 'Back', secondaryMuscles: ['Biceps'] },
+    { name: 'Face Pulls', difficulty: 'Beginner', primaryMuscle: 'Back', secondaryMuscles: ['Shoulders'] },
+
+    // Shoulders
+    { name: 'Barbell Shoulder Press', difficulty: 'Intermediate', primaryMuscle: 'Shoulders', secondaryMuscles: ['Triceps'] },
+    { name: 'Dumbbell Shoulder Press', difficulty: 'Intermediate', primaryMuscle: 'Shoulders', secondaryMuscles: ['Triceps'] },
+    { name: 'Arnold Press', difficulty: 'Advanced', primaryMuscle: 'Shoulders', secondaryMuscles: [] },
+    { name: 'Lateral Raises', difficulty: 'Beginner', primaryMuscle: 'Shoulders', secondaryMuscles: [] },
+    { name: 'Front Raises', difficulty: 'Beginner', primaryMuscle: 'Shoulders', secondaryMuscles: [] },
+    { name: 'Rear Delt Fly', difficulty: 'Beginner', primaryMuscle: 'Shoulders', secondaryMuscles: [] },
+    { name: 'Upright Row', difficulty: 'Intermediate', primaryMuscle: 'Shoulders', secondaryMuscles: ['Traps'] },
+    { name: 'Cable Lateral Raise', difficulty: 'Intermediate', primaryMuscle: 'Shoulders', secondaryMuscles: [] },
+    { name: 'Pike Push-Ups', difficulty: 'Advanced', primaryMuscle: 'Shoulders', secondaryMuscles: ['Triceps'] },
+    { name: 'Shrugs', difficulty: 'Beginner', primaryMuscle: 'Shoulders', secondaryMuscles: ['Traps'] },
+
+    // Biceps
+    { name: 'Barbell Curl', difficulty: 'Intermediate', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Dumbbell Curl', difficulty: 'Beginner', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Hammer Curl', difficulty: 'Beginner', primaryMuscle: 'Biceps', secondaryMuscles: ['Forearms'] },
+    { name: 'Concentration Curl', difficulty: 'Intermediate', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Preacher Curl', difficulty: 'Intermediate', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Incline Dumbbell Curl', difficulty: 'Advanced', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Cable Curl', difficulty: 'Beginner', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Spider Curl', difficulty: 'Advanced', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+    { name: 'Zottman Curl', difficulty: 'Advanced', primaryMuscle: 'Biceps', secondaryMuscles: ['Forearms'] },
+    { name: 'Resistance Band Curl', difficulty: 'Beginner', primaryMuscle: 'Biceps', secondaryMuscles: [] },
+
+    // Triceps
+    { name: 'Triceps Pushdown', difficulty: 'Beginner', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+    { name: 'Overhead Triceps Extension', difficulty: 'Intermediate', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+    { name: 'Skull Crushers', difficulty: 'Advanced', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+    { name: 'Close-Grip Bench Press', difficulty: 'Intermediate', primaryMuscle: 'Triceps', secondaryMuscles: ['Chest'] },
+    { name: 'Dips', difficulty: 'Intermediate', primaryMuscle: 'Triceps', secondaryMuscles: ['Chest'] },
+    { name: 'Kickbacks', difficulty: 'Beginner', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+    { name: 'Diamond Push-Ups', difficulty: 'Advanced', primaryMuscle: 'Triceps', secondaryMuscles: ['Chest'] },
+    { name: 'Rope Extensions', difficulty: 'Beginner', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+    { name: 'Single-arm Overhead Cable Extension', difficulty: 'Intermediate', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+    { name: 'Reverse Grip Pushdown', difficulty: 'Intermediate', primaryMuscle: 'Triceps', secondaryMuscles: [] },
+
+    // Legs
+    { name: 'Barbell Squat', difficulty: 'Intermediate', primaryMuscle: 'Legs', secondaryMuscles: ['Glutes', 'Core'] },
+    { name: 'Front Squat', difficulty: 'Advanced', primaryMuscle: 'Legs', secondaryMuscles: ['Core'] },
+    { name: 'Lunges', difficulty: 'Beginner', primaryMuscle: 'Legs', secondaryMuscles: ['Glutes'] },
+    { name: 'Bulgarian Split Squat', difficulty: 'Advanced', primaryMuscle: 'Legs', secondaryMuscles: ['Glutes'] },
+    { name: 'Leg Press', difficulty: 'Beginner', primaryMuscle: 'Legs', secondaryMuscles: [] },
+    { name: 'Romanian Deadlift', difficulty: 'Intermediate', primaryMuscle: 'Legs', secondaryMuscles: ['Glutes', 'Back'] },
+    { name: 'Calf Raise', difficulty: 'Beginner', primaryMuscle: 'Legs', secondaryMuscles: [] },
+    { name: 'Leg Extension', difficulty: 'Beginner', primaryMuscle: 'Legs', secondaryMuscles: [] },
+    { name: 'Hamstring Curl', difficulty: 'Beginner', primaryMuscle: 'Legs', secondaryMuscles: [] },
+    { name: 'Step-ups', difficulty: 'Beginner', primaryMuscle: 'Legs', secondaryMuscles: ['Glutes', 'Cardio'] },
+
+    // Core
+    { name: 'Plank', difficulty: 'Beginner', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'Crunches', difficulty: 'Beginner', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'Leg Raises', difficulty: 'Beginner', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'Russian Twist', difficulty: 'Intermediate', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'Hanging Leg Raise', difficulty: 'Advanced', primaryMuscle: 'Core', secondaryMuscles: ['Grip'] },
+    { name: 'Bicycle Crunch', difficulty: 'Intermediate', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'Cable Woodchopper', difficulty: 'Intermediate', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'V-ups', difficulty: 'Advanced', primaryMuscle: 'Core', secondaryMuscles: [] },
+    { name: 'Side Plank', difficulty: 'Beginner', primaryMuscle: 'Core', secondaryMuscles: [] }
+];
 
 // ADD THESE TWO NEW FUNCTIONS TO student.js
 
@@ -222,94 +320,6 @@ function navigateToSection(targetSectionId) {
     // Trigger data loading for the new section if needed
     if (targetSectionId === 'fame-low') loadHallOfFameData();
     if (targetSectionId === 'leaves-low') loadLeaveData();
-}
-
-
-//-------------------------------------------------------------------------------------------
-// ADD THIS NEW GUIDE FUNCTION
-
-// A flag to track if the user is in the middle of the interactive tour
-let isGuideActive = false;
-
-/**
- * Launches the FIRST PART of the interactive tour.
- * This version completely finishes and cleans up after pointing to the 'Add' button.
- */
-function startPlannerGuide() {
-    if (isGuideActive) return;
-
-    const driver = window.driver.js.driver;
-
-    const driverObj = driver({
-        showProgress: true,
-        onDestroyStarted: () => {
-            // This flag is set when the tour is successfully closed.
-            isGuideActive = true;
-        },
-        steps: [
-            {
-                element: '#tips-main',
-                popover: {
-                    title: 'Step 1: Find Workouts',
-                    description: "Let's go to the 'Tips' section to find exercises."
-                },
-                onHighlightStarted: (element) => element.click()
-            },
-            {
-                element: '#workoutAccordion .accordion-item:first-child',
-                popover: {
-                    title: 'Step 2: Your Turn!',
-                    // --- THE FIX: PART 1 ---
-                    // We add our own button directly into the description HTML.
-                    description: `
-                        <p>Now, click the button below to close this guide, then click any 'Add' button.</p>
-                        <button id="custom-driver-done-btn" class="btn btn-primary btn-sm">Done, I'll Click It!</button>
-                    `,
-                    // We explicitly hide the default buttons to avoid confusion.
-                    showButtons: [], 
-                },
-                // --- THE FIX: PART 2 ---
-                // This hook runs *after* the popover is added to the page.
-                onHighlighted: (element) => {
-                    // Find our custom button that we just created.
-                    const customBtn = document.getElementById('custom-driver-done-btn');
-                    if (customBtn) {
-                        // Attach a standard, reliable click event listener.
-                        customBtn.onclick = () => {
-                            // This command will now reliably destroy the tour and its overlay.
-                            driverObj.destroy();
-                        };
-                    }
-                }
-            }
-        ]
-    });
-
-    driverObj.drive();
-}
-
-/**
- * Launches the FINAL step of the tour after the user action is complete.
- */
-function continueAndFinishGuide() {
-    const driver = window.driver.js.driver;
-    const driverObj = driver({
-        showProgress: false,
-        steps: [{
-            element: '#planner-low',
-            popover: {
-                title: 'Great Job!',
-                description: "The exercise has been added to your planner. You're all set!"
-            },
-            onHighlightStarted: () => document.getElementById('planner-main').click()
-        }],
-        onDestroyed: () => {
-            // Final cleanup
-            isGuideActive = false;
-            localStorage.setItem('plannerTourCompleted', 'true');
-        }
-    });
-    driverObj.drive();
 }
 
 //-------------------------------------------------------------------------------------------
@@ -821,50 +831,126 @@ function clearPlanner() {
   });
 }
 
-// Open a guided add dialog with exercise autocomplete and sets/reps prompt
-function openQuickAddDialog(day) {
-  const exerciseOptions = collectExerciseList();
-  const datalistId = 'exercise-datalist';
-  // Build HTML with a datalist for native autocomplete
-  const html = `
-    <input id="qa-exercise" class="swal2-input" list="${datalistId}" placeholder="Exercise name" />
-    <datalist id="${datalistId}">
-      ${exerciseOptions.map(ex => `<option value="${ex}"></option>`).join('')}
-    </datalist>
-    <div class="swal2-row" style="display:flex; flex-direction:column; gap:8px;">
-      <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" />
-      <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" />
-    </div>`;
+// REPLACE your old openQuickAddDialog function with these two new ones.
 
-  Swal.fire({
-    title: `Add to ${day}`,
-    html,
-    focusConfirm: false,
-    showCancelButton: true,
-    confirmButtonText: 'Add',
-    preConfirm: () => {
-      const name = (document.getElementById('qa-exercise').value || '').trim();
-      const sets = (document.getElementById('qa-sets').value || '').trim();
-      const reps = (document.getElementById('qa-reps').value || '').trim();
-      if (!name) {
-        Swal.showValidationMessage('Please enter an exercise');
-        return false;
-      }
-      return { name, sets, reps };
+/**
+ * Opens a guided dialog with filterable exercises.
+ * @param {string} day - The day to add the exercise to.
+ */
+function openQuickAddDialog(day) {
+    const bodyPartOptions = ['All', ...new Set(exerciseDatabase.map(ex => ex.primaryMuscle))];
+
+    const html = `
+        <div class="exercise-explorer">
+            <div class="filters">
+                <select id="qa-filter-bodypart" class="swal2-select">
+                    ${bodyPartOptions.map(bp => `<option value="${bp}">${bp}</option>`).join('')}
+                </select>
+                <select id="qa-filter-difficulty" class="swal2-select">
+                    <option value="All">All Difficulties</option>
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </select>
+            </div>
+            <div id="qa-exercise-list" class="exercise-list">
+                </div>
+            <div id="qa-sets-reps-container" class="sets-reps-container" style="display:none;">
+                <h4 id="qa-selected-exercise-name"></h4>
+                <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" />
+                <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" />
+            </div>
+        </div>
+    `;
+
+    Swal.fire({
+        title: `Select an Exercise for ${day}`,
+        html,
+        width: '600px',
+        showCancelButton: true,
+        confirmButtonText: 'Add to Plan',
+        focusConfirm: false,
+        didOpen: () => {
+            // Render the initial list and set up filter listeners
+            renderExerciseList();
+            document.getElementById('qa-filter-bodypart').addEventListener('change', renderExerciseList);
+            document.getElementById('qa-filter-difficulty').addEventListener('change', renderExerciseList);
+        },
+        preConfirm: () => {
+            const selectedItem = document.querySelector('.exercise-item.selected');
+            if (!selectedItem) {
+                Swal.showValidationMessage('Please select an exercise from the list');
+                return false;
+            }
+            const name = selectedItem.dataset.name;
+            const sets = (document.getElementById('qa-sets').value || '').trim();
+            const reps = (document.getElementById('qa-reps').value || '').trim();
+            return { name, sets, reps };
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        const { name, sets, reps } = result.value;
+        const formatted = [name, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
+        
+        const dayCard = document.querySelector(`.day-card[data-day="${day}"]`);
+        if (!dayCard) return;
+
+        if (dayCard.innerHTML.trim() !== '') {
+            dayCard.innerHTML += '<br>' + DOMPurify.sanitize(formatted);
+        } else {
+            dayCard.innerHTML = DOMPurify.sanitize(formatted);
+        }
+    });
+}
+
+/**
+ * Renders the list of exercises based on the current filter selections.
+ */
+function renderExerciseList() {
+    const bodyPartFilter = document.getElementById('qa-filter-bodypart').value;
+    const difficultyFilter = document.getElementById('qa-filter-difficulty').value;
+    const listContainer = document.getElementById('qa-exercise-list');
+
+    const filteredExercises = exerciseDatabase.filter(ex => {
+        const bodyPartMatch = bodyPartFilter === 'All' || ex.primaryMuscle === bodyPartFilter;
+        const difficultyMatch = difficultyFilter === 'All' || ex.difficulty === difficultyFilter;
+        return bodyPartMatch && difficultyMatch;
+    });
+
+    if (filteredExercises.length === 0) {
+        listContainer.innerHTML = '<p class="no-results">No exercises match your criteria.</p>';
+        return;
     }
-  }).then(res => {
-    if (!res.isConfirmed) return;
-    const { name, sets, reps } = res.value;
-    const formatted = [name, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
-    const dayCard = document.querySelector(`.day-card[data-day="${day}"]`);
-    if (!dayCard) return;
-    if (dayCard.innerHTML.trim() !== '') dayCard.innerHTML += '<br>' + DOMPurify.sanitize(formatted);
-    else dayCard.innerHTML = DOMPurify.sanitize(formatted);
-    // update draft
-    const draft = {};
-    document.querySelectorAll('.day-card').forEach(c => { draft[c.getAttribute('data-day')] = c.innerHTML.trim(); });
-    localStorage.setItem('plannerDraft', JSON.stringify(draft));
-  });
+
+    listContainer.innerHTML = filteredExercises.map(ex => {
+        const secondaryMusclesHtml = ex.secondaryMuscles.map(sm => `<span class="badge badge-dark">${sm}</span>`).join('');
+        return `
+            <div class="exercise-item" data-name="${ex.name}">
+                <div class="exercise-info">
+                    <strong>${ex.name}</strong>
+                    <div class="tags">
+                        <span class="badge badge-${{'Beginner':'green', 'Intermediate':'yellow', 'Advanced':'red'}[ex.difficulty]}">${ex.difficulty}</span>
+                        ${secondaryMusclesHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Add click listeners to each newly rendered exercise item
+    listContainer.querySelectorAll('.exercise-item').forEach(item => {
+        item.addEventListener('click', () => {
+            // Un-select any previously selected item
+            listContainer.querySelectorAll('.exercise-item').forEach(el => el.classList.remove('selected'));
+            // Select the clicked item
+            item.classList.add('selected');
+
+            // Show the sets/reps input
+            document.getElementById('qa-selected-exercise-name').textContent = item.dataset.name;
+            document.getElementById('qa-sets-reps-container').style.display = 'flex';
+            document.getElementById('qa-sets').focus();
+        });
+    });
 }
 
 // Collect unique exercise names from all tips tables
@@ -1252,17 +1338,17 @@ function renderLeaveTable(leaves) {
         const end = moment(leave.LeaveEndDate).format('MMM D');
         const dates = start === end ? start : `${start} to ${end}`;
 
-        const statusColors = {
-            'Approved': 'status-approved',
-            'Rejected': 'status-rejected',
-            'On Hold': 'status-on-hold',
-            'Pending': 'status-pending'
-        };
-        const statusClass = statusColors[leave.Status] || '';
+const statusClasses = {
+    'Approved': 'badge-green',
+    'Rejected': 'badge-red',
+    'On Hold': 'badge-yellow',
+    'Pending': 'badge-gray'
+};
+const statusClass = statusClasses[leave.Status] || 'badge-gray';
 
         tr.innerHTML = `
             <td>${dates}</td>
-            <td><span class="status-badge ${statusClass}">${leave.Status}</span></td>
+            <td><span class="badge ${statusClass}">${leave.Status}</span></td>
             <td>${leave.Reason}</td>
             <td>${leave.Remarks || 'N/A'}</td>
             <td>
@@ -1640,7 +1726,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
 
 
-    document.getElementById('startPlannerGuideBtn').addEventListener('click', startPlannerGuide);
 
     // Quick Add buttons for each day
     document.querySelectorAll('.quick-add-btn').forEach(btn => {
@@ -1702,7 +1787,7 @@ if (workoutAccordion) {
                     <option>Saturday</option>
                     <option>Sunday</option>
                   </select>
-                  <div class="swal2-row" style="display:flex; gap:8px;">
+                  <div>
                     <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" style="flex:1;" />
                     <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" style="flex:1;" />
                   </div>
@@ -1723,7 +1808,6 @@ if (workoutAccordion) {
 
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Added to ${selectedDay}!`, showConfirmButton: false, timer: 1600 });
 
-                if (isGuideActive) setTimeout(() => { continueAndFinishGuide(); }, 500);
             });
         }
     });
