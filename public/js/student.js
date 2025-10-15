@@ -805,6 +805,78 @@ function savePlan() {
     });
 }
 
+// Clear planner contents
+function clearPlanner() {
+  Swal.fire({
+    title: 'Clear weekly planner?',
+    text: 'This will remove all exercises from the current planner view.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Clear',
+    confirmButtonColor: '#dc3545'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    document.querySelectorAll('.day-card').forEach(card => { card.innerHTML = ''; });
+    localStorage.removeItem('plannerDraft');
+  });
+}
+
+// Open a guided add dialog with exercise autocomplete and sets/reps prompt
+function openQuickAddDialog(day) {
+  const exerciseOptions = collectExerciseList();
+  const datalistId = 'exercise-datalist';
+  // Build HTML with a datalist for native autocomplete
+  const html = `
+    <input id="qa-exercise" class="swal2-input" list="${datalistId}" placeholder="Exercise name" />
+    <datalist id="${datalistId}">
+      ${exerciseOptions.map(ex => `<option value="${ex}"></option>`).join('')}
+    </datalist>
+    <div class="swal2-row" style="display:flex; flex-direction:column; gap:8px;">
+      <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" />
+      <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" />
+    </div>`;
+
+  Swal.fire({
+    title: `Add to ${day}`,
+    html,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Add',
+    preConfirm: () => {
+      const name = (document.getElementById('qa-exercise').value || '').trim();
+      const sets = (document.getElementById('qa-sets').value || '').trim();
+      const reps = (document.getElementById('qa-reps').value || '').trim();
+      if (!name) {
+        Swal.showValidationMessage('Please enter an exercise');
+        return false;
+      }
+      return { name, sets, reps };
+    }
+  }).then(res => {
+    if (!res.isConfirmed) return;
+    const { name, sets, reps } = res.value;
+    const formatted = [name, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
+    const dayCard = document.querySelector(`.day-card[data-day="${day}"]`);
+    if (!dayCard) return;
+    if (dayCard.innerHTML.trim() !== '') dayCard.innerHTML += '<br>' + DOMPurify.sanitize(formatted);
+    else dayCard.innerHTML = DOMPurify.sanitize(formatted);
+    // update draft
+    const draft = {};
+    document.querySelectorAll('.day-card').forEach(c => { draft[c.getAttribute('data-day')] = c.innerHTML.trim(); });
+    localStorage.setItem('plannerDraft', JSON.stringify(draft));
+  });
+}
+
+// Collect unique exercise names from all tips tables
+function collectExerciseList() {
+  const names = new Set();
+  document.querySelectorAll('#workoutAccordion tbody tr td:first-child').forEach(td => {
+    const txt = (td.textContent || '').trim();
+    if (txt) names.add(txt);
+  });
+  return Array.from(names).sort();
+}
+
 async function loadWeeklyPlan() {
   try {
     const res = await fetch('/api/student/workout-plan', {
@@ -879,39 +951,28 @@ const mainNav = document.querySelector('.navbar');
 const contentSections = document.querySelectorAll('.content .card');
 
 mainNav.addEventListener('click', (e) => {
-    e.preventDefault(); // Prevent default link behavior
-    const targetId = e.target.id;
-
-    if (targetId) {
-        // Deactivate all links
-        mainNav.querySelectorAll('a').forEach(a => a.classList.remove('active'));
-        // Activate the clicked link
-        e.target.classList.add('active');
-
-        // Hide all sections
-        contentSections.forEach(section => {
-            section.style.display = 'none';
-        });
-
-        // Show the target section
-        const sectionId = targetId.replace('-main', '-low');
-        const targetSection = document.getElementById(sectionId);
-        if (targetSection) {
-            targetSection.style.display = 'block';
-            if (sectionId === 'logs-low') {
-                loadStudentPlans();
-                loadTrainingAnalytics();
-                loadFitnessProgress();
-                loadWorkoutConsistency();
-                loadSessionAnalytics();
-            }
-            // Inside the mainNav click listener
-            if (sectionId === 'leaves-low') {
-                loadLeaveData(); // Load data when the section is shown
-            }
-            if (sectionId === 'fame-low') {
-                loadHallOfFameData(); // Load data when this section is shown
-            }
+    const link = e.target.closest('a.nav-link');
+    if (!link) return;
+    e.preventDefault();
+    const targetSectionId = link.dataset.target;
+    if (targetSectionId) {
+        const href = link.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            window.location.hash = href.substring(1);
+        }
+        navigateToSection(targetSectionId);
+        if (targetSectionId === 'logs-low') {
+            loadStudentPlans();
+            loadTrainingAnalytics();
+            loadFitnessProgress();
+            loadWorkoutConsistency();
+            loadSessionAnalytics();
+        }
+        if (targetSectionId === 'leaves-low') {
+            loadLeaveData();
+        }
+        if (targetSectionId === 'fame-low') {
+            loadHallOfFameData();
         }
     }
 });
@@ -1059,8 +1120,8 @@ function renderWeeklyHoursChart(weeklyData) {
       datasets: [{
         label: 'Total Hours',
         data: data,
-        backgroundColor: 'rgba(76, 175, 80, 0.6)',
-        borderColor: 'rgba(76, 175, 80, 1)',
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('data-theme') ? 'rgba(129,199,132,0.6)' : 'rgba(76,175,80,0.6)',
+        borderColor: getComputedStyle(document.documentElement).getPropertyValue('data-theme') ? 'rgba(129,199,132,1)' : 'rgba(76,175,80,1)',
         borderWidth: 1
       }]
     },
@@ -1069,6 +1130,16 @@ function renderWeeklyHoursChart(weeklyData) {
       plugins: { legend: { display: false } }
     }
   });
+}
+
+// Re-apply chart theming when theme toggles
+function applyChartTheme() {
+  if (weeklyHoursChart) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    weeklyHoursChart.data.datasets[0].backgroundColor = isDark ? 'rgba(129,199,132,0.6)' : 'rgba(76,175,80,0.6)';
+    weeklyHoursChart.data.datasets[0].borderColor = isDark ? 'rgba(129,199,132,1)' : 'rgba(76,175,80,1)';
+    weeklyHoursChart.update();
+  }
 }
 
 function renderSessionHistory(historyData) {
@@ -1493,6 +1564,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Header and navigation buttons
     document.getElementById('logoutBtn').addEventListener('click', logout);
 
+    // Theme: load persisted theme and set up toggle
+    const rootEl = document.documentElement;
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') rootEl.setAttribute('data-theme', 'dark');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    if (themeToggleBtn) {
+        // Set initial icon
+        themeToggleBtn.innerHTML = rootEl.getAttribute('data-theme') === 'dark'
+            ? '<i class="bi bi-brightness-high"></i>'
+            : '<i class="bi bi-moon-stars"></i>';
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = rootEl.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                rootEl.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                themeToggleBtn.innerHTML = '<i class="bi bi-moon-stars"></i>';
+            } else {
+                rootEl.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                themeToggleBtn.innerHTML = '<i class="bi bi-brightness-high"></i>';
+            }
+            // Repaint charts to match theme
+            try { applyChartTheme(); } catch {}
+        });
+    }
+
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -1507,15 +1604,48 @@ document.addEventListener('DOMContentLoaded', () => {
     // Planner buttons
     document.getElementById('savePlanBtn').addEventListener('click', savePlan);
     document.getElementById('applyLastWeekBtn').addEventListener('click', applyLastWeeksPlan);
+    const clearBtn = document.getElementById('clearPlanBtn');
+    if (clearBtn) clearBtn.addEventListener('click', clearPlanner);
+
+    // Planner autosave/restore
+    const plannerCards = document.querySelectorAll('.day-card');
+    const draftKey = 'plannerDraft';
+    // Restore
+    try {
+        const draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
+        plannerCards.forEach(card => {
+            const day = card.getAttribute('data-day');
+            if (draft[day]) card.innerHTML = draft[day];
+        });
+    } catch {}
+    // Autosave on input
+    plannerCards.forEach(card => {
+        card.addEventListener('input', () => {
+            const draft = {};
+            document.querySelectorAll('.day-card').forEach(c => {
+                draft[c.getAttribute('data-day')] = c.innerHTML.trim();
+            });
+            localStorage.setItem(draftKey, JSON.stringify(draft));
+        });
+    });
 
     // Attendance button
     document.getElementById('loadAttendanceBtn').addEventListener('click', loadAttendance);
+    const weekSelectEl = document.getElementById('weekSelect');
+    weekSelectEl.addEventListener('change', () => {
+        if (weekSelectEl.value) loadAttendance();
+    });
 
     // Tips section select dropdown
     document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
 
 
     document.getElementById('startPlannerGuideBtn').addEventListener('click', startPlannerGuide);
+
+    // Quick Add buttons for each day
+    document.querySelectorAll('.quick-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => openQuickAddDialog(btn.dataset.day));
+    });
 
     // Add this inside your DOMContentLoaded event listener
 function setupAnalyticsTabs() {
@@ -1531,7 +1661,7 @@ function setupAnalyticsTabs() {
                 tabNav.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
                 e.target.classList.add('active');
 
-                // Update active state on content panes
+                // Update active state on content panes and set aria-current
                 tabPanes.forEach(pane => {
                     if (pane.id === tabId) {
                         pane.classList.add('active');
@@ -1539,6 +1669,9 @@ function setupAnalyticsTabs() {
                         pane.classList.remove('active');
                     }
                 });
+                tabNav.querySelectorAll('.tab-link').forEach(link => link.removeAttribute('aria-current'));
+                const activeBtn = tabNav.querySelector(`[data-tab="${tabId}"]`);
+                if (activeBtn) activeBtn.setAttribute('aria-current', 'page');
             }
         });
     }
@@ -1558,58 +1691,39 @@ if (workoutAccordion) {
 
             // Use SweetAlert2 to show a dropdown for selecting the day
             Swal.fire({
-                title: `Add "${exerciseName}" to which day?`,
-                input: 'select',
-                inputOptions: {
-                    'Monday': 'Monday',
-                    'Tuesday': 'Tuesday',
-                    'Wednesday': 'Wednesday',
-                    'Thursday': 'Thursday',
-                    'Friday': 'Friday',
-                    'Saturday': 'Saturday',
-                    'Sunday': 'Sunday'
-                },
-                inputPlaceholder: 'Select a day',
+                title: `Add "${exerciseName}"`,
+                html: `
+                  <select id="qa-day" class="swal2-select">
+                    <option>Monday</option>
+                    <option>Tuesday</option>
+                    <option>Wednesday</option>
+                    <option>Thursday</option>
+                    <option>Friday</option>
+                    <option>Saturday</option>
+                    <option>Sunday</option>
+                  </select>
+                  <div class="swal2-row" style="display:flex; gap:8px;">
+                    <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" style="flex:1;" />
+                    <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" style="flex:1;" />
+                  </div>
+                `,
+                focusConfirm: false,
                 showCancelButton: true,
-                confirmButtonText: 'Add Exercise',
-                confirmButtonColor: '#4CAF50'
-            }).then((result) => {
-                // If a day was selected
-                if (result.isConfirmed && result.value) {
-                    const selectedDay = result.value;
-                    
-                    // Find the correct day-card in the planner section
-                    const dayCard = document.querySelector(`.day-card[data-day="${selectedDay}"]`);
+                confirmButtonText: 'Add to Plan'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const selectedDay = document.getElementById('qa-day').value;
+                const sets = (document.getElementById('qa-sets').value || '').trim();
+                const reps = (document.getElementById('qa-reps').value || '').trim();
+                const formatted = [exerciseName, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
+                const dayCard = document.querySelector(`.day-card[data-day="${selectedDay}"]`);
+                if (!dayCard) return;
+                if (dayCard.innerHTML.trim() !== '') dayCard.innerHTML += `<br>${DOMPurify.sanitize(formatted)}`;
+                else dayCard.innerHTML = DOMPurify.sanitize(formatted);
 
-                    if (dayCard) {
-                        // Check if the card already has content
-                        if (dayCard.innerHTML.trim() !== '') {
-                            // If it has content, add a line break before the new exercise
-                            dayCard.innerHTML += `<br>${exerciseName}`;
-                        } else {
-                            // If it's empty, just add the exercise name
-                            dayCard.innerHTML = exerciseName;
-                        }
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Added to ${selectedDay}!`, showConfirmButton: false, timer: 1600 });
 
-                        // Show a success toast
-                        Swal.fire({
-                            toast: true,
-                            position: 'top-end',
-                            icon: 'success',
-                            title: `Added to ${selectedDay}!`,
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-
-                        if (isGuideActive) {
-                // We need to use a small timeout to allow the SweetAlert to close
-                // before the next Driver.js step tries to appear.
-                setTimeout(() => {
-                    continueAndFinishGuide();
-                }, 500); // 500ms delay
-                    }
-                  }
-                }
+                if (isGuideActive) setTimeout(() => { continueAndFinishGuide(); }, 500);
             });
         }
     });
@@ -1619,10 +1733,45 @@ if (workoutAccordion) {
 setupAnalyticsTabs();
 
 
+    // Hash routing: on load and when hash changes
+    function routeFromHash() {
+        const hash = window.location.hash.replace('#', '') || 'planner';
+        const map = {
+            planner: 'planner-low',
+            logs: 'logs-low',
+            attendance: 'attendance-low',
+            leaves: 'leaves-low',
+            tips: 'tips-low',
+            fame: 'fame-low'
+        };
+        const target = map[hash] || 'planner-low';
+        navigateToSection(target);
+    }
+    window.addEventListener('hashchange', routeFromHash);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            const key = e.key.toLowerCase();
+            if (key === '1') window.location.hash = 'planner';
+            if (key === '2') window.location.hash = 'logs';
+            if (key === '3') window.location.hash = 'attendance';
+            if (key === '4') window.location.hash = 'leaves';
+            if (key === '5') window.location.hash = 'tips';
+            if (key === '6') window.location.hash = 'fame';
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            const btn = document.getElementById('savePlanBtn');
+            if (btn) btn.click();
+        }
+    });
+
     // --- Initial Data Loading ---
     getStudentSession();
     loadWeeklyPlan();
     loadWeeks(); 
+    routeFromHash();
 });
 //----------------------------------------------------------------------------------------------------------
 

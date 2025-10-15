@@ -30,6 +30,9 @@
                 <h2 id="welcomeText"></h2>
             </div>
             <div class="header-actions">
+                <button id="themeToggleBtn" class="btn" aria-label="Toggle theme" title="Toggle light/dark">
+                    <i class="bi bi-moon-stars"></i>
+                </button>
                 <button id="logoutBtn" class="btn">Logout</button>
             </div>
         </header>
@@ -44,22 +47,22 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav w-100">
                         <li class="nav-item">
-                            <a href="#" class="nav-link active" id="planner-main">Workout Planner</a>
+                            <a href="#planner" class="nav-link active" id="planner-main" data-target="planner-low">Workout Planner</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link" id="logs-main">Analysis</a>
+                            <a href="#logs" class="nav-link" id="logs-main" data-target="logs-low">Analysis</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link" id="attendance-main">Attendance</a>
+                            <a href="#attendance" class="nav-link" id="attendance-main" data-target="attendance-low">Attendance</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link" id="leaves-main">Leave Portal</a>
+                            <a href="#leaves" class="nav-link" id="leaves-main" data-target="leaves-low">Leave Portal</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link" id="tips-main">Tips</a>
+                            <a href="#tips" class="nav-link" id="tips-main" data-target="tips-low">Tips</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link" id="fame-main">🏆 Hall of Fame</a>
+                            <a href="#fame" class="nav-link" id="fame-main" data-target="fame-low">🏆 Hall of Fame</a>
                         </li>
                     </ul>
                 </div>
@@ -110,30 +113,37 @@
     <div class="day-wrapper">
       <div class="day-name">Monday</div>
       <div class="day-card" contenteditable="true" data-day="Monday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Monday">Add Exercise</button>
     </div>
     <div class="day-wrapper">
       <div class="day-name">Tuesday</div>
       <div class="day-card" contenteditable="true" data-day="Tuesday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Tuesday">Add Exercise</button>
     </div>
     <div class="day-wrapper">
       <div class="day-name">Wednesday</div>
       <div class="day-card" contenteditable="true" data-day="Wednesday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Wednesday">Add Exercise</button>
     </div>
     <div class="day-wrapper">
       <div class="day-name">Thursday</div>
       <div class="day-card" contenteditable="true" data-day="Thursday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Thursday">Add Exercise</button>
     </div>
     <div class="day-wrapper">
       <div class="day-name">Friday</div>
       <div class="day-card" contenteditable="true" data-day="Friday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Friday">Add Exercise</button>
     </div>
     <div class="day-wrapper">
       <div class="day-name">Saturday</div>
       <div class="day-card" contenteditable="true" data-day="Saturday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Saturday">Add Exercise</button>
     </div>
     <div class="day-wrapper">
       <div class="day-name">Sunday</div>
       <div class="day-card" contenteditable="true" data-day="Sunday"></div>
+      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Sunday">Add Exercise</button>
     </div>
   </div>
 
@@ -142,6 +152,8 @@
   <span class="button-text">Save</span>
   <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
     </button>
+    
+    <button id="clearPlanBtn" type="button" class="btn btn-outline-danger">Clear</button>
     <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
       Apply Last Week’s Plan
     </button>
@@ -904,9 +916,9 @@
 
 
 
-   <footer class="footer" style="text-align: center;">
+  <footer class="footer" style="text-align: center;">
     <p>&copy; 2025 FitTracker. All rights reserved.</p>
-    <p><a href="/privacy-policy.html" style="color: #090909; text-decoration: underline;">Privacy Policy</a> | <a href="/terms-of-service.html" style="color: #000000; text-decoration: underline;">Terms of Service</a></p>
+    <p><a href="/privacy-policy.html" class="footer-link">Privacy Policy</a> | <a href="/terms-of-service.html" class="footer-link">Terms of Service</a></p>
   </footer>
 
 
@@ -917,7 +929,7 @@
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
 <script type="module" src="/js/student.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Removed duplicate SweetAlert2 include; already loaded in <head> -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 

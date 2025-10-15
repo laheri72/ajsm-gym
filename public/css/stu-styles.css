@@ -23,6 +23,17 @@
     --dark-border: #465a70; /* For borders on dark elements */
 }
 
+/* Dark theme variables */
+[data-theme="dark"] {
+    --light: #0f141b;
+    --text-on-light: #e6eef6;
+    --dark: #e6eef6;
+    --border-color: #2b3746;
+    --dark-bg-primary: #142030;
+    --dark-bg-secondary: #0f1a28;
+    --gray: #9fb0c3;
+}
+
 html {
     /* Default is 16px. This value makes the entire UI about 12% smaller. */
     font-size: 14px; 
@@ -37,6 +48,32 @@ body {
     font-family: 'Poppins', sans-serif; /* Standardized font for the dashboard */
     color: black;
     overflow-x: hidden;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .card,
+[data-theme="dark"] .leaderboard-container,
+[data-theme="dark"] .trophy-case-container,
+[data-theme="dark"] .progress-card,
+[data-theme="dark"] .leave-form-container,
+[data-theme="dark"] .leave-status-container {
+    color: var(--text-on-light);
+    background-color: #141c27;
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .analytics-widget,
+[data-theme="dark"] .stat-card {
+    color: var(--text-on-light);
+}
+
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .leaderboard-container,
+[data-theme="dark"] .trophy-case-container,
+[data-theme="dark"] .progress-card,
+[data-theme="dark"] .leave-form-container,
+[data-theme="dark"] .leave-status-container {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 h2 {
@@ -156,6 +193,10 @@ h1 {
     border-bottom-color: var(--accent);
 }
 
+[data-theme="dark"] .navbar .nav-link:hover {
+    background-color: #132033;
+}
+
 /* =================================================================== */
 /* 5. MAIN CONTENT & CARDS
 /* =================================================================== */
@@ -211,6 +252,22 @@ h1 {
     color: black;
 }
 
+[data-theme="dark"] .form-control {
+    background: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+[data-theme="dark"] input[type="date"] { color: #ffffff; }
+[data-theme="dark"] .form-select {
+    background: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] select.form-control option,
+[data-theme="dark"] .form-select option {
+    color: var(--text-on-light);
+    background-color: #0f1722;
+}
+
 .form-control:focus {
     outline: none;
     border-color: var(--primary);
@@ -258,9 +315,18 @@ button:disabled {
     transform: translateY(-3px);
 }
 
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* Specific rule to make the header's logout button text white */
 .header .btn {
-    color: var(--text-on-light);
+    color: #000000;
     background-color: var(--accent);
 }
 .header .btn:hover {
@@ -290,6 +356,35 @@ table th, table td {
     text-align: left;
     border-bottom: 1px solid #eee;
     color: black;
+}
+
+[data-theme="dark"] table thead th {
+    background-color: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] table th,
+[data-theme="dark"] table td {
+    border-bottom: 1px solid #1f2d40;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] .table,
+[data-theme="dark"] .table tbody tr,
+[data-theme="dark"] #studentPlanTable,
+[data-theme="dark"] #sessionHistoryTable {
+    background-color: #0f1722;
+}
+[data-theme="dark"] #studentPlanTable thead th,
+[data-theme="dark"] #studentPlanTable tbody td,
+[data-theme="dark"] #sessionHistoryTable thead th,
+[data-theme="dark"] #sessionHistoryTable tbody td {
+    background-color: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #0f1c2a;
+}
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(even) {
+    background-color: #0f1722;
 }
 
 table thead th {
@@ -323,6 +418,10 @@ table tr:nth-child(even) {
     color: #856404; /* Dark yellow/brown text */
     font-weight: bold;
 }
+[data-theme="dark"] .present,
+[data-theme="dark"] .absent {
+    color: #000 !important; /* ensure black text on light status backgrounds */
+}
 
 /* Specific styles for .styled-plan-table */
 .styled-plan-table {
@@ -344,6 +443,15 @@ table tr:nth-child(even) {
 
 .styled-plan-table tr:nth-child(even) {
     background-color: #fafafa;
+}
+[data-theme="dark"] .styled-plan-table tr,
+[data-theme="dark"] .styled-plan-table tr:nth-child(even) {
+    background-color: #0f1722;
+}
+[data-theme="dark"] .styled-plan-table th,
+[data-theme="dark"] .styled-plan-table td {
+    color: var(--text-on-light);
+    border-color: #1f2d40;
 }
 
 td iframe {
@@ -422,6 +530,45 @@ td iframe {
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
     overflow-y: auto;
 }
+
+[data-theme="dark"] .day-card {
+    background: #0f1722;
+    border-color: #1f2d40;
+    color: var(--text-on-light);
+}
+
+/* Tips section: keep accordions dark in dark mode */
+[data-theme="dark"] #tips-low.card { background-color: #141c27; }
+[data-theme="dark"] #tips-low h2,
+[data-theme="dark"] #tips-low label,
+[data-theme="dark"] #tips-low .form-label,
+[data-theme="dark"] #tips-low .form-select { color: var(--text-on-light); }
+[data-theme="dark"] #bodyPartSelect.form-select { background-color: #0f1722; border-color: #1f2d40; }
+[data-theme="dark"] .accordion-button { background-color: #0f1722; color: var(--text-on-light); }
+[data-theme="dark"] .accordion-body { background-color: #141c27; color: var(--text-on-light); }
+[data-theme="dark"] .accordion .table,
+[data-theme="dark"] .accordion .table td,
+[data-theme="dark"] .accordion .table th {
+    background-color: #141c27;
+    color: var(--text-on-light);
+    border-color: #1f2d40;
+}
+[data-theme="dark"] .accordion .table thead th {
+    background-color: #0f1722;
+    color: var(--text-on-light);
+}
+
+/* Achievement leaderboard items readable in dark mode */
+[data-theme="dark"] .leaderboard-list li {
+    background-color: #0f1722;
+}
+[data-theme="dark"] .leaderboard-list li .name,
+[data-theme="dark"] .leaderboard-list li .score {
+    color: var(--text-on-light);
+}
+[data-theme="dark"] #leaderboard-toast h3,
+[data-theme="dark"] #leaderboard-toast li { color: #111111; }
+[data-theme="dark"] #leaderboard-toast { background-color: #ffffff; }
 
 .day-card[contenteditable="true"]:focus {
     outline: none;
@@ -515,6 +662,7 @@ td iframe {
     font-weight: 700;   /* Bolder header */
     text-align: center;
 }
+[data-theme="dark"] #leaderboard-toast h3 { color: #111111; }
 
 #leaderboard-toast ol {
     margin: 0;
@@ -525,8 +673,10 @@ td iframe {
     padding: 0.4rem 0;  /* More vertical space */
     font-size: 1.1rem;    /* Larger text */
     font-weight: 600;   /* Bolder text */
-    color: var(--text-dark);
+    color: #111111;
 }
+[data-theme="dark"] .footer .footer-link { color: #ffffff !important; }
+.footer .footer-link { color: #000000; text-decoration: underline; }
 
 /* =================================================================== */
 /* ATTENDANCE SUMMARY CARD
@@ -553,6 +703,9 @@ td iframe {
     font-weight: 600;
     color: var(--dark);
 }
+[data-theme="dark"] .attendance-summary-card { background-color: #f8f9fa; color: #212529; }
+[data-theme="dark"] .attendance-summary-card .summary-title { color: #212529; }
+[data-theme="dark"] .attendance-summary-card .summary-label { color: #495057; }
 
 .summary-grid {
     display: grid;
@@ -645,6 +798,8 @@ td iframe {
     border-radius: 1rem;
     padding: 1.5rem;
 }
+[data-theme="dark"] .stat-card { background-color: #0f1722; color: var(--text-on-light); }
+[data-theme="dark"] .stat-card span { color: #c7d3df; }
 
 .stat-card .stat-value {
     font-size: 4rem;
@@ -971,6 +1126,8 @@ td iframe {
     font-size: 1.1rem;
     font-weight: 600;
 }
+[data-theme="dark"] .progress-card { background-color: #0f1722; border-color: #1f2d40; }
+[data-theme="dark"] .progress-info h4 { color: var(--text-on-light); }
 
 .progress-bar-container {
     width: 100%;
