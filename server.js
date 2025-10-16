@@ -1348,7 +1348,12 @@ app.post('/api/log-training-plan', async (req, res) => {
 
 
 app.get('/api/student/training-analytics', async (req, res) => {
-    const { TR } = req.session.user; // Get TR from the logged-in student's session
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });       
+    }   
+    
+    const { TR } = req.session.user; 
+
     try {
         const result = await pool.request()
             .input('TR', sql.Int, TR)
@@ -1773,12 +1778,15 @@ app.get('/api/all-test-records', async (req, res) => {
 //--------------------------------------------------------------------------------------------------------
 app.post('/api/save-workout-plan', async (req, res) => {
   try {
-    const plan = req.body; // { Monday: '...', Tuesday: '...', ... }
-    const { TR, Branch, Gender } = req.session.user;
 
-    if (!TR || !Branch || !Gender) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!TR || !Branch || !Gender) { 
+        return res.status(401).json({ success: false, message: "Unauthorized" });   
     }
+
+    
+    const { TR, Branch, Gender } = req.session.user;
+    const plan = req.body; // { Monday: '...', Tuesday: '...', ... }
+    // ✅ Get today's date in 'YYYY-MM-DD' format
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD

@@ -103,6 +103,85 @@ const exerciseDatabase = [
     { name: 'Side Plank', difficulty: 'Beginner', primaryMuscle: 'Core', secondaryMuscles: [] }
 ];
 
+
+// REPLACE your existing getStudentSession function with this one
+
+async function getStudentSession() {
+  try {
+    const res = await fetch('/api/student-session', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      window.location.href = '../Forbidden.html';
+      return;
+    }
+
+    showLeaderboard();
+    const user = data.user;
+    studentTR = user.TR;
+    studentName = user.Name;
+    branch = user.Branch;
+    gender = user.Gender;
+
+    // --- NEW: Check for Level-Up on page load ---
+    const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
+    if (user.FitnessLevel > lastSeenLevel) {
+        showLevelUpAnimation(user.FitnessLevel);
+        localStorage.setItem('lastSeenLevel', user.FitnessLevel);
+    }
+    
+    // --- NEW: Update the XP Bar UI ---
+    updateXPBarUI(user.FitnessLevel, user.CurrentXP);
+
+    // Update welcome UI
+    document.getElementById('studentName').innerText = studentName || 'Student';
+    const title =
+      gender?.toLowerCase() === 'male'
+        ? 'Talabat'
+        : gender?.toLowerCase() === 'female'
+          ? 'Talebaat'
+          : 'Student';
+
+    document.getElementById('welcomeText').innerText =
+      `Your personal Fitness Dashboard 
+       ${branch} | ${title}`;
+
+        // --- NEW: Check if password change is needed ---
+    if (data.user.HasLoggedInBefore === false) {
+        const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
+        passwordModal.show();
+        handleInitialPasswordSet(); // Set up the form listener
+    }
+
+    // Load extra info (Darajah, Goal etc.)
+    fetch(`/api/student-info/me`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+      .then(res => res.json()) 
+      .then(infoData => {
+        if (infoData.success) {
+          const stu = infoData.student;
+          document.getElementById('studentSlot').innerText = stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
+          document.getElementById('studentDarajah').innerText = stu.Darajah;
+          document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
+          document.getElementById('studentTR').innerText = studentTR;
+          loadTip(stu.Goal);
+        }
+      });
+      loadWeeklyPlan();
+      loadWeeks();
+  } catch (err) {
+    console.error('Error fetching student session:', err);
+    window.location.href = '../Forbidden.html';
+  }
+}
+
+//--------------------------------------------------------------------------------------------
+
 // ADD THESE TWO NEW FUNCTIONS TO student.js
 
 /**
@@ -189,79 +268,11 @@ function showLevelUpAnimation(newLevel) {
     });
 }
 
-// REPLACE your existing getStudentSession function with this one
 
-async function getStudentSession() {
-  try {
-    const res = await fetch('/api/student-session', {
-      method: 'GET',
-      credentials: 'include'
-    });
-    const data = await res.json();
 
-    if (!data.success) {
-      window.location.href = '../Forbidden.html';
-      return;
-    }
 
-    showLeaderboard();
-    const user = data.user;
-    studentTR = user.TR;
-    studentName = user.Name;
-    branch = user.Branch;
-    gender = user.Gender;
+//----------------------------------------------------------------------------------------------
 
-    // --- NEW: Check for Level-Up on page load ---
-    const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
-    if (user.FitnessLevel > lastSeenLevel) {
-        showLevelUpAnimation(user.FitnessLevel);
-        localStorage.setItem('lastSeenLevel', user.FitnessLevel);
-    }
-    
-    // --- NEW: Update the XP Bar UI ---
-    updateXPBarUI(user.FitnessLevel, user.CurrentXP);
-
-    // Update welcome UI
-    document.getElementById('studentName').innerText = studentName || 'Student';
-    const title =
-      gender?.toLowerCase() === 'male'
-        ? 'Talabat'
-        : gender?.toLowerCase() === 'female'
-          ? 'Talebaat'
-          : 'Student';
-
-    document.getElementById('welcomeText').innerText =
-      `Your personal Fitness Dashboard 
-       ${branch} | ${title}`;
-
-        // --- NEW: Check if password change is needed ---
-    if (data.user.HasLoggedInBefore === false) {
-        const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
-        passwordModal.show();
-        handleInitialPasswordSet(); // Set up the form listener
-    }
-
-    // Load extra info (Darajah, Goal etc.)
-    fetch(`/api/student-info/me`, {
-      method: 'GET',
-      credentials: 'include'
-    })
-      .then(res => res.json()) 
-      .then(infoData => {
-        if (infoData.success) {
-          const stu = infoData.student;
-          document.getElementById('studentSlot').innerText = stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
-          document.getElementById('studentDarajah').innerText = stu.Darajah;
-          document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
-          document.getElementById('studentTR').innerText = studentTR;
-          loadTip(stu.Goal);
-        }
-      });
-  } catch (err) {
-    console.error('Error fetching student session:', err);
-    window.location.href = '../Forbidden.html';
-  }
-}
 
 // Add this new function to student.js
 function handleInitialPasswordSet() {
@@ -772,6 +783,12 @@ function savePlan() {
     body: JSON.stringify(plan)
   })
     .then(res => {
+      if (res.status === 401) {
+      // If the server says we're unauthorized, redirect immediately.
+      window.location.href = '../Forbidden.html';
+      // Halt the rest of the function by returning a promise that never resolves.
+      return new Promise(() => {}); 
+    }
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Workout plan endpoint not found. Check if the backend server is running on port 10000.');
@@ -1648,7 +1665,7 @@ function showBadgeUnlockAnimation(badge) {
 document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
-    document.getElementById('logoutBtn').addEventListener('click', logout);
+    // document.getElementById('logoutBtn').addEventListener('click', logout);
 
     // Theme: load persisted theme and set up toggle
     const rootEl = document.documentElement;
@@ -1853,17 +1870,36 @@ setupAnalyticsTabs();
 
     // --- Initial Data Loading ---
     getStudentSession();
-    loadWeeklyPlan();
-    loadWeeks(); 
     routeFromHash();
 });
 //----------------------------------------------------------------------------------------------------------
 
 
-function logout() {
-        localStorage.clear();
-        window.location.href = '../homepage.html';
-    }
+document.getElementById('logoutBtn').addEventListener('click', function (e) {
+    // Prevent the link from navigating to trainer-login.html immediately
+    e.preventDefault();
+
+    // Send a POST request to the secure logout endpoint
+    fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include' // Important for sending the session cookie
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // If logout is successful, clear any stored data and redirect
+            localStorage.clear();
+            window.location.href = '../homepage.html';
+        } else {
+            // Show an error if the server reported a failure
+            alert('Logout failed. Please try again.');
+        }
+    })
+    .catch(err => {
+        console.error('Logout error:', err);
+        alert('Could not connect to the server to log out.');
+    });
+});
 
 
   
