@@ -1068,6 +1068,22 @@ document.getElementById('checkout-tr-input').addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/\D/g, ''); // removes anything that's not a digit
 });
 
+//select the input field and focus it when the section is shown
+document.getElementById('checkout-tr-input').addEventListener('focus', (e) => {
+    e.target.select(); // Select the entire input content on focus
+});
+
+// ✅ Allow only numbers in the input
+document.getElementById('tr-input').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, ''); // removes anything that's not a digit
+});
+
+//select the input field and focus it when the section is shown
+document.getElementById('tr-input').addEventListener('focus', (e) => {
+    e.target.select(); // Select the entire input content on focus
+});
+
+
 // ✅ Trigger button click on Enter key
 document.getElementById('checkout-tr-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
