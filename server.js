@@ -2982,6 +2982,51 @@ app.post('/api/trainer-test-records', async (req, res) => {
 });
 
 
+
+// A new, more powerful search endpoint
+app.get('/api/student-lookup/:query', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {    
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+
+    const { query } = req.params;
+    const { branch, gender } = req; // From middleware
+
+    // Check if the query is a number (TR) or a string (Name)
+    const isNumeric = /^\d+$/.test(query);
+
+    let sqlQuery = `
+        SELECT TR FROM Master 
+        WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND 
+    `;
+
+    const request = pool.request();
+    request.input('Branch', sql.NVarChar(50), branch);
+    request.input('Gender', sql.NVarChar(50), gender);
+
+    if (isNumeric) {
+        sqlQuery += `TR = @Query`;
+        request.input('Query', sql.Int, query);
+    } else {
+        sqlQuery += `Name LIKE @Query`;
+        request.input('Query', sql.NVarChar(100), `%${query}%`); // Use LIKE for partial name matches
+    }
+
+    try {
+        const result = await request.query(sqlQuery);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'No active student found with that query.' });
+        }
+        if (result.recordset.length > 1) {
+            return res.status(400).json({ success: false, message: 'Multiple students found. Please be more specific or use TR number.' });
+        }
+        // If one student is found, return their TR
+        res.json({ success: true, tr: result.recordset[0].TR });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Database search error.' });
+    }
+});
+
 // API to get all students formatted for a dropdown selector
 app.get('/api/students-list', async (req, res) => {
     try {

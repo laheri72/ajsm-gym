@@ -163,7 +163,6 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            position: relative; /* Ensure proper stacking context */
         }
 
         .search-group .form-control {
@@ -354,43 +353,12 @@
         }
 
         .choices__list--dropdown {
-            z-index: 5000;
-            position: relative;
+            z-index: 1000;
             color: var(--text-color);
             background-color: var(--card-bg);
         }
 
         .choices__list--dropdown .choices__item--selectable.is-highlighted {
-            background-color: var(--secondary-color);
-        }
-        /* Inside your <style> block */
-
-        #student-search-card {
-            position: relative; /* This is required for z-index to work */
-            z-index: 2;         /* A higher number means it's on top */
-        }
-
-        #daily-attendance-card {
-            position: relative;
-            z-index: 1;         /* A lower number means it's underneath */
-        }
-        /* Inside your <style> block, can be placed at the end */
-
-        body.dark-mode .choices__inner {
-            background-color: var(--card-bg);
-            border-color: var(--border-color);
-        }
-
-        body.dark-mode .choices__list--dropdown {
-            background-color: var(--card-bg);
-            border-color: var(--border-color);
-        }
-
-        body.dark-mode .choices__item {
-            color: var(--text-color);
-        }
-
-        body.dark-mode .choices__list--dropdown .choices__item--selectable.is-highlighted {
             background-color: var(--secondary-color);
         }
     </style>
@@ -448,7 +416,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Create Your New Password</h3>
+                <h5 class="modal-title">Create Your New Password</h5>
             </div>
             <div class="modal-body">
                 <p>Welcome! For your security, you must create a new password for your account.</p>
@@ -567,40 +535,36 @@
         }
     }
 
-// Inside your <script type="module"> block
-
-function renderHomePage() {
-    dailyAttendanceCache = [];
-    elements.mainContent.innerHTML = `
-        <div class="card fade-in">
-            <h3 id="welcomeText">Welcome, ${currentUser?.Branch.toUpperCase()} - ${currentUser?.Gender.toUpperCase()}</h3>
-            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${new Date().toISOString().split('T')[0]}</span></p>
-        </div>
-        <div class="card" id="quick-stats">
-            <p style="text-align:center;">Loading stats...</p>
-        </div>
-        
-        <div class="card" id="student-search-card"> 
-            <h4>Student Search</h4>
-            <div class="search-group">
-                <select id="tr-input" class="form-control"></select>
-                <button id="search-btn" class="btn"><span class="btn-text">Search</span></button>
+    // --- Dynamic Page Rendering Functions ---
+    function renderHomePage() {
+        elements.mainContent.innerHTML = `
+            <div class="card fade-in">
+                <h3 id="welcomeText">Welcome, ${currentUser?.Branch.toUpperCase()} - ${currentUser?.Gender.toUpperCase()}</h3>
+                <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${new Date().toISOString().split('T')[0]}</span></p>
             </div>
-        </div>
-
-        <div class="card" id="daily-attendance-card">
-            <h4>Today's Attendance</h4>
-            <table id="dailyAttendanceTable">
-                <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    `;
-    loadQuickStats();
-    loadDailyAttendance();
-    loadActiveSessions();
-    initHomeListeners();
-}
+            <div class="card" id="quick-stats">
+                <p style="text-align:center;">Loading stats...</p>
+            </div>
+            <div class="card">
+                <h4>Student Search</h4>
+                <div class="search-group">
+                    <select id="tr-input" class="form-control"></select>
+                    <button id="search-btn" class="btn"><span class="btn-text">Search</span></button>
+                </div>
+            </div>
+            <div class="card" id="daily-attendance-section">
+                <h4>Today's Attendance</h4>
+                <table id="dailyAttendanceTable">
+                    <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        `;
+        loadQuickStats();
+        loadDailyAttendance();
+        loadActiveSessions();
+        initHomeListeners();
+    }
 
     function renderCheckoutPage() {
         elements.mainContent.innerHTML = `
@@ -829,10 +793,6 @@ function renderHomePage() {
             const res = await fetch('/api/daily-attendance');
             const students = await res.json();
             if (!Array.isArray(students)) throw new Error('Invalid student list format');
-            const trInput = document.getElementById('tr-input');
-            if (searchChoices) {
-            searchChoices.destroy();
-        }
             searchChoices = new Choices('#tr-input', {
                 removeItemButton: true,
                 maxItemCount: 1,
@@ -849,52 +809,31 @@ function renderHomePage() {
     }
 
     // --- Listeners Init ---
-// In your <script type="module"> block
+    function initHomeListeners() {
+        const trInput = document.getElementById('tr-input');
+        const searchBtn = document.getElementById('search-btn');
 
-function initHomeListeners() {
-    const searchBtn = document.getElementById('search-btn');
-    const trInput = document.getElementById('tr-input');
+        initializeSearchSelector();
 
-    // Create the search selector once when the page loads.
-    initializeSearchSelector();
+        const handleSearch = debounce(async () => {
+            const query = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
+            if (query) {
+                toggleButtonSpinner(searchBtn, true);
+                try {
+                    await showMiniProfile(query);
+                    if (searchChoices) searchChoices.clearInput();
+                } finally {
+                    toggleButtonSpinner(searchBtn, false);
+                }
+            }
+        }, 300);
 
-    const handleSearch = async () => {
-        const selectedValue = searchChoices.getValue(true); // Get the currently selected TR number
+        trInput.addEventListener('change', async () => {
+            await handleSearch();
+        });
 
-        // If nothing is selected, do nothing.
-        if (!selectedValue) {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: 'Please select a student first.',
-                showConfirmButton: false,
-                timer: 2000
-            });
-            return;
-        }
-
-        toggleButtonSpinner(searchBtn, true);
-        try {
-            await showMiniProfile(selectedValue); // Show the profile for the selected student
-
-            // ✅ THIS IS THE FIX:
-            // After the search is done, properly clear the selection from the component.
-            // This resets its internal state and prepares it for the next search.
-            searchChoices.removeActiveItems();
-
-        } catch (err) {
-            console.error("Search failed:", err);
-            // Also clear the selection if the search fails.
-            searchChoices.removeActiveItems();
-        } finally {
-            toggleButtonSpinner(searchBtn, false);
-        }
-    };
-
-    // Use the button click as the main way to trigger the search.
-    searchBtn.addEventListener('click', handleSearch);
-}
+        searchBtn.addEventListener('click', handleSearch);
+    }
 
     function initFitnessTestListeners() {
         document.getElementById('addStudentsBtn').addEventListener('click', async () => {

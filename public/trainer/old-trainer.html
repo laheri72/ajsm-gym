@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trainer Dashboard - FitTracker</title>
+    <script>
+    // This script runs instantly, before the page content is displayed.
+    try {
+        // The user object is stored here upon login
+        const userString = localStorage.getItem('staffUser');
+        if (userString) {
+            const user = JSON.parse(userString);
+            // Check if the user is a Marol Male trainer
+            if (user.Branch === 'Marol' && user.Gender === 'Male') {
+                // If they are, add a class to the root <html> element
+                document.documentElement.className = 'is-marol-male';
+            }
+        }
+    } catch (e) {
+        console.error('Initial auth script failed:', e);
+    }
+</script>
+    <link rel="icon" href="../images/favicon.png" type="image/png">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
+
+    <style>
+        /* --- Professional Theming and Layout --- */
+        :root {
+            --primary-color: #10b981; /* Emerald Green */
+            --primary-hover: #059669; /* Darker Emerald */
+            --secondary-color: #f3f4f6; /* Light Gray Background */
+            --text-color: #374151; /* Cool Gray Text */
+            --border-color: #d1d5db; /* Lighter Gray Border */
+            --card-bg: #ffffff;
+            --success-bg: #d1fae5;
+            --success-text: #065f46;
+            --error-bg: #fee2e2;
+            --error-text: #991b1b;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            margin: 0;
+        }
+
+        .navbar {
+            background: var(--card-bg);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navbar a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .navbar a:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .navbar a.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .content {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .main-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        /* --- Consistent Form Styling --- */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.2s ease;
+            text-decoration: none; /* For <a> tags styled as buttons */
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Component Specific Styles --- */
+        .info-card {
+            background-color: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-card p {
+            margin: 0.25rem 0;
+            font-weight: 500;
+        }
+        
+        #slotInfo { font-size: 1.25rem; }
+        #goalInfo { color: #6b7280; }
+
+        .choices__inner {
+            padding-top: 0.3rem;
+            padding-bottom: 0.3rem;
+            min-height: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        /* Hide elements utility class */
+        .hidden {
+            display: none;
+        }
+
+#viewAttendanceBtn {
+  display: inline-block;      /* shrink to fit */
+  width: auto !important;     /* override .btn’s width */
+  max-width: 100%;            /* never overflow parent */
+  margin-top: 0.5rem;
+  background-color: #136971 !important;
+  color: #fff;
+  text-align: center;
+}
+/* Add this CSS to your existing <style> block */
+
+.swal2-html-container {
+    overflow: initial !important; /* Allow content to be styled freely */
+}
+
+.body-parts-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.body-part-chip {
+    padding: 10px 18px;
+    border-radius: 20px;
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    user-select: none; /* Prevents text selection on click */
+}
+
+.body-part-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.body-part-chip.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-hover);
+}
+
+#max-selection-warning {
+    color: var(--error-text);
+    font-size: 0.9em;
+    height: 1.2em; /* Reserve space to prevent layout shift */
+    margin-top: 10px;
+    transition: opacity 0.2s ease;
+}
+/* Add this to your existing <style> block */
+
+#nav-fitness-test {
+    display: none;
+}
+html.is-marol-male #nav-fitness-test {
+    display: block; /* Or 'inline-block' depending on navbar style */
+}
+
+
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <a href="#" class="nav-link active" id="nav-attendance">📋 Attendance</a>
+    <a href="#" class="nav-link" id="nav-checkout">🚪 Check-out</a>
+    <a href="#" class="nav-link" id="nav-fitness-test">🏋️ Fitness Test</a>
+    <a href="trainer-login.html" id="logoutLink">Logout</a>
+</div>
+    
+    <div class="content">
+        <section id="attendance-section" class="page-section">
+        <div class="card main-form">
+            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span id="currentDateDisplay"></span></p>
+            <h2>📋 Mark Student Attendance</h2>
+            <h3 id="welcomeText" style="text-align:center; font-weight:normal; margin-top:-1rem; margin-bottom: 2rem;"></h3>
+    
+            <form id="attendanceForm">
+                <div class="form-group">
+                    <label for="tr-input">Student TR Number</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="tr-input" class="form-control" placeholder="Enter TR and press Enter">
+                        <button type="button" id="checkTrButton" class="btn" style="width: auto; margin-top:0;">
+                            <span class="btn-text">Check</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="studentInfoCard" class="info-card hidden">
+                    <p id="slotInfo"></p>
+                    <p id="goalInfo"></p>
+                </div>
+
+                <div id="workoutEntryForm" class="hidden">
+                    <div class="form-group">
+                        <label for="bodyParts">Today's Workout</label>
+                        
+                        <select id="bodyParts" multiple>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Chest">Chest</option>
+                            <option value="Back">Back</option>
+                            <option value="Shoulders">Shoulders</option>
+                            <option value="Biceps">Biceps</option>
+                            <option value="Triceps">Triceps</option>
+                            <option value="Legs">Legs</option>
+                            <option value="Core">Core</option>
+                        </select>
+                    </div>
+                </div>
+    
+                <button type="submit" class="btn" id="submitButton" disabled>
+                    <span class="btn-text">Submit Attendance</span>
+                </button>
+                
+                <a href="#" id="viewAttendanceBtn" class="btn" style="background-color:#4b5563; margin-top:0.5rem;">View Today's Attendance</a>
+            </form>
+        </div>
+        
+        <div id="daily-attendance-section" class="card hidden">
+            <h2>Today's Attendance</h2>
+            <table id="dailyAttendanceTable">
+                <thead>
+                    <tr>
+                        <th>TR</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+         <div id="plan-history-section" class="card hidden">
+            <h4>📅 Training Plan History</h4>
+            <table id="planHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Body Parts</th>
+                    </tr>
+                </thead>
+                <tbody id="plan-history-body"></tbody>
+            </table>
+        </div>
+    </section>
+
+
+    <section id="checkout-section" class="page-section hidden">
+    <div class="card main-form">
+        <h2>🚪 Student Check-out</h2>
+        <p>Enter a student's TR to mark their session as complete.</p>
+        
+        <div class="form-group">
+            <label for="checkout-tr-input">Student TR Number</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="checkout-tr-input" class="form-control" placeholder="Enter TR number">
+                <button type="button" id="checkout-btn" class="btn">
+                    <span class="btn-text">Check Out</span>
+                </button>
+            </div>
+        </div>
+
+        
+<div id="active-sessions-container" style="margin-top: 2.5rem;">
+    <h3 style="text-align: center; margin-bottom: 1rem;">🕒 Currently Checked-in Students</h3>
+    <table id="activeSessionsTable">
+        <thead>
+            <tr>
+                <th>TR</th>
+                <th>Name</th>
+                <th>Check-in Time</th>
+            </tr>
+        </thead>
+        <tbody id="active-sessions-body">
+            </tbody>
+    </table>
+</div>
+
+
+
+    </div>
+
+
+</section>
+
+    <section id="fitness-test-section" class="page-section hidden">
+                <div class="card">
+                    <h2>🏋️ Trainer Fitness Test Entry</h2>
+                    
+                    <div class="form-group">
+                        <label for="student-selector">Select Students for Testing (Max 5)</label>
+                        <select id="student-selector" multiple></select>
+                    </div>
+                    <button id="addStudentsBtn" class="btn">Add Students to Testing Area</button>
+                    <hr style="margin: 2rem 0;">
+
+                    <div id="testing-area">
+                        <p style="text-align: center; color: #6b7280;">Select students to begin the test.</p>
+                    </div>
+                    
+                    <div id="submission-container" class="hidden" style="margin-top: 2rem;">
+                        <button id="submitAllTestsBtn" class="btn">
+                            <span class="btn-text">Submit All Records</span>
+                        </button>
+                    </div>
+                </div>
+                </section>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        // --- DOM Element References ---
+        const elements = {
+            welcomeText: document.getElementById('welcomeText'),
+            currentDateDisplay: document.getElementById('currentDateDisplay'),
+            trInput: document.getElementById('tr-input'),
+            checkTrButton: document.getElementById('checkTrButton'),
+            submitButton: document.getElementById('submitButton'),
+            viewAttendanceBtn: document.getElementById('viewAttendanceBtn'),
+            attendanceForm: document.getElementById('attendanceForm'),
+            studentInfoCard: document.getElementById('studentInfoCard'),
+            slotInfo: document.getElementById('slotInfo'),
+            goalInfo: document.getElementById('goalInfo'),
+            workoutEntryForm: document.getElementById('workoutEntryForm'),
+            dailyAttendanceSection: document.getElementById('daily-attendance-section'),
+            dailyAttendanceTableBody: document.querySelector('#dailyAttendanceTable tbody'),
+            planHistorySection: document.getElementById('plan-history-section'),
+            planHistoryBody: document.getElementById('plan-history-body')
+        };
+        let bodyPartsChoices; // To hold the Choices.js instance
+        let currentValidTR = null; // To store the validated TR number
+
+        // --- Utility Functions ---
+        function toggleButtonSpinner(button, showSpinner) {
+            const btnText = button.querySelector('.btn-text');
+            if (showSpinner) {
+                button.disabled = true;
+                if (!button.querySelector('.spinner')) {
+                    button.insertAdjacentHTML('afterbegin', '<div class="spinner"></div>');
+                }
+                if (btnText) btnText.style.display = 'none';
+            } else {
+                button.disabled = false;
+                const spinner = button.querySelector('.spinner');
+                if (spinner) spinner.remove();
+                if (btnText) btnText.style.display = 'inline';
+            }
+        }
+
+        // REPLACE your old resetForm function with this one
+        function resetForm() {
+            elements.attendanceForm.reset();
+
+            // --- CORRECTED LOGIC ---
+            // If a Choices instance exists, destroy it completely
+            // and reset our variable back to null.
+            if (bodyPartsChoices) {
+                bodyPartsChoices.destroy();
+                bodyPartsChoices = null;
+            }
+            // --- END CORRECTION ---
+
+            elements.studentInfoCard.classList.add('hidden');
+            elements.workoutEntryForm.classList.add('hidden');
+            elements.planHistorySection.classList.add('hidden');
+            elements.submitButton.disabled = true;
+            currentValidTR = null;
+        }
+
+        // --- Main Logic Functions ---
+// REPLACE your existing validateTrainerSession function with this one
+
+async function validateTrainerSession() {
+    try {
+        const res = await fetch('/api/session-user', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !data.user) {
+            window.location.href = '../Forbidden.html';
+            return;
+        }
+        const { Branch, Gender } = data.user;
+        elements.welcomeText.innerText = `${Branch.toUpperCase()} - ${Gender.toUpperCase()}`;
+
+    } catch (err) {
+        console.error('Session validation failed:', err);
+        window.location.href = '../Forbidden.html';
+    }
+}
+
+// Replace your old checkTR function with this one
+async function checkTR() {
+    const tr = elements.trInput.value.trim();
+    if (!tr) return;
+
+    toggleButtonSpinner(elements.checkTrButton, true);
+    // Hide any previously shown info cards
+    elements.studentInfoCard.classList.add('hidden');
+    elements.planHistorySection.classList.add('hidden');
+    
+    try {
+        const res = await fetch(`/api/verify-tr/${tr}`);
+        const data = await res.json();
+
+        if (!data.valid) {
+            throw new Error(data.message || 'This TR is invalid or membership expired!');
+        }
+
+        // --- ✅ NEW INTEGRATION ---
+        // Instead of showing a form, we immediately launch the interactive popup
+        // and pass the student's TR and Name to it.
+        await promptForWorkoutAndSubmit(data.data.TR, data.data.Name);
+        
+        // After the popup is closed (or submitted), clear the TR input for the next student.
+        elements.trInput.value = '';
+
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid TR',
+            text: error.message,
+        });
+    } finally {
+        toggleButtonSpinner(elements.checkTrButton, false);
+    }
+}
+
+        async function loadTrainingPlans(tr) {
+            try {
+                const res = await fetch(`/api/training-plans/${tr}`);
+                const data = await res.json();
+                elements.planHistoryBody.innerHTML = ''; // Clear old
+
+                if (data.success && data.data.length > 0) {
+                    data.data.forEach(entry => {
+                        const row = `<tr><td>${entry.LogDate}</td><td>${entry.BodyParts}</td></tr>`;
+                        elements.planHistoryBody.insertAdjacentHTML('beforeend', row);
+                    });
+                } else {
+                    elements.planHistoryBody.innerHTML = `<tr><td colspan="2">No recent plans found.</td></tr>`;
+                }
+                elements.planHistorySection.classList.remove('hidden');
+            } catch (err) {
+                console.error('Failed to load plan history:', err);
+            }
+        }
+
+
+
+async function loadDailyAttendance() {
+    elements.dailyAttendanceSection.classList.toggle('hidden');
+    if (elements.dailyAttendanceSection.classList.contains('hidden')) return;
+
+    elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>`;
+
+    try {
+        const res = await fetch('/api/daily-attendance');
+        const data = await res.json();
+        elements.dailyAttendanceTableBody.innerHTML = '';
+
+        if (data.length === 0) {
+            elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No attendance marked yet today.</td></tr>`;
+            return;
+        }
+
+        data.forEach(student => {
+            // ✅ UPDATED LOGIC TO HANDLE THREE STATUSES
+            let statusStyle = '';
+            const statusText = student.IsPresentToday;
+
+            switch (statusText) {
+                case 'Present':
+                    statusStyle = `background-color: var(--success-bg); color: var(--success-text);`;
+                    break;
+                case 'On Leave':
+                    statusStyle = `background-color: #fff3cd; color: #856404;`; // Yellow/Amber style
+                    break;
+                default: // 'Absent'
+                    statusStyle = `background-color: var(--error-bg); color: var(--error-text);`;
+                    break;
+            }
+            
+            const row = `
+                <tr>
+                    <td>${student.TR}</td>
+                    <td>${student.Name}</td>
+                    <td style="text-align:center; font-weight:bold; ${statusStyle}">${statusText}</td>
+                </tr>`;
+            elements.dailyAttendanceTableBody.insertAdjacentHTML('beforeend', row);
+        });
+    } catch (err) {
+        elements.dailyAttendanceTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Failed to load attendance.</td></tr>`;
+    }
+}
+        
+        // --- Event Listeners and Initializers ---
+        document.addEventListener("DOMContentLoaded", () => {
+                if (sessionStorage.getItem('isDefaultPassword') === 'true') {
+                        const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
+                        passwordModal.show();
+                        handleInitialPasswordSet();
+                    }
+            validateTrainerSession();
+            elements.currentDateDisplay.textContent = new Date().toISOString().split('T')[0];
+
+
+
+
+            elements.checkTrButton.addEventListener('click', checkTR);
+            elements.trInput.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    checkTR();
+                }
+            });
+            
+            elements.viewAttendanceBtn.addEventListener('click', loadDailyAttendance);
+        });
+
+
+document.getElementById('logoutLink').addEventListener('click', function (e) {
+    // Prevent the link from navigating to trainer-login.html immediately
+    e.preventDefault();
+
+    // Send a POST request to the secure logout endpoint
+    fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include' // Important for sending the session cookie
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // If logout is successful, clear any stored data and redirect
+            localStorage.clear();
+            window.location.href = '../homepage.html';
+        } else {
+            // Show an error if the server reported a failure
+            alert('Logout failed. Please try again.');
+        }
+    })
+    .catch(err => {
+        console.error('Logout error:', err);
+        alert('Could not connect to the server to log out.');
+    });
+});
+
+    // --- DOM Element References ---
+    const testingArea = document.getElementById('testing-area');
+    const addStudentsBtn = document.getElementById('addStudentsBtn');
+    const submitAllBtn = document.getElementById('submitAllTestsBtn');
+    const submissionContainer = document.getElementById('submission-container');
+    let studentChoices;
+
+    // --- 1. Initialize Student Selector ---
+    async function initializeSelector() {
+        try {
+            const res = await fetch('/api/students-list');
+            if (!res.ok) throw new Error('Network response was not ok');
+            const students = await res.json();
+            
+            studentChoices = new Choices('#student-selector', {
+                removeItemButton: true,
+                maxItemCount: 5,
+                placeholderValue: 'Search by name or TR...',
+                choices: students
+            });
+        } catch (err) {
+            console.error('Failed to load students:', err);
+            Swal.fire('Error', 'Could not load student list.', 'error');
+        }
+    }
+
+    // --- 2. Add Selected Students to the Testing Area ---
+    addStudentsBtn.addEventListener('click', async () => {
+        const selectedStudents = studentChoices.getValue(true);
+        if (selectedStudents.length === 0) {
+            Swal.fire('No Selection', 'Please select at least one student.', 'info');
+            return;
+        }
+
+        testingArea.innerHTML = '<div style="text-align:center;">Loading student forms...</div>';
+        
+        const formPromises = selectedStudents.map(tr =>
+            fetch(`/api/testmaster/${tr}`).then(res => res.json())
+        );
+
+        const studentData = await Promise.all(formPromises);
+
+        testingArea.innerHTML = ''; // Clear loading message
+        studentData.forEach(student => {
+            if (student && student.TR) {
+                const formHTML = createStudentTestForm(student);
+                testingArea.insertAdjacentHTML('beforeend', formHTML);
+            }
+        });
+
+        submissionContainer.classList.toggle('hidden', studentData.length === 0);
+    });
+
+    // --- 3. Submit All Forms ---
+    submitAllBtn.addEventListener('click', () => {
+        const allRecordsPayload = [];
+        const studentForms = document.querySelectorAll('.student-test-form');
+        let allFormsValid = true;
+
+        for (const form of studentForms) {
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                allFormsValid = false;
+                break;
+            }
+            const record = calculateFitnessRecord(form);
+            if (record) {
+                allRecordsPayload.push(record);
+            } else {
+                allFormsValid = false; // A calculation failed
+                Swal.fire('Calculation Error', `Could not calculate report for TR ${form.dataset.tr}. Check all inputs.`, 'error');
+                break;
+            }
+        }
+        
+        if (!allFormsValid) {
+            if (studentForms.length > 0 && allFormsValid) {
+                 Swal.fire('Error', 'Please fill all required fields for every student.', 'error');
+            }
+            return;
+        }
+
+        Swal.fire({
+            title: `Confirm Submission`,
+            text: `You are about to submit ${allRecordsPayload.length} fitness records. This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Submit All',
+            reverseButtons: true
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                // --- THIS IS THE COMPLETE SUBMISSION LOGIC ---
+                const buttonText = submitAllBtn.querySelector('.btn-text');
+                buttonText.textContent = 'Submitting...';
+                submitAllBtn.disabled = true;
+
+                try {
+                    const res = await fetch('/api/trainer-test-records', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(allRecordsPayload)
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) {
+                        // Throw an error to be caught by the catch block
+                        throw new Error(data.error || 'An unknown error occurred.');
+                    }
+                    
+                    Swal.fire('Success!', data.message, 'success').then(() => {
+                        location.reload(); // Reload the page to clear forms
+                    });
+
+                } catch (err) {
+                    Swal.fire('Submission Failed', err.message, 'error');
+                } finally {
+                    // Restore button state
+                    buttonText.textContent = 'Submit All Records';
+                    submitAllBtn.disabled = false;
+                }
+                // --- END OF SUBMISSION LOGIC ---
+            }
+        });
+    });
+
+    // --- 4. Helper: Create HTML for a student's form ---
+    function createStudentTestForm(student) {
+        // This form structure is based on your 'fiteness test dashboard.txt' file
+        return `
+            <form class="student-test-form card" data-tr="${student.TR}" data-dob="${student.DOB}" data-age="${student.Age}" style="margin-bottom: 2rem; border-top: 4px solid var(--primary-color);">
+                <h4>Test for: ${student.Name} (TR: ${student.TR})</h4>
+                <div class="row mb-3">
+                    <div class="col"><label>Weight (kg)</label><input type="number" step="any" class="form-control" name="Weight" required></div>
+                    <div class="col"><label>Height (cm)</label><input type="number" step="any" class="form-control" name="Height" required></div>
+                    <div class="col"><label>Waist (cm)</label><input type="number" step="any" class="form-control" name="Waist" required></div>
+                    <div class="col"><label>Hips (cm)</label><input type="number" step="any" class="form-control" name="Hips" required></div>
+                    <div class="col"><label>Neck (cm)</label><input type="number" step="any" class="form-control" name="Neck" required></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col"><label>Push-ups (30 sec)</label><input type="number" class="form-control" name="PushUps" required></div>
+                    <div class="col"><label>Sit-ups (30 sec)</label><input type="number" class="form-control" name="SitUps" required></div>
+                    <div class="col"><label>Squats (30 sec)</label><input type="number" class="form-control" name="Squats" required></div>
+                    <div class="col"><label>Sit and Reach</label><input type="number" step="any" class="form-control" name="SitReach" required></div>
+                    <div class="col"><label>Step-Up Pulse Rate</label><input type="number" class="form-control" name="PulseRate" required></div>
+                </div>
+            </form>
+        `;
+    }
+
+    // --- 5. Helper: Main Calculation Logic ---
+    function calculateFitnessRecord(formElement) {
+        // [cite_start]// This entire calculation block is adapted from your 'generateReport' function [cite: 235]
+        try {
+            const calculated = {};
+            // Gather values from the form
+            const Weight = parseFloat(formElement.querySelector('[name="Weight"]').value);
+            const Height = parseFloat(formElement.querySelector('[name="Height"]').value);
+            const Waist = parseFloat(formElement.querySelector('[name="Waist"]').value);
+            const Hips = parseFloat(formElement.querySelector('[name="Hips"]').value);
+            const Neck = parseFloat(formElement.querySelector('[name="Neck"]').value);
+            const PulseRate = parseFloat(formElement.querySelector('[name="PulseRate"]').value);
+            const PushUps = parseInt(formElement.querySelector('[name="PushUps"]').value) || 0;
+            const SitUps = parseInt(formElement.querySelector('[name="SitUps"]').value) || 0;
+            const Squats = parseInt(formElement.querySelector('[name="Squats"]').value) || 0;
+            const SitReach = parseFloat(formElement.querySelector('[name="SitReach"]').value) || 0;
+            
+            // Age from the form's data attribute
+            const Age = parseInt(formElement.dataset.age);
+
+            // [cite_start]// BMI + Status [cite: 242, 243, 244]
+            const heightInM = Height / 100;
+            const bmi = (Weight / (heightInM * heightInM));
+            calculated.BMI = parseFloat(bmi.toFixed(1));
+            if (bmi < 18.5) calculated.BMIStatus = "Underweight";
+            else if (bmi < 24.9) calculated.BMIStatus = "Normal weight";
+            else if (bmi < 29.9) calculated.BMIStatus = "Overweight";
+            else calculated.BMIStatus = "Obese";
+
+            // [cite_start]// Body Fat % [cite: 245]
+            calculated.BodyFat = parseFloat((495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450).toFixed(1));
+
+            // [cite_start]// BMR + Calorie Intake [cite: 246]
+            calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age + 5);
+            calculated.CalorieIntake = Math.round(calculated.BMR * 1.55);
+
+            // [cite_start]// VO2 Max [cite: 247]
+            calculated.VO2Max = PulseRate ? Math.round(15 * (220 - Age) / PulseRate) : "N/A";
+
+            // [cite_start]// Fitness Score [cite: 249, 250, 251]
+            const totalScore = Math.round(
+                (PushUps / 2) + (SitUps / 2) + (Squats / 2) + SitReach + (calculated.VO2Max !== "N/A" ? calculated.VO2Max / 2 : 0)
+            );
+            calculated.Total = totalScore;
+
+            // [cite_start]// Grade [cite: 252, 253]
+            if (totalScore >= 80) calculated.Grade = "A+";
+            else if (totalScore >= 70) calculated.Grade = "A";
+            else if (totalScore >= 60) calculated.Grade = "B";
+            else if (totalScore >= 50) calculated.Grade = "C";
+            else calculated.Grade = "D";
+
+            // Return the final, structured record for the API
+            return {
+                TR: formElement.dataset.tr,
+                DOB: formElement.dataset.dob,
+                Age: Age,
+                Weight, Height, Waist, Hips, Neck,
+                BMI: calculated.BMI,
+                BMIStatus: calculated.BMIStatus,
+                BodyFat: calculated.BodyFat,
+                BMR: calculated.BMR,
+                CalorieIntake: calculated.CalorieIntake,
+                VO2Max: calculated.VO2Max,
+                Total: calculated.Total,
+                Grade: calculated.Grade
+            };
+        } catch (e) {
+            console.error(`Calculation failed for TR ${formElement.dataset.tr}`, e);
+            return null; // Return null on failure
+        }
+    }
+
+    // // --- Initial page load ---
+    // initializeSelector();
+
+
+
+    // Add this new function to your main script block
+async function promptForWorkoutAndSubmit(tr, studentName) {
+    const bodyParts = ['Cardio', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Core'];
+    
+    // Create the HTML for our clickable chips
+    const bodyPartsHtml = bodyParts.map(part => 
+        `<div class="body-part-chip" data-part="${part}">${part}</div>`
+    ).join('');
+
+    const swalResult = await Swal.fire({
+        title: `Workout for ${studentName}`,
+        html: `
+            <p>Select body parts to train today.</p>
+            <div class="body-parts-container">${bodyPartsHtml}</div>
+            <div id="max-selection-warning"></div>
+        `,
+        confirmButtonText: 'Log Attendance & Workout',
+        showCancelButton: true,
+        focusConfirm: false,
+        width: '600px',
+        didOpen: () => {
+            const container = document.querySelector('.body-parts-container');
+            const chips = container.querySelectorAll('.body-part-chip');
+            const warningEl = document.getElementById('max-selection-warning');
+
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const selectedCount = container.querySelectorAll('.selected').length;
+                    
+                    if (chip.classList.contains('selected')) {
+                        chip.classList.remove('selected');
+                        warningEl.textContent = '';
+                    } else if (selectedCount < 3) {
+                        chip.classList.add('selected');
+                        warningEl.textContent = '';
+                    } else {
+                        // Show a temporary warning if they try to select more than 3
+                        warningEl.textContent = 'Maximum of 3 parts can be selected.';
+                        setTimeout(() => { warningEl.textContent = ''; }, 2000);
+                    }
+                });
+            });
+        },
+        preConfirm: () => {
+            // This runs when the user clicks "Confirm"
+            const selectedChips = document.querySelectorAll('.body-part-chip.selected');
+            return Array.from(selectedChips).map(chip => chip.dataset.part);
+        }
+    });
+
+    // If the user clicked "Confirm" and didn't cancel
+    if (swalResult.isConfirmed) {
+        const selectedParts = swalResult.value;
+
+        Swal.fire({
+            title: 'Submitting...',
+            text: 'Please wait while we log the session.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        try {
+            // Determine WeekID (using your existing logic)
+            const today = new Date();
+            const weekStart = new Date(today);
+            const day = weekStart.getDay();
+            const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+            weekStart.setDate(diff);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            const weekResponse = await fetch('/api/get-or-create-week', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    WeekStartDate: weekStart.toISOString().split('T')[0],
+                    WeekEndDate: weekEnd.toISOString().split('T')[0]
+                })
+            });
+            const weekData = await weekResponse.json();
+            const WeekID = weekData.WeekID;
+
+            // Submit attendance
+            const attendanceRes = await fetch('/api/attendance-manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ TR: tr, WeekID, IsPresent: 1 })
+            });
+            const attendanceData = await attendanceRes.json();
+            if (!attendanceRes.ok) throw new Error(attendanceData.error || 'Attendance submission failed');
+
+            // Submit training plan if parts were selected
+            if (selectedParts.length > 0) {
+                const planRes = await fetch('/api/log-training-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ TR: tr, BodyParts: selectedParts })
+                });
+                const planData = await planRes.json();
+                if (!planRes.ok) throw new Error(planData.message || 'Plan logging failed');
+            }
+
+            Swal.fire('Success!', 'Attendance and workout plan logged successfully.', 'success');
+
+        } catch (error) {
+            Swal.fire('Submission Error', error.message, 'error');
+        }
+    }
+}
+
+// Source: trainer dashboard.txt, replace script for checkout-btn
+document.getElementById('checkout-btn').addEventListener('click', async () => {
+    const trInput = document.getElementById('checkout-tr-input');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const tr = trInput.value.trim();
+
+    if (!tr) {
+        return Swal.fire('Missing TR', 'Please enter a TR number to check out.', 'warning');
+    }
+
+    toggleButtonSpinner(checkoutBtn, true);
+
+    try {
+        const res = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ TR: tr })
+        });
+        
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message);
+        }
+
+        // --- ▼▼▼ NEW DYNAMIC MESSAGE LOGIC ▼▼▼ ---
+        
+        let messageHtml = `Session: ${data.inTime} - ${data.outTime}`;
+        
+        // Check if the duration is more than 30 minutes
+        if (data.duration > 30) {
+            // If yes, create the special green, bold, multi-line message
+            messageHtml += `<br><strong style="color: #10b981; font-size: 1.2em;">Great session! (${data.duration} minutes)</strong>`;
+        } else {
+            // Otherwise, just show the normal duration on a new line
+            messageHtml += `<br><strong>(${data.duration} minutes)</strong>`;
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Check-out Complete!',
+            html: messageHtml, // Use the 'html' property for custom styling
+        }).then(() => {
+            loadActiveSessions(); 
+        });
+
+        // --- END OF NEW LOGIC ---
+
+        trInput.value = '';
+
+    } catch (err) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Check-out Failed',
+            text: err.message,
+        });
+    } finally {
+        toggleButtonSpinner(checkoutBtn, false);
+    }
+});
+
+// ✅ Allow only numbers in the input
+document.getElementById('checkout-tr-input').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, ''); // removes anything that's not a digit
+});
+
+//select the input field and focus it when the section is shown
+document.getElementById('checkout-tr-input').addEventListener('focus', (e) => {
+    e.target.select(); // Select the entire input content on focus
+});
+
+// ✅ Allow only numbers in the input
+document.getElementById('tr-input').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, ''); // removes anything that's not a digit
+});
+
+//select the input field and focus it when the section is shown
+document.getElementById('tr-input').addEventListener('focus', (e) => {
+    e.target.select(); // Select the entire input content on focus
+});
+
+
+// ✅ Trigger button click on Enter key
+document.getElementById('checkout-tr-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // stop form submission / page reload
+        document.getElementById('checkout-btn').click();
+    }
+});
+    
+
+// Replace your existing function with this one
+async function loadActiveSessions() {
+    const tableBody = document.getElementById('active-sessions-body');
+    tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>`;
+
+    try {
+        const res = await fetch('/api/active-sessions', { credentials: 'include' });
+        const result = await res.json();
+
+        if (!result.success) throw new Error(result.error);
+
+        tableBody.innerHTML = ''; // Clear loading message
+
+        if (result.data.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No students are currently checked in.</td></tr>`;
+            return;
+        }
+
+        result.data.forEach(session => {
+            // ▼▼▼ THE LIKELY SOURCE OF THE ERROR IS A TYPO IN ONE OF THESE TWO PLACES ▼▼▼
+
+            // 1. The variable is DECLARED here. Check the capitalization.
+            const checkInTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format("h:mm A");
+            
+            // 2. The variable is USED here. The name must be an exact match.
+            const row = `
+                <tr>
+                    <td>${session.TR}</td>
+                    <td>${session.Name}</td>
+                    <td>${checkInTime}</td>
+                </tr>`;
+            
+            tableBody.insertAdjacentHTML('beforeend', row);
+        });
+    } catch (err) {
+        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Failed to load data.</td></tr>`;
+        console.error('Failed to load active sessions:', err);
+    }
+}
+
+// Add this to the main script in trainer-dashboard.html
+
+function handleInitialPasswordSet() {
+    // Logic for submitting the new password form
+    document.getElementById('setPasswordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            return Swal.fire('Error', 'Passwords do not match.', 'error');
+        }
+
+        try {
+            const res = await fetch('/api/staff/set-initial-password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ newPassword })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            
+            Swal.fire('Success!', 'Your new password has been set.', 'success');
+            const modalEl = document.getElementById('forcePasswordChangeModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            sessionStorage.removeItem('isDefaultPassword'); // Clear the flag
+
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
+}
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pageSections = document.querySelectorAll('.page-section');
+
+// Source: trainer dashboard.txt, replace lines 509-525
+navLinks.forEach(link => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault();
+
+        const targetId = link.id.replace('nav-', '') + '-section';
+
+        // Update the 'active' class on the nav links
+        navLinks.forEach(nav => nav.classList.remove('active'));
+        link.classList.add('active');
+
+        // Show the target section and hide the others
+        pageSections.forEach(section => {
+            if (section.id === targetId) {
+                section.classList.remove('hidden');
+
+                // Focus input if it's Attendance or Checkout section
+                if (section.id === 'checkout-section') {
+                    const input = section.querySelector('#checkout-tr-input');
+                    if (input) input.focus();
+                    
+                    // --- ✅ THIS IS THE FIX ---
+                    // This line ensures the data is fetched every time you click the checkout tab.
+                    loadActiveSessions(); 
+                    // --- END FIX ---
+
+                } else if (section.id === 'attendance-section') {
+                    const input = section.querySelector('#tr-input');
+                    if (input) input.focus();
+                } else if (section.id === 'fitness-test-section') {
+                    const input = section.querySelector('#student-selector');
+                    if (input) input.focus();
+
+                    initializeSelector(); // Ensure the selector is initialized
+                }
+
+            } else {
+                section.classList.add('hidden');
+            }
+        });
+    });
+});
+    // Optional: Focus Attendance input on page load if Attendance is active by default
+    const attendanceSection = document.querySelector('#attendance-section');
+    if (attendanceSection && !attendanceSection.classList.contains('hidden')) {
+        const input = attendanceSection.querySelector('#tr-input');
+        if (input) input.focus();
+    }
+});
+
+</script>
+<div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Your New Password</h5>
+            </div>
+            <div class="modal-body">
+                <p>Welcome! For your security, you must create a new password for your account.</p>
+                <form id="setPasswordForm">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
