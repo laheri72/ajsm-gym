@@ -1778,14 +1778,15 @@ app.get('/api/all-test-records', async (req, res) => {
 //--------------------------------------------------------------------------------------------------------
 app.post('/api/save-workout-plan', async (req, res) => {
   try {
-
+    
+    const { TR, Branch, Gender } = req.session.user;
     if (!TR || !Branch || !Gender) { 
         return res.status(401).json({ success: false, message: "Unauthorized" });   
     }
 
-    
-    const { TR, Branch, Gender } = req.session.user;
     const plan = req.body; // { Monday: '...', Tuesday: '...', ... }
+
+
     // ✅ Get today's date in 'YYYY-MM-DD' format
 
     const today = new Date();
