@@ -78,6 +78,7 @@
             backdrop-filter: var(--glass-blur);
             padding: 1rem;
             border-radius: 12px;
+            text-align: center;
             box-shadow: var(--shadow);
             margin-bottom: 1rem;
             transition: transform 0.2s;
@@ -125,7 +126,6 @@
             font-weight: 500;
             cursor: pointer;
             transition: background-color 0.2s, transform 0.2s;
-            position: relative;
         }
 
         .btn:hover {
@@ -164,6 +164,7 @@
             gap: 0.5rem;
             align-items: center;
             position: relative; /* Ensure proper stacking context */
+            z-index: 1; /* Ensure it's above other elements */
         }
 
         .search-group .form-control {
@@ -375,7 +376,8 @@
             z-index: 1;         /* A lower number means it's underneath */
         }
         /* Inside your <style> block, can be placed at the end */
-
+        
+            
         body.dark-mode .choices__inner {
             background-color: var(--card-bg);
             border-color: var(--border-color);
