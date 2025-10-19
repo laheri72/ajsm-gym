@@ -1,4 +1,3 @@
-
 let studentTR, studentName, branch, gender;
 let bodyPartChart = null;
 let fitnessProgressChart = null;
@@ -104,7 +103,7 @@ const exerciseDatabase = [
 ];
 
 
-// REPLACE your existing getStudentSession function with this one
+//--------------------------------------------------------------------------------------------
 
 async function getStudentSession() {
   try {
@@ -122,6 +121,8 @@ async function getStudentSession() {
     showLeaderboard();
     const user = data.user;
     studentTR = user.TR;
+    // Add this line to show a loading placeholder in the XP bar
+    document.getElementById('xpBarText').textContent = 'Loading...';
     studentName = user.Name;
     branch = user.Branch;
     gender = user.Gender;
@@ -174,6 +175,7 @@ async function getStudentSession() {
       });
       loadWeeklyPlan();
       loadWeeks();
+      loadDashboardStats(); // This will fetch the streak data
   } catch (err) {
     console.error('Error fetching student session:', err);
     window.location.href = '../Forbidden.html';
@@ -181,60 +183,97 @@ async function getStudentSession() {
 }
 
 //--------------------------------------------------------------------------------------------
+// --- NEW FUNCTION: Fetch and display key stats ---
+async function loadDashboardStats() {
+    try {
+        const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
+        const result = await res.json();
 
+        if (result.success) {
+            const progress = result.data;
+            const consistency = progress.consistency;
+
+            const currentStreak = consistency.current || 0;
+            const personalBest = consistency.personalBest || 0; 
+
+            document.getElementById('stat-current-streak').textContent = `${currentStreak} Days`;
+            document.getElementById('stat-best-streak').textContent = `(Best: ${personalBest} Days)`;
+
+            // --- NEW LOGIC ---
+            // Calculate progress percent against the personal best.
+            // This handles the "divide by zero" case if personalBest is 0.
+            const progressPercent = (personalBest > 0) 
+                ? Math.min((currentStreak / personalBest) * 100, 100) 
+                : 0;
+
+            // --- NEW ID ---
+            // Use the new, unique ID for the fill bar
+            const streakFill = document.getElementById('stat-streak-progress-fill');
+            if (streakFill) {
+                streakFill.style.width = `${progressPercent}%`;
+            }
+
+            // --- Updated motivation text ---
+            const motivationText = document.getElementById('streak-motivation-text');
+            if (currentStreak > 0) {
+                if (currentStreak >= personalBest && personalBest > 0) {
+                     motivationText.textContent = "You're on a new personal best streak!";
+                } else if (personalBest > 0) {
+                     motivationText.textContent = `You're ${progressPercent.toFixed(0)}% of your personal best!`;
+                } else {
+                     motivationText.textContent = "Great start! Keep it up!";
+                }
+            } else {
+                 motivationText.textContent = "Start a new streak today!";
+            }
+        }
+    } catch (err) {
+        console.error("Could not load dashboard stats:", err);
+    }
+}
+
+//----------------------------------------------------------------------------------------------
 // ADD THESE TWO NEW FUNCTIONS TO student.js
-
 /**
  * Updates the XP bar UI with the student's current level and XP.
  * @param {number} level - The student's current fitness level.
  * @param {number} xp - The student's current XP.
  */
-// REPLACE your old updateXPBarUI function in student.js
-
-// REPLACE your old updateXPBarUI function in student.js
-
+// --- REPLACEMENT for updateXPBarUI function ---
 function updateXPBarUI(level, xp) {
     const xpForNextLevel = level * 100;
-    const progressPercent = (xp / xpForNextLevel) * 100;
-
-    const xpContainer = document.querySelector('.xp-level-container');
+    const progressPercent = Math.min((xp / xpForNextLevel) * 100, 100);
+    const appHeader = document.querySelector('.app-header');
     const rankTag = document.getElementById('rankTag');
-    
-    // 1. Determine the current tier and rank name
     let tierClass = 'xp-tier-bronze';
-    let rankName = 'Challenger'; // Default from Level 5
+    let rankName = 'Challenger';
+    if (level < 5) { rankName = 'Rookie'; }
+    if (level >= 10) { tierClass = 'xp-tier-silver'; rankName = 'Athlete'; }
+    if (level >= 20) { tierClass = 'xp-tier-gold'; rankName = 'Pro'; }
+    if (level >= 30) { tierClass = 'xp-tier-emerald'; rankName = 'Elite'; }
 
-    if (level < 5) {
-        rankName = 'Rookie';
+    if (appHeader) {
+        appHeader.classList.remove('xp-tier-bronze', 'xp-tier-silver', 'xp-tier-gold', 'xp-tier-emerald');
+        appHeader.classList.add(tierClass);
+        appHeader.classList.remove('loading-theme');
     }
-    if (level >= 10) {
-        tierClass = 'xp-tier-silver';
-        rankName = 'Athlete';
-    }
-    if (level >= 20) {
-        tierClass = 'xp-tier-gold';
-        rankName = 'Pro';
-    }
-    if (level >= 30) {
-        tierClass = 'xp-tier-emerald';
-        rankName = 'Elite';
-    }
-
-    // 2. Update the tier class on the main container
-    xpContainer.classList.remove('xp-tier-bronze', 'xp-tier-silver', 'xp-tier-gold', 'xp-tier-emerald');
-    xpContainer.classList.add(tierClass);
-
-    // 3. Update the Rank Tag's text and class
     if (rankTag) {
         rankTag.textContent = rankName;
-        rankTag.className = `rank-tag ${tierClass}`; // Use the same tier class for color
+        rankTag.className = `rank-tag`;
     }
 
-    // 4. Update the rest of the UI elements
+    // --- UPDATE ALL XP BARS ---
+    // Header Bar
     document.getElementById('fitnessLevel').textContent = level;
     document.getElementById('xpBarFill').style.width = `${progressPercent}%`;
     document.getElementById('xpBarText').textContent = `${xp} / ${xpForNextLevel} XP`;
+    // Stats Module Bar (This element was removed, but we'll check if it exists)
+    const statXpFill = document.getElementById('stat-xpBarFill');
+    const statXpText = document.getElementById('stat-xpBarText');
+    if (statXpFill) statXpFill.style.width = `${progressPercent}%`;
+    if (statXpText) statXpText.textContent = `${xp} / ${xpForNextLevel} XP`;
 }
+
 /**
  * Displays a celebratory "Level Up!" animation.
  * @param {number} newLevel - The new level the student has reached.
@@ -268,11 +307,7 @@ function showLevelUpAnimation(newLevel) {
     });
 }
 
-
-
-
 //----------------------------------------------------------------------------------------------
-
 
 // Add this new function to student.js
 function handleInitialPasswordSet() {
@@ -306,8 +341,8 @@ function handleInitialPasswordSet() {
     });
 }
 
-
 // ADD THIS NEW HELPER FUNCTION
+/**
 /**
  * Programmatically switches the dashboard view to a specific section.
  * @param {string} targetSectionId - The ID of the content section to show (e.g., 'tips-low').
@@ -329,8 +364,21 @@ function navigateToSection(targetSectionId) {
     });
 
     // Trigger data loading for the new section if needed
-    if (targetSectionId === 'fame-low') loadHallOfFameData();
-    if (targetSectionId === 'leaves-low') loadLeaveData();
+    if (targetSectionId === 'fame-low') {
+        loadHallOfFameData();
+    }
+    if (targetSectionId === 'leaves-low') {
+        loadLeaveData();
+    }
+    
+    // --- THIS IS THE FIX ---
+    // When the 'Analysis' section is shown, load the
+    // data for its default "Overview" tab immediately.
+    if (targetSectionId === 'logs-low') {
+        loadSessionAnalytics();
+        loadWorkoutConsistency();
+    }
+    // --- END OF FIX ---
 }
 
 //-------------------------------------------------------------------------------------------
@@ -428,7 +476,6 @@ function loadAttendance() {
 }
 //-------------------------------------------------------------------------------------------
 
-
 async function loadStudentPlans() {
   try {
     const res = await fetch('/api/student/training-plans', {
@@ -452,8 +499,7 @@ function renderTrainingPlans(plans) {
     const tbody = document.querySelector('#studentPlanTable tbody');
     tbody.innerHTML = ''; // Clear previous
 
-
-        // Destroy the old DataTable instance if it exists to prevent errors
+    // Destroy the old DataTable instance if it exists to prevent errors
     if ($.fn.DataTable.isDataTable('#studentPlanTable')) {
         $('#studentPlanTable').DataTable().destroy();
     }
@@ -484,7 +530,6 @@ function renderTrainingPlans(plans) {
     });
     $('#studentPlanTable').DataTable();
 }
-
 
 // A new helper function to generate an array of random, colorful RGBA strings
 function generateColors(numColors) {
@@ -549,7 +594,6 @@ async function loadTrainingAnalytics() {
 
 //------------------------------------------------------------------------------
 
-
   function loadTip(goal) {
     let title = "💡 General Tip";
     let html = "Stay active and hydrated!";
@@ -590,11 +634,8 @@ async function loadTrainingAnalytics() {
       `;
     }
 
-
-
     // Also update the basic area (for fallback)
     document.getElementById('tipArea').innerHTML = html;
-    // document.getElementById('tips-low').style.display = 'block';
   }
 
 //--------------------------------------------------------------------------------
@@ -685,15 +726,12 @@ function loadBodyPartTips() {
   target.innerHTML = html;
 }
 
-
-
 //--------------------------------------------------------------------------------
 
-
-    function formatDate(dateString) {
-        const options = { weekday: 'short', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
-    }
+function formatDate(dateString) {
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+}
 
 // Function to load weeks from the API
 function loadWeeks() {
@@ -848,7 +886,35 @@ function clearPlanner() {
   });
 }
 
-// REPLACE your old openQuickAddDialog function with these two new ones.
+// --- Fix #4: Helper function to correctly add exercises to cards ---
+function addExerciseToCard(day, formattedExercise) {
+    const dayCards = document.querySelectorAll(`.day-card[data-day="${day}"]`);
+    if (dayCards.length === 0) return;
+
+    dayCards.forEach(card => {
+        // Remove placeholder text if it exists
+        const placeholder = card.querySelector('.placeholder-text');
+        if (placeholder) {
+            card.innerHTML = '';
+        }
+
+        // Append the new exercise
+        if (card.innerHTML.trim() !== '') {
+            card.innerHTML += '<br>' + DOMPurify.sanitize(formattedExercise);
+        } else {
+            card.innerHTML = DOMPurify.sanitize(formattedExercise);
+        }
+    });
+    
+    Swal.fire({ 
+        toast: true, 
+        position: 'top-end', 
+        icon: 'success', 
+        title: `Added to ${day}!`, 
+        showConfirmButton: false, 
+        timer: 1600 
+    });
+}
 
 /**
  * Opens a guided dialog with filterable exercises.
@@ -905,19 +971,13 @@ function openQuickAddDialog(day) {
             return { name, sets, reps };
         }
     }).then(result => {
-        if (!result.isConfirmed) return;
-        const { name, sets, reps } = result.value;
-        const formatted = [name, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
-        
-        const dayCard = document.querySelector(`.day-card[data-day="${day}"]`);
-        if (!dayCard) return;
-
-        if (dayCard.innerHTML.trim() !== '') {
-            dayCard.innerHTML += '<br>' + DOMPurify.sanitize(formatted);
-        } else {
-            dayCard.innerHTML = DOMPurify.sanitize(formatted);
-        }
-    });
+            if (!result.isConfirmed) return;
+            const { name, sets, reps } = result.value;
+            const formatted = [name, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
+            
+            // Use our new, reliable helper function
+            addExerciseToCard(day, formatted);
+        });
 }
 
 /**
@@ -980,26 +1040,50 @@ function collectExerciseList() {
   return Array.from(names).sort();
 }
 
+// --- REPLACEMENT for loadWeeklyPlan function ---
 async function loadWeeklyPlan() {
   try {
     const res = await fetch('/api/student/workout-plan', {
       method: 'GET',
       credentials: 'include'
     });
-
     const data = await res.json();
 
     if (data.success && Array.isArray(data.data)) {
-      if (data.data.length === 0) {
-        console.warn('No plan for current week.');
-        document.getElementById('applyLastWeekBtn').style.display = 'inline-block';
+      // --- NEW LOGIC FOR TODAY HUB ---
+      // 1. Get today's name in IST
+      moment.tz.setDefault("Asia/Kolkata");
+      const todayName = moment().format('dddd'); // e.g., "Monday"
+
+      // 2. Populate the Today's View
+      const todayDateHeading = document.getElementById('today-date-heading');
+      const todayCard = document.getElementById('today-day-card');
+      todayDateHeading.textContent = `Today's Plan (${todayName})`;
+      todayCard.dataset.day = todayName; // Set the data-day attribute for saving
+
+      // Find today's plan from the fetched data
+      const todayPlan = data.data.find(entry => entry.Day === todayName);
+      if (todayPlan && todayPlan.Content) {
+          todayCard.innerHTML = DOMPurify.sanitize(todayPlan.Content);
       } else {
-        data.data.forEach(entry => {
-          const card = document.querySelector(`.day-card[data-day="${entry.Day}"]`);
-          if (card) {
-            card.innerHTML = DOMPurify.sanitize(entry.Content || ''); // Sanitize loaded content
-          }
-        });
+          // If no plan, clear it and show placeholder
+          todayCard.innerHTML = '<p class="placeholder-text">No workout planned for today. Add one!</p>';
+      }
+
+      // 3. Populate the Full Weekly View (no changes here)
+      const weeklyCards = document.querySelectorAll('#weekly-view .day-card');
+      weeklyCards.forEach(card => {
+        const day = card.getAttribute('data-day');
+        const planData = data.data.find(p => p.Day === day);
+        if (planData) {
+          card.innerHTML = DOMPurify.sanitize(planData.Content || '');
+        } else {
+          card.innerHTML = ''; // Clear if no plan for that day
+        }
+      });
+
+      if (data.data.length === 0) {
+        document.getElementById('applyLastWeekBtn').style.display = 'inline-block';
       }
     } else {
       console.warn('Invalid response from workout plan API:', data.message);
@@ -1008,10 +1092,6 @@ async function loadWeeklyPlan() {
     console.error('Error loading workout plan:', err);
   }
 }
-
-
-
-
 
 async function applyLastWeeksPlan() {
   try {
@@ -1049,36 +1129,6 @@ async function applyLastWeeksPlan() {
 }
 
  //----------------------------------------------------------------------------------------------------------
-
-const mainNav = document.querySelector('.navbar');
-const contentSections = document.querySelectorAll('.content .card');
-
-mainNav.addEventListener('click', (e) => {
-    const link = e.target.closest('a.nav-link');
-    if (!link) return;
-    e.preventDefault();
-    const targetSectionId = link.dataset.target;
-    if (targetSectionId) {
-        const href = link.getAttribute('href');
-        if (href && href.startsWith('#')) {
-            window.location.hash = href.substring(1);
-        }
-        navigateToSection(targetSectionId);
-        if (targetSectionId === 'logs-low') {
-            loadStudentPlans();
-            loadTrainingAnalytics();
-            loadFitnessProgress();
-            loadWorkoutConsistency();
-            loadSessionAnalytics();
-        }
-        if (targetSectionId === 'leaves-low') {
-            loadLeaveData();
-        }
-        if (targetSectionId === 'fame-low') {
-            loadHallOfFameData();
-        }
-    }
-});
 
 // Updated function to render the Fitness Progression chart
 async function loadFitnessProgress() {
@@ -1249,8 +1299,7 @@ function renderSessionHistory(historyData) {
     const tbody = document.getElementById('sessionHistoryBody');
     tbody.innerHTML = ''; // Clear previous
 
-
-        if ($.fn.DataTable.isDataTable('#sessionHistoryTable')) {
+    if ($.fn.DataTable.isDataTable('#sessionHistoryTable')) {
         $('#sessionHistoryTable').DataTable().destroy();
     }
 
@@ -1275,7 +1324,6 @@ function renderSessionHistory(historyData) {
     });
     $('#sessionHistoryTable').DataTable();
 }
-
 
 // UPDATED function to include rank medals
 async function showLeaderboard() {
@@ -1355,13 +1403,13 @@ function renderLeaveTable(leaves) {
         const end = moment(leave.LeaveEndDate).format('MMM D');
         const dates = start === end ? start : `${start} to ${end}`;
 
-const statusClasses = {
-    'Approved': 'badge-green',
-    'Rejected': 'badge-red',
-    'On Hold': 'badge-yellow',
-    'Pending': 'badge-gray'
-};
-const statusClass = statusClasses[leave.Status] || 'badge-gray';
+        const statusClasses = {
+            'Approved': 'badge-green',
+            'Rejected': 'badge-red',
+            'On Hold': 'badge-yellow',
+            'Pending': 'badge-gray'
+        };
+        const statusClass = statusClasses[leave.Status] || 'badge-gray';
 
         tr.innerHTML = `
             <td>${dates}</td>
@@ -1515,7 +1563,6 @@ async function loadAchievementLeaderboard() {
 }
 
 // REPLACE your old loadStudentAchievements function with this one
-
 async function loadStudentAchievements() {
     const gridElement = document.getElementById('achievementsGrid');
     gridElement.innerHTML = '<div class="loading">Loading your achievements...</div>';
@@ -1567,9 +1614,7 @@ async function loadStudentAchievements() {
 /**
  * Fetches and renders the live progress towards achievements.
  */
-
 // REPLACE your old loadAchievementProgress function with this one
-
 async function loadAchievementProgress() {
     try {
         const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
@@ -1614,9 +1659,6 @@ async function loadAchievementProgress() {
             } else {
                  document.getElementById('milestone-lift-progress-text').textContent = `Prev: ${previous_score}, Current: ${current_score} (+${current_improvement.toFixed(1)}%)`;
             }
-            // Add this block inside your progress rendering function
-
-            // Find and update this block in both student.js and profile.js
 
             // 5. Update Iron Dedication
             const { current: dedicationHours, target: dedicationTarget, tierName, completed } = progress.ironDedication;
@@ -1638,9 +1680,7 @@ async function loadAchievementProgress() {
     }
 }
 
-
 // ADD this new function to student.js
-
 function showBadgeUnlockAnimation(badge) {
     Swal.fire({
         title: 'BADGE UNLOCKED!',
@@ -1658,14 +1698,37 @@ function showBadgeUnlockAnimation(badge) {
         confirmButtonColor: '#4CAF50'
     });
 }
+
+// Logout function
+async function logout(e) {
+    e.preventDefault();
+    try {
+        const res = await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+            localStorage.clear();
+            window.location.href = '../homepage.html';
+        } else {
+            alert('Logout failed. Please try again.');
+        }
+    } catch (err) {
+        console.error('Logout error:', err);
+        alert('Could not connect to the server to log out.');
+    }
+}
+
 //----------------------------------------------------------------------------------------------------------
 // --- DOM CONTENT LOADED EVENT ---
 //----------------------------------------------------------------------------------------------------------
 
+// --- This should be the ONLY DOMContentLoaded listener ---
 document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
-    // document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
 
     // Theme: load persisted theme and set up toggle
     const rootEl = document.documentElement;
@@ -1693,39 +1756,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Init tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    // document.getElementById('planner-main').addEventListener('click', () => showSection('planner'));
-    // document.getElementById('tips-main').addEventListener('click', () => showSection('tips'));
-    // document.getElementById('attendance-main').addEventListener('click', () => showSection('attendance'));
-    // document.getElementById('logs-main').addEventListener('click', () => showSection('logs'));
-    // Inside the DOMContentLoaded listener
+
+    // Leave Management
     document.getElementById('leaveRequestForm').addEventListener('submit', handleLeaveSubmit);
     document.querySelector('#leaveStatusTable tbody').addEventListener('click', handleLeaveCancel);
+    
     // Planner buttons
     document.getElementById('savePlanBtn').addEventListener('click', savePlan);
     document.getElementById('applyLastWeekBtn').addEventListener('click', applyLastWeeksPlan);
     const clearBtn = document.getElementById('clearPlanBtn');
     if (clearBtn) clearBtn.addEventListener('click', clearPlanner);
 
-    // Planner autosave/restore
-    const plannerCards = document.querySelectorAll('.day-card');
+    // Planner autosave/restore (for weekly view)
+    const weeklyPlannerCards = document.querySelectorAll('#weekly-view .day-card');
     const draftKey = 'plannerDraft';
     // Restore
     try {
         const draft = JSON.parse(localStorage.getItem(draftKey) || '{}');
-        plannerCards.forEach(card => {
+        weeklyPlannerCards.forEach(card => {
             const day = card.getAttribute('data-day');
             if (draft[day]) card.innerHTML = draft[day];
         });
     } catch {}
     // Autosave on input
-    plannerCards.forEach(card => {
+    weeklyPlannerCards.forEach(card => {
         card.addEventListener('input', () => {
             const draft = {};
-            document.querySelectorAll('.day-card').forEach(c => {
+            document.querySelectorAll('#weekly-view .day-card').forEach(c => {
                 draft[c.getAttribute('data-day')] = c.innerHTML.trim();
             });
             localStorage.setItem(draftKey, JSON.stringify(draft));
@@ -1742,97 +1804,91 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tips section select dropdown
     document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
 
-
-
-    // Quick Add buttons for each day
-    document.querySelectorAll('.quick-add-btn').forEach(btn => {
+    // Quick Add buttons for each day in weekly planner
+    document.querySelectorAll('#weekly-view .quick-add-btn').forEach(btn => {
         btn.addEventListener('click', () => openQuickAddDialog(btn.dataset.day));
     });
 
-    // Add this inside your DOMContentLoaded event listener
-function setupAnalyticsTabs() {
-    const tabNav = document.querySelector('.tab-nav');
-    const tabPanes = document.querySelectorAll('.tab-pane');
+    // Analytics Tabs
+    function setupAnalyticsTabs() {
+        const tabNav = document.querySelector('.tab-nav');
+        const tabPanes = document.querySelectorAll('.tab-pane');
 
-    if (tabNav) { // Check if the tabs exist on the page
-        tabNav.addEventListener('click', (e) => {
-            if (e.target.matches('.tab-link')) {
-                const tabId = e.target.dataset.tab;
+        if (tabNav) { // Check if the tabs exist on the page
+            tabNav.addEventListener('click', (e) => {
+                if (e.target.matches('.tab-link')) {
+                    const tabId = e.target.dataset.tab;
 
-                // Update active state on buttons
-                tabNav.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
-                e.target.classList.add('active');
+                    // Update active state on buttons
+                    tabNav.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
+                    e.target.classList.add('active');
 
-                // Update active state on content panes and set aria-current
-                tabPanes.forEach(pane => {
-                    if (pane.id === tabId) {
-                        pane.classList.add('active');
-                    } else {
-                        pane.classList.remove('active');
+                    // Update active state on content panes
+                    tabPanes.forEach(pane => {
+                        pane.classList.toggle('active', pane.id === tabId);
+                    });
+                    
+                    // Trigger data loading for the new tab
+                    if (tabId === 'logs') {
+                        loadStudentPlans();
+                        loadTrainingAnalytics();
                     }
+                    if (tabId === 'history') {
+                        loadSessionAnalytics();
+                    }
+                    if (tabId === 'progression') {
+                        loadFitnessProgress();
+                    }
+                    if (tabId === 'overview') {
+                        loadWorkoutConsistency();
+                    }
+                }
+            });
+        }
+    }
+    setupAnalyticsTabs();
+
+    // Tips Accordion "Add to Plan" buttons
+    const workoutAccordion = document.getElementById('workoutAccordion');
+    if (workoutAccordion) {
+        workoutAccordion.addEventListener('click', function(e) {
+            if (e.target.classList.contains('add-to-plan-btn')) {
+                e.preventDefault();
+                const exerciseName = e.target.dataset.exercise;
+
+                Swal.fire({
+                    title: `Add "${exerciseName}"`,
+                    html: `
+                      <select id="qa-day" class="swal2-select">
+                        <option>Monday</option>
+                        <option>Tuesday</option>
+                        <option>Wednesday</option>
+                        <option>Thursday</option>
+                        <option>Friday</option>
+                        <option>Saturday</option>
+                        <option>Sunday</option>
+                      </select>
+                      <div>
+                        <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" style="flex:1;" />
+                        <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" style="flex:1;" />
+                      </div>
+                    `,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Add to Plan'
+                }).then(result => {
+                    if (!result.isConfirmed) return;
+                    const selectedDay = document.getElementById('qa-day').value;
+                    const sets = (document.getElementById('qa-sets').value || '').trim();
+                    const reps = (document.getElementById('qa-reps').value || '').trim();
+                    const formatted = [exerciseName, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
+                    
+                    // Use the single, reliable function to add to the card
+                    addExerciseToCard(selectedDay, formatted);
                 });
-                tabNav.querySelectorAll('.tab-link').forEach(link => link.removeAttribute('aria-current'));
-                const activeBtn = tabNav.querySelector(`[data-tab="${tabId}"]`);
-                if (activeBtn) activeBtn.setAttribute('aria-current', 'page');
             }
         });
     }
-}
-
-// Add this code inside your DOMContentLoaded event listener in student.js
-
-const workoutAccordion = document.getElementById('workoutAccordion');
-
-if (workoutAccordion) {
-    workoutAccordion.addEventListener('click', function(e) {
-        // Check if an "Add to Plan" button was clicked
-        if (e.target.classList.contains('add-to-plan-btn')) {
-            e.preventDefault();
-            
-            const exerciseName = e.target.dataset.exercise;
-
-            // Use SweetAlert2 to show a dropdown for selecting the day
-            Swal.fire({
-                title: `Add "${exerciseName}"`,
-                html: `
-                  <select id="qa-day" class="swal2-select">
-                    <option>Monday</option>
-                    <option>Tuesday</option>
-                    <option>Wednesday</option>
-                    <option>Thursday</option>
-                    <option>Friday</option>
-                    <option>Saturday</option>
-                    <option>Sunday</option>
-                  </select>
-                  <div>
-                    <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" style="flex:1;" />
-                    <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" style="flex:1;" />
-                  </div>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Add to Plan'
-            }).then(result => {
-                if (!result.isConfirmed) return;
-                const selectedDay = document.getElementById('qa-day').value;
-                const sets = (document.getElementById('qa-sets').value || '').trim();
-                const reps = (document.getElementById('qa-reps').value || '').trim();
-                const formatted = [exerciseName, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
-                const dayCard = document.querySelector(`.day-card[data-day="${selectedDay}"]`);
-                if (!dayCard) return;
-                if (dayCard.innerHTML.trim() !== '') dayCard.innerHTML += `<br>${DOMPurify.sanitize(formatted)}`;
-                else dayCard.innerHTML = DOMPurify.sanitize(formatted);
-
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Added to ${selectedDay}!`, showConfirmButton: false, timer: 1600 });
-
-            });
-        }
-    });
-}
-
-// And call this new function inside DOMContentLoaded
-setupAnalyticsTabs();
-
 
     // Hash routing: on load and when hash changes
     function routeFromHash() {
@@ -1868,45 +1924,40 @@ setupAnalyticsTabs();
         }
     });
 
-    // --- Initial Data Loading ---
-    getStudentSession();
-    routeFromHash();
-});
-//----------------------------------------------------------------------------------------------------------
+    // --- CORRECTED: Dashboard View Toggle Logic ---
+    const plannerViewToggle = document.getElementById('plannerViewToggle');
+    const dailyView = document.getElementById('daily-view');
+    const weeklyView = document.getElementById('weekly-view');
 
-
-document.getElementById('logoutBtn').addEventListener('click', function (e) {
-    // Prevent the link from navigating to trainer-login.html immediately
-    e.preventDefault();
-
-    // Send a POST request to the secure logout endpoint
-    fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include' // Important for sending the session cookie
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            // If logout is successful, clear any stored data and redirect
-            localStorage.clear();
-            window.location.href = '../homepage.html';
+    plannerViewToggle.addEventListener('change', () => {
+        if (plannerViewToggle.checked) {
+            // Show Weekly
+            dailyView.style.display = 'none';
+            weeklyView.style.display = 'block';
         } else {
-            // Show an error if the server reported a failure
-            alert('Logout failed. Please try again.');
+            // Show Daily
+            dailyView.style.display = 'block';
+            weeklyView.style.display = 'none';
         }
-    })
-    .catch(err => {
-        console.error('Logout error:', err);
-        alert('Could not connect to the server to log out.');
     });
-});
 
+    // --- "Today" Quick Add Button ---
+    document.getElementById('today-quick-add').addEventListener('click', () => {
+        openQuickAddDialog(document.getElementById('today-day-card').dataset.day);
+    });
 
-  
-// Replace YouTube links with embedded iframes
-  document.addEventListener("DOMContentLoaded", function () {
+    // --- Sync today's card with the weekly planner card ---
+    const todayCard = document.getElementById('today-day-card');
+    todayCard.addEventListener('input', () => {
+        const todayName = todayCard.dataset.day;
+        const correspondingWeeklyCard = document.querySelector(`#weekly-view .day-card[data-day="${todayName}"]`);
+        if (correspondingWeeklyCard) {
+            correspondingWeeklyCard.innerHTML = todayCard.innerHTML;
+        }
+    });
+
+    // Replace YouTube links with embedded iframes in Tips
     const links = document.querySelectorAll("a.embed-link");
-
     links.forEach(link => {
       const videoURL = new URL(link.href);
       const videoID = videoURL.searchParams.get("v");
@@ -1927,5 +1978,8 @@ document.getElementById('logoutBtn').addEventListener('click', function (e) {
       td.innerHTML = "";
       td.appendChild(iframe);
     });
-  });
 
+    // --- Initial Data Loading ---
+    getStudentSession(); // This is now the ONLY call
+    routeFromHash();
+});

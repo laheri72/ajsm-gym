@@ -91,24 +91,24 @@ h1 {
 
 
 /* =================================================================== */
-/* 3. UNIFIED HEADER, INFO-BAR & NAV (Professional Polish)
+/* 3. THEMATIC APP HEADER, NAV & INFO-BAR (REPLACEMENT)
 /* =================================================================== */
 
-/* 1. The Main Header Container */
+/* --- 3.1 Base Structure --- */
 .app-header {
-    background: #232526; /* A solid, professional background */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 10;
+    /* Default (Bronze) theme */
+    background: linear-gradient(to right, #2c3e50, #4b6cb7);
+    transition: background 0.5s ease-in-out;
 }
 
-/* 2. Top Bar & Welcome Text (Header) */
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 20px 30px;
-    background: linear-gradient(to right, var(--dark-bg-secondary), #4b6cb7);
 }
 
 .header h1 {
@@ -116,6 +116,7 @@ h1 {
     color: white;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     margin: 0;
+    transition: color 0.5s ease;
 }
 
 .header h2 {
@@ -124,94 +125,258 @@ h1 {
     text-shadow: none;
     margin: 4px 0 0;
     font-weight: 300;
+    transition: color 0.5s ease;
 }
 
-
-
-
-/* 3. A Structured & Consistent Info Bar */
-.info-bar {
-    display: flex;
-    justify-content: center; /* Aligns the group of items to the center */
-    align-items: center;
-    gap: 25px; /* Space between items */
-    flex-wrap: wrap;
-    background: var(--dark-bg-primary);
-    padding: 12px 30px;
-    font-size: 0.9rem;
-    color: var(--text-on-dark);
-    border-top: 1px solid var(--dark-border);
+.header .btn {
+    color: #000000;
+    background-color: var(--accent);
+    transition: background-color 0.3s ease;
+}
+.header .btn:hover {
+    background-color: #00e6d1;
 }
 
-/* Use a separator for a cleaner look than different backgrounds */
-.info-item:not(:first-child)::before {
-    content: '|';
-    margin-right: 25px;
-    color: var(--dark-border);
-}
-
-
-
-.info-item span,
-.info-item.goal {
-    color: #ffffff; /* Make all key info white */
-    font-weight: 600;
-    text-shadow: 0 0 2px rgba(0, 255, 234, 0.7);
-
-}
-
-/* new futuristic animation when hovering over key info */ 
-.info-item span:hover,
-.info-item.goal:hover {
-    text-shadow: 0 0 8px rgba(0, 255, 234, 1);
-    transition: text-shadow 0.3s ease-in-out;
-    transform: scale(1.1);
-    filter: brightness(1.2);
-    backdrop-filter: blur(5px);
-
-
-}
-
-
-/* 4. A Balanced, Full-Width Navigation */
+/* --- 3.2 Navigation Bar --- */
 .navbar {
-    display: flex; /* This remains the same */
+    display: flex;
     justify-content: center;
-    border-top: 1px solid var(--dark-border);
+    /* This semi-transparent black gives depth */
+    background-color: rgba(0, 0, 0, 0.15); 
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
 .navbar-nav {
     width: 100%;
 }
-
 .navbar-nav .nav-item {
     flex: 1;
 }
-
 .navbar-nav .nav-link {
     color: #ecf0f1;
     text-decoration: none;
-    padding: 15px 20px; /* Increased padding for a taller, more modern feel */
+    padding: 15px 20px;
     font-weight: 500;
-    transition: all 0.2s ease-in-out;
     text-align: center;
-    border-bottom: 3px solid transparent; /* Prepare for the active state indicator */
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease-in-out;
 }
-
 .navbar .nav-link:hover {
-    background-color: #3b5066;
+    background-color: rgba(0, 0, 0, 0.2);
 }
-
 .navbar .nav-link.active {
     color: var(--accent);
-    background-color: var(--dark-bg-primary);
+    background-color: rgba(0, 0, 0, 0.3);
     border-bottom-color: var(--accent);
 }
 
-[data-theme="dark"] .navbar .nav-link:hover {
-    background-color: #132033;
+/* --- 3.3 Info Bar --- */
+.info-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 30px;
+    /* Darker transparent black for more contrast */
+    background-color: rgba(0, 0, 0, 0.25);
+    transition: background-color 0.5s ease;
 }
 
+.info-item-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 25px;
+}
+
+.info-item {
+    color: var(--text-on-dark);
+    transition: color 0.5s ease;
+}
+
+.info-item span,
+.info-item.goal {
+    color: #ffffff;
+    font-weight: 600;
+    text-shadow: 0 0 2px rgba(0, 255, 234, 0.7);
+    transition: color 0.5s ease, text-shadow 0.5s ease;
+}
+
+/* --- 3.4 XP Container (Now inherits theme) --- */
+.xp-level-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 450px;
+    flex-shrink: 0;
+}
+
+.level-display {
+    font-weight: 800;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    transition: background 0.5s ease, color 0.5s ease;
+}
+.level-display span {
+    font-size: 1.1rem;
+}
+
+.xp-bar-wrapper {
+    flex-grow: 1;
+    position: relative;
+    height: 24px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+}
+
+.xp-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1), background 0.5s ease;
+}
+
+.xp-bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+.rank-tag {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* =================================================================== */
+/* 4. TIER-BASED THEMES (REPLACEMENT)
+/* =================================================================== */
+
+/* --- TIER: BRONZE (Rookie/Challenger) --- */
+.app-header.xp-tier-bronze {
+    background: linear-gradient(to right, #2c3e50, #4b6cb7);
+}
+.app-header.xp-tier-bronze .level-display {
+    background: linear-gradient(135deg, #4CAF50, #3e8e41);
+    color: white;
+}
+.app-header.xp-tier-bronze .xp-bar-fill {
+    background: linear-gradient(90deg, #81C784, #4CAF50);
+}
+.app-header.xp-tier-bronze .rank-tag {
+    background-color: #4CAF50;
+    color: white;
+}
+/* Active nav link remains default accent */
+.app-header.xp-tier-bronze .nav-link.active {
+     color: var(--accent);
+     border-bottom-color: var(--accent);
+}
+
+/* --- TIER: SILVER (Athlete) --- */
+.app-header.xp-tier-silver {
+    background: linear-gradient(to right, #526D82, #27374D);
+}
+.app-header.xp-tier-silver .level-display {
+    background: linear-gradient(135deg, #b0bec5, #78909c);
+    color: #263238;
+}
+.app-header.xp-tier-silver .xp-bar-fill {
+    background: linear-gradient(90deg, #CFD8DC, #90A4AE);
+}
+.app-header.xp-tier-silver .rank-tag {
+    background-color: #78909c;
+    color: white;
+}
+/* Theme the active nav link */
+.app-header.xp-tier-silver .nav-link.active {
+     color: #CFD8DC;
+     border-bottom-color: #CFD8DC;
+}
+
+/* --- TIER: GOLD (Pro) --- */
+.app-header.xp-tier-gold {
+    background: linear-gradient(to right, #594700, #2b2100);
+}
+/* Theme all text to be gold-ish */
+.app-header.xp-tier-gold .header h1,
+.app-header.xp-tier-gold .header h2,
+.app-header.xp-tier-gold .nav-link,
+.app-header.xp-tier-gold .info-item {
+    color: #FFEB3B;
+    text-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+}
+.app-header.xp-tier-gold .info-item span,
+.app-header.xp-tier-gold .info-item.goal {
+    color: #FFFFFF; /* Brighter white for values */
+    text-shadow: 0 0 5px rgba(255, 235, 179, 0.7);
+}
+.app-header.xp-tier-gold .level-display {
+    background: linear-gradient(135deg, #ffeb3b, #fbc02d);
+    color: #212121;
+}
+.app-header.xp-tier-gold .xp-bar-fill {
+    background: linear-gradient(90deg, #FFECB3, #FFC107);
+}
+.app-header.xp-tier-gold .rank-tag {
+    background-color: #FFC107;
+    color: #212121;
+}
+/* Theme the active nav link */
+.app-header.xp-tier-gold .nav-link.active {
+     color: #FFFFFF;
+     border-bottom-color: #FFC107;
+}
+
+/* --- TIER: EMERALD (Elite) --- */
+.app-header.xp-tier-emerald {
+    background: linear-gradient(to right, #004D40, #00251A);
+}
+/* Theme all text to be emerald-ish */
+.app-header.xp-tier-emerald .header h1,
+.app-header.xp-tier-emerald .header h2,
+.app-header.xp-tier-emerald .nav-link,
+.app-header.xp-tier-emerald .info-item {
+    color: #64FFDA;
+    text-shadow: 0 0 5px rgba(0, 255, 234, 0.5);
+}
+.app-header.xp-tier-emerald .info-item span,
+.app-header.xp-tier-emerald .info-item.goal {
+    color: #FFFFFF;
+    text-shadow: 0 0 5px rgba(100, 255, 218, 0.7);
+}
+.app-header.xp-tier-emerald .level-display {
+    background: linear-gradient(135deg, #1de9b6, #00bfa5);
+    color: #212121;
+}
+.app-header.xp-tier-emerald .xp-bar-fill {
+    background: linear-gradient(90deg, #A7FFEB, #1DE9B6);
+}
+.app-header.xp-tier-emerald .rank-tag {
+    background-color: #1DE9B6;
+    color: #212121;
+}
+/* Theme the active nav link */
+.app-header.xp-tier-emerald .nav-link.active {
+     color: #FFFFFF;
+     border-bottom-color: #1DE9B6;
+}
 
 /* =================================================================== */
 /* 5. MAIN CONTENT & CARDS
@@ -1484,69 +1649,7 @@ td iframe {
     flex-wrap: wrap;
     gap: 25px; /* The original gap between your info items */
 }
-/* =================================================================== */
-/* 17. XP BAR TIER STYLES
-/* =================================================================== */
 
-/* Define the base shimmer animation */
-@keyframes shimmer-base {
-    0% { background-position: -200px 0; }
-    100% { background-position: 200px 0; }
-}
-
-/* --- Bronze Tier (Levels 1-9) - Default style with a subtle shimmer --- */
-/* (Assuming your base .xp-bar-fill is already green) */
-.xp-bar-fill {
-    background-image: linear-gradient(to right, #00FFEA 0%, #17a2b8 40%, #00FFEA 100%); /* Adjusted base for shimmer */
-    background-size: 200px 100%;
-    animation: shimmer-base 5s infinite linear; /* Apply shimmer */
-}
-.level-display {
-    background: linear-gradient(135deg, #28a745, #218838); /* Default green for bronze */
-    color: white;
-}
-
-
-/* --- Silver Tier (Levels 10-19) --- */
-.xp-tier-silver .level-display {
-    background: linear-gradient(135deg, #b0bec5, #78909c);
-    color: #37474f;
-}
-.xp-tier-silver .xp-bar-fill {
-    background-image: linear-gradient(to right, #cfd8dc 0%, #607d8b 40%, #cfd8dc 100%);
-    background-size: 200px 100%;
-    animation: shimmer-base 5s infinite linear;
-}
-
-
-/* --- Gold Tier (Levels 20-29) --- */
-.xp-tier-gold .level-display {
-    background: linear-gradient(135deg, #ffeb3b, #fbc02d);
-    color: #212121;
-}
-.xp-tier-gold .xp-bar-fill {
-    background-image: linear-gradient(to right, #ffecb3 0%, #ffc107 40%, #ffecb3 100%);
-    background-size: 200px 100%;
-    animation: shimmer-base 5s infinite linear;
-}
-.xp-tier-gold .xp-bar-wrapper { /* Keep the subtle glow for Gold */
-    box-shadow: 0 0 10px rgba(255, 193, 7, 0.4);
-}
-
-
-/* --- Emerald Tier (Levels 30+) --- */
-.xp-tier-emerald .level-display {
-    background: linear-gradient(135deg, #1de9b6, #00bfa5);
-    color: white;
-}
-.xp-tier-emerald .xp-bar-fill {
-    background-image: linear-gradient(to right, #64ffda 0%, #009688 40%, #64ffda 100%);
-    background-size: 200px 100%;
-    animation: shimmer-base 5s infinite linear; /* Use the same base shimmer */
-}
-.xp-tier-emerald .xp-bar-wrapper { /* Optional: Enhanced glow for top tier */
-    box-shadow: 0 0 15px rgba(0, 255, 234, 0.6);
-}
 /* =================================================================== */
 /* 16. TIERED LEVEL-UP MODAL STYLES
 /* =================================================================== */
@@ -1597,43 +1700,7 @@ td iframe {
 .swal-tier-emerald .level-up-title {
     color: #64ffda;
 }
-/* =================================================================== */
-/* 17. RANK TAG STYLES
-/* =================================================================== */
 
-.rank-tag {
-    padding: 0.3rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    border-radius: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    color: white; /* Default text color */
-}
-
-/* Color definitions for each tier */
-.rank-tag.xp-tier-bronze {
-    background-color: #6c757d; /* Default/Rookie gray */
-}
-
-.xp-tier-bronze .rank-tag {
-    background-color: #28a745; /* Challenger Green */
-}
-
-.xp-tier-silver .rank-tag {
-    background-color: #607d8b; /* Athlete Silver/Blue */
-}
-
-.xp-tier-gold .rank-tag {
-    background-color: #ffc107; /* Pro Gold */
-    color: #212121; /* Dark text for better contrast on gold */
-}
-
-.xp-tier-emerald .rank-tag {
-    background-color: #009688; /* Elite Emerald */
-}
 /* =================================================================== */
 /* 18. TABLE LOADER STYLES
 /* =================================================================== */
@@ -1752,4 +1819,279 @@ td iframe {
 
 [data-theme="dark"] .exercise-item.selected {
     background-color: #1a3d3a; /* Darker green selection */
+}
+/* =================================================================== */
+/* 19. PRE-LOADING THEME FOR HEADER
+/* =================================================================== */
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+/* The default state before data is loaded */
+.app-header.loading-theme {
+    background: linear-gradient(to right, #2d3436, #1f2c39);
+}
+
+.app-header.loading-theme .navbar,
+.app-header.loading-theme .info-bar {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Animate the placeholder elements */
+.app-header.loading-theme .level-display,
+.app-header.loading-theme .rank-tag,
+.app-header.loading-theme .xp-bar-wrapper {
+    animation: pulse 2s infinite ease-in-out;
+}
+
+/* Style the placeholder elements with a neutral gray */
+.app-header.loading-theme .level-display,
+.app-header.loading-theme .rank-tag {
+    background: rgba(149, 165, 166, 0.2);
+    color: transparent; /* Hide text during load */
+}
+
+/* Keep XP bar empty during load */
+.app-header.loading-theme .xp-bar-fill {
+    width: 0% !important;
+    background: transparent;
+}
+
+/* =================================================================== */
+/* 20. TODAY HUB & DASHBOARD STYLES
+/* =================================================================== */
+
+/* --- Header & Toggle --- */
+.planner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.planner-title {
+    margin: 0;
+    color: var(--dark);
+}
+.view-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+[data-theme="dark"] .planner-header { border-color: var(--dark-border); }
+[data-theme="dark"] .planner-title, [data-theme="dark"] .view-toggle span { color: var(--text-on-light); }
+
+/* The toggle switch itself */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+input:checked+.slider {
+    background-color: var(--primary);
+}
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--primary);
+}
+input:checked+.slider:before {
+    transform: translateX(22px);
+}
+.slider.round {
+    border-radius: 34px;
+}
+.slider.round:before {
+    border-radius: 50%;
+}
+
+
+/* --- Today's View Layout --- */
+.today-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+@media (max-width: 992px) {
+    .today-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Today's Plan Card --- */
+/* --- CORRECTED: Today's Plan Card (Light by Default) --- */
+.today-plan-card {
+    background: #ffffff; /* Light background for default theme */
+    color: var(--dark);
+    padding: 2rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+.today-plan-card h3 {
+    margin-top: 0;
+    color: var(--primary); /* Use primary color for heading in light mode */
+    text-align: center;
+    margin-bottom: 1rem;
+}
+.today-plan-card .day-card {
+    background-color: #f8f9fa; /* Light gray for the card itself */
+    border: 1px dashed #ced4da;
+    color: var(--dark);
+    min-height: 200px;
+}
+
+/* --- ADD: Dark Mode Override for Today's Plan Card --- */
+[data-theme="dark"] .today-plan-card {
+    background: var(--dark-bg-secondary);
+    color: white;
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .today-plan-card h3 {
+    color: var(--accent); /* Use vibrant accent color in dark mode */
+}
+[data-theme="dark"] .today-plan-card .day-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--dark-border);
+    color: var(--text-on-light);
+}
+
+/* --- ADD: Styles for Consistency Progress Bar --- */
+.consistency-progress-bar-container {
+    height: 10px;
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+.consistency-progress-bar-fill {
+    height: 100%;
+    width: 0%; /* JS will update this */
+    background: linear-gradient(90deg, #FFC107, #FFA000);
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
+}
+[data-theme="dark"] .consistency-progress-bar-container {
+    background-color: rgba(0,0,0,0.3);
+}
+
+
+.today-plan-card .day-card:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
+}
+.placeholder-text {
+    color: var(--gray);
+    text-align: center;
+    margin-top: 3rem;
+}
+.today-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* --- Stats Modules --- */
+.stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.stat-module {
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+}
+.stat-module h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: 600;
+}
+.stat-module p {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin: 0.5rem 0 0 0;
+}
+[data-theme="dark"] .stat-module {
+    background-color: #0f1722;
+    border-color: var(--dark-border);
+}
+
+.xp-module .xp-bar-wrapper {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+.xp-module .xp-bar-fill {
+    background: linear-gradient(90deg, #81C784, #4CAF50);
+}
+[data-theme="dark"] .xp-module .xp-bar-wrapper {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.consistency-module {
+    background: linear-gradient(135deg, #FFFDE7, #FFF8E1);
+}
+.consistency-module h4 { color: #F57F17; }
+.streak-display {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+    text-align: center;
+}
+.streak-current {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #FFC107;
+    line-height: 1;
+}
+.streak-best {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #FFA000;
+}
+[data-theme="dark"] .consistency-module {
+    background: linear-gradient(135deg, #3e2723, #212121);
+}
+/* Add this to stu-styles.css */
+
+/* Fill for the dashboard streak bar */
+#stat-streak-progress-fill {
+    height: 100%;
+    width: 0%; /* JS will update this */
+    background: linear-gradient(90deg, #FFC107, #FFA000);
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
 }

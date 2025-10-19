@@ -18,12 +18,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
 
-  <script type="module" crossorigin src="/assets/studentDashboard-XtX4olYc.js"></script>
+  <script type="module" crossorigin src="/assets/studentDashboard-Bdp29ZTp.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-DH4t0kYT.css">
+  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-CEMmviBf.css">
 </head>
 <body>
 
+    <div class="app-header loading-theme">
         <header class="header">
             <div class="header-content">
                 <h1>✨<span id="studentName"></span></h1>
@@ -37,9 +38,7 @@
             </div>
         </header>
 
-
-
-        <nav class="navbar navbar-expand-md navbar-dark" style="background-color: #2c3e50;">
+        <nav class="navbar navbar-expand-md navbar-dark">
             <div class="container-fluid">
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -68,99 +67,133 @@
                 </div>
             </div>
         </nav>
-<div class="info-bar">
-<div class="xp-level-container">
-    <div class="level-display">
-        LEVEL <span id="fitnessLevel"></span>
+
+        <div class="info-bar">
+            <div class="xp-level-container">
+                <div class="level-display">
+                    LEVEL <span id="fitnessLevel"></span>
+                </div>
+                <div class="rank-tag" id="rankTag"></div>
+                <div class="xp-bar-wrapper">
+                    <div class="xp-bar-fill" id="xpBarFill"></div>
+                    <div class="xp-bar-text" id="xpBarText"></div>
+                </div>
+            </div>
+            <div class="info-item-group">
+                <div id="studentGoal" class="info-item goal"></div>
+                <div class="info-item">Slot: <span id="studentSlot"></span></div>
+                <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
+                <div class="info-item">TR: <span id="studentTR"></span></div>
+            </div>
+        </div>
     </div>
-
-    <div class="rank-tag" id="rankTag"></div>
-
-    <div class="xp-bar-wrapper">
-        <div class="xp-bar-fill" id="xpBarFill"></div>
-        <div class="xp-bar-text" id="xpBarText"></div>
-    </div>
-</div>
-
-    <div class="info-item-group">
-        <div id="studentGoal" class="info-item goal"></div>
-        <div class="info-item">Slot: <span id="studentSlot"></span></div>
-        <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
-        <div class="info-item">TR: <span id="studentTR"></span></div>
-    </div>
-</div>
-
+    <main class="content">
 
  <main class="content">
-
+      <!-- =================================================================== -->
       <section class="card" id="planner-low">
-  <h1 class="text-center mb-4">
-    Weekly Workout Planner
-    <span class="info-icon" 
-          data-bs-toggle="tooltip" 
-          data-bs-placement="top"
-          title="These 7 cards are your canvas! You can type your exercises directly into them, or use the 'Add Exercise' buttons below each card to quickly insert exercises from our curated list. Once you've filled out your plan for the week, hit 'Save' to store it. If you want to start fresh, just click 'Clear'. If you had a great plan last week and want to reuse it, click 'Apply Last Week’s Plan'.">
-      <i class="bi bi-info-circle"></i>
-    </span>
-</h1>
+        <div class="planner-header">
+            <h1 class="planner-title">Your Workout Planner</h1>
+            <!-- The Daily/Weekly Toggle Switch -->
+            <div class="view-toggle">
+                <span>Daily</span>
+                <label class="switch">
+                    <input type="checkbox" id="plannerViewToggle">
+                    <span class="slider round"></span>
+                </label>
+                <span>Weekly</span>
+            </div>
+        </div>
 
+        <!-- View 1: Today's Hub (Visible by default) -->
+        <div id="daily-view">
+            <div class="today-grid">
+                <!-- Today's Workout Plan Card -->
+                <div class="today-plan-card">
+                    <h3 id="today-date-heading">Loading...</h3>
+                    <div class="day-card" id="today-day-card" contenteditable="true" data-day="">
+                        <p class="placeholder-text">Plan your workout for today!</p>
+                    </div>
+                    <div class="today-actions">
+                        <button class="btn btn-sm btn-outline-primary quick-add-btn" id="today-quick-add">Add Exercise</button>
+                    </div>
+                </div>
 
-  <div class="planner" >
-    <div class="day-wrapper">
-      <div class="day-name">Monday</div>
-      <div class="day-card" contenteditable="true" data-day="Monday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Monday">Add Exercise</button>
-    </div>
-    <div class="day-wrapper">
-      <div class="day-name">Tuesday</div>
-      <div class="day-card" contenteditable="true" data-day="Tuesday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Tuesday">Add Exercise</button>
-    </div>
-    <div class="day-wrapper">
-      <div class="day-name">Wednesday</div>
-      <div class="day-card" contenteditable="true" data-day="Wednesday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Wednesday">Add Exercise</button>
-    </div>
-    <div class="day-wrapper">
-      <div class="day-name">Thursday</div>
-      <div class="day-card" contenteditable="true" data-day="Thursday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Thursday">Add Exercise</button>
-    </div>
-    <div class="day-wrapper">
-      <div class="day-name">Friday</div>
-      <div class="day-card" contenteditable="true" data-day="Friday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Friday">Add Exercise</button>
-    </div>
-    <div class="day-wrapper">
-      <div class="day-name">Saturday</div>
-      <div class="day-card" contenteditable="true" data-day="Saturday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Saturday">Add Exercise</button>
-    </div>
-    <div class="day-wrapper">
-      <div class="day-name">Sunday</div>
-      <div class="day-card" contenteditable="true" data-day="Sunday"></div>
-      <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Sunday">Add Exercise</button>
-    </div>
-  </div>
+                <!-- Key Stats Modules -->
+              <div class="stats-container">
+                  <div class="stat-module consistency-module">
+                      <h4>Consistency Streak</h4>
+                      
+                      <div class="consistency-progress-bar-container">
+                          <div class="consistency-progress-bar-fill" id="stat-streak-progress-fill"></div> 
+                      </div>
 
-  <div class="text-center mt-4">
-    <button id="savePlanBtn" class="btn btn-primary">
-  <span class="button-text">Save</span>
-  <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-    </button>
-    
-    <button id="clearPlanBtn" type="button" class="btn btn-outline-danger">Clear</button>
-    <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
-      Apply Last Week’s Plan
-    </button>
-  </div>
-</section>
+                      <div class="streak-display">
+                          <div class="streak-current" id="stat-current-streak"></div>
+                          <div class="streak-best" id="stat-best-streak"></div>
+                      </div>
+                      <p id="streak-motivation-text">Log workouts to beat your best streak!</p>
+                  </div>
+              </div>
+            </div>
+        </div>
 
+        <!-- View 2: Full Weekly Planner (Hidden by default) -->
+        <div id="weekly-view" style="display: none;">
+            <div class="planner">
+                <div class="day-wrapper">
+                    <div class="day-name">Monday</div>
+                    <div class="day-card" contenteditable="true" data-day="Monday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Monday">Add Exercise</button>
+                </div>
+                <div class="day-wrapper">
+                    <div class="day-name">Tuesday</div>
+                    <div class="day-card" contenteditable="true" data-day="Tuesday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Tuesday">Add Exercise</button>
+                </div>
+                <div class="day-wrapper">
+                    <div class="day-name">Wednesday</div>
+                    <div class="day-card" contenteditable="true" data-day="Wednesday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Wednesday">Add Exercise</button>
+                </div>
+                <div class="day-wrapper">
+                    <div class="day-name">Thursday</div>
+                    <div class="day-card" contenteditable="true" data-day="Thursday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Thursday">Add Exercise</button>
+                </div>
+                <div class="day-wrapper">
+                    <div class="day-name">Friday</div>
+                    <div class="day-card" contenteditable="true" data-day="Friday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Friday">Add Exercise</button>
+                </div>
+                <div class="day-wrapper">
+                    <div class="day-name">Saturday</div>
+                    <div class="day-card" contenteditable="true" data-day="Saturday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Saturday">Add Exercise</button>
+                </div>
+                <div class="day-wrapper">
+                    <div class="day-name">Sunday</div>
+                    <div class="day-card" contenteditable="true" data-day="Sunday"></div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Sunday">Add Exercise</button>
+                </div>
+            </div>
+        </div>
 
+        <!-- The main Save/Clear buttons are now outside the views -->
+        <div class="text-center mt-4">
+            <button id="savePlanBtn" class="btn btn-primary">
+                <span class="button-text">Save</span>
+                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            </button>
+            <button id="clearPlanBtn" type="button" class="btn btn-outline-danger">Clear</button>
+            <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;" class="btn btn-secondary">
+              Apply Last Week’s Plan
+            </button>
+        </div>
 
-
-
-
+      </section>
+      <!-- =================================================================== -->
+      <!-- =================================================================== -->
     <section class="card" id="attendance-low" style="display: none;">
         <h2 class="text-center mb-4">📅 Your Weekly Attendance</h2>
         <div class="form-group">
