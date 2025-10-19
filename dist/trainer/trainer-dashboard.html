@@ -5,153 +5,132 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trainer Dashboard - FitTracker</title>
     <script>
-    // This script runs instantly, before the page content is displayed.
     try {
-        // The user object is stored here upon login
         const userString = localStorage.getItem('staffUser');
         if (userString) {
             const user = JSON.parse(userString);
-            // Check if the user is a Marol Male trainer
             if (user.Branch === 'Marol' && user.Gender === 'Male') {
-                // If they are, add a class to the root <html> element
                 document.documentElement.className = 'is-marol-male';
             }
         }
     } catch (e) {
         console.error('Initial auth script failed:', e);
     }
-</script>
+    </script>
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
     <style>
-        /* --- Professional Theming and Layout --- */
         :root {
-            --primary-color: #10b981; /* Emerald Green */
-            --primary-hover: #059669; /* Darker Emerald */
-            --secondary-color: #f3f4f6; /* Light Gray Background */
-            --text-color: #374151; /* Cool Gray Text */
-            --border-color: #d1d5db; /* Lighter Gray Border */
+            --primary-color: #10b981;
+            --primary-hover: #059669;
+            --secondary-color: #f3f4f6;
+            --text-color: #374151;
+            --border-color: #d1d5db;
             --card-bg: #ffffff;
             --success-bg: #d1fae5;
             --success-text: #065f46;
             --error-bg: #fee2e2;
             --error-text: #991b1b;
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-blur: blur(10px);
+        }
+
+        body.dark-mode {
+            --secondary-color: #1f2937;
+            --text-color: #e5e7eb;
+            --border-color: #4b5563;
+            --card-bg: #374151;
+            --glass-bg: rgba(55, 65, 81, 0.8);
+            --success-bg: #065f46;
+            --success-text: #d1fae5;
+            --error-bg: #991b1b;
+            --error-text: #fee2e2;
+        }
+
+        body.dark-mode #quick-stats p {
+            color: #ffffff;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--secondary-color);
             color: var(--text-color);
-            margin: 0;
-        }
-
-        .navbar {
-            background: var(--card-bg);
-            padding: 0.75rem 1.5rem;
-            display: flex;
-            justify-content: center;
-            box-shadow: var(--shadow);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .navbar a {
-            color: var(--text-color);
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .navbar a:hover {
-            background-color: var(--secondary-color);
-        }
-        
-        .navbar a.active {
-            background-color: var(--primary-color);
-            color: white;
+            margin: 0 0 60px 0;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .content {
-            padding: 2rem;
-            max-width: 1200px;
+            padding: 1rem;
+            max-width: 100%;
             margin: 0 auto;
         }
 
         .card {
-            background: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            margin-bottom: 2rem;
-        }
-        
-        .main-form {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        h2 {
-            margin-top: 0;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            padding: 1rem;
+            border-radius: 12px;
             text-align: center;
-            font-size: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
         }
 
-        /* --- Consistent Form Styling --- */
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        h2, h3, h4 {
+            margin-top: 0;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
         .form-group {
-            margin-bottom: 1.25rem;
-        }
-
-        .form-group label {
-            font-weight: 500;
-            display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
 
         .form-control {
             width: 100%;
             padding: 0.75rem;
             font-size: 1rem;
-            border-radius: 6px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
-            box-sizing: border-box;
+            background: var(--card-bg);
+            color: var(--text-color);
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .form-control:focus {
-            outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+            outline: none;
         }
 
         .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem;
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            margin-top: 1rem;
-            transition: background-color 0.2s ease;
-            text-decoration: none; /* For <a> tags styled as buttons */
+            transition: background-color 0.2s, transform 0.2s;
         }
-        
+
         .btn:hover {
             background-color: var(--primary-hover);
+            transform: translateY(-2px);
         }
 
         .btn:disabled {
@@ -159,41 +138,76 @@
             cursor: not-allowed;
         }
 
-        .btn .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
             border-radius: 50%;
-            border-top-color: #fff;
-            width: 18px;
-            height: 18px;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* --- Component Specific Styles --- */
-        .info-card {
-            background-color: var(--secondary-color);
-            padding: 1rem;
-            border-radius: 8px;
+        .btn-text {
+            vertical-align: middle;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            position: relative; /* Ensure proper stacking context */
+            z-index: 1; /* Ensure it's above other elements */
+        }
+
+        .search-group .form-control {
+            flex-grow: 1;
+        }
+
+        .search-group .btn {
+            width: auto;
+            padding: 0.75rem 1.5rem;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 0.5rem 0;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+        }
+
+        .nav-link {
+            color: var(--text-color);
+            text-decoration: none;
             text-align: center;
-            margin-bottom: 1.5rem;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: color 0.2s;
         }
 
-        .info-card p {
-            margin: 0.25rem 0;
-            font-weight: 500;
+        .nav-link.active {
+            color: var(--primary-color);
         }
-        
-        #slotInfo { font-size: 1.25rem; }
-        #goalInfo { color: #6b7280; }
 
-        .choices__inner {
-            padding-top: 0.3rem;
-            padding-bottom: 0.3rem;
-            min-height: auto;
+        .nav-link i {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
         }
 
         table {
@@ -201,242 +215,244 @@
             border-collapse: collapse;
             margin-top: 1rem;
         }
-        
+
         th, td {
-            padding: 0.75rem 1rem;
+            padding: 0.75rem;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
+            color: var(--text-color);
         }
 
-        th {
+        .accordion-item {
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .accordion-header {
+            background: var(--card-bg);
+            padding: 1rem;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        .accordion-body {
+            padding: 1rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .swal2-html-container {
+            overflow: initial !important;
+        }
+
+        .body-parts-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .body-part-chip {
+            padding: 10px 18px;
+            border-radius: 20px;
             background-color: var(--secondary-color);
-            font-weight: 600;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            user-select: none;
+            color: var(--text-color);
         }
 
-        /* Hide elements utility class */
+        .body-part-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .body-part-chip.selected {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-hover);
+        }
+
+        #max-selection-warning {
+            color: var(--error-text);
+            font-size: 0.9em;
+            height: 1.2em;
+            margin-top: 10px;
+            transition: opacity 0.2s ease;
+        }
+
+        #nav-fitness-test {
+            display: none;
+        }
+
+        html.is-marol-male #nav-fitness-test {
+            display: flex;
+        }
+
         .hidden {
             display: none;
         }
 
-#viewAttendanceBtn {
-  display: inline-block;      /* shrink to fit */
-  width: auto !important;     /* override .btn’s width */
-  max-width: 100%;            /* never overflow parent */
-  margin-top: 0.5rem;
-  background-color: #136971 !important;
-  color: #fff;
-  text-align: center;
-}
-/* Add this CSS to your existing <style> block */
+        .mini-profile-modal .modal-content {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-radius: 12px;
+        }
 
-.swal2-html-container {
-    overflow: initial !important; /* Allow content to be styled freely */
-}
+        .mini-profile-modal .profile-info {
+            padding: 1rem;
+            text-align: center;
+        }
 
-.body-parts-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
-    margin: 20px 0;
-}
+        .mini-profile-modal .profile-info p {
+            margin: 0.5rem 0;
+            font-size: 1rem;
+            color: var(--text-color);
+        }
 
-.body-part-chip {
-    padding: 10px 18px;
-    border-radius: 20px;
-    background-color: var(--secondary-color);
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    user-select: none; /* Prevents text selection on click */
-}
+        .mini-profile-modal .recent-activity {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            color: var(--text-color);
+        }
 
-.body-part-chip:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
+        .mini-profile-modal .action-buttons {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+        }
 
-.body-part-chip.selected {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-hover);
-}
+        .list-group-item-action {
+            color: var(--text-color);
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            transition: background-color 0.2s, color 0.2s;
+        }
 
-#max-selection-warning {
-    color: var(--error-text);
-    font-size: 0.9em;
-    height: 1.2em; /* Reserve space to prevent layout shift */
-    margin-top: 10px;
-    transition: opacity 0.2s ease;
-}
-/* Add this to your existing <style> block */
+        .list-group-item-action:hover {
+            background-color: var(--secondary-color);
+        }
 
-#nav-fitness-test {
-    display: none;
-}
-html.is-marol-male #nav-fitness-test {
-    display: block; /* Or 'inline-block' depending on navbar style */
-}
+        .list-group-item-action.text-danger {
+            color: #dc3545 !important;
+        }
 
+        .list-group-item-action.text-danger:hover {
+            background-color: #f8d7da;
+        }
 
+        .choices__list--dropdown {
+            z-index: 5000;
+            position: relative;
+            color: var(--text-color);
+            background-color: var(--card-bg);
+        }
+
+        .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background-color: var(--secondary-color);
+        }
+        /* Inside your <style> block */
+
+        #student-search-card {
+            position: relative; /* This is required for z-index to work */
+            z-index: 2;         /* A higher number means it's on top */
+        }
+
+        #daily-attendance-card {
+            position: relative;
+            z-index: 1;         /* A lower number means it's underneath */
+        }
+        /* Inside your <style> block, can be placed at the end */
+        
+            
+        body.dark-mode .choices__inner {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+
+        body.dark-mode .choices__list--dropdown {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+
+        body.dark-mode .choices__item {
+            color: var(--text-color);
+        }
+
+        body.dark-mode .choices__list--dropdown .choices__item--selectable.is-highlighted {
+            background-color: var(--secondary-color);
+        }
     </style>
-  <script type="module" crossorigin src="/assets/trainerDashboard-r1gtufa9.js"></script>
+  <script type="module" crossorigin src="/assets/trainerDashboard-cKuYmqcV.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
 </head>
 <body>
+<main class="content" id="main-content">
+    <!-- Dynamic content will be rendered here -->
+</main>
 
-<div class="navbar">
-    <a href="#" class="nav-link active" id="nav-attendance">📋 Attendance</a>
-    <a href="#" class="nav-link" id="nav-checkout">🚪 Check-out</a>
-    <a href="#" class="nav-link" id="nav-fitness-test">🏋️ Fitness Test</a>
-    <a href="trainer-login.html" id="logoutLink">Logout</a>
-</div>
-    
-    <div class="content">
-        <section id="attendance-section" class="page-section">
-        <div class="card main-form">
-            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span id="currentDateDisplay"></span></p>
-            <h2>📋 Mark Student Attendance</h2>
-            <h3 id="welcomeText" style="text-align:center; font-weight:normal; margin-top:-1rem; margin-bottom: 2rem;"></h3>
-    
-            <form id="attendanceForm">
-                <div class="form-group">
-                    <label for="tr-input">Student TR Number</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="tr-input" class="form-control" placeholder="Enter TR and press Enter">
-                        <button type="button" id="checkTrButton" class="btn" style="width: auto; margin-top:0;">
-                            <span class="btn-text">Check</span>
-                        </button>
-                    </div>
+<nav class="bottom-nav">
+    <a href="#" class="nav-link active" data-page="home">
+        <i class="fas fa-home"></i> <span>Home</span>
+    </a>
+    <a href="#" class="nav-link" data-page="checkout">
+        <i class="fas fa-door-open"></i> <span>Check-out</span>
+    </a>
+    <a href="#" class="nav-link" data-page="test" id="nav-fitness-test">
+        <i class="fas fa-dumbbell"></i> <span>Fitness Test</span>
+    </a>
+    <a href="#" class="nav-link" data-page="menu">
+        <i class="fas fa-bars"></i> <span>Menu</span>
+    </a>
+</nav>
+
+<!-- Student Mini Profile Modal -->
+<div class="modal fade mini-profile-modal" id="studentMiniProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Student Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-info">
+                    <p><strong>Name:</strong> <span id="profile-name"></span></p>
+                    <p><strong>TR:</strong> <span id="profile-tr"></span></p>
+                    <p><strong>Goal:</strong> <span id="profile-goal"></span></p>
+                    <p><strong>Slot:</strong> <span id="profile-slot"></span></p>
                 </div>
-                
-                <div id="studentInfoCard" class="info-card hidden">
-                    <p id="slotInfo"></p>
-                    <p id="goalInfo"></p>
+                <div class="recent-activity">
+                    <p><strong>Recent Activity:</strong></p>
+                    <ul id="profile-recent" style="margin: 0; padding-left: 20px;"></ul>
                 </div>
-
-                <div id="workoutEntryForm" class="hidden">
-                    <div class="form-group">
-                        <label for="bodyParts">Today's Workout</label>
-                        
-                        <select id="bodyParts" multiple>
-                            <option value="Cardio">Cardio</option>
-                            <option value="Chest">Chest</option>
-                            <option value="Back">Back</option>
-                            <option value="Shoulders">Shoulders</option>
-                            <option value="Biceps">Biceps</option>
-                            <option value="Triceps">Triceps</option>
-                            <option value="Legs">Legs</option>
-                            <option value="Core">Core</option>
-                        </select>
-                    </div>
-                </div>
-    
-                <button type="submit" class="btn" id="submitButton" disabled>
-                    <span class="btn-text">Submit Attendance</span>
-                </button>
-                
-                <a href="#" id="viewAttendanceBtn" class="btn" style="background-color:#4b5563; margin-top:0.5rem;">View Today's Attendance</a>
-            </form>
-        </div>
-        
-        <div id="daily-attendance-section" class="card hidden">
-            <h2>Today's Attendance</h2>
-            <table id="dailyAttendanceTable">
-                <thead>
-                    <tr>
-                        <th>TR</th>
-                        <th>Name</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        
-         <div id="plan-history-section" class="card hidden">
-            <h4>📅 Training Plan History</h4>
-            <table id="planHistoryTable">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Body Parts</th>
-                    </tr>
-                </thead>
-                <tbody id="plan-history-body"></tbody>
-            </table>
-        </div>
-    </section>
-
-
-    <section id="checkout-section" class="page-section hidden">
-    <div class="card main-form">
-        <h2>🚪 Student Check-out</h2>
-        <p>Enter a student's TR to mark their session as complete.</p>
-        
-        <div class="form-group">
-            <label for="checkout-tr-input">Student TR Number</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="checkout-tr-input" class="form-control" placeholder="Enter TR number">
-                <button type="button" id="checkout-btn" class="btn">
-                    <span class="btn-text">Check Out</span>
-                </button>
+            </div>
+            <div class="modal-footer action-buttons">
+                <button class="btn" id="profile-attendance-btn"><span class="btn-text">Mark Attendance</span></button>
+                <button class="btn" id="profile-history-btn"><span class="btn-text">View History</span></button>
+                <button class="btn" id="profile-test-btn"><span class="btn-text">Start Fitness Test</span></button>
             </div>
         </div>
-
-        
-<div id="active-sessions-container" style="margin-top: 2.5rem;">
-    <h3 style="text-align: center; margin-bottom: 1rem;">🕒 Currently Checked-in Students</h3>
-    <table id="activeSessionsTable">
-        <thead>
-            <tr>
-                <th>TR</th>
-                <th>Name</th>
-                <th>Check-in Time</th>
-            </tr>
-        </thead>
-        <tbody id="active-sessions-body">
-            </tbody>
-    </table>
+    </div>
 </div>
 
-
-
-    </div>
-
-
-</section>
-
-    <section id="fitness-test-section" class="page-section hidden">
-                <div class="card">
-                    <h2>🏋️ Trainer Fitness Test Entry</h2>
-                    
-                    <div class="form-group">
-                        <label for="student-selector">Select Students for Testing (Max 5)</label>
-                        <select id="student-selector" multiple></select>
-                    </div>
-                    <button id="addStudentsBtn" class="btn">Add Students to Testing Area</button>
-                    <hr style="margin: 2rem 0;">
-
-                    <div id="testing-area">
-                        <p style="text-align: center; color: #6b7280;">Select students to begin the test.</p>
-                    </div>
-                    
-                    <div id="submission-container" class="hidden" style="margin-top: 2rem;">
-                        <button id="submitAllTestsBtn" class="btn">
-                            <span class="btn-text">Submit All Records</span>
-                        </button>
-                    </div>
-                </div>
-                </section>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Create Your New Password</h5>
+                <h3 class="modal-title">Create Your New Password</h3>
             </div>
             <div class="modal-body">
                 <p>Welcome! For your security, you must create a new password for your account.</p>
@@ -449,11 +465,13 @@ html.is-marol-male #nav-fitness-test {
                         <label for="confirmPassword" class="form-label">Confirm New Password</label>
                         <input type="password" class="form-control" id="confirmPassword" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                    <button type="submit" class="btn btn-primary w-100"><span class="btn-text">Set New Password</span></button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

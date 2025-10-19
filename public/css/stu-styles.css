@@ -150,11 +150,26 @@ h1 {
     color: var(--dark-border);
 }
 
+
+
 .info-item span,
 .info-item.goal {
     color: #ffffff; /* Make all key info white */
     font-weight: 600;
-    /* REMOVED: Inconsistent background for the goal item */
+    text-shadow: 0 0 2px rgba(0, 255, 234, 0.7);
+
+}
+
+/* new futuristic animation when hovering over key info */ 
+.info-item span:hover,
+.info-item.goal:hover {
+    text-shadow: 0 0 8px rgba(0, 255, 234, 1);
+    transition: text-shadow 0.3s ease-in-out;
+    transform: scale(1.1);
+    filter: brightness(1.2);
+    backdrop-filter: blur(5px);
+
+
 }
 
 
@@ -196,6 +211,7 @@ h1 {
 [data-theme="dark"] .navbar .nav-link:hover {
     background-color: #132033;
 }
+
 
 /* =================================================================== */
 /* 5. MAIN CONTENT & CARDS
@@ -468,11 +484,15 @@ table th, table td {
 [data-theme="dark"] #sessionHistoryTable {
     background-color: #0f1722;
 }
-[data-theme="dark"] #studentPlanTable thead th,
+
 [data-theme="dark"] #studentPlanTable tbody td,
-[data-theme="dark"] #sessionHistoryTable thead th,
 [data-theme="dark"] #sessionHistoryTable tbody td {
     background-color: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] #studentPlanTable thead th,
+[data-theme="dark"] #sessionHistoryTable thead th {
+    background-color: #1f2d40;
     color: var(--text-on-light);
 }
 [data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
@@ -552,9 +572,13 @@ table tr:nth-child(even) {
 }
 
 td iframe {
+    /* Ensures embedded iframes are square and proper viewing angle from all devices */
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    height: 200px;
+    border: none;
     border-radius: 8px;
-    max-width: 100%;
-    height: 180px;
+
 }
 
 /* =================================================================== */
@@ -639,11 +663,21 @@ td iframe {
 [data-theme="dark"] #tips-low h2,
 [data-theme="dark"] #tips-low label,
 [data-theme="dark"] #tips-low .form-label,
+[data-theme="dark"] #tips-low .tipArea,
 [data-theme="dark"] #tips-low .form-select { color: var(--text-on-light); }
 [data-theme="dark"] #bodyPartSelect.form-select { background-color: #0f1722; border-color: #1f2d40; }
 [data-theme="dark"] .accordion-button { background-color: #0f1722; color: var(--text-on-light); }
 [data-theme="dark"] .accordion-body { background-color: #141c27; color: var(--text-on-light); }
+[data-theme="dark"] .accordion-button:not(.collapsed) {
+    background-color: #1f2d40;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] .accordion .accordion-item {
+    background-color: #141c27;
+    border-color: #1f2d40;
+}
 [data-theme="dark"] .accordion .table,
+[data-theme="dark"] .accordion .table tr,
 [data-theme="dark"] .accordion .table td,
 [data-theme="dark"] .accordion .table th {
     background-color: #141c27;
@@ -821,9 +855,9 @@ td iframe {
     font-weight: 600;
     color: var(--dark);
 }
-[data-theme="dark"] .attendance-summary-card { background-color: #f8f9fa; color: #212529; }
-[data-theme="dark"] .attendance-summary-card .summary-title { color: #212529; }
-[data-theme="dark"] .attendance-summary-card .summary-label { color: #495057; }
+[data-theme="dark"] .attendance-summary-card { background-color: #1f2c39; border-color: #465a70; }
+[data-theme="dark"] .attendance-summary-card .summary-title { color: var(--text-on-light); }
+[data-theme="dark"] .attendance-summary-card .summary-label { color: var(--text-on-light); }
 
 .summary-grid {
     display: grid;
@@ -852,8 +886,8 @@ td iframe {
 
 /* Background colors to match table styles */
 .present-bg { background-color: #28a745; }
-.absent-bg { background-color: #dc3545; }
-.on-leave-bg { background-color: #ffc107; color: #343a40; }
+.absent-bg { background-color: #dc3545;}
+.on-leave-bg { background-color: #ffc107; }
 
 
 /* =================================================================== */
@@ -934,6 +968,12 @@ td iframe {
 
 .table-responsive {
     overflow-x: auto;
+}
+/* table head with other bg color than table body */
+
+[data-theme="dark"] .table-responsive table thead th {
+    background-color: #1f2d40;
+    color: #c7d3df;
 }
 
 /* Make it responsive on smaller screens */
@@ -1459,7 +1499,7 @@ td iframe {
 .xp-bar-fill {
     background-image: linear-gradient(to right, #00FFEA 0%, #17a2b8 40%, #00FFEA 100%); /* Adjusted base for shimmer */
     background-size: 200px 100%;
-    animation: shimmer-base 2s infinite linear; /* Apply shimmer */
+    animation: shimmer-base 5s infinite linear; /* Apply shimmer */
 }
 .level-display {
     background: linear-gradient(135deg, #28a745, #218838); /* Default green for bronze */
@@ -1475,7 +1515,7 @@ td iframe {
 .xp-tier-silver .xp-bar-fill {
     background-image: linear-gradient(to right, #cfd8dc 0%, #607d8b 40%, #cfd8dc 100%);
     background-size: 200px 100%;
-    animation: shimmer-base 2s infinite linear;
+    animation: shimmer-base 5s infinite linear;
 }
 
 
@@ -1487,7 +1527,7 @@ td iframe {
 .xp-tier-gold .xp-bar-fill {
     background-image: linear-gradient(to right, #ffecb3 0%, #ffc107 40%, #ffecb3 100%);
     background-size: 200px 100%;
-    animation: shimmer-base 2s infinite linear;
+    animation: shimmer-base 5s infinite linear;
 }
 .xp-tier-gold .xp-bar-wrapper { /* Keep the subtle glow for Gold */
     box-shadow: 0 0 10px rgba(255, 193, 7, 0.4);
@@ -1502,7 +1542,7 @@ td iframe {
 .xp-tier-emerald .xp-bar-fill {
     background-image: linear-gradient(to right, #64ffda 0%, #009688 40%, #64ffda 100%);
     background-size: 200px 100%;
-    animation: shimmer-base 2s infinite linear; /* Use the same base shimmer */
+    animation: shimmer-base 5s infinite linear; /* Use the same base shimmer */
 }
 .xp-tier-emerald .xp-bar-wrapper { /* Optional: Enhanced glow for top tier */
     box-shadow: 0 0 15px rgba(0, 255, 234, 0.6);
