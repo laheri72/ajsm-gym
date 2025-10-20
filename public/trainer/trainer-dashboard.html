@@ -875,47 +875,30 @@ async function initializeSearchSelector(students) {
 // In your <script type="module"> block
 
 function initHomeListeners() {
-    const searchBtn = document.getElementById('search-btn');
     const trInput = document.getElementById('tr-input');
+    const searchBtn = document.getElementById('search-btn');
 
-    // Create the search selector once when the page loads.
-    initializeSearchSelector();
-
-    const handleSearch = async () => {
-        const selectedValue = searchChoices.getValue(true); // Get the currently selected TR number
-
-        // If nothing is selected, do nothing.
-        if (!selectedValue) {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: 'Please select a student first.',
-                showConfirmButton: false,
-                timer: 2000
-            });
-            return;
+    const handleSearch = debounce(async () => {
+        const query = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
+        if (query) {
+            toggleButtonSpinner(searchBtn, true);
+            try {
+                await showMiniProfile(query);
+                if (searchChoices) {
+                    searchChoices.clearInput();
+                    dailyAttendanceCache = []; // Clear cache after selection
+                    initializeSearchSelector([]); // Reinitialize with empty data if needed
+                }
+            } finally {
+                toggleButtonSpinner(searchBtn, false);
+            }
         }
+    }, 300);
 
-        toggleButtonSpinner(searchBtn, true);
-        try {
-            await showMiniProfile(selectedValue); // Show the profile for the selected student
+    trInput.addEventListener('change', async () => {
+        await handleSearch();
+    });
 
-            // ✅ THIS IS THE FIX:
-            // After the search is done, properly clear the selection from the component.
-            // This resets its internal state and prepares it for the next search.
-            searchChoices.removeActiveItems();
-
-        } catch (err) {
-            console.error("Search failed:", err);
-            // Also clear the selection if the search fails.
-            searchChoices.removeActiveItems();
-        } finally {
-            toggleButtonSpinner(searchBtn, false);
-        }
-    };
-
-    // Use the button click as the main way to trigger the search.
     searchBtn.addEventListener('click', handleSearch);
 }
 
