@@ -570,9 +570,8 @@
     }
 
 // Inside your <script type="module"> block
-
+// Updated renderHomePage to fetch data once
 function renderHomePage() {
-    dailyAttendanceCache = [];
     elements.mainContent.innerHTML = `
         <div class="card fade-in">
             <h3 id="welcomeText">Welcome, ${currentUser?.Branch.toUpperCase()} - ${currentUser?.Gender.toUpperCase()}</h3>
@@ -581,16 +580,14 @@ function renderHomePage() {
         <div class="card" id="quick-stats">
             <p style="text-align:center;">Loading stats...</p>
         </div>
-        
-        <div class="card" id="student-search-card"> 
+        <div class="card" id="student-search-card">
             <h4>Student Search</h4>
             <div class="search-group">
                 <select id="tr-input" class="form-control"></select>
                 <button id="search-btn" class="btn"><span class="btn-text">Search</span></button>
             </div>
         </div>
-
-        <div class="card" id="daily-attendance-card">
+        <div class="card" id="daily-attendance-section">
             <h4>Today's Attendance</h4>
             <table id="dailyAttendanceTable">
                 <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
@@ -598,10 +595,39 @@ function renderHomePage() {
             </table>
         </div>
     `;
-    loadQuickStats();
-    loadDailyAttendance();
-    loadActiveSessions();
+
+    // Fetch data once and share
+    Promise.all([
+        fetch('/api/daily-attendance').then(res => res.json()),
+        fetch('/api/active-sessions', { credentials: 'include' }).then(res => res.json())
+    ]).then(([attendanceData, sessionsData]) => {
+        if (attendanceData.error) throw new Error(attendanceData.error);
+        if (!sessionsData.success) throw new Error(sessionsData.error);
+
+        dailyAttendanceCache = attendanceData;
+        activeSessionsCache = sessionsData.data;
+
+        // Now update components with shared data
+        renderDailyAttendance(dailyAttendanceCache);
+        initializeSearchSelector(dailyAttendanceCache); // Pass the data instead of fetching again
+        renderQuickStats(dailyAttendanceCache.length, activeSessionsCache.length);
+    }).catch(err => {
+        console.error('Failed to load home data:', err);
+        // Handle error in UI (e.g., show error messages in cards)
+        document.getElementById('dailyAttendanceTable').querySelector('tbody').innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Could not load attendance.</td></tr>';
+        document.getElementById('quick-stats').innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>';
+    });
+
     initHomeListeners();
+}
+
+        function renderQuickStats(totalAttendance, active) {
+    document.getElementById('quick-stats').innerHTML = `
+        <div class="row">
+            <div class="col-6"><div class="card"><p>Active: ${active}</p></div></div>
+            <div class="col-6"><div class="card"><p>Attendance: ${totalAttendance}</p></div></div>
+        </div>
+    `;
 }
 
     function renderCheckoutPage() {
@@ -826,29 +852,24 @@ function renderHomePage() {
         }
     }
 
-    async function initializeSearchSelector() {
-        try {
-            const res = await fetch('/api/daily-attendance');
-            const students = await res.json();
-            if (!Array.isArray(students)) throw new Error('Invalid student list format');
-            const trInput = document.getElementById('tr-input');
-            if (searchChoices) {
-            searchChoices.destroy();
-        }
-            searchChoices = new Choices('#tr-input', {
-                removeItemButton: true,
-                maxItemCount: 1,
-                placeholderValue: 'Search by name or TR...',
-                choices: students.map(student => ({
-                    value: String(student.TR),
-                    label: `${student.Name} [${student.TR}]`
-                }))
-            });
-        } catch (err) {
-            console.error('Failed to initialize search selector:', err);
-            Swal.fire('Error', 'Failed to load student list for search.', 'error');
-        }
+// Updated initializeSearchSelector to use passed data
+async function initializeSearchSelector(students) {
+    try {
+        if (!Array.isArray(students)) throw new Error('Invalid student list format');
+        searchChoices = new Choices('#tr-input', {
+            removeItemButton: true,
+            maxItemCount: 1,
+            placeholderValue: 'Search by name or TR...',
+            choices: students.map(student => ({
+                value: String(student.TR),
+                label: `${student.Name} [${student.TR}]`
+            }))
+        });
+    } catch (err) {
+        console.error('Failed to initialize search selector:', err);
+        Swal.fire('Error', 'Failed to load student list for search.', 'error');
     }
+}
 
     // --- Listeners Init ---
 // In your <script type="module"> block
