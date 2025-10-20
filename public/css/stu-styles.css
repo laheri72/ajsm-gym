@@ -869,7 +869,7 @@ td iframe {
 .day-card[contenteditable="true"]:focus {
     outline: none;
     border-color: #007bff;
-    background: #f0f8ff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
 /* --- Unified Badge/Tag System --- */
