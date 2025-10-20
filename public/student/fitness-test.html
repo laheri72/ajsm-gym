@@ -3,984 +3,947 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fitness Test</title>
+    <title>Fitness Profile Dashboard</title>
     <link rel="icon" href="../images/favicon.png" type="image/png">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- DataTables Bootstrap Integration -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <!-- SweetAlert2 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script> 
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Google Fonts: Poppins for Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <!-- Animate.css for Animations -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
     <style>
-      
         :root {
-            --primary: #4CAF50;
-            --secondary: #3e8e41;
+            --primary: #4CAF50; /* Green for fitness theme */
+            --secondary: #2196F3; /* Blue accent */
+            --accent: #FF9800; /* Orange for energy */
             --success: #4CAF50;
             --danger: #f44336;
-            --light: #f5f7fa;
-            --dark: #2d3436;
-            --gray: #95a5a6;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --background: linear-gradient(135deg, #e0f7fa, #f1f8e9); /* Light fitness gradient */
         }
 
         body {
             margin: 0;
-            background-color: var(--light);
+            background: var(--background);
             font-family: 'Poppins', sans-serif;
-            color: black;
+            color: var(--dark);
+            overflow-x: hidden; /* Prevent horizontal scroll */
         }
 
         .dashboard {
             display: flex;
-            flex-direction: column;
             min-height: 100vh;
         }
 
-        .navbar {
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 250px;
             background: white;
-            padding: 1rem;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem 1rem;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100%;
+            overflow-y: auto;
+            transition: width 0.3s ease;
         }
 
-        .navbar a {
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
             color: var(--gray);
             text-decoration: none;
-            padding: 0.5rem 1rem;
+            padding: 1rem;
             border-radius: 0.5rem;
-            font-weight: 500;
+            margin-bottom: 0.5rem;
             transition: all 0.3s;
+        }
+
+        .sidebar a i {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .sidebar-toggle {
             cursor: pointer;
-            color: black;
+            padding: 1rem;
+            text-align: center;
         }
 
-        .navbar a:hover,
-        .navbar a.active {
-            color: var(--primary);
-            background: rgba(67, 97, 238, 0.1);
-        }
-
-
-
-
-        .content {
+        /* Main Content */
+        .main-content {
             flex: 1;
+            margin-left: 250px;
             padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
+            transition: margin-left 0.3s ease;
         }
 
+        .main-content.expanded {
+            margin-left: 80px;
+        }
 
-          thead select {
-    background-color: #2c2c2c; /* Dark background for closed select */
-    color: white; /* White text inside */
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 4px;
-    font-size: 14px;
-    appearance: none; /* Optional: for custom arrow */
-  }
-
-  /* Style the dropdown list (the options inside) */
-  thead select option {
-    background-color: #2c2c2c; /* Dark background inside dropdown */
-    color: white; /* White text inside options */
-  }
-
-        .card {
+        .content-section {
             background: white;
             padding: 2rem;
             border-radius: 1rem;
             box-shadow: 0 4px 20px rgba(0,0,0,0.05);
             margin-bottom: 2rem;
+            animation: fadeIn 0.5s ease;
         }
 
-        h2 {
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2, h3, h4, h5, h6 {
             color: var(--primary);
-            margin-top: 0;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--dark);
+            font-weight: 600;
         }
 
         .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #e0e0e0;
             border-radius: 0.5rem;
-            font-family: inherit;
-            transition: all 0.3s;
-            color: black;
-        }
-
-        select.form-control {
-            color: #000;
-            background-color: white;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.75rem center;
-            background-size: 16px 12px;
-            appearance: none;
-        }
-
-        select.form-control option {
-            color: #000;
+            border: 1px solid #dee2e6;
+            transition: border-color 0.3s;
         }
 
         .form-control:focus {
-            outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(76, 175, 80, 0.25);
         }
 
-        .dataTables_wrapper .dataTables_filter input {
-  background-color: white !important;
-  color: black !important;
-  border: 1px solid #ccc;
-  padding: 5px;
-}
-
-
-
-
-
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
+        .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s;
         }
-        
-        thead {
-          background-color: var(--primary);
-        }
-
-        /* thead th {
-          color: white;
-        } */
-
-
-        th, td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            color: black;
-        }
-
-        th {
-            background: var(--primary);
-            color: black;
-        }
-
-        tr:nth-child(even) {
-            background: rgba(67, 97, 238, 0.05);
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-
-
-        .attendance-summary {
-            margin-top: 1rem;
-            font-weight: 600;
-            color: var(--primary);
-            background-color: #e0f7e9;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-            animation: fadeInSlide 1s ease forwards;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        @keyframes fadeInSlide {
-            0% {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-            .btn {
-                padding: 0.75rem 1.5rem;
-                background: var(--primary);
-                color: black;
-                border: none;
-                border-radius: 0.5rem;
-                cursor: pointer;
-                font-weight: 600;
-                transition: all 0.4s ease;
-                box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
-            }
 
         .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Card Enhancements */
+        .card {
+            border: none;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        /* Progress Bar Modern */
+        .progress {
+            height: 1.5rem;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #e9ecef;
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        /* Table Modern */
+        table.dataTable {
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+        }
+
+        table.dataTable thead th {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        table.dataTable tbody tr {
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 0.5rem;
+        }
+
+        table.dataTable tbody td {
+            border: none;
+        }
+
+        /* Student Info Card */
+        #studentInfo {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* History Card */
+        #historycard {
+            overflow-x: auto;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 80px;
+            }
+            .main-content {
+                margin-left: 80px;
+            }
+            .sidebar a span {
+                display: none;
+            }
+        }
+
+        /* Dark Mode Toggle (Optional Modern Feature) */
+        .dark-mode {
+            --background: linear-gradient(135deg, #2c3e50, #34495e);
+            --light: #343a40;
+            --dark: #f8f9fa;
+            --gray: #adb5bd;
+        }
+
+        body.dark-mode {
+            background: var(--background);
+            color: var(--dark);
+        }
+
+        body.dark-mode .content-section,
+        body.dark-mode .sidebar,
+        body.dark-mode table.dataTable tbody tr {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        body.dark-mode table.dataTable thead th {
             background: var(--secondary);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 16px rgba(76, 175, 80, 0.5);
         }
 
-        .navbar a {
-            transition: all 0.3s ease;
-            font-weight: 600;
+        body.dark-mode #studentInfo {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
         }
-
-        .navbar a:hover,
-        .navbar a.active {
-            color: var(--primary);
-            background: rgba(67, 97, 238, 0.15);
-            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-            transform: scale(1.05);
-            border-radius: 8px;
-        }
-          .hidden { display: none; }
-
-          /* Base card style */
-#studentInfo {
-    transition: all 0.3s ease;
-    padding: 16px;
-    border-radius: 12px;
-    color: #fff;
-}
-
-/* Red */
-.red-theme {
-    background: linear-gradient(135deg, #ff4e50, #f44336);
-    border: 2px solid #b71c1c;
-}
-
-/* Blue */
-.blue-theme {
-    background: linear-gradient(135deg, #42a5f5, #1e88e5);
-    border: 2px solid #0d47a1;
-}
-
-/* Green */
-.green-theme {
-    background: linear-gradient(135deg, #66bb6a, #43a047);
-    border: 2px solid #1b5e20;
-}
-
-/* Yellow */
-.yellow-theme {
-    background: linear-gradient(135deg, #ffee58, #fbc02d);
-    color: #000;
-    border: 2px solid #f9a825;
-}
-/* Gradient Progress Bar */
-.bg-gradient {
-  background: linear-gradient(90deg, #4facfe, #00f2fe);
-  color: #fff;
-  font-weight: bold;
-}
-
-/* Card shadow & rounded */
-#progressSection {
-  border-radius: 15px;
-  background: #ffffff;
-}
-
-#progressChart {
-  max-height: 250px;
-}
-#progressBar {
-  background: linear-gradient(90deg, #4facfe, #00f2fe);
-  color: white;
-  font-weight: bold;
-}
-
-
     </style>
 </head>
 <body>
     <div class="dashboard">
-      <div class="navbar">
-        <a href="#" class="active" id="tab-fit">Fitness Test</a>
-        <a href="#" id="tab-swim">Swimming Test</a>
-        <a href="#" id="logoutLink">Logout</a>
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </div>
+            <a href="#" class="active" id="tab-profile"><i class="fas fa-user"></i> <span>Profile</span></a>
+            <a href="#" id="tab-fit"><i class="fas fa-dumbbell"></i> <span>Fitness Test</span></a>
+            <a href="#" id="tab-swim"><i class="fas fa-swimmer"></i> <span>Swimming Test</span></a>
+            <a href="#" id="tab-goals"><i class="fas fa-bullseye"></i> <span>Goals & Progress</span></a>
+            <a href="#" id="tab-history"><i class="fas fa-history"></i> <span>Test History</span></a>
+            <a href="#" id="tab-achievements"><i class="fas fa-trophy"></i> <span>Achievements</span></a>
+            <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+            <!-- Dark Mode Toggle -->
+            <div class="mt-auto p-2">
+                <button class="btn btn-outline-secondary w-100" onclick="toggleDarkMode()"><i class="fas fa-moon"></i> <span>Dark Mode</span></button>
+            </div>
+        </nav>
 
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Profile Overview Section -->
+            <section id="profile-overview" class="content-section animate__animated animate__fadeIn">
+                <h2><i class="fas fa-user-circle"></i> Your Fitness Profile</h2>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <img src="/images/fitness test.jpg" alt="Profile Picture" class="rounded-circle mx-auto mt-3" style="width: 150px; height: 150px;">
+                            <div class="card-body">
+                                <h5 id="studentName">Loading...</h5>
+                                <p class="text-muted">Fitness Enthusiast</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div id="studentInfo" class="card mb-4">
+                            <h5><i class="fas fa-info-circle"></i> Personal Information</h5>
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr><th>ITS</th><td id="studentITS"></td></tr>
+                                    <tr><th>Darajah</th><td id="studentDarajah"></td></tr>
+                                    <tr><th>Class</th><td id="studentClass"></td></tr>
+                                    <tr><th>House</th><td id="studentHouse"></td></tr>
+                                    <tr><th>Age</th><td id="studentAge"></td></tr>
+                                    <tr><th>DOB</th><td id="studentDOB"></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-
-      </div>
-      <div class="content">
-
-        
-
-        
-
-        <section id="student-fit" class="card">
- <div class="container">
-        <h2>Fitness Test</h2>
-
-
-        <!-- Student Info -->
-        <div id="studentInfo" class="mb-4 hidden">
-            <h5>Student Information:</h5>
-            <table class="table table-bordered">
-                <tbody>
-                    <tr><th>Name</th><td id="studentName"></td></tr>
-                    <tr><th>ITS</th><td id="studentITS"></td></tr>
-                    <tr><th>Darajah</th><td id="studentDarajah"></td></tr>
-                    <tr><th>Class</th><td id="studentClass"></td></tr>
-                    <tr><th>House</th><td id="studentHouse"></td></tr>
-                    <tr><th>Age</th><td id="studentAge"></td></tr>
-                    <tr><th>DOB</th><td id="studentDOB"></td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Fitness Test Form -->
-        <div id="fitnessForm" class="hidden">
-            <button class="btn btn-info mb-3" onclick="showTestInfo()" style="background-color: moccasin;">ℹ️ Test Info</button>  
-            <br>
-            <p>Click on the button "Test Info" to view  Instructions & Guidelines </p>
-            <br>
-            <button onclick="showConverter()" class="btn btn-secondary mb-4">📏 Convert Inches to CM</button>
-            <br>
-            <br>
-            <br>
-            <form id="testForm">
-                <h5>Enter Fitness Test Data:</h5>
-                <br>
-                        <div class="row mb-3">
-                        <div class="col">
+            <!-- Fitness Test Section -->
+            <section id="student-fit" class="content-section" style="display: none;">
+                <h2><i class="fas fa-heartbeat"></i> Fitness Test</h2>
+                <div class="container">
+                    <button class="btn btn-info mb-3" onclick="showTestInfo()" style="background-color: #FFEBEE; color: #E57373;"><i class="fas fa-info-circle"></i> Test Info</button>
+                    <p>Click on the button "Test Info" to view Instructions & Guidelines</p>
+                    <button onclick="showConverter()" class="btn btn-secondary mb-4"><i class="fas fa-ruler"></i> Convert Inches to CM</button>
+                    <form id="testForm" class="row g-3">
+                        <h5><i class="fas fa-pen"></i> Enter Fitness Test Data:</h5>
+                        <div class="col-md-3">
                             <label>Gender</label>
-                            <select name="Gender" class="form-control" required>
-                            <option value="">Select...</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
+                            <select name="Gender" class="form-select" required>
+                                <option value="">Select...</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
                             </select>
                         </div>
+                        <div class="col-md-3">
+                            <label>Weight (kg)</label>
+                            <input type="number" class="form-control" name="Weight" required>
                         </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label>Weight (kg)</label>
-                        <input type="number" class="form-control" name="Weight" required>
-                    </div>
-                    <div class="col">
-                        <label>Height (cm)</label>
-                        <input type="number" class="form-control" name="Height" required>
-                    </div>
-                    <div class="col">
-                        <label>Waist (cm)</label>
-                        <input type="number" class="form-control" name="Waist" required>
-                    </div>
-                    <div class="col">
-                        <label>Hips (cm)</label>
-                        <input type="number" class="form-control" name="Hips" required>
-                    </div>
-                    <div class="col">
-                        <label>Neck (cm)</label>
-                        <input type="number" class="form-control" name="Neck" required>
+                        <div class="col-md-3">
+                            <label>Height (cm)</label>
+                            <input type="number" class="form-control" name="Height" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Waist (cm)</label>
+                            <input type="number" class="form-control" name="Waist" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Hips (cm)</label>
+                            <input type="number" class="form-control" name="Hips" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Neck (cm)</label>
+                            <input type="number" class="form-control" name="Neck" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Push-ups (30 sec)</label>
+                            <input type="number" class="form-control" name="PushUps" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Sit-ups (30 sec)</label>
+                            <input type="number" class="form-control" name="SitUps" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Squats (30 sec)</label>
+                            <input type="number" class="form-control" name="Squats" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Sit and Reach</label>
+                            <input type="number" class="form-control" name="SitReach" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Step-Up Pulse Rate</label>
+                            <input type="number" class="form-control" name="PulseRate" required>
+                        </div>
+                        <div class="col-12">
+                            <button type="button" onclick="generateReport()" class="btn btn-success"><i class="fas fa-chart-bar"></i> Generate Report</button>
+                        </div>
+                    </form>
+
+                    <!-- Report Section -->
+                    <div id="reportSection" class="mt-5 hidden">
+                        <h5><i class="fas fa-file-alt"></i> Fitness Report:</h5>
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Your Value</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportTableBody"></tbody>
+                        </table>
+                        <p id="saveWarning" style="color: red; font-weight: bold; margin-top: 5px;">
+                            ⚠️ You can only save your result once. Be careful before submitting! Reload if Error Occurs.
+                        </p>
+                        <button id="saveBtn" type="button" onclick="saveRecord()" class="btn btn-primary"><i class="fas fa-save"></i> Save Record</button>
                     </div>
                 </div>
+            </section>
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <label>Push-ups (30 sec)</label>
-                        <input type="number" class="form-control" name="PushUps" required>
+            <!-- Swimming Test Section -->
+            <section id="student-swim" class="content-section" style="display: none;">
+                <h2><i class="fas fa-swimmer"></i> Swimming Test</h2>
+                <p>Coming Soon – Track your swimming performance and set aquatic goals!</p>
+            </section>
+
+            <!-- Goals & Progress Section -->
+            <section id="goals-progress" class="content-section" style="display: none;">
+                <h2><i class="fas fa-chart-line"></i> Goals & Progress</h2>
+                <div id="progressSection" class="card shadow-lg p-4 mt-4 hidden">
+                    <h3 class="mb-3">🎯 Fitness Progress</h3>
+                    <h4 class="mb-3">Set Your Goals</h4>
+                    <!-- add a tooltip for score : which is the Score from the test record , and can find it in Test history tab -->
+                    <small class="text-muted">Your Score is calculated based on your performance in various fitness metrics. Aim higher to improve your overall health!</small>     
+                    <br>
+                    <p> Your current score is: <b id="currentScore">0</b></p>
+                    <!-- Goal Input -->
+                    <div class="input-group mb-3">
+                        <input type="number" id="goalInput" class="form-control" placeholder="Enter your goal score..." />
+                        <button id="saveGoalBtn" type="button" class="btn btn-success">Save Goal</button>
                     </div>
-                    <div class="col">
-                        <label>Sit-ups (30 sec)</label>
-                        <input type="number" class="form-control" name="SitUps" required>
+
+                    <!-- Total Score Progress Bar -->
+                    <div id="progressWrapper" class="hidden mb-4">
+                        <h6>Fitness Progress By Score</h6>
+                        <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden; background: #eee;">
+                            <div id="progressBar" 
+                                class="progress-bar"
+                                role="progressbar" style="width: 0%; transition: width 1s ease;">
+                                0%
+                            </div>
+                        </div>
+                        <p class="mt-2 fw-bold text-center" id="progressText"></p>
                     </div>
-                    <div class="col">
-                        <label>Squats (30 sec)</label>
-                        <input type="number" class="form-control" name="Squats" required>
+
+                    <!-- BMI Progress Bar -->
+                    <div id="bmiProgressWrapper" class="hidden mb-4">
+                        <h6>BMI Progress</h6>
+                        <div class="progress" style="height: 20px; border-radius: 15px;">
+                            <div id="bmiProgressBar" class="progress-bar" role="progressbar" style="width:0%">
+                                0%
+                            </div>
+                        </div>
+                        <p class="mt-2 fw-bold text-center" id="bmiProgressText"></p>
                     </div>
-                    <div class="col">
-                        <label>Sit and Reach</label>
-                        <input type="number" class="form-control" name="SitReach" required>
-                    </div>
-                    <div class="col">
-                        <label>Step-Up Pulse Rate</label>
-                        <input type="number" class="form-control" name="PulseRate" required>
+
+                    <!-- Trend Chart -->
+                    <div class="card mt-3 p-3">
+                        <h5 class="mb-2">📊 Progress Trend</h5>
+                        <canvas id="progressChart" height="150"></canvas>
                     </div>
                 </div>
+            </section>
 
-                <button type="button" onclick="generateReport()" class="btn btn-success">Generate Report</button>
-
-                <!-- Report Section -->
-                <div id="reportSection" class="mt-5 hidden">
-                    <h5>Fitness Report:</h5>
-                    <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Metric</th>
-                                        <th>Your Value</th>
-                                        <th>Evaluation</th>
-                                    </tr>
-                                </thead>
-                        <tbody id="reportTableBody"></tbody>
+            <!-- Test History Section -->
+            <section id="test-history" class="content-section" style="display: none;">
+                <h2><i class="fas fa-clock"></i> Test History</h2>
+                <div id="historycard" style="display: none; overflow-x: auto;">
+                    <table class="table table-bordered table-hover" id="historyTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Date</th>
+                                <th>BMI</th>
+                                <th>Body Fat %</th>
+                                <th>BMR</th>
+                                <th>VO₂ Max</th>
+                                <th>Score</th>
+                                <th>Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody"></tbody>
                     </table>
-                    <p id="saveWarning" style="color: red; font-weight: bold; margin-top: 5px;">
-                    ⚠️ You can only save your result once. Be careful before submitting! Reload if Error Occurs.
-                    </p>
-                     <button id="saveBtn" type="button" onclick="saveRecord()" class="btn btn-primary">Save Record</button>
                 </div>
+            </section>
 
-            </form>
+            <!-- Achievements Section (Placeholder for Modern Feature) -->
+            <section id="achievements" class="content-section" style="display: none;">
+                <h2><i class="fas fa-award"></i> Achievements</h2>
+                <p>Unlock badges and milestones based on your progress! Coming soon with gamification elements.</p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <i class="fas fa-medal fa-3x text-warning"></i>
+                            <h5>Beginner Badge</h5>
+                            <p>Complete your first test</p>
+                        </div>
+                    </div>
+                    <!-- Add more placeholder badges -->
+                </div>
+            </section>
         </div>
     </div>
-<hr />
-<div id="historycard" style="display: none; overflow-x: auto;">
 
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-
-<h3 class="mt-5">📜 Test History</h3>
-<table class="table table-bordered table-hover" id="historyTable" >
-    <thead class="table-dark">
-        <tr>
-            <th>Date</th>
-            <th>BMI</th>
-            <th>Body Fat %</th>
-            <th>BMR</th>
-            <th>VO₂ Max</th>
-            <th>Score</th>
-            <th>Grade</th>
-        </tr>
-    </thead>
-    <tbody id="historyBody"></tbody>
-</table>
-</div>
-
-<!-- Fitness Progress Section -->
-<div id="progressSection" class="card shadow-lg p-4 mt-4 hidden">
-  <h3 class="mb-3">🎯 Fitness Progress</h3>
-  <h4 class="mb-3">Set Your Goals</h4>
-    <p>Set a target <b>Score</b> to visualize your fitness progress over time.📈</p> 
-   
-        <br>
-  <!-- Goal Input -->
-  <div class="input-group mb-3">
-    <input type="number" id="goalInput" class="form-control" placeholder="Enter your goal score..." />
-    <button id="saveGoalBtn" type="button" class="btn btn-success">Save Goal</button>
-  </div>
-
-  <!-- Total Score Progress Bar -->
-  <div id="progressWrapper" class="hidden mb-4">
-    <h6>Fitness Progress By Score</h6>
-    <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden; background: #eee;">
-      <div id="progressBar" 
-        class="progress-bar"
-        role="progressbar" style="width: 0%; transition: width 1s ease;">
-        0%
-      </div>
-    </div>
-    <p class="mt-2 fw-bold text-center" id="progressText"></p>
-  </div>
-
-  <!-- BMI Progress Bar -->
-  <div id="bmiProgressWrapper" class="hidden mb-4">
-    <h6>BMI Progress</h6>
-    <div class="progress" style="height: 20px; border-radius: 15px;">
-      <div id="bmiProgressBar" class="progress-bar" role="progressbar" style="width:0%">
-        0%
-      </div>
-    </div>
-    <p class="mt-2 fw-bold text-center" id="bmiProgressText"></p>
-  </div>
-
-  <!-- Trend Chart -->
-  <div class="card mt-3 p-3">
-    <h5 class="mb-2">📊 Progress Trend</h5>
-    <canvas id="progressChart" height="150"></canvas>
-  </div>
-</div>
-
-        </section>
-  
-
-
-
-
-
-<!-- ---------------------------------------------------------------------------------------------------------------- -->
-<!-- ---------------------------------------------------------------------------------------------------------------- -->
-        <section id="student-swim" class="card" style="display:none;">
-            <h2>Swimming Test</h2>
-          <h2>Coming Soon</h2>
-        </section>
-
-        
-    </div>  
-
-<!-- ---------------------------------------------------------------------------------------------------------------- -->
-  <!-- ---------------------------------------------------------------------------------------------------------------- -->
     <script>
-    let studentData = null;
-    let calculated = null;
+        // All original functions remain intact
+        let studentData = null;
+        let calculated = null;
 
 async function validateStudentSession() {
-  try {
-    const res = await fetch('/api/current-tr', {
-      method: 'GET',
-      credentials: 'include'
-    });
-
-    const data = await res.json();
-
-    if (!data.tr) {
-      window.location.href = '../Forbidden.html'; // Or redirect to test-login.html
-      return;
-    }
-
-    const tr = data.tr;
-    localStorage.setItem('currentTR', tr);
-
-    // Reset all UI
-    clearFitnessResults();
-    document.getElementById("saveWarning").textContent = 'ℹ️ Please submit accurate details. One record allowed per week.';
-    document.getElementById("saveWarning").style.color = 'blue';
-    document.getElementById("saveBtn").style.display = 'inline-block';
-    document.getElementById("saveBtn").disabled = false; // initial state, will be refined in loadTestHistory
-
-    document.getElementById("studentInfo").classList.add("hidden");
-    document.getElementById("fitnessForm").classList.add("hidden");
-
-    document.getElementById("testForm").reset();
-    document.getElementById("reportTableBody").innerHTML = "";
-    document.getElementById("reportSection").classList.add("hidden");
-
-    // Fetch student info from TestMaster
     try {
-      const res = await fetch(`/api/testmaster/me`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      const student = await res.json();
-
-      if (!student || !student.Name) throw new Error("Student not found in TestMaster");
-
-      studentData = student;
-
-      document.getElementById("studentName").innerText = student.Name;
-      document.getElementById("studentITS").innerText = student.ITS;
-      document.getElementById("studentDarajah").innerText = student.Darajah;
-      document.getElementById("studentClass").innerText = student.Class;
-      document.getElementById("studentHouse").innerText = student.House;
-      document.getElementById("studentAge").innerText = student.Age;
-      document.getElementById("studentDOB").innerText = new Date(student.DOB).toLocaleDateString();
-
-      document.getElementById("studentInfo").classList.remove("hidden");
-      document.getElementById("fitnessForm").classList.remove("hidden");
-      document.getElementById("historycard").style.display = "block";
-
-      // Apply house theme
-      const house = student.House.toLowerCase();
-      const studentCard = document.getElementById("studentInfo");
-      studentCard.classList.remove("red-theme", "blue-theme", "green-theme", "yellow-theme");
-      if (["red", "blue", "green", "yellow"].includes(house)) {
-        studentCard.classList.add(`${house}-theme`);
-      }
-
-      Swal.fire({
-        icon: 'success',
-        position: 'top-end',
-        title: `Welcome ${student.Name}!`,
-        text: `TR ${tr} loaded successfully.`,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      await loadTestHistory(tr);
-
-    } catch (err) {
-      console.warn("TestMaster missing, trying TestRecords…");
-
-      try {
-        const res2 = await fetch(`/api/testrecords/${tr}`);
-        const records = await res2.json();
-
-        if (records.length === 0) throw new Error("No records");
-
-        document.getElementById("studentInfo").classList.remove("hidden");
-        document.getElementById("historycard").style.display = "block";
-        document.getElementById("saveBtn").style.display = 'inline-block';
-        document.getElementById("saveBtn").disabled = false; // will be checked by loadTestHistory
-        document.getElementById("saveWarning").textContent = 'ℹ️ Records found. You may add a new one if 7 days have passed.';
-        document.getElementById("saveWarning").style.color = 'blue';
-
-
-        await loadTestHistory(tr);
-
-        Swal.fire({
-          icon: 'info',
-          title: `TR ${tr} found in history`,
-          text: `Student not in active list but has a saved record.`,
-          timer: 2500,
-          showConfirmButton: false,
+        const res = await fetch('/api/current-tr', {
+            method: 'GET',
+            credentials: 'include'
         });
 
-      } catch (finalErr) {
-        console.error("No record found", finalErr);
-        Swal.fire({
-          icon: 'error',
-          title: 'No Record Found',
-          text: `No active or saved record found for TR ${tr}.`,
-        });
-      }
-    }
-  } catch (err) {
-    console.error('Session validation failed:', err);
-    window.location.href = '../Forbidden.html';
-  }
-}
+        const data = await res.json();
 
-
-validateStudentSession();
-
-
-function showTestInfo() {
-    Swal.fire({
-        title: "Fitness Test Overview",
-        html: `
-            <h6>🧪 What This Test Measures:</h6>
-            <ul style="text-align: left;">
-                <li>🧍‍♂️ <b>BMI</b>: Body Mass Index - weight-to-height ratio</li>
-                <li>💪 <b>Body Fat %</b>: Estimated fat levels using body measurements</li>
-                <li>🔥 <b>BMR</b>: Basal Metabolic Rate - daily calorie burn</li>
-                <li>🫁 <b>VO2 Max</b>: Cardiovascular endurance from pulse rate</li>
-                <li>🏋️ <b>Strength & Flexibility</b>: Push-ups, Sit-ups, Squats, and Sit & Reach</li>
-            </ul>
-            <h6>🎯 Performance Scale:</h6>
-            <ul style="text-align: left;">
-                <li><b>Excellent</b>: Well above average fitness</li>
-                <li><b>Good</b>: Above average, keep going!</li>
-                <li><b>Average</b>: You're on track</li>
-                <li><b>Below Average</b>: Needs more training</li>
-                <li><b>Poor</b>: Improvement required urgently</li>
-            </ul>
-            <hr>
-            <p>📌  This gives you a holistic view of your current health and fitness condition.</p>
-        `,
-        icon: "info",
-        confirmButtonText: "Got It!",
-        confirmButtonColor: "#3498db",
-        width: 600
-    });
-}
-
-
-
-
-  //--------------------------------------------------------------------------------------------------------
-function generateReport() {
-    const form = document.getElementById('testForm');
-        if (!form.checkValidity()) {
-        form.reportValidity(); // Shows native error messages (like tooltip)
-        return;
-    }
-
-    const Weight = parseFloat(form.querySelector('[name="Weight"]').value);
-    const Height = parseFloat(form.querySelector('[name="Height"]').value);
-    const Waist = parseFloat(form.querySelector('[name="Waist"]').value);
-    const Hips = parseFloat(form.querySelector('[name="Hips"]').value);
-    const Neck = parseFloat(form.querySelector('[name="Neck"]').value);
-    const PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
-    const Gender = form.querySelector('[name="Gender"]').value;
-
-    const Age = studentData?.Age ? parseInt(studentData.Age) : 18; // fallback if missing
-
-    const PushUps = parseInt(form.querySelector('[name="PushUps"]').value) || 0;
-    const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
-    const Squats = parseInt(form.querySelector('[name="Squats"]').value) || 0;
-    const SitReach = parseFloat(form.querySelector('[name="SitReach"]').value) || 0;
-
-         calculated = {
-        Weight,
-        Height,
-        Waist,
-        Hips,
-        Neck,
-        PulseRate,
-        Gender,
-        Age
-    };
-
-    // BMI + Status
-    if (Weight && Height) {
-        const heightInM = Height / 100;
-        const bmi = (Weight / (heightInM * heightInM)).toFixed(1);
-        calculated.BMI = bmi;
-
-        if (bmi < 18.5) calculated.BMIStatus = "Underweight";
-        else if (bmi < 24.9) calculated.BMIStatus = "Normal weight";
-        else if (bmi < 29.9) calculated.BMIStatus = "Overweight";
-        else calculated.BMIStatus = "Obese";
-    }
-
-    // Body Fat % → different formula for male/female
-    if (Waist && Neck && Height) {
-        if (Gender === "male") {
-            calculated.BodyFat = (
-                495 / (1.0324 - 0.19077 * Math.log10(Waist - Neck) + 0.15456 * Math.log10(Height)) - 450
-            ).toFixed(1);
-        } else if (Gender === "female" && Hips) {
-            calculated.BodyFat = (
-                495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450
-            ).toFixed(1);
-        }
-    }
-
-    // BMR (Mifflin-St Jeor)
-    if (Weight && Height) {
-        if (Gender === "male") {
-            calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age + 5);
-        } else {
-            calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age - 161);
-        }
-        calculated.CalorieIntake = Math.round(calculated.BMR * 1.55);
-    }
-    // VO2 Max (use actual Age instead of hardcoded 18)
-    if (PulseRate) {
-        calculated.VO2Max = Math.round(15 * (220 - Age) / PulseRate);
-    } else {
-        calculated.VO2Max = "N/A";
-    }
-
-    // Fitness Score
-    const pushupScore = PushUps / 2;
-    const situpScore = SitUps / 2;
-    const squatScore = Squats / 2;
-    const sitReachScore = SitReach;
-
-    const totalScore = Math.round(
-        pushupScore + situpScore + squatScore + sitReachScore + (calculated.VO2Max !== "N/A" ? calculated.VO2Max / 2 : 0)
-    );
-    calculated.Total = totalScore;
-
-    // Grade
-    if (totalScore >= 80) calculated.Grade = "A+";
-    else if (totalScore >= 70) calculated.Grade = "A";
-    else if (totalScore >= 60) calculated.Grade = "B";
-    else if (totalScore >= 50) calculated.Grade = "C";
-    else calculated.Grade = "D";
-
-    // Store globally for saveRecord()
-    window.calculated = calculated;
-
-    // Evaluation rules
-    const avgMetrics = {
-        BMI: 22.5,
-        VO2Max: 45,
-        BodyFat: 20,
-        BMR: 1500,
-        CalorieIntake: 2100,
-        Total: 60,
-    };
-
-    function getEvaluation(metric, value) {
-        if (value === "N/A" || value === undefined) return "N/A";
-        value = parseFloat(value);
-        const avg = avgMetrics[metric];
-        const diff = value - avg;
-
-        if (metric === "BodyFat" || metric === "BMI") {
-            if (value < 16) return "Underweight - Needs Improvement";
-            if (value > 30) return "High - At Risk";
-            if (Math.abs(diff) <= 2) return "Healthy Range";
-            return diff < 0 ? "Low - Acceptable" : "High - Needs Work";
-        }
-
-        if (Math.abs(diff) < 5) return "Average - Needs Practice";
-        if (diff > 10) return "Excellent";
-        if (diff > 5) return "Good";
-        if (diff < -10) return "Poor";
-        return "Below Average";
-    }
-
-    // Report rendering
-    const reportHTML = `
-        <tr><th>BMI</th><td>${calculated.BMI ?? 'N/A'}</td><td>${getEvaluation('BMI', calculated.BMI)}</td></tr>
-        <tr><th>BMI Status</th><td>${calculated.BMIStatus ?? 'N/A'}</td><td>-</td></tr>
-        <tr><th>Body Fat %</th><td>${calculated.BodyFat ?? 'N/A'}</td><td>${getEvaluation('BodyFat', calculated.BodyFat)}</td></tr>
-        <tr><th>BMR</th><td>${calculated.BMR ?? 'N/A'}</td><td>${getEvaluation('BMR', calculated.BMR)}</td></tr>
-        <tr><th>Calorie Intake</th><td>${calculated.CalorieIntake ?? 'N/A'}</td><td>${getEvaluation('CalorieIntake', calculated.CalorieIntake)}</td></tr>
-        <tr><th>VO2 Max</th><td>${calculated.VO2Max}</td><td>${getEvaluation('VO2Max', calculated.VO2Max)}</td></tr>
-        <tr><th>Total Score</th><td>${calculated.Total}</td><td>${getEvaluation('Total', calculated.Total)}</td></tr>
-        <tr><th>Grade</th><td>${calculated.Grade}</td><td>-</td></tr>
-    `;
-
-    document.getElementById("reportTableBody").innerHTML = reportHTML;
-    document.getElementById("reportSection").classList.remove("hidden");
-}
-
-
-//----------------------------------------------------------------------------------------------------
-
-
-
-
-async function saveRecord() {
-    const currentTR = localStorage.getItem('currentTR');
-    if (!currentTR) {
-        Swal.fire('Session Expired', 'Please log in again to save your record.', 'error');
-        window.location.href = '../Forbidden.html';
-        return;
-    }
-
-    const saveBtn = document.getElementById("saveBtn");
-    saveBtn.disabled = true;
-
-    if (!studentData || !calculated) {
-        Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
-        return;
-    }
-
-    const requiredChecks = [
-        { name: 'TR', value: studentData.TR },
-        { name: 'DOB', value: studentData.DOB },
-        { name: 'Age', value: studentData.Age },
-        { name: 'Weight', value: calculated.Weight },
-        { name: 'Height', value: calculated.Height },
-        { name: 'Waist', value: calculated.Waist },
-        { name: 'Hips', value: calculated.Hips },
-        { name: 'Neck', value: calculated.Neck },
-        { name: 'BMI', value: calculated.BMI },
-        { name: 'BMIStatus', value: calculated.BMIStatus },
-        { name: 'BodyFat', value: calculated.BodyFat },
-        { name: 'BMR', value: calculated.BMR },
-        { name: 'CalorieIntake', value: calculated.CalorieIntake },
-        { name: 'VO2Max', value: calculated.VO2Max },
-        { name: 'Total', value: calculated.Total },
-        { name: 'Grade', value: calculated.Grade },
-    ];
-
-    for (const field of requiredChecks) {
-        if (field.name === 'VO2Max' && (field.value === "N/A" || field.value === null || field.value === undefined || field.value === '')) {
-            Swal.fire('Invalid VO2Max', 'Please provide a valid pulse rate to calculate VO2 Max.', 'error');
+        if (!data.tr) {
+            window.location.href = '../Forbidden.html';
             return;
         }
-        if (field.value === null || field.value === undefined || field.value === '') {
-            Swal.fire('Missing Field', `Please fill the field: ${field.name}`, 'error');
-            return;
+
+        const tr = data.tr;
+        localStorage.setItem('currentTR', tr);
+
+        // Reset all UI with null checks
+        clearFitnessResults();
+
+        const saveWarning = document.getElementById("saveWarning");
+        const saveBtn = document.getElementById("saveBtn");
+        const studentInfo = document.getElementById("studentInfo");
+        const fitnessForm = document.getElementById("fitnessForm");
+        const reportSection = document.getElementById("reportSection");
+
+        if (saveWarning) {
+            saveWarning.textContent = 'ℹ️ Please submit accurate details. One record allowed per week.';
+            saveWarning.style.color = 'blue';
         }
-    }
+        if (saveBtn) {
+            saveBtn.style.display = 'inline-block';
+            saveBtn.disabled = false;
+        }
+        if (studentInfo) studentInfo.classList.add("hidden");
+        if (fitnessForm) fitnessForm.classList.add("hidden");
+        if (reportSection) reportSection.classList.add("hidden");
 
-    const body = {
-        TR: studentData.TR,
-        DOB: studentData.DOB,
-        Age: studentData.Age,
-        Weight: calculated.Weight,
-        Height: calculated.Height,
-        Waist: calculated.Waist,
-        Hips: calculated.Hips,
-        Neck: calculated.Neck,
-        BMI: parseFloat(calculated.BMI),
-        BMIStatus: calculated.BMIStatus,
-        BodyFat: parseFloat(calculated.BodyFat),
-        BMR: parseFloat(calculated.BMR),
-        CalorieIntake: parseFloat(calculated.CalorieIntake),
-        VO2Max: parseFloat(calculated.VO2Max),
-        Total: parseFloat(calculated.Total),
-        Grade: calculated.Grade
-    };
+        const testForm = document.getElementById("testForm");
+        const reportTableBody = document.getElementById("reportTableBody");
+        if (testForm) testForm.reset();
+        if (reportTableBody) reportTableBody.innerHTML = "";
 
-    // 🔹 Confirmation SweetAlert before actual save
-Swal.fire({
-    title: 'Confirm Submission',
-    html: `
-        <p>Please confirm your details before submitting:</p>
-        <ul style="text-align:left">
-            <li><b>Age:</b> ${calculated.Age} years</li>
-            <li><b>Gender:</b> ${calculated.Gender || 'Not specified'}</li>
-            <li><b>Weight:</b> ${body.Weight} kg</li>
-            <li><b>Height:</b> ${body.Height} cm</li>
-            <li><b>BMI:</b> ${body.BMI.toFixed(2)} (${body.BMIStatus})</li>
-            <li><b>Body Fat %:</b> ${body.BodyFat.toFixed(2)}</li>
-            <li><b>BMR:</b> ${body.BMR.toFixed(1)}</li>
-            <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
-            <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
-            <li><b>Grade:</b> ${body.Grade}</li>
-        </ul>
-        <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
-    `,
-
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Submit',
-        cancelButtonText: 'Review Again',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch('/api/testrecords', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    Swal.fire('Save Failed', data.error, 'error');
-                } else {
-                    // 🔹 Calculate next allowed submission date
-                    const nextDate = new Date();
-                    nextDate.setDate(nextDate.getDate() + 7);
-
-                    Swal.fire({
-                        title: '🎉 Fitness Test Saved!',
-                        html: `Your result has been saved successfully.<br>
-                               <b>Next submission allowed on:</b> ${nextDate.toLocaleDateString()}`,
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        location.reload(); // Reload to reflect changes
-                    });
-                }
-            })
-            .catch(err => {
-                console.error("Save failed", err);
-                Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
+        // Fetch student info from TestMaster
+        try {
+            const res = await fetch(`/api/testmaster/me`, {
+                method: 'GET',
+                credentials: 'include'
             });
-        } else {
-            saveBtn.disabled = false; // re-enable if cancelled
+            const student = await res.json();
+
+            if (!student || !student.Name) throw new Error("Student not found in TestMaster");
+
+            studentData = student;
+
+            const fields = [
+                { id: "studentName", value: student.Name },
+                { id: "studentITS", value: student.ITS },
+                { id: "studentDarajah", value: student.Darajah },
+                { id: "studentClass", value: student.Class },
+                { id: "studentHouse", value: student.House },
+                { id: "studentAge", value: student.Age },
+                { id: "studentDOB", value: new Date(student.DOB).toLocaleDateString() }
+            ];
+
+            fields.forEach(({ id, value }) => {
+                const element = document.getElementById(id);
+                if (element) element.innerText = value;
+            });
+
+            if (studentInfo) studentInfo.classList.remove("hidden");
+            if (fitnessForm) fitnessForm.classList.remove("hidden");
+            const historyCard = document.getElementById("historycard");
+            if (historyCard) historyCard.style.display = "block";
+
+            // Apply house theme
+            if (studentInfo && student.House) {
+                const house = student.House.toLowerCase();
+                studentInfo.classList.remove("red-theme", "blue-theme", "green-theme", "yellow-theme");
+                if (["red", "blue", "green", "yellow"].includes(house)) {
+                    studentInfo.classList.add(`${house}-theme`);
+                }
+            }
+
+            Swal.fire({
+                icon: 'success',
+                position: 'top-end',
+                title: `Welcome ${student.Name}!`,
+                text: `TR ${tr} loaded successfully.`,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+
+            await loadTestHistory(tr);
+
+        } catch (err) {
+            console.warn("TestMaster missing, trying TestRecords…");
+
+            try {
+                const res2 = await fetch(`/api/testrecords/${tr}`);
+                const records = await res2.json();
+
+                if (records.length === 0) throw new Error("No records");
+
+                if (studentInfo) studentInfo.classList.remove("hidden");
+                if (historyCard) historyCard.style.display = "block";
+                if (saveBtn) saveBtn.style.display = 'inline-block';
+                if (saveBtn) saveBtn.disabled = false;
+                if (saveWarning) {
+                    saveWarning.textContent = 'ℹ️ Records found. You may add a new one if 7 days have passed.';
+                    saveWarning.style.color = 'blue';
+                }
+
+                await loadTestHistory(tr);
+
+                Swal.fire({
+                    icon: 'info',
+                    title: `TR ${tr} found in history`,
+                    text: `Student not in active list but has a saved record.`,
+                    timer: 2500,
+                    showConfirmButton: false,
+                });
+
+            } catch (finalErr) {
+                console.error("No record found", finalErr);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No Record Found',
+                    text: `No active or saved record found for TR ${tr}.`,
+                });
+            }
         }
-    });
+    } catch (err) {
+        console.error('Session validation failed:', err);
+        window.location.href = '../Forbidden.html';
+    }
 }
 
 
+        function showTestInfo() {
+            Swal.fire({
+                title: "Fitness Test Overview",
+                html: `
+                    <h6>🧪 What This Test Measures:</h6>
+                    <ul style="text-align: left;">
+                        <li>🧍‍♂️ <b>BMI</b>: Body Mass Index - weight-to-height ratio</li>
+                        <li>💪 <b>Body Fat %</b>: Estimated fat levels using body measurements</li>
+                        <li>🔥 <b>BMR</b>: Basal Metabolic Rate - daily calorie burn</li>
+                        <li>🫁 <b>VO2 Max</b>: Cardiovascular endurance from pulse rate</li>
+                        <li>🏋️ <b>Strength & Flexibility</b>: Push-ups, Sit-ups, Squats, and Sit & Reach</li>
+                    </ul>
+                    <h6>🎯 Performance Scale:</h6>
+                    <ul style="text-align: left;">
+                        <li><b>Excellent</b>: Well above average fitness</li>
+                        <li><b>Good</b>: Above average, keep going!</li>
+                        <li><b>Average</b>: You're on track</li>
+                        <li><b>Below Average</b>: Needs more training</li>
+                        <li><b>Poor</b>: Improvement required urgently</li>
+                    </ul>
+                    <hr>
+                    <p>📌  This gives you a holistic view of your current health and fitness condition.</p>
+                `,
+                icon: "info",
+                confirmButtonText: "Got It!",
+                confirmButtonColor: "#3498db",
+                width: 600
+            });
+        }
 
-//---------------------------------------------------------------------------------------------------------------
 
+
+
+          //--------------------------------------------------------------------------------------------------------
+        function generateReport() {
+            const form = document.getElementById('testForm');
+                if (!form.checkValidity()) {
+                form.reportValidity(); // Shows native error messages (like tooltip)
+                return;
+            }
+
+            const Weight = parseFloat(form.querySelector('[name="Weight"]').value);
+            const Height = parseFloat(form.querySelector('[name="Height"]').value);
+            const Waist = parseFloat(form.querySelector('[name="Waist"]').value);
+            const Hips = parseFloat(form.querySelector('[name="Hips"]').value);
+            const Neck = parseFloat(form.querySelector('[name="Neck"]').value);
+            const PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
+            const Gender = form.querySelector('[name="Gender"]').value;
+
+            const Age = studentData?.Age ? parseInt(studentData.Age) : 18; // fallback if missing
+
+            const PushUps = parseInt(form.querySelector('[name="PushUps"]').value) || 0;
+            const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
+            const Squats = parseInt(form.querySelector('[name="Squats"]').value) || 0;
+            const SitReach = parseFloat(form.querySelector('[name="SitReach"]').value) || 0;
+
+                 calculated = {
+                Weight,
+                Height,
+                Waist,
+                Hips,
+                Neck,
+                PulseRate,
+                Gender,
+                Age
+            };
+
+            // BMI + Status
+            if (Weight && Height) {
+                const heightInM = Height / 100;
+                const bmi = (Weight / (heightInM * heightInM)).toFixed(1);
+                calculated.BMI = bmi;
+
+                if (bmi < 18.5) calculated.BMIStatus = "Underweight";
+                else if (bmi < 24.9) calculated.BMIStatus = "Normal weight";
+                else if (bmi < 29.9) calculated.BMIStatus = "Overweight";
+                else calculated.BMIStatus = "Obese";
+            }
+
+            // Body Fat % → different formula for male/female
+            if (Waist && Neck && Height) {
+                if (Gender === "male") {
+                    calculated.BodyFat = (
+                        495 / (1.0324 - 0.19077 * Math.log10(Waist - Neck) + 0.15456 * Math.log10(Height)) - 450
+                    ).toFixed(1);
+                } else if (Gender === "female" && Hips) {
+                    calculated.BodyFat = (
+                        495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450
+                    ).toFixed(1);
+                }
+            }
+
+            // BMR (Mifflin-St Jeor)
+            if (Weight && Height) {
+                if (Gender === "male") {
+                    calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age + 5);
+                } else {
+                    calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age - 161);
+                }
+                calculated.CalorieIntake = Math.round(calculated.BMR * 1.55);
+            }
+            // VO2 Max (use actual Age instead of hardcoded 18)
+            if (PulseRate) {
+                calculated.VO2Max = Math.round(15 * (220 - Age) / PulseRate);
+            } else {
+                calculated.VO2Max = "N/A";
+            }
+
+            // Fitness Score
+            const pushupScore = PushUps / 2;
+            const situpScore = SitUps / 2;
+            const squatScore = Squats / 2;
+            const sitReachScore = SitReach;
+
+            const totalScore = Math.round(
+                pushupScore + situpScore + squatScore + sitReachScore + (calculated.VO2Max !== "N/A" ? calculated.VO2Max / 2 : 0)
+            );
+            calculated.Total = totalScore;
+
+            // Grade
+            if (totalScore >= 80) calculated.Grade = "A+";
+            else if (totalScore >= 70) calculated.Grade = "A";
+            else if (totalScore >= 60) calculated.Grade = "B";
+            else if (totalScore >= 50) calculated.Grade = "C";
+            else calculated.Grade = "D";
+
+            // Store globally for saveRecord()
+            window.calculated = calculated;
+
+            // Evaluation rules
+            const avgMetrics = {
+                BMI: 22.5,
+                VO2Max: 45,
+                BodyFat: 20,
+                BMR: 1500,
+                CalorieIntake: 2100,
+                Total: 60,
+            };
+
+            function getEvaluation(metric, value) {
+                if (value === "N/A" || value === undefined) return "N/A";
+                value = parseFloat(value);
+                const avg = avgMetrics[metric];
+                const diff = value - avg;
+
+                if (metric === "BodyFat" || metric === "BMI") {
+                    if (value < 16) return "Underweight - Needs Improvement";
+                    if (value > 30) return "High - At Risk";
+                    if (Math.abs(diff) <= 2) return "Healthy Range";
+                    return diff < 0 ? "Low - Acceptable" : "High - Needs Work";
+                }
+
+                if (Math.abs(diff) < 5) return "Average - Needs Practice";
+                if (diff > 10) return "Excellent";
+                if (diff > 5) return "Good";
+                if (diff < -10) return "Poor";
+                return "Below Average";
+            }
+
+            // Report rendering
+            const reportHTML = `
+                <tr><th>BMI</th><td>${calculated.BMI ?? 'N/A'}</td><td>${getEvaluation('BMI', calculated.BMI)}</td></tr>
+                <tr><th>BMI Status</th><td>${calculated.BMIStatus ?? 'N/A'}</td><td>-</td></tr>
+                <tr><th>Body Fat %</th><td>${calculated.BodyFat ?? 'N/A'}</td><td>${getEvaluation('BodyFat', calculated.BodyFat)}</td></tr>
+                <tr><th>BMR</th><td>${calculated.BMR ?? 'N/A'}</td><td>${getEvaluation('BMR', calculated.BMR)}</td></tr>
+                <tr><th>Calorie Intake</th><td>${calculated.CalorieIntake ?? 'N/A'}</td><td>${getEvaluation('CalorieIntake', calculated.CalorieIntake)}</td></tr>
+                <tr><th>VO2 Max</th><td>${calculated.VO2Max}</td><td>${getEvaluation('VO2Max', calculated.VO2Max)}</td></tr>
+                <tr><th>Total Score</th><td>${calculated.Total}</td><td>${getEvaluation('Total', calculated.Total)}</td></tr>
+                <tr><th>Grade</th><td>${calculated.Grade}</td><td>-</td></tr>
+            `;
+
+            document.getElementById("reportTableBody").innerHTML = reportHTML;
+            document.getElementById("reportSection").classList.remove("hidden");
+        }
+
+
+        //----------------------------------------------------------------------------------------------------
+
+
+
+
+        async function saveRecord() {
+            const currentTR = localStorage.getItem('currentTR');
+            if (!currentTR) {
+                Swal.fire('Session Expired', 'Please log in again to save your record.', 'error');
+                window.location.href = '../Forbidden.html';
+                return;
+            }
+
+            const saveBtn = document.getElementById("saveBtn");
+            saveBtn.disabled = true;
+
+            if (!studentData || !calculated) {
+                Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
+                return;
+            }
+
+            const requiredChecks = [
+                { name: 'TR', value: studentData.TR },
+                { name: 'DOB', value: studentData.DOB },
+                { name: 'Age', value: studentData.Age },
+                { name: 'Weight', value: calculated.Weight },
+                { name: 'Height', value: calculated.Height },
+                { name: 'Waist', value: calculated.Waist },
+                { name: 'Hips', value: calculated.Hips },
+                { name: 'Neck', value: calculated.Neck },
+                { name: 'BMI', value: calculated.BMI },
+                { name: 'BMIStatus', value: calculated.BMIStatus },
+                { name: 'BodyFat', value: calculated.BodyFat },
+                { name: 'BMR', value: calculated.BMR },
+                { name: 'CalorieIntake', value: calculated.CalorieIntake },
+                { name: 'VO2Max', value: calculated.VO2Max },
+                { name: 'Total', value: calculated.Total },
+                { name: 'Grade', value: calculated.Grade },
+            ];
+
+            for (const field of requiredChecks) {
+                if (field.name === 'VO2Max' && (field.value === "N/A" || field.value === null || field.value === undefined || field.value === '')) {
+                    Swal.fire('Invalid VO2Max', 'Please provide a valid pulse rate to calculate VO2 Max.', 'error');
+                    return;
+                }
+                if (field.value === null || field.value === undefined || field.value === '') {
+                    Swal.fire('Missing Field', `Please fill the field: ${field.name}`, 'error');
+                    return;
+                }
+            }
+
+            const body = {
+                TR: studentData.TR,
+                DOB: studentData.DOB,
+                Age: studentData.Age,
+                Weight: calculated.Weight,
+                Height: calculated.Height,
+                Waist: calculated.Waist,
+                Hips: calculated.Hips,
+                Neck: calculated.Neck,
+                BMI: parseFloat(calculated.BMI),
+                BMIStatus: calculated.BMIStatus,
+                BodyFat: parseFloat(calculated.BodyFat),
+                BMR: parseFloat(calculated.BMR),
+                CalorieIntake: parseFloat(calculated.CalorieIntake),
+                VO2Max: parseFloat(calculated.VO2Max),
+                Total: parseFloat(calculated.Total),
+                Grade: calculated.Grade
+            };
+
+            // 🔹 Confirmation SweetAlert before actual save
+        Swal.fire({
+            title: 'Confirm Submission',
+            html: `
+                <p>Please confirm your details before submitting:</p>
+                <ul style="text-align:left">
+                    <li><b>Age:</b> ${calculated.Age} years</li>
+                    <li><b>Gender:</b> ${calculated.Gender || 'Not specified'}</li>
+                    <li><b>Weight:</b> ${body.Weight} kg</li>
+                    <li><b>Height:</b> ${body.Height} cm</li>
+                    <li><b>BMI:</b> ${body.BMI.toFixed(2)} (${body.BMIStatus})</li>
+                    <li><b>Body Fat %:</b> ${body.BodyFat.toFixed(2)}</li>
+                    <li><b>BMR:</b> ${body.BMR.toFixed(1)}</li>
+                    <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
+                    <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
+                    <li><b>Grade:</b> ${body.Grade}</li>
+                </ul>
+                <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
+            `,
+
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Submit',
+                cancelButtonText: 'Review Again',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/api/testrecords', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            Swal.fire('Save Failed', data.error, 'error');
+                        } else {
+                            // 🔹 Calculate next allowed submission date
+                            const nextDate = new Date();
+                            nextDate.setDate(nextDate.getDate() + 7);
+
+                            Swal.fire({
+                                title: '🎉 Fitness Test Saved!',
+                                html: `Your result has been saved successfully.<br>
+                                       <b>Next submission allowed on:</b> ${nextDate.toLocaleDateString()}`,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                location.reload(); // Reload to reflect changes
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Save failed", err);
+                        Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
+                    });
+                } else {
+                    saveBtn.disabled = false; // re-enable if cancelled
+                }
+            });
+        }
+
+
+
+        //---------------------------------------------------------------------------------------------------------------
 
 
 function renderProgressBar(records) {
     const goal = parseFloat(localStorage.getItem("fitnessGoal"));
+    const progressSection = document.getElementById("progressSection");
+    const progressWrapper = document.getElementById("progressWrapper");
 
-    if (!goal || records.length === 0) {
-        document.getElementById("progressSection").classList.remove("hidden");
-        document.getElementById("progressWrapper").classList.add("hidden");
+    if (!progressSection || !progressWrapper) return;
+
+    if (!goal || !records || records.length === 0) {
+        progressSection.classList.remove("hidden");
+        progressWrapper.classList.add("hidden");
         return;
     }
 
@@ -989,38 +952,38 @@ function renderProgressBar(records) {
 
     // --- Primary Progress (Total score, higher = better) ---
     let progress = ((latestTotal - firstTotal) / (goal - firstTotal)) * 100;
-
-    // clamp but also detect regression
     let regression = false;
     if (progress < 0) {
         regression = true;
-        progress = Math.abs(progress); // show magnitude even if backward
+        progress = Math.abs(progress);
     }
     progress = Math.min(progress, 100);
 
-    // Show UI
-    document.getElementById("progressSection").classList.remove("hidden");
-    document.getElementById("progressWrapper").classList.remove("hidden");
+    progressSection.classList.remove("hidden");
+    progressWrapper.classList.remove("hidden");
 
     const bar = document.getElementById("progressBar");
-    bar.className = "progress-bar";
-    bar.style.width = progress + "%";
-    bar.textContent = regression ? `-${progress.toFixed(1)}%` : `${progress.toFixed(1)}%`;
+    if (bar) {
+        bar.className = "progress-bar";
+        bar.style.width = progress + "%";
+        bar.textContent = regression ? `-${progress.toFixed(1)}%` : `${progress.toFixed(1)}%`;
 
-    if (regression) {
-        bar.classList.add("bg-danger");
-    } else if (progress < 30) {
-        bar.classList.add("bg-danger");
-    } else if (progress < 70) {
-        bar.classList.add("bg-warning");
-    } else {
-        bar.classList.add("bg-success");
+        if (regression) {
+            bar.classList.add("bg-danger");
+        } else if (progress < 30) {
+            bar.classList.add("bg-danger");
+        } else if (progress < 70) {
+            bar.classList.add("bg-warning");
+        } else {
+            bar.classList.add("bg-success");
+        }
     }
 
     const text = `Start: ${firstTotal} → Current: ${latestTotal} → Goal: ${goal}`;
-    document.getElementById("progressText").textContent = regression
-        ? text + " | ⚠️ Regression observed"
-        : text;
+    const progressText = document.getElementById("progressText");
+    if (progressText) {
+        progressText.textContent = regression ? text + " | ⚠️ Regression observed" : text;
+    }
 
     // --- Secondary Progress (BMI toward WHO range) ---
     if (records[0].BMI) {
@@ -1028,14 +991,11 @@ function renderProgressBar(records) {
         const minHealthy = 18.5, maxHealthy = 24.9;
 
         let bmiProgress = 0, bmiDirection = "";
-
         if (latestBMI < minHealthy) {
-            // underweight → goal = 18.5
-            bmiProgress = ((latestBMI - 15) / (18.5 - 15)) * 100; // assuming 15 as practical min
+            bmiProgress = ((latestBMI - 15) / (18.5 - 15)) * 100;
             bmiDirection = "Underweight → gain needed";
         } else if (latestBMI > maxHealthy) {
-            // overweight → goal = 24.9
-            bmiProgress = ((30 - latestBMI) / (30 - 24.9)) * 100; // assuming 30 as practical max
+            bmiProgress = ((30 - latestBMI) / (30 - 24.9)) * 100;
             bmiDirection = "Overweight → loss needed";
         } else {
             bmiProgress = 100;
@@ -1044,265 +1004,311 @@ function renderProgressBar(records) {
 
         bmiProgress = Math.max(0, Math.min(bmiProgress, 100));
 
-        // render BMI bar dynamically (if you add HTML slot for it)
         const bmiWrapper = document.getElementById("bmiProgressWrapper");
         if (bmiWrapper) {
             bmiWrapper.classList.remove("hidden");
             const bmiBar = document.getElementById("bmiProgressBar");
-            bmiBar.className = "progress-bar";
-            bmiBar.style.width = bmiProgress + "%";
-            bmiBar.textContent = bmiProgress.toFixed(1) + "%";
+            if (bmiBar) {
+                bmiBar.className = "progress-bar";
+                bmiBar.style.width = bmiProgress + "%";
+                bmiBar.textContent = bmiProgress.toFixed(1) + "%";
 
-            if (bmiProgress < 30) bmiBar.classList.add("bg-danger");
-            else if (bmiProgress < 70) bmiBar.classList.add("bg-warning");
-            else bmiBar.classList.add("bg-success");
+                if (bmiProgress < 30) bmiBar.classList.add("bg-danger");
+                else if (bmiProgress < 70) bmiBar.classList.add("bg-warning");
+                else bmiBar.classList.add("bg-success");
+            }
 
-            document.getElementById("bmiProgressText").textContent =
-                `BMI: ${latestBMI.toFixed(1)} (${bmiDirection})`;
+            const bmiProgressText = document.getElementById("bmiProgressText");
+            if (bmiProgressText) {
+                bmiProgressText.textContent = `BMI: ${latestBMI.toFixed(1)} (${bmiDirection})`;
+            }
         }
     }
 
-    // ---- Chart.js Trend Line (unchanged) ----
-    const ctx = document.getElementById('progressChart').getContext('2d');
-    if (window.progressChart && typeof window.progressChart.destroy === "function") {
-        window.progressChart.destroy();
-    }
+    // ---- Chart.js Trend Line ----
+    const ctx = document.getElementById('progressChart')?.getContext('2d');
+    if (ctx) {
+        if (window.progressChart && typeof window.progressChart.destroy === "function") {
+            window.progressChart.destroy();
+        }
 
-    const labels = records.map(r => new Date(r.CreatedAt).toLocaleDateString()).reverse();
-    const dataPoints = records.map(r => parseFloat(r.Total)).reverse();
+        const labels = records.map(r => new Date(r.CreatedAt).toLocaleDateString()).reverse();
+        const dataPoints = records.map(r => parseFloat(r.Total)).reverse();
 
-    window.progressChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Fitness Score',
-                    data: dataPoints,
-                    borderColor: '#4facfe',
-                    backgroundColor: 'rgba(79,172,254,0.2)',
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#00f2fe',
-                    tension: 0.3
-                },
-                {
-                    label: 'Goal',
-                    data: Array(dataPoints.length).fill(goal),
-                    borderColor: '#ff6a00',
-                    borderDash: [5, 5],
-                    borderWidth: 2,
-                    pointRadius: 0
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'top' },
-                tooltip: { mode: 'index', intersect: false }
+        window.progressChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Fitness Score',
+                        data: dataPoints,
+                        borderColor: '#4facfe',
+                        backgroundColor: 'rgba(79,172,254,0.2)',
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#00f2fe',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Goal',
+                        data: Array(dataPoints.length).fill(goal),
+                        borderColor: '#ff6a00',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }
+                ]
             },
-            scales: { y: { beginAtZero: false } }
-        }
-    });
-}
-
-
-async function loadTestHistory() {
-    // Swal.showLoading();
-    try {
-        const response = await fetch(`/api/testrecords/me`, {
-            method: 'GET',
-            credentials: 'include'
-        });
-        const records = await response.json();
-        const saveBtn = document.getElementById('saveBtn');
-        const saveWarning = document.getElementById('saveWarning');
-        const tbody = document.getElementById('historyBody');
-        tbody.innerHTML = ''; // Clear existing content
-
-        // Handle save button visibility based on submission timing
-        if (records.length > 0) {
-            const latest = new Date(records[0].CreatedAt);
-            const now = new Date();
-            const diffDays = Math.floor((now - latest) / (1000 * 60 * 60 * 24));
-
-            if (diffDays < 7) {
-                saveBtn.style.display = "none";
-                saveWarning.textContent = `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
-                saveWarning.style.color = 'orange';
-            } else {
-                saveBtn.style.display = "inline-block";
-                saveWarning.textContent = '✅ You can save a new record now.';
-                saveWarning.style.color = 'green';
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: { y: { beginAtZero: false } }
             }
-        } else {
-            saveBtn.style.display = "inline-block";
-            saveWarning.textContent = '⚠️ First attempt. Please submit carefully.';
-            saveWarning.style.color = 'red';
-        }
-
-        // Initialize or reinitialize DataTables
-        if ($.fn.DataTable.isDataTable('#historyTable')) {
-            $('#historyTable').DataTable().destroy(); // Destroy existing instance to avoid conflicts
-        }
-
-        const table = $('#historyTable').DataTable({
-            paging: true,
-            searching: true,
-            ordering: true,
-            responsive: true, // Add this
-            data: records, // Pass records directly to DataTables
-            columns: [
-                { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
-                { data: 'BMI', render: (data) => parseFloat(data).toFixed(2) },
-                { data: 'BodyFat', render: (data) => parseFloat(data).toFixed(2) },
-                { data: 'BMR', render: (data) => parseFloat(data).toFixed(1) },
-                { data: 'VO2Max', render: (data) => (data ? parseFloat(data).toFixed(1) : 'N/A') },
-                { data: 'Total', render: (data) => parseFloat(data).toFixed(1) },
-                { data: 'Grade', render: (data) => `<strong>${data}</strong>` }
-            ],
-            language: {
-                emptyTable: "No test records available. Please submit a fitness test."
-            }
-        });
-
-        renderProgressBar(records);
-        Swal.close();
-
-    } catch (err) {
-        console.error("Error loading test history", err);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error Loading History',
-            text: 'Failed to load test history. Please try again later.'
         });
     }
 }
 
 
+        async function loadTestHistory() {
+            // Swal.showLoading();
+            try {
+                const response = await fetch(`/api/testrecords/me`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const records = await response.json();
+                const saveBtn = document.getElementById('saveBtn');
+                const saveWarning = document.getElementById('saveWarning');
+                const tbody = document.getElementById('historyBody');
+                tbody.innerHTML = ''; // Clear existing content
+
+                // Handle save button visibility based on submission timing
+                if (records.length > 0) {
+                    const latest = new Date(records[0].CreatedAt);
+                    const now = new Date();
+                    const diffDays = Math.floor((now - latest) / (1000 * 60 * 60 * 24));
+
+                    if (diffDays < 7) {
+                        saveBtn.style.display = "none";
+                        saveWarning.textContent = `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
+                        saveWarning.style.color = 'orange';
+                    } else {
+                        saveBtn.style.display = "inline-block";
+                        saveWarning.textContent = '✅ You can save a new record now.';
+                        saveWarning.style.color = 'green';
+                    }
+                } else {
+                    saveBtn.style.display = "inline-block";
+                    saveWarning.textContent = '⚠️ First attempt. Please submit carefully.';
+                    saveWarning.style.color = 'red';
+                }
+
+                // Initialize or reinitialize DataTables
+                if ($.fn.DataTable.isDataTable('#historyTable')) {
+                    $('#historyTable').DataTable().destroy(); // Destroy existing instance to avoid conflicts
+                }
+
+                const table = $('#historyTable').DataTable({
+                    paging: true,
+                    searching: true,
+                    ordering: true,
+                    responsive: true, // Add this
+                    data: records, // Pass records directly to DataTables
+                    columns: [
+                        { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
+                        { data: 'BMI', render: (data) => parseFloat(data).toFixed(2) },
+                        { data: 'BodyFat', render: (data) => parseFloat(data).toFixed(2) },
+                        { data: 'BMR', render: (data) => parseFloat(data).toFixed(1) },
+                        { data: 'VO2Max', render: (data) => (data ? parseFloat(data).toFixed(1) : 'N/A') },
+                        { data: 'Total', render: (data) => parseFloat(data).toFixed(1) },
+                        { data: 'Grade', render: (data) => `<strong>${data}</strong>` }
+                    ],
+                    language: {
+                        emptyTable: "No test records available. Please submit a fitness test."
+                    }
+                });
+
+                renderProgressBar(records);
+                // currentScore update which is 'Total' in latest record
+                if (records.length > 0) {
+                    const currentScoreEl = document.getElementById('currentScore');
+                    currentScoreEl.textContent = `${parseFloat(records[0].Total).toFixed(1)}`;
+                }   
+                Swal.close();
+
+            } catch (err) {
+                console.error("Error loading test history", err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Loading History',
+                    text: 'Failed to load test history. Please try again later.'
+                });
+            }
+        }
 
 
-// On page load, set input value if goal exists
-document.addEventListener("DOMContentLoaded", () => {
-    const savedGoal = localStorage.getItem("fitnessGoal");
-    if (savedGoal) {
-        document.getElementById("goalInput").value = savedGoal;
-    }
-});
-
-// Save goal
-document.getElementById("saveGoalBtn").addEventListener("click", (e) => {
-    e.preventDefault();
-
-    const goal = parseFloat(document.getElementById("goalInput").value);
-    if (!goal || goal <= 0) {
-        Swal.fire('Invalid Goal', 'Please enter a valid number greater than 0.', 'error');
-        return;
-    }
-
-    localStorage.setItem("fitnessGoal", goal);
-    Swal.fire('Goal Saved ✅', `Your goal is set to ${goal}`, 'success')
-    .then(() => {
-        // ✅ Reload only after user clicks OK
-        location.reload();
-    });
-});
 
 
+        // On page load, set input value if goal exists
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedGoal = localStorage.getItem("fitnessGoal");
+            if (savedGoal) {
+                document.getElementById("goalInput").value = savedGoal;
+            }
+        });
 
-  //----------------------------------------------------------------------------------------------------------------
-        
+        // Save goal
+        document.getElementById("saveGoalBtn").addEventListener("click", async (e) => {
+            e.preventDefault();
+
+            const goal = parseFloat(document.getElementById("goalInput").value);
+            if (!goal || goal <= 0) {
+                Swal.fire('Invalid Goal', 'Please enter a valid number greater than 0.', 'error');
+                return;
+            }
+
+            localStorage.setItem("fitnessGoal", goal);
+            Swal.fire('Goal Saved ✅', `Your goal is set to ${goal}`, 'success');
+
+            // Update progress bar and chart without reloading
+            try {
+                const response = await fetch(`/api/testrecords/me`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const records = await response.json();
+                renderProgressBar(records); // Update UI dynamically
+            } catch (err) {
+                console.error("Error updating progress after goal save", err);
+                Swal.fire('Error', 'Failed to update progress. Please refresh.', 'error');
+            }
+        });
+
+
+
+          //----------------------------------------------------------------------------------------------------------------
+                
 // Get all the navigation links
-const navLinks = document.querySelectorAll('.navbar a');
-const fitSection = document.getElementById('student-fit');
-const swimSection = document.getElementById('student-swim');
+const navLinks = document.querySelectorAll('.sidebar a');
+const sections = {
+    'tab-profile': 'profile-overview',
+    'tab-fit': 'student-fit',
+    'tab-swim': 'student-swim',
+    'tab-goals': 'goals-progress',
+    'tab-history': 'test-history',
+    'tab-achievements': 'achievements'
+};
 
-// Hide the swim section by default
-swimSection.style.display = 'none';
+// Function to show a specific tab
+function showTab(tabId) {
+    // Remove 'active' class from all nav links
+    navLinks.forEach(nav => nav.classList.remove('active'));
+    
+    // Hide all sections
+    Object.values(sections).forEach(id => {
+        const section = document.getElementById(id);
+        if (section) section.style.display = 'none';
+    });
 
-// Add a click listener to each link
+    // Activate the selected tab and section
+    const link = document.getElementById(tabId);
+    const sectionId = sections[tabId];
+    if (link && sectionId) {
+        link.classList.add('active');
+        const section = document.getElementById(sectionId);
+        if (section) section.style.display = 'block';
+    }
+}
+
+// Add click listener to each link
 navLinks.forEach(link => {
     link.addEventListener('click', function(event) {
-        event.preventDefault(); // Stop the link from trying to navigate
-
-        // 1. Remove 'active' class from ALL nav links
-        navLinks.forEach(nav => nav.classList.remove('active'));
-
-        // 2. Add 'active' class to the ONE link that was clicked
-        this.classList.add('active');
-
-        // 3. Show the correct content section based on the clicked link's ID
-        if (this.id === 'tab-fit') {
-            fitSection.style.display = 'block';
-            swimSection.style.display = 'none';
-        } else if (this.id === 'tab-swim') {
-            fitSection.style.display = 'none';
-            swimSection.style.display = 'block';
-        }
-        // You can ignore the logout link or handle it separately
+        event.preventDefault();
+        const tabId = this.id;
+        showTab(tabId);
+        localStorage.setItem('activeTab', tabId); // Save active tab
     });
 });
 
-//-------------------------------------------------------------------------------------------------
-function clearFitnessResults() {
-    const fields = ["Weight", "Height", "Waist", "Hips", "Neck", "PushUps", "SitUps", "Squats", "SitReach", "PulseRate"];
-    fields.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
-    });
-
-    document.getElementById("reportTableBody").innerHTML = "";
-    document.getElementById("reportSection").classList.add("hidden");
-}
-
-
-  function showConverter() {
-    Swal.fire({
-      title: '📏 Inches to Centimeters',
-      html: `
-        <input id="inchesInput" type="number" step="any" placeholder="Enter inches" class="swal2-input" />
-        <div id="result" style="margin-top: 10px; font-weight: bold;"></div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Convert',
-      cancelButtonText: 'Close',
-      preConfirm: () => {
-        const inches = parseFloat(document.getElementById('inchesInput').value);
-        if (isNaN(inches)) {
-          Swal.showValidationMessage('Please enter a valid number!');
-        } else {
-          const cm = (inches * 2.54).toFixed(2);
-          document.getElementById('result').innerText = `${inches} inches = ${cm} cm`;
-          return false; // Prevents closing
-        }
-      }
-    });
-  }
-
-document.getElementById('logoutLink').addEventListener('click', function (e) {
-    e.preventDefault();
-
-    fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include'
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            localStorage.clear(); // Clear any client-side data
-            window.location.href = '../homepage.html'; // Redirect to login/home
-        } else {
-            alert('Logout failed.');
-        }
-    })
-    .catch(err => {
-        console.error('Logout error:', err);
-    });
+// On page load, restore the last active tab or default to profile
+document.addEventListener("DOMContentLoaded", () => {
+    const savedTab = localStorage.getItem('activeTab') || 'tab-profile';
+    showTab(savedTab);
+    validateStudentSession();
 });
+        //-------------------------------------------------------------------------------------------------
+        function clearFitnessResults() {
+            const fields = ["Weight", "Height", "Waist", "Hips", "Neck", "PushUps", "SitUps", "Squats", "SitReach", "PulseRate"];
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
+            });
 
+            document.getElementById("reportTableBody").innerHTML = "";
+            document.getElementById("reportSection").classList.add("hidden");
+        }
+
+
+          function showConverter() {
+            Swal.fire({
+              title: '📏 Inches to Centimeters',
+              html: `
+                <input id="inchesInput" type="number" step="any" placeholder="Enter inches" class="swal2-input" />
+                <div id="result" style="margin-top: 10px; font-weight: bold;"></div>
+              `,
+              showCancelButton: true,
+              confirmButtonText: 'Convert',
+              cancelButtonText: 'Close',
+              preConfirm: () => {
+                const inches = parseFloat(document.getElementById('inchesInput').value);
+                if (isNaN(inches)) {
+                  Swal.showValidationMessage('Please enter a valid number!');
+                } else {
+                  const cm = (inches * 2.54).toFixed(2);
+                  document.getElementById('result').innerText = `${inches} inches = ${cm} cm`;
+                  return false; // Prevents closing
+                }
+              }
+            });
+          }
+
+        document.getElementById('logoutLink').addEventListener('click', function (e) {
+            e.preventDefault();
+
+            fetch('/api/logout', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.clear(); // Clear any client-side data
+                    window.location.href = '../homepage.html'; // Redirect to login/home
+                } else {
+                    alert('Logout failed.');
+                }
+            })
+            .catch(err => {
+                console.error('Logout error:', err);
+            });
+        });
+
+        // New Functions for Modern UI
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const main = document.querySelector('.main-content');
+            sidebar.classList.toggle('collapsed');
+            main.classList.toggle('expanded');
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
 
     </script>
-  </body>
-  
+</body>
 </html>

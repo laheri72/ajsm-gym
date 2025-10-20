@@ -1714,7 +1714,7 @@ app.get('/api/current-tr', (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ message: 'Not logged in' });
     }
-    res.json({ tr: req.session.user.TR });
+    res.json({ tr: req.session.user.TR }); 
 });
 
 app.post('/api/logout', (req, res) => {
@@ -2824,7 +2824,11 @@ app.get('/api/testmaster/me', async (req, res) => {
 
 // NEW route: fetch TestMaster by TR (for trainer dashboard)
 app.get('/api/testmaster/:tr', async (req, res) => {
-  const { tr } = req.params;
+    if (!req.session.user || !req.session.user.isTrainer) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in as a trainer.' });
+    }
+
+    const { tr } = req.params;
 
   try {
     const result = await pool.request()
