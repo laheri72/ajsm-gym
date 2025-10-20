@@ -2824,7 +2824,7 @@ app.get('/api/testmaster/me', async (req, res) => {
 
 // NEW route: fetch TestMaster by TR (for trainer dashboard)
 app.get('/api/testmaster/:tr', async (req, res) => {
-    if (!req.session.user || !req.session.user.isTrainer) {
+    if (!req.session.user || !req.session.user.Role || req.session.user.Role !== 'Trainer') {
         return res.status(401).json({ error: 'Unauthorized. Please log in as a trainer.' });
     }
 
