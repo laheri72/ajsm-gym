@@ -191,25 +191,22 @@ const formatNumber = (num, decimals) => (num != null ? num.toFixed(decimals) : '
             }
         },
         columns: [
-    { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+            { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
             { data: 'TR' },
             { data: 'Name' },
             { data: 'Age', render: d => formatNumber(d, 2) },
             { data: 'Weight', render: d => formatNumber(d, 2) },
-            { 
-data: 'Height', render: d => formatNumber(d, 1) },
+            { data: 'Height', render: d => formatNumber(d, 1) },
             { data: 'Waist', render: d => formatNumber(d, 1) },
             { data: 'Hips', render: d => formatNumber(d, 1) },
             { data: 'Neck', render: d => formatNumber(d, 1) },
             { data: 'BMI', render: d => formatNumber(d, 2) },
-            { 
-data: 'BMIStatus' }, // Column index 10
+            { data: 'BMIStatus' }, // Column index 10
             { data: 'BodyFat', render: d => formatNumber(d, 2) },
             { data: 'BMR', render: d => formatNumber(d, 1) },
             { data: 'CalorieIntake', render: d => formatNumber(d, 1) },
             { data: 'VO2Max', render: d => formatNumber(d, 1) },
-            { data: 'Total', render: d => 
-formatNumber(d, 1) },
+            { data: 'Total', render: d => formatNumber(d, 1) },
             { data: 'Grade' }, // Column index 16
             { data: 'SubmittedBy' }
         ],
