@@ -210,6 +210,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     render: function(data) {
                         return `<button class="btn btn-sm btn-success activate-btn" data-tr="${data}">✅ Activate</button>`;
                     }
+                },
+                {
+                    data: 'TR',
+                    orderable: false,
+                    render: function(data, type, row) { 
+                        // 'row.Name' is available to make the warning more specific
+                        return `<button class="btn btn-sm btn-danger delete-student-btn" data-tr="${data}" data-name="${row.Name}">
+                                    ❌ Delete
+                                </button>`;
+                    }
                 }
             ],
             responsive: true,
@@ -247,6 +257,61 @@ document.addEventListener("DOMContentLoaded", () => {
                     inactiveStudentDataTable.ajax.reload(); // Refresh the DataTable
                 } else {
                     Swal.fire('Error', 'Failed to update student: ' + data.message, 'error');
+                }
+            }
+        });
+    });
+
+    // Delegated event listener for PERMANENTLY DELETING a student
+    $('#inactiveStudentTable').on('click', '.delete-student-btn', function() {
+        const tr = $(this).data('tr');
+        const name = $(this).data('name') || `TR ${tr}`;
+        const $button = $(this); // Get a reference to the button
+
+        Swal.fire({
+            title: `<span style="color: var(--danger);">PERMANENTLY DELETE</span> ${name}?`,
+            html: "This action is <strong>irreversible</strong>. All data (attendance, workout plans, achievements, test records, etc.) for this student will be <strong>permanently erased</strong>.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: 'var(--danger)', 
+            cancelButtonColor: 'var(--gray)',
+            confirmButtonText: 'Yes, I understand. Delete permanently.'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                
+                // --- Show loading state on the button ---
+                $button.prop('disabled', true);
+                // Use Bootstrap's built-in spinner
+                $button.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...');
+
+                try {
+                    const res = await fetch(`/api/admin/delete-student/${tr}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok && data.success) {
+                        Swal.fire(
+                            'Deleted!',
+                            data.message,
+                            'success'
+                        );
+                        // Refresh the table to remove the row
+                        inactiveStudentDataTable.ajax.reload();
+                    } else {
+                        // API returned an error (e.g., 403, 404, 500)
+                        throw new Error(data.message || 'An unknown error occurred.');
+                    }
+                } catch (err) {
+                    Swal.fire(
+                        'Deletion Failed',
+                        `Error: ${err.message}. The student was not deleted.`,
+                        'error'
+                    );
+                    // Restore the button to its original state on failure
+                    $button.prop('disabled', false);
+                    $button.html('❌ Delete');
                 }
             }
         });

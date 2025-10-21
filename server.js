@@ -53,7 +53,7 @@ const config = {
 const getOrCreateWeekIdByDate = async (date, transactionOrPool) => {
     const request = transactionOrPool.request();
 
-    // moment.js calculates the start and end of the week (assuming Monday is the first day)
+    // moment.js calculates the start and end of the week (ISO week: Monday to Sunday)
     const leaveDate = moment(date);
     const weekStart = leaveDate.clone().startOf('isoWeek').format('YYYY-MM-DD');
     const weekEnd = leaveDate.clone().endOf('isoWeek').format('YYYY-MM-DD');
@@ -584,6 +584,70 @@ app.put('/api/students/status/:TR', async (req, res) => {
     }
 });
 
+
+// ADD THIS NEW ENDPOINT
+// Permanently deletes a student and all their associated data
+app.delete('/api/admin/delete-student/:tr', async (req, res, next) => {
+    // 1. Security Check
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
+    }
+
+    const { tr } = req.params;
+    // Use a transaction to ensure all or nothing is deleted
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        await transaction.begin();
+        // Create a request object tied to the transaction
+        const request = new sql.Request(transaction);
+        request.input('TR', sql.Int, tr);
+
+        // --- DELETION ORDER ---
+
+        // 1. Delete from TrainingLog (grandchild table)
+        // Delete all logs associated with any plan owned by this TR
+        await request.query(`
+            DELETE FROM TrainingLog 
+            WHERE PlanID IN (SELECT PlanID FROM TrainingPlan WHERE TR = @TR)
+        `);
+
+        // 2. Delete from TrainingPlan (child table)
+        await request.query('DELETE FROM TrainingPlan WHERE TR = @TR');
+
+        // 3. Delete from Attendance (child table)
+        await request.query('DELETE FROM Attendance WHERE TR = @TR');
+
+        // 4. Delete from LeaveRequests (child table)
+        await request.query('DELETE FROM LeaveRequests WHERE TR = @TR');
+
+        // 5. Delete from StudentAchievements (child table)
+        await request.query('DELETE FROM StudentAchievements WHERE TR = @TR');
+
+        // 6. Delete from WorkoutPlan (child table)
+        await request.query('DELETE FROM WorkoutPlan WHERE TR = @TR');
+
+        // 7. Finally, delete from Master (parent table)
+        const result = await request.query('DELETE FROM Master WHERE TR = @TR');
+
+        // If all queries succeeded, commit the transaction
+        await transaction.commit();
+
+        if (result.rowsAffected[0] > 0) {
+            res.json({ success: true, message: `Student TR ${tr} and all associated data have been permanently deleted.` });
+        } else {
+            // This means the TR didn't exist in Master, but no error occurred
+            res.status(404).json({ success: false, message: 'Student TR not found in Master table.' });
+        }
+
+    } catch (err) {
+        // If any query fails, roll back the entire transaction
+        await transaction.rollback();
+        console.error('Error during student deletion transaction:', err);
+        // Pass the error to your main error handler
+        next(err); 
+    }
+});
 
 // REPLACE your old /api/student-attendance/:weekId/me route
 
@@ -1212,27 +1276,34 @@ app.delete('/api/admin/delete-user/:username', async (req, res) => {
 
 
 
+// REPLACE your old /api/test-login route with this:
 app.post('/api/test-login', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password } = req.body; // username is TR, password is ITS
 
     try {
         const result = await pool.request()
-            .input('Username', sql.Int, username)
-            .input('Password', sql.Int, password)
-            .query('SELECT * FROM PassTest WHERE Username = @Username AND Password = @Password');
+            // Use NVarChar to safely handle the string input from the form
+            .input('TR_Input', sql.NVarChar(50), username)
+            .input('ITS_Input', sql.NVarChar(50), password)
+            // Query the TestMaster table
+            .query('SELECT TR FROM TestMaster WHERE TR = @TR_Input AND ITS = @ITS_Input');
 
         if (result.recordset.length === 0) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            // Provide a more specific error message
+            return res.status(401).json({ message: 'Invalid TR or ITS number.' });
         }
 
-        req.session.user = { TR: username };
+        // Login successful. Store the authenticated TR in the session.
+        // Using result.recordset[0].TR is more secure than using the 'username' input.
+        req.session.user = { TR: result.recordset[0].TR };
+        
         return res.json({ message: 'Login successful' });
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Test Login Error:', err);
+        res.status(500).json({ message: 'Server error during login.' });
     }
 });
-
 
 
 
@@ -2499,6 +2570,7 @@ app.get('/api/active-sessions', async (req, res) => {
                 WHERE 
                     M.Branch = @Branch 
                     AND M.Gender = @Gender
+                    AND A.Onleave = 0 -- Not on leave
                     AND A.OutTime IS NULL -- The key condition: they haven't checked out
                     AND A.CreatedAt BETWEEN @StartUTC AND @EndUTC -- They checked in today (IST)
                 ORDER BY A.CreatedAt ASC; -- Show earliest check-ins first
@@ -3697,9 +3769,9 @@ async function runAchievementEvaluation() {
             // --- NEW: 3. Iron Dedication Check ---
             const totalHours = student.TotalMinutesLogged / 60;
             const dedicationAchievements = {
-                'Gold': { id: 7, hours: 50 },   // Assuming ID 6 from INSERT statement
-                'Silver': { id: 6, hours: 25 }, // Assuming ID 5
-                'Bronze': { id: 5, hours: 10 }  // Assuming ID 4
+                'Gold': { id: 7, hours: 50 },   
+                'Silver': { id: 6, hours: 25 }, 
+                'Bronze': { id: 5, hours: 10 }  
             };
 
             for (const tier in dedicationAchievements) {
@@ -3832,51 +3904,125 @@ app.get('/api/student/achievements/progress', async (req, res) => {
 });
 
 
-// --- Helper functions for the progress API ---
+/**
+ * Checks if a gap between two dates is "bridged" by Sundays or approved leave days.
+ * @param {moment.Moment} newerDate - The more recent date (e.g., today).
+ * @param {moment.Moment} olderDate - The less recent date (e.g., last workout).
+ * @param {Set<string>} leaveDateSet - A Set of 'OnLeave' dates in 'YYYY-MM-DD' format.
+ * @returns {boolean} - True if the gap is 1 day or less, or if all days in the gap are Sundays or leave days.
+ */
+function isGapExcused(newerDate, olderDate, leaveDateSet) {
+    const gapDays = newerDate.diff(olderDate, 'days');
 
-async function getConsistencyProgress(tr) {
-    // Single query: fetch workout dates and personal best
-    const res = await pool.request()
-        .input('TR', sql.Int, tr)
-        .query(`
-            SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate
-            FROM TrainingPlan
-            WHERE TR = @TR
-            ORDER BY workoutDate DESC;
-
-            SELECT BestStreak FROM Master WHERE TR = @TR;
-        `);
-
-    // First result set: workout dates
-    const workoutDates = res.recordsets[0].map(r => moment(r.workoutDate));
-    // Second result set: personal best
-    const personalBest = res.recordsets[1][0]?.BestStreak || 0;
-
-    if (workoutDates.length === 0) {
-        return { current: 0, target: 10, personalBest };
+    // 1-day gap (e.g., Mon -> Tue) or 0-day gap (same day) is always valid.
+    if (gapDays <= 1) {
+        return true;
     }
 
-    // Compute current streak
-    const today = moment.tz("Asia/Kolkata").startOf('day');
-    const lastWorkout = workoutDates[0];
-    const diffFromToday = today.diff(lastWorkout, 'days');
+    // Loop through each day *inside* the gap.
+    let currentDate = olderDate.clone().add(1, 'day');
+    
+    for (let i = 0; i < gapDays - 1; i++) {
+        const dayOfWeek = currentDate.day(); // 0 = Sunday
+        const dateString = currentDate.format('YYYY-MM-DD');
 
-    let currentStreak = 0;
-    if (diffFromToday <= 1 || (diffFromToday === 2 && today.day() === 1)) {
-        currentStreak = 1;
-        for (let i = 0; i < workoutDates.length - 1; i++) {
-            const diff = workoutDates[i].diff(workoutDates[i + 1], 'days');
-            if (diff === 1 || (diff === 2 && workoutDates[i].day() === 1)) {
+        // This is an unexcused absence (streak breaks) if:
+        // 1. It's NOT Sunday
+        // 2. AND the date is NOT in our set of approved leave dates.
+        if (dayOfWeek !== 0 && !leaveDateSet.has(dateString)) {
+            // This day is a weekday and is not excused. Streak breaks.
+            return false;
+        }
+        
+        // Move to the next day in the gap
+        currentDate.add(1, 'day');
+    }
+
+    // If we get here, all days within the gap were either Sundays or leave days.
+    return true;
+}
+
+
+// --- YOUR UPDATED MAIN FUNCTION ---
+async function getConsistencyProgress(tr) {
+    try {
+        const res = await pool.request()
+            .input('TR', sql.Int, tr)
+            .query(`
+                -- 1. Get all "streak days" (user was present)
+                SELECT DISTINCT CAST(CreatedAt AS DATE) as presentDate
+                FROM Attendance
+                WHERE TR = @TR AND IsPresent = 1
+                ORDER BY presentDate DESC;
+
+                -- 2. Get all "excused gap days" (user was on leave)
+                SELECT DISTINCT CAST(CreatedAt AS DATE) as leaveDate
+                FROM Attendance
+                WHERE TR = @TR AND OnLeave = 1;
+
+                -- 3. Get the user's personal best streak
+                SELECT BestStreak FROM Master WHERE TR = @TR;
+            `);
+
+        // 1. Process "present" dates.
+        //    --- FIX: Apply .startOf('day') to normalize ---
+        const presentDates = res.recordsets[0].map(r => 
+            moment(r.presentDate).startOf('day')
+        );
+        
+        // 2. Process "leave" dates into a fast-lookup Set.
+        //    --- FIX: Apply .startOf('day') for consistency ---
+        const leaveDateSet = new Set(
+            res.recordsets[1].map(r => 
+                moment(r.leaveDate).startOf('day').format('YYYY-MM-DD')
+            )
+        );
+        
+        // 3. Process personal best
+        const personalBest = res.recordsets[2][0]?.BestStreak || 0;
+
+        if (presentDates.length === 0) {
+            // No attendance records at all.
+            return { current: 0, target: 10, personalBest };
+        }
+
+        // --- Compute current streak ---
+        const today = moment.tz("Asia/Kolkata").startOf('day');
+        const lastPresentDate = presentDates[0]; // Already normalized to start of day
+
+        let currentStreak = 0;
+
+        // 1. Check gap between today and the last attendance day
+        //    This will now correctly calculate a 4-day diff
+        if (isGapExcused(today, lastPresentDate, leaveDateSet)) {
+            currentStreak = 1;
+        } else {
+            // This 'else' block will now be correctly triggered
+            // because of the unexcused absence on Oct 20 (Mon).
+            return { current: 0, target: 10, personalBest };
+        }
+
+        // 2. Loop through attendance history to count the full streak
+        for (let i = 0; i < presentDates.length - 1; i++) {
+            const newerDate = presentDates[i];     // Already normalized
+            const olderDate = presentDates[i + 1]; // Already normalized
+
+            if (isGapExcused(newerDate, olderDate, leaveDateSet)) {
                 currentStreak++;
             } else {
+                // This will correctly break on the gap between
+                // Oct 16 (Thu) and Oct 14 (Tue) because of Oct 15 (Wed).
                 break;
             }
         }
+
+        return { current: currentStreak, target: 10, personalBest };
+
+    } catch (err) {
+        console.error(`Failed to get consistency progress for TR ${tr}:`, err);
+        return { current: 0, target: 10, personalBest: 0 };
     }
-
-    return { current: currentStreak, target: 10, personalBest };
 }
-
 
 async function getPerfectMonthProgress(tr) {
     // REVISED LOGIC: Calculate progress towards the rolling 30-day goal
