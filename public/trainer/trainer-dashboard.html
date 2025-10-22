@@ -395,6 +395,21 @@
         body.dark-mode .choices__list--dropdown .choices__item--selectable.is-highlighted {
             background-color: var(--secondary-color);
         }
+        /* ... inside your <style> block ... */
+
+        #testing-area {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 1rem;
+            overflow-x: auto;
+            padding: 1rem 0.5rem; /* Add padding for scrollbar */
+            min-height: 200px; /* Ensure it has some space */
+        }
+
+        #testing-area .accordion-item {
+            flex: 0 0 300px; /* Don't grow, don't shrink, base width 300px */
+            margin-bottom: 0; /* Override default margin */
+        }
     </style>
 </head>
 <body>
@@ -570,15 +585,17 @@
     }
 
 // Inside your <script type="module"> block
-// Updated renderHomePage to fetch data once
+// Inside your <script type="module"> block
+// Updated renderHomePage to fetch data once and add collapsible attendance
+// show username after welcome ,and display "Talabat" when Gender is Male and "Talebaat" when Gender is Female instead of just Gender
 function renderHomePage() {
     elements.mainContent.innerHTML = `
         <div class="card fade-in">
-            <h3 id="welcomeText">Welcome, ${currentUser?.Branch.toUpperCase()} - ${currentUser?.Gender.toUpperCase()}</h3>
+            <h3 id="welcomeText">Welcome, ${currentUser?.Username}! <br> <span>${currentUser?.Branch} - ${currentUser?.Gender === 'Male' ? 'Talabat' : 'Talebaat'}</span></h3>
             <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${new Date().toISOString().split('T')[0]}</span></p>
         </div>
         <div class="card" id="quick-stats">
-            <p style="text-align:center;">Loading stats...</p>
+            <p style="text-align:center;">Loading stats...</p> 
         </div>
         <div class="card" id="student-search-card">
             <h4>Student Search</h4>
@@ -586,18 +603,22 @@ function renderHomePage() {
                 <select id="tr-input" class="form-control"></select>
                 <button id="search-btn" class="btn"><span class="btn-text">Search</span></button>
             </div>
-        </div>
+        </div> 
         <div class="card" id="daily-attendance-section">
-            <h4>Today's Attendance</h4>
-            <table id="dailyAttendanceTable">
-                <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
-                <tbody></tbody>
-            </table>
+            <div class="accordion-header" id="attendance-accordion-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                <h4>Today's Attendance</h4>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="accordion-body hidden" id="attendance-accordion-body">
+                <table id="dailyAttendanceTable">
+                    <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     `;
-
     // Fetch data once and share
-    Promise.all([
+    Promise.all([ 
         fetch('/api/daily-attendance').then(res => res.json()),
         fetch('/api/active-sessions', { credentials: 'include' }).then(res => res.json())
     ]).then(([attendanceData, sessionsData]) => {
@@ -608,24 +629,38 @@ function renderHomePage() {
         activeSessionsCache = sessionsData.data;
 
         // Now update components with shared data
-        renderDailyAttendance(dailyAttendanceCache);
+        renderDailyAttendance(dailyAttendanceCache); 
         initializeSearchSelector(dailyAttendanceCache); // Pass the data instead of fetching again
-        renderQuickStats(dailyAttendanceCache.length, activeSessionsCache.length);
+        
+        // --- MODIFICATION: Calculate present count ---
+        const presentCount = dailyAttendanceCache.filter(s => s.IsPresentToday === 'Present').length;
+        renderQuickStats(presentCount, dailyAttendanceCache.length, activeSessionsCache.length);
+        // --- End Modification ---
+
     }).catch(err => {
         console.error('Failed to load home data:', err);
-        // Handle error in UI (e.g., show error messages in cards)
+        // Handle error in UI
         document.getElementById('dailyAttendanceTable').querySelector('tbody').innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Could not load attendance.</td></tr>';
-        document.getElementById('quick-stats').innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>';
+        document.getElementById('quick-stats').innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>'; 
     });
 
     initHomeListeners();
 }
 
-        function renderQuickStats(totalAttendance, active) {
+// Updated renderQuickStats to show Present/Total and add ID for click, with good styling for highlighting data
+function renderQuickStats(presentCount, totalAttendance, active) {
     document.getElementById('quick-stats').innerHTML = `
         <div class="row">
-            <div class="col-6"><div class="card"><p>Active: ${active}</p></div></div>
-            <div class="col-6"><div class="card"><p>Attendance: ${totalAttendance}</p></div></div>
+            <div class="col-6">
+                <div class="card" id="active-stats-card" style="cursor: pointer;" title="Go to Check-out">
+                    <p>Active: <br> <strong style="font-size: 1.2em;">${active}</strong> Live session${active !== 1 ? 's' : ''}</p>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card">
+                    <p>Present Today: <br> ${presentCount} out of  ${totalAttendance} <strong style="font-size: 1.2em;">(${((presentCount / totalAttendance) * 100).toFixed(2)}%)</strong></p>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -683,37 +718,52 @@ function renderHomePage() {
         initMenuListeners();
     }
 
-    // --- Component Init & Load Functions ---
-    async function loadQuickStats() {
-        const statsContainer = document.getElementById('quick-stats');
-        statsContainer.innerHTML = '<p style="text-align:center;">Loading stats...</p>';
-        try {
-            const [attendanceRes, sessionsRes] = await Promise.all([
-                fetch('/api/daily-attendance'),
-                fetch('/api/active-sessions', { credentials: 'include' })
-            ]);
-            const attendanceData = await attendanceRes.json();
-            const sessionsData = await sessionsRes.json();
-            
-            if (!attendanceRes.ok) throw new Error(attendanceData.message || 'Failed to load attendance');
-            if (!sessionsData.success) throw new Error(sessionsData.error || 'Failed to load sessions');
+// --- Component Init & Load Functions ---
+async function loadQuickStats() {
+    const statsContainer = document.getElementById('quick-stats');
+    statsContainer.innerHTML = '<p style="text-align:center;">Loading stats...</p>'; 
+    try {
+        const [attendanceRes, sessionsRes] = await Promise.all([
+            fetch('/api/daily-attendance'),
+            fetch('/api/active-sessions', { credentials: 'include' })
+        ]);
+        const attendanceData = await attendanceRes.json(); 
+        const sessionsData = await sessionsRes.json();
+        
+        if (!attendanceRes.ok) throw new Error(attendanceData.message || 'Failed to load attendance');
+        if (!sessionsData.success) throw new Error(sessionsData.error || 'Failed to load sessions'); 
 
-            dailyAttendanceCache = attendanceData;
-            activeSessionsCache = sessionsData.data;
+        dailyAttendanceCache = attendanceData;
+        activeSessionsCache = sessionsData.data;
 
-            const active = activeSessionsCache.length;
-            const totalAttendance = dailyAttendanceCache.length;
-            statsContainer.innerHTML = `
-                <div class="row">
-                    <div class="col-6"><div class="card"><p>Active: ${active}</p></div></div>
-                    <div class="col-6"><div class="card"><p>Attendance: ${totalAttendance}</p></div></div>
+        const active = activeSessionsCache.length;
+        const totalAttendance = dailyAttendanceCache.length; 
+
+        // --- MODIFICATION: Calculate present count ---
+        const presentCount = dailyAttendanceCache.filter(s => s.IsPresentToday === 'Present').length;
+        // --- End Modification ---
+
+        statsContainer.innerHTML = `
+            <div class="row">
+                <div class="col-6">
+                    <div class="card" id="active-stats-card" style="cursor: pointer;" title="Go to Check-out">
+                        <p>Active: ${active} Live session</p>
+                    </div>
                 </div>
-            `;
-        } catch (err) {
-            console.error('Failed to load quick stats:', err);
-            statsContainer.innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>';
-        }
+                <div class="col-6">
+                    <div class="card">
+                        <p>Attendance: ${presentCount} / ${totalAttendance}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+
+    } catch (err) {
+        console.error('Failed to load quick stats:', err);
+        statsContainer.innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>'; 
     }
+}
 
     async function loadDailyAttendance() {
         const tbody = document.querySelector('#dailyAttendanceTable tbody');
@@ -873,10 +923,37 @@ async function initializeSearchSelector(students) {
 
     // --- Listeners Init ---
 // In your <script type="module"> block
-
+// In your <script type="module"> block
+// Updated initHomeListeners for new click events
 function initHomeListeners() {
     const trInput = document.getElementById('tr-input');
     const searchBtn = document.getElementById('search-btn');
+
+    // --- MODIFICATION: Listener for Active Stats Card (using event delegation) ---
+    const quickStatsCard = document.getElementById('quick-stats');
+    if (quickStatsCard) {
+        quickStatsCard.addEventListener('click', (e) => {
+            // Check if the click was on the active card or its child elements
+            const activeCard = e.target.closest('#active-stats-card');
+            if (activeCard) {
+                document.querySelector('.nav-link[data-page="checkout"]').click();
+            }
+        });
+    }
+    // --- End Modification ---
+
+    // --- MODIFICATION: Listener for Collapsible Attendance Card ---
+    const attendanceHeader = document.getElementById('attendance-accordion-header');
+    if (attendanceHeader) {
+        attendanceHeader.addEventListener('click', () => {
+            const body = document.getElementById('attendance-accordion-body');
+            const icon = attendanceHeader.querySelector('i');
+            body.classList.toggle('hidden');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+        });
+    }
+    // --- End Modification ---
 
     const handleSearch = debounce(async () => {
         const query = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
@@ -885,16 +962,17 @@ function initHomeListeners() {
             try {
                 await showMiniProfile(query);
                 if (searchChoices) {
+    
                     searchChoices.clearInput();
                     dailyAttendanceCache = []; // Clear cache after selection
                     initializeSearchSelector([]); // Reinitialize with empty data if needed
                 }
-            } finally {
+            } finally 
+            {
                 toggleButtonSpinner(searchBtn, false);
             }
         }
     }, 300);
-
     trInput.addEventListener('change', async () => {
         await handleSearch();
     });
