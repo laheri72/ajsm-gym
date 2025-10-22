@@ -585,69 +585,34 @@ app.put('/api/students/status/:TR', async (req, res) => {
 });
 
 
-// ADD THIS NEW ENDPOINT
-// Permanently deletes a student and all their associated data
 app.delete('/api/admin/delete-student/:tr', async (req, res, next) => {
-    // 1. Security Check
-    if (!req.session.user || req.session.user.Role !== 'Admin') {
-        return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
-    }
+  if (!req.session.user || req.session.user.Role !== 'Admin') {
+    return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
+  }
 
-    const { tr } = req.params;
-    // Use a transaction to ensure all or nothing is deleted
-    const transaction = new sql.Transaction(pool);
+  const { tr } = req.params;
+  const transaction = new sql.Transaction(pool);
 
-    try {
-        await transaction.begin();
-        // Create a request object tied to the transaction
-        const request = new sql.Request(transaction);
-        request.input('TR', sql.Int, tr);
+  try {
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+    request.input('TR', sql.Int, tr);
 
-        // --- DELETION ORDER ---
+    const result = await request.query('DELETE FROM Master WHERE TR = @TR');
+    await transaction.commit();
 
-        // 1. Delete from TrainingLog (grandchild table)
-        // Delete all logs associated with any plan owned by this TR
-        await request.query(`
-            DELETE FROM TrainingLog 
-            WHERE PlanID IN (SELECT PlanID FROM TrainingPlan WHERE TR = @TR)
-        `);
+    if (result.rowsAffected[0] > 0)
+      res.json({ success: true, message: `Student TR ${tr} and all associated data have been permanently deleted.` });
+    else
+      res.status(404).json({ success: false, message: 'Student TR not found.' });
 
-        // 2. Delete from TrainingPlan (child table)
-        await request.query('DELETE FROM TrainingPlan WHERE TR = @TR');
-
-        // 3. Delete from Attendance (child table)
-        await request.query('DELETE FROM Attendance WHERE TR = @TR');
-
-        // 4. Delete from LeaveRequests (child table)
-        await request.query('DELETE FROM LeaveRequests WHERE TR = @TR');
-
-        // 5. Delete from StudentAchievements (child table)
-        await request.query('DELETE FROM StudentAchievements WHERE TR = @TR');
-
-        // 6. Delete from WorkoutPlan (child table)
-        await request.query('DELETE FROM WorkoutPlan WHERE TR = @TR');
-
-        // 7. Finally, delete from Master (parent table)
-        const result = await request.query('DELETE FROM Master WHERE TR = @TR');
-
-        // If all queries succeeded, commit the transaction
-        await transaction.commit();
-
-        if (result.rowsAffected[0] > 0) {
-            res.json({ success: true, message: `Student TR ${tr} and all associated data have been permanently deleted.` });
-        } else {
-            // This means the TR didn't exist in Master, but no error occurred
-            res.status(404).json({ success: false, message: 'Student TR not found in Master table.' });
-        }
-
-    } catch (err) {
-        // If any query fails, roll back the entire transaction
-        await transaction.rollback();
-        console.error('Error during student deletion transaction:', err);
-        // Pass the error to your main error handler
-        next(err); 
-    }
+  } catch (err) {
+    await transaction.rollback();
+    console.error('Error during cascade delete:', err);
+    next(err);
+  }
 });
+
 
 // REPLACE your old /api/student-attendance/:weekId/me route
 
@@ -1416,7 +1381,86 @@ app.post('/api/log-training-plan', async (req, res) => {
     }
 });
 
+// NEW: POST /api/student/log-weight
+// Logs a new weight entry for the current student
+app.post('/api/student/log-weight', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+    const { weight } = req.body;
 
+    if (!weight || isNaN(parseFloat(weight)) || weight <= 0) {
+        return res.status(400).json({ success: false, message: 'Invalid weight value.' });
+    }
+
+    try {
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('Weight', sql.Decimal(5, 2), parseFloat(weight))
+            .query(`INSERT INTO WeightTracking (TR, Weight) VALUES (@TR, @Weight)`);
+        
+        res.json({ success: true, message: 'Weight logged successfully' });
+    } catch (err) {
+        console.error('Error logging weight:', err);
+        res.status(500).json({ success: false, message: 'Database error' });
+    }
+});
+
+// NEW: GET /api/student/weight-history
+// Gets all ad-hoc weight logs for the current student
+app.get('/api/student/weight-history', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT LogID, Weight, 
+                       FORMAT(CreatedAt, 'ddd, dd MMM yyyy') AS FormattedDate
+                FROM WeightTracking 
+                WHERE TR = @TR 
+                ORDER BY CreatedAt DESC
+            `);
+        
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching weight history:', err);
+        res.status(500).json({ success: false, message: 'Database error' });
+    }
+});
+
+// NEW: DELETE /api/student/log-weight/:id
+// Deletes a specific weight log entry, ensuring it belongs to the logged-in student
+app.delete('/api/student/log-weight/:id', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+    const { id } = req.params;
+
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('LogID', sql.Int, id)
+            .query(`
+                DELETE FROM WeightTracking 
+                WHERE LogID = @LogID AND TR = @TR
+            `);
+        
+        if (result.rowsAffected[0] > 0) {
+            res.json({ success: true, message: 'Log deleted' });
+        } else {
+            res.status(404).json({ success: false, message: 'Log not found or you do not have permission to delete it' });
+        }
+    } catch (err) {
+        console.error('Error deleting weight log:', err);
+        res.status(500).json({ success: false, message: 'Database error' });
+    }
+});
 
 app.get('/api/student/training-analytics', async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
@@ -1539,21 +1583,45 @@ app.get('/api/leaderboard', async (req, res, next) => {
 });
 
 
-// API for the Fitness Progression Line Chart
+// MODIFIED: /api/student/fitness-test-history
+// Now combines data from TestRecords AND WeightTracking for a complete chart
 app.get('/api/student/fitness-test-history', async (req, res) => {
-    if (!req.session.user || !req.session.user.TR) return res.status(401).json({ success: false });
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
     const { TR } = req.session.user;
     try {
         const result = await pool.request()
             .input('TR', sql.Int, TR)
             .query(`
-                SELECT CONVERT(VARCHAR(10), CreatedAt, 120) AS TestDate, Weight, BodyFat, Grade
+                -- Combine data from both tables into one result set
+                SELECT 
+                    'Test' AS Source,
+                    CONVERT(VARCHAR(10), CreatedAt, 120) AS TestDate, 
+                    Weight, 
+                    BodyFat
                 FROM TestRecords 
-                WHERE TR = @TR 
-                ORDER BY CreatedAt ASC;
+                WHERE TR = @TR
+                
+                UNION
+                
+                SELECT 
+                    'Log' AS Source,
+                    CONVERT(VARCHAR(10), CreatedAt, 120) AS TestDate, 
+                    Weight, 
+                    NULL AS BodyFat -- Ad-hoc logs don't have body fat
+                FROM WeightTracking
+                WHERE TR = @TR
+
+                -- Order all combined results by date to make the line chart correct
+                ORDER BY TestDate ASC;
             `);
+        
         res.json({ success: true, data: result.recordset });
-    } catch (err) { res.status(500).json({ success: false }); }
+    } catch (err) { 
+        console.error('Error fetching combined fitness history:', err);
+        res.status(500).json({ success: false, message: 'Database error' });
+    }
 });
 
 // API for the Workout Consistency Heatmap

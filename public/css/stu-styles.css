@@ -2095,3 +2095,231 @@ input:checked+.slider:before {
     border-radius: 5px;
     transition: width 0.5s ease-in-out;
 }
+
+/* =================================================================== */
+/* 21. WEIGHT LOGGER (in Progression Tab)
+/* =================================================================== */
+
+.weight-logger-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 2rem;
+}
+
+.weight-logger-form,
+.weight-logger-history {
+    background-color: #f8f9fa; /* Light background */
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.weight-logger-form h4,
+.weight-logger-history h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.weight-logger-form p {
+    font-size: 0.9rem;
+    color: var(--gray);
+    margin-bottom: 1.5rem;
+}
+
+.weight-logger-form .input-group {
+    display: flex;
+}
+.weight-logger-form .input-group-text {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background-color: #e9ecef;
+    color: var(--dark);
+    font-weight: 600;
+}
+.weight-logger-form .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.weight-logger-form .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* History Table Container */
+.history-table-container {
+    max-height: 250px; /* Gives the table a fixed height with scroll */
+    overflow-y: auto;
+}
+
+#weightHistoryTable {
+    margin-top: 0;
+}
+
+#weightHistoryTable thead {
+    position: sticky; /* Makes the header stay put while scrolling */
+    top: 0;
+    z-index: 1;
+}
+
+.btn-delete-log {
+    color: var(--danger);
+    background: transparent;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+.btn-delete-log:hover {
+    color: #fff;
+    background-color: var(--danger);
+    border-radius: 0.25rem;
+}
+
+/* A simple separator line */
+.section-divider {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* --- Dark Mode Styles --- */
+/* for table content and transparency */
+[data-theme="dark"] #weightHistoryTable tbody tr {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-on-light);
+}
+[data-theme="dark"] .weight-logger-form,
+[data-theme="dark"] .weight-logger-history {
+    background-color: #0f1722; /* Darker card bg */
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .weight-logger-form h4 {
+    color: var(--accent); /* Vibrant accent */
+}
+
+[data-theme="dark"] .weight-logger-form .input-group-text {
+    background-color: #1f2c39;
+    color: var(--text-on-dark);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .section-divider {
+    border-color: var(--dark-border);
+}
+
+
+/* --- Responsive Styles --- */
+@media (max-width: 992px) {
+    .weight-logger-grid {
+        grid-template-columns: 1fr; /* Stack columns on mobile */
+    }
+}
+/* =================================================================== */
+/* 22. CURRENT WEIGHT STAT MODULE
+/* (Add this to your main CSS file)
+/* =================================================================== */
+
+.stat-module.weight-module {
+    /* A nice blue gradient for the light theme */
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+}
+
+.weight-module h4 {
+    color: #0d47a1; /* Dark blue text */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.weight-display {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+#stat-current-weight {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1565c0; /* Strong blue */
+    line-height: 1;
+}
+
+.kg-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1e88e5;
+    margin-left: 4px;
+}
+
+.stat-weight-date,
+#stat-weight-date { /* Target both */
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e88e5;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    min-height: 1.2em; /* Prevents layout jump when text loads */
+}
+
+#weight-motivation-text {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin: 0.5rem 0 0 0;
+}
+
+/* --- Dark Mode --- */
+[data-theme="dark"] .stat-module.weight-module {
+    /* A deep blue gradient for the dark theme */
+    background: linear-gradient(135deg, #1e3a8a, #172554);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .weight-module h4 {
+    color: #90caf9; /* Light blue */
+}
+
+[data-theme="dark"] #stat-current-weight {
+    color: #e3f2fd; /* Very light blue/white */
+}
+
+[data-theme="dark"] .kg-label,
+[data-theme="dark"] .stat-weight-date,
+[data-theme="dark"] #stat-weight-date {
+    color: #90caf9; /* Light blue */
+}
+/* (Inside your .stat-module.weight-module CSS) */
+
+#weight-motivation-text {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin: 0.5rem 0 0 0;
+}
+
+/* --- NEW: Style for the shortcut link --- */
+#log-weight-shortcut {
+    color: #0d47a1; /* Dark blue to match the light-mode header */
+    text-decoration: underline;
+    font-weight: 600;
+    cursor: pointer;
+}
+#log-weight-shortcut:hover {
+    color: #002171; /* Darker blue on hover */
+}
+
+/* --- Dark Mode for the link --- */
+[data-theme="dark"] #log-weight-shortcut {
+    color: #90caf9; /* Light blue to match the dark-mode header */
+}
+[data-theme="dark"] #log-weight-shortcut:hover {
+    color: #e3f2fd; /* Lighter blue on hover */
+}

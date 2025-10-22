@@ -175,7 +175,8 @@ async function getStudentSession() {
       });
       loadWeeklyPlan();
       loadWeeks();
-      loadDashboardStats(); // This will fetch the streak data
+      loadDashboardStats(); 
+      loadCurrentWeightStat();
   } catch (err) {
     console.error('Error fetching student session:', err);
     window.location.href = '../Forbidden.html';
@@ -381,6 +382,196 @@ function navigateToSection(targetSectionId) {
     // --- END OF FIX ---
 }
 
+
+/**
+ * Handles the submission of the new weight log form
+ */
+async function handleWeightLogSubmit(e) {
+    e.preventDefault();
+    const weightInput = document.getElementById('weightInput');
+    const weight = weightInput.value;
+    
+    if (!weight) {
+        Swal.fire('Error', 'Please enter a weight.', 'error');
+        return;
+    }
+    
+    const logButton = document.getElementById('logWeightBtn');
+    const buttonText = logButton.querySelector('.button-text');
+    const spinner = logButton.querySelector('.spinner-border');
+
+    // Show spinner, hide text, disable button
+    buttonText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+    logButton.disabled = true;
+    weightInput.disabled = true;
+
+    try {
+        const res = await fetch('/api/student/log-weight', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ weight: parseFloat(weight) })
+        });
+        const result = await res.json();
+        
+        if (!res.ok) throw new Error(result.message);
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Weight Logged!',
+            showConfirmButton: false,
+            timer: 2000
+        });
+        
+        weightInput.value = ''; // Clear input
+        
+        // Refresh both the history table AND the main progression chart
+        loadWeightLogHistory();
+        loadFitnessProgress(); // This now fetches combined data
+
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    } finally {
+        // Restore button state
+        buttonText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+        logButton.disabled = false;
+        weightInput.disabled = false;
+    }
+}
+
+/**
+ * Fetches and renders the ad-hoc weight log history table
+ */
+async function loadWeightLogHistory() {
+    const tbody = document.getElementById('weightHistoryBody');
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Loading...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/student/weight-history', { credentials: 'include' });
+        const result = await res.json();
+        
+        if (!result.success) throw new Error(result.message);
+        
+        if (result.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center">No weight logged yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = ''; // Clear loader
+        result.data.forEach(log => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${log.FormattedDate}</td>
+                <td>${log.Weight.toFixed(2)} kg</td>
+                <td>
+                    <button class="btn-delete-log" data-id="${log.LogID}" title="Delete this log">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Error: ${err.message}</td></tr>`;
+    }
+}
+
+/**
+ * Handles the click event for deleting a weight log from the history table
+ */
+function handleWeightLogDelete(e) {
+    // Use event delegation to find the delete button
+    const deleteButton = e.target.closest('.btn-delete-log');
+    if (!deleteButton) return;
+
+    const logId = deleteButton.dataset.id;
+    
+    Swal.fire({
+        title: 'Delete this log?',
+        text: "This will remove the weight entry. This action cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it',
+        confirmButtonColor: '#d33'
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch(`/api/student/log-weight/${logId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.message);
+
+            Swal.fire('Deleted!', 'The weight log has been removed.', 'success');
+            
+            // Refresh both the table and the main chart
+            loadWeightLogHistory();
+            loadFitnessProgress(); // This now fetches combined data
+
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
+}
+
+/**
+ * Fetches and displays the most recent weight log on the main dashboard stat card.
+ */
+/**
+ * Fetches and displays the most recent weight log on the main dashboard stat card.
+ * This version updates the text inside the clickable shortcut link.
+ */
+async function loadCurrentWeightStat() {
+    const weightEl = document.getElementById('stat-current-weight');
+    const dateEl = document.getElementById('stat-weight-date');
+    
+    // 1. Target the <a> tag directly, not its parent <p>
+    const motivationLink = document.getElementById('log-weight-shortcut'); 
+
+    // Safety check in case the link isn't found
+    if (!motivationLink) {
+        console.error("Developer error: Cannot find #log-weight-shortcut element.");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/student/weight-history', { credentials: 'include' });
+        const result = await res.json();
+
+        if (result.success && result.data.length > 0) {
+            // API returns DESC, so the first item is the most recent
+            const recentLog = result.data[0];
+            
+            weightEl.textContent = recentLog.Weight.toFixed(1);
+            dateEl.textContent = `Logged: ${recentLog.FormattedDate}`;
+            
+            // 2. Update the text CONTENT of the link
+            motivationLink.textContent = "Great job! Keep logging to see your trend.";
+            
+        } else {
+            // Default state if no weight is logged
+            weightEl.textContent = '--';
+            dateEl.textContent = 'Log your weight to start!';
+            
+            // 3. Update the text CONTENT of the link
+            motivationLink.textContent = 'Log your weight frequently to see your progress.';
+        }
+    } catch (err) {
+        console.error('Error loading current weight stat:', err);
+        weightEl.textContent = 'Error';
+        dateEl.textContent = 'Could not load data';
+        // 4. Update the link text on error
+        motivationLink.textContent = 'Click here to log weight'; 
+    }
+}
 //-------------------------------------------------------------------------------------------
 // REPLACE your old loadAttendance function with this one
 
@@ -1724,7 +1915,7 @@ async function logout(e) {
 // --- DOM CONTENT LOADED EVENT ---
 //----------------------------------------------------------------------------------------------------------
 
-// --- This should be the ONLY DOMContentLoaded listener ---
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
@@ -1801,6 +1992,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (weekSelectEl.value) loadAttendance();
     });
 
+    document.getElementById('weightLogForm').addEventListener('submit', handleWeightLogSubmit);
+    document.getElementById('weightHistoryBody').addEventListener('click', handleWeightLogDelete);
+
+
+document.getElementById('log-weight-shortcut').addEventListener('click', (e) => {
+    e.preventDefault(); // Stop the link from just adding a '#'
+    
+    // This new hash will trigger our updated router
+    window.location.hash = 'logs&tab=progression'; 
+});
     // Tips section select dropdown
     document.getElementById('bodyPartSelect').addEventListener('change', loadBodyPartTips);
 
@@ -1838,6 +2039,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (tabId === 'progression') {
                         loadFitnessProgress();
+                        loadWeightLogHistory();
                     }
                     if (tabId === 'overview') {
                         loadWorkoutConsistency();
@@ -1891,19 +2093,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Hash routing: on load and when hash changes
-    function routeFromHash() {
-        const hash = window.location.hash.replace('#', '') || 'planner';
-        const map = {
-            planner: 'planner-low',
-            logs: 'logs-low',
-            attendance: 'attendance-low',
-            leaves: 'leaves-low',
-            tips: 'tips-low',
-            fame: 'fame-low'
-        };
-        const target = map[hash] || 'planner-low';
-        navigateToSection(target);
+// WITH THIS NEW, SMARTER VERSION:
+function routeFromHash() {
+    let hash = window.location.hash.replace('#', '') || 'planner';
+    let mainHash = hash;
+    let subTab = null;
+
+    // Check if we have a sub-tab parameter (e.g., #logs&tab=progression)
+    if (hash.includes('&tab=')) {
+        const parts = hash.split('&tab=');
+        mainHash = parts[0];
+        subTab = parts[1]; // This will be 'progression'
     }
+
+    const map = {
+        planner: 'planner-low',
+        logs: 'logs-low',
+        attendance: 'attendance-low',
+        leaves: 'leaves-low',
+        tips: 'tips-low',
+        fame: 'fame-low'
+    }; 
+    
+    const targetSectionId = map[mainHash] || 'planner-low';
+    
+    // This part is the same: it shows the main section card
+    navigateToSection(targetSectionId); 
+
+    // --- NEW LOGIC ---
+    // If a subTab was specified (like 'progression')
+    if (subTab) {
+        // Find the internal tab link (e.g., the button with data-tab="progression")
+        const tabLink = document.querySelector(`.tab-nav .tab-link[data-tab="${subTab}"]`);
+        
+        if (tabLink) {
+            // Click the internal tab. This will be caught by your 
+            // setupAnalyticsTabs() listener, which will load
+            // the correct data and show the correct pane.
+            tabLink.click();
+        }
+    }
+}
     window.addEventListener('hashchange', routeFromHash);
 
     // Keyboard shortcuts
