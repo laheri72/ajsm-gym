@@ -448,9 +448,9 @@ app.delete('/api/slots/:id', async (req, res) => {
             UPDATE Master SET SlotID = NULL WHERE SlotID = @SlotID;
         `);
 
-        // Step 2: Deactivate the slot itself
+        // Step 2: permanently delete the slot itself
         await request.query(`
-            UPDATE Slots SET IsActive = 0 WHERE SlotID = @SlotID;
+            DELETE FROM Slots WHERE SlotID = @SlotID;
         `);
 
         await transaction.commit();
@@ -744,40 +744,6 @@ app.get('/api/weeks', async (req, res) => {
     }
 });
 
-app.get('/api/student-info/me', async (req, res) => {
-  if (!req.session.user || !req.session.user.TR) {
-    return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
-  }
-
-  const { TR } = req.session.user;
-  
-  try {
-    const result = await pool.request()
-      .input('TR', sql.Int, TR)   // <-- FIXED here, using TR not tr
-      .query(`
-        SELECT 
-          M.Name, 
-          M.Darajah, 
-          M.Goal, 
-          M.SlotID, 
-          S.SlotName
-        FROM Master M
-        LEFT JOIN Slots S ON M.SlotID = S.SlotID
-        WHERE M.TR = @TR
-      `);
-
-    if (result.recordset.length > 0) {
-      res.json({ success: true, student: result.recordset[0] });
-    } else {
-      res.json({ success: false, message: 'Student not found' });
-    }
-  } catch (err) {
-    console.error('Error fetching student info:', err.message);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-
 
 // REPLACE your old /api/student/eligible-weeks route with this corrected version
 
@@ -1033,24 +999,39 @@ app.put('/api/staff/reset-student-password/:tr', async (req, res, next) => {
 });
 
 
-// ✅ Updated /api/student-session route
+// ✅ REPLACED /api/student-session route (now merged)
 app.get('/api/student-session', async (req, res) => {
   if (req.session.user && req.session.user.TR) {
     try {
       const { TR } = req.session.user;
 
-      // Fetch the latest Level and XP info from Master
+      // New query that joins Master and Slots to get ALL data
       const result = await pool.request()
         .input('TR', sql.Int, TR)
         .query(`
-          SELECT FitnessLevel, CurrentXP, HasLoggedInBefore, joinedAt
-          FROM Master 
-          WHERE TR = @TR
+          SELECT 
+            M.FitnessLevel, 
+            M.CurrentXP, 
+            M.HasLoggedInBefore, 
+            M.joinedAt,
+            M.Darajah, 
+            M.Goal, 
+            M.Height,
+            S.SlotName
+          FROM Master M
+          LEFT JOIN Slots S ON M.SlotID = S.SlotID
+          WHERE M.TR = @TR
         `);
 
+      if (result.recordset.length === 0) {
+        return res.json({ success: false, error: "User profile not found in DB." });
+      }
+
+      // Merge the base session user (TR, Name, Branch, Gender)
+      // with ALL the new data we just fetched from the database.
       const userProfile = {
         ...req.session.user,
-        ...result.recordset[0]  // merge DB info into session user
+        ...result.recordset[0] 
       };
 
       res.json({ success: true, user: userProfile });
@@ -1062,8 +1043,6 @@ app.get('/api/student-session', async (req, res) => {
     res.json({ success: false });
   }
 });
-
-
 
 
 
@@ -1451,6 +1430,33 @@ app.post('/api/student/log-weight', async (req, res) => {
     }
 });
 
+// NEW: POST /api/student/set-height
+// Saves/updates the student's height
+app.post('/api/student/set-height', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+    const { heightInCm } = req.body;
+
+    const heightInM = parseFloat(heightInCm) / 100;
+
+    if (!heightInM || heightInM <= 0 || heightInM > 3) { // Basic validation (3m = 9'10")
+        return res.status(400).json({ success: false, message: 'Invalid height. Please enter a valid height in cm.' });
+    }
+
+    try {
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('Height', sql.Decimal(4, 2), heightInM)
+            .query(`UPDATE Master SET Height = @Height WHERE TR = @TR`);
+
+        res.json({ success: true, message: 'Height updated!', newHeight: heightInM });
+    } catch (err) {
+        console.error('Error setting height:', err);
+        res.status(500).json({ success: false, message: 'Database error' });
+    }
+});
 // NEW: GET /api/student/weight-history
 // Gets all ad-hoc weight logs for the current student
 app.get('/api/student/weight-history', async (req, res) => {

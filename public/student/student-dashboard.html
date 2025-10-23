@@ -137,20 +137,31 @@
                       </div>
                       <p id="streak-motivation-text">Log workouts to beat your best streak!</p>
                   </div>
-                   <div class="stat-module weight-module">
-                        <h4><i class="bi bi-person-badge"></i> Current Weight</h4>
-                        
-                        <div class="weight-display">
-                            <span id="stat-current-weight">--</span>
-                            <span class="kg-label">kg</span>
-                        </div>
-                        
-                        <p class="stat-weight-date" id="stat-weight-date">Log your weight to start!</p>
-                        
-                        <p id="weight-motivation-text">
-                          <a href="#" id="log-weight-shortcut">Log your weight frequently to see your progress.</a>
-                        </p>
-                   </div>
+<div class="stat-module weight-module">
+    <h4><i class="bi bi-person-badge"></i> Your Stats</h4>
+    
+    <div class="weight-bmi-grid">
+        <div class="stat-item">
+            <span class="stat-label">Current Weight</span>
+            <div class="weight-display">
+                <span id="stat-current-weight">--</span>
+                <span class="kg-label">kg</span>
+            </div>
+            <p class="stat-date" id="stat-weight-date">Log your weight to start!</p>
+        </div>
+
+        <div class="stat-item">
+            <span class="stat-label">Your BMI</span>
+            <div id="bmi-display-area">
+                <span class="bmi-value-loading">...</span>
+                </div>
+        </div>
+    </div>
+
+    <p id="weight-motivation-text">
+        <a href="#" id="log-weight-shortcut">Log your weight frequently to see your progress.</a>
+    </p>
+</div>
                    
           </div>
               </div>
@@ -418,7 +429,9 @@
 
 </div>
 <hr class="section-divider"> 
-                    <canvas id="fitnessProgressChart"></canvas>
+                    <div id="fitnessChartWrapper">
+    <canvas id="fitnessProgressChart"></canvas>
+    </div>
                 </div>
             </div>
 

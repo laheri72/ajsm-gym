@@ -1,4 +1,4 @@
-let studentTR, studentName, branch, gender, membersince;
+let studentTR, studentName, branch, gender, membersince, studentHeight;
 let bodyPartChart = null;
 let fitnessProgressChart = null;
 let weeklyHoursChart = null;
@@ -102,9 +102,130 @@ const exerciseDatabase = [
     { name: 'Side Plank', difficulty: 'Beginner', primaryMuscle: 'Core', secondaryMuscles: [] }
 ];
 
+// NEW: Goal-Specific Tips Database
+const goalTipsDatabase = {
+    "General Fitness": {
+        emoji: "🌟",
+        title: "All-Around Fitness",
+        description: "Your goal is to build a well-rounded, healthy body. This is a fantastic journey of balance, consistency, and feeling great every day!",
+        tips: [
+            "Aim for 3-4 sessions per week, mixing cardio and strength.",
+            "Don't skip your warm-ups! 5-10 minutes of light cardio and dynamic stretching is key.",
+            "Listen to your body. Rest days are just as important as workout days.",
+            "Stay hydrated! Water is your best friend."
+        ],
+        proTip: "Try 'full-body' workouts 2-3 times a week to hit every muscle group and maximize efficiency.",
+        youtubeQuery: "full body workout for general fitness"
+    },
+    "Weight Loss": {
+        emoji: "🔥",
+        title: "Weight Loss",
+        description: "You're focused on becoming a healthier, leaner version of yourself. Consistency is your superpower! Let's get it.",
+        tips: [
+            "Focus on a sustainable calorie deficit. You can't out-train a bad diet.",
+            "Combine strength training (to build muscle) with cardio (to burn calories).",
+            "Prioritize protein in your meals to stay full and preserve muscle.",
+            "Get 7-8 hours of quality sleep. Poor sleep can stall fat loss."
+        ],
+        proTip: "Try 'NEAT' (Non-Exercise Activity Thermogenesis) — take the stairs, walk while on the phone. These small movements add up!",
+        youtubeQuery: "beginner weight loss workout plan"
+    },
+    "Muscle Gain": {
+        emoji: "💪",
+        title: "Muscle Gain",
+        description: "Your goal is to build strength and size. This requires dedication in the gym and in the kitchen. Time to build!",
+        tips: [
+            "You must be in a slight calorie surplus. You can't build muscle from nothing!",
+            "Eat plenty of protein (1.6-2.2g per kg of body weight) spread throughout the day.",
+            "Focus on 'Progressive Overload'—consistently lift heavier or do more reps than last time.",
+            "Train each muscle group 2-3 times per week for optimal growth."
+        ],
+        proTip: "The 'big 5' lifts are your best friends: Squats, Deadlifts, Bench Press, Overhead Press, and Rows. Master them.",
+        youtubeQuery: "science of muscle gain"
+    },
+    "Strength": {
+        emoji: "🏋️",
+        title: "Pure Strength",
+        description: "You're here to get stronger. This is about training your nervous system and muscles to move serious weight. Let's move it!",
+        tips: [
+            "Focus on compound lifts: squats, bench press, deadlifts, and overhead press.",
+            "Train in lower rep ranges (e.g., 3-6 reps) with heavier weight.",
+            "Take longer rest periods between sets (3-5 minutes) to fully recover your power.",
+            "Perfect your form. Good technique is the key to lifting heavy *and* staying safe."
+        ],
+        proTip: "Don't neglect 'accessory' work. Exercises like pull-ups, rows, and lunges build the supporting muscles that boost your main lifts.",
+        youtubeQuery: "how to get stronger fast strength training"
+    },
+    "Endurance": {
+        emoji: "🏃",
+        title: "Endurance",
+        description: "Your goal is to go longer and harder, to be the last one standing. This is all about building your body's 'engine'.",
+        tips: [
+            "Incorporate both LISS (Low-Intensity Steady-State) cardio, like a long jog, and HIIT (High-Intensity Interval Training).",
+            "Proper hydration and electrolytes are non-negotiable for long-duration efforts.",
+            "Focus on your breathing. Controlled breathing can dramatically improve your stamina.",
+            "Train your legs and core. A strong foundation supports your cardiovascular system."
+        ],
+        proTip: "Try 'Tempo Runs'—run at a comfortably hard pace for 20-30 minutes. This is one of the best ways to raise your lactate threshold.",
+        youtubeQuery: "how to increase running endurance"
+    },
+    "Flexibility": {
+        emoji: "🧘",
+        title: "Flexibility & Mobility",
+        description: "You're working to improve your range of motion, reduce tightness, and move more freely. This is key for long-term health.",
+        tips: [
+            "Warm up *before* static stretching. Stretch warm muscles, not cold ones.",
+            "Hold static stretches for 30-60 seconds. Don't bounce!",
+            "Try 'dynamic stretching' (like leg swings) before workouts and 'static stretching' (like a hamstring hold) after workouts.",
+            "Consistency is everything. 10 minutes every day is far better than 1 hour once a week."
+        ],
+        proTip: "Explore PNF (Proprioceptive Neuromuscular Facilitation) stretching with a partner or band. It's an advanced way to 'trick' your muscles into a deeper stretch.",
+        youtubeQuery: "full body flexibility routine for beginners"
+    },
+    "Energy Boost": {
+        emoji: "⚡",
+        title: "Energy Boost",
+        description: "Your goal is to feel more energized and vital in your daily life. The gym is the perfect place to build that energy!",
+        tips: [
+            "Regular exercise (even 20-30 minutes) is proven to boost energy levels.",
+            "Focus on your sleep schedule. A consistent wake-up time is crucial.",
+            "Eat whole foods. Processed sugars cause an energy crash. Fuel with proteins, healthy fats, and complex carbs.",
+            "Start your day with a glass of water *before* anything else."
+        ],
+        proTip: "A short, intense workout (like a 10-minute HIIT session) can be more energizing than a long, slow one.",
+        youtubeQuery: "morning workout for energy"
+    },
+    "Stress Relief": {
+        emoji: "😌",
+        title: "Stress Relief",
+        description: "You're using exercise as a powerful tool to manage stress and clear your mind. This is one of the best things you can do for your mental health.",
+        tips: [
+            "Any movement you *enjoy* is a stress reliever. It could be lifting, running, or just walking.",
+            "Rhythmic exercises like running, swimming, or cycling are especially good for zoning out.",
+            "Focus on the mind-muscle connection. Feel the muscle working, not the worries in your head.",
+            "End your workout with 5 minutes of mindful breathing and light stretching."
+        ],
+        proTip: "Try a 'box breathing' exercise: Inhale for 4 seconds, hold for 4, exhale for 4, hold for 4. Repeat 5-10 times.",
+        youtubeQuery: "exercise for stress and anxiety relief"
+    },
+    "Overall Health": {
+        emoji: "❤️",
+        title: "Overall Health",
+        description: "Your goal is long-term health and wellness. You're playing the long game, building a resilient body and mind for a better life.",
+        tips: [
+            "Find a balance of cardio (for heart health) and strength (for bone/muscle health).",
+            "Focus on consistency over intensity. Just showing up is a huge win.",
+            "Pay attention to your nutrition. Aim for whole foods and a colorful plate.",
+            "Manage stress and prioritize sleep. They are pillars of health."
+        ],
+        proTip: "Don't just track your weight. Track how you feel, your energy levels, your sleep quality, and your mood. These are the true markers of health.",
+        youtubeQuery: "best workout for overall health"
+    }
+};
 
 //--------------------------------------------------------------------------------------------
 
+// ✅ REPLACED getStudentSession function (now only makes one call)
 async function getStudentSession() {
   try {
     const res = await fetch('/api/student-session', {
@@ -119,67 +240,58 @@ async function getStudentSession() {
     }
 
     showLeaderboard();
-    const user = data.user;
-    studentTR = user.TR;
-    // Add this line to show a loading placeholder in the XP bar
-    document.getElementById('xpBarText').textContent = 'Loading...';
-    studentName = user.Name;
-    branch = user.Branch;
-    gender = user.Gender;
-    // NEW LINE: Format the join date properly
-    membersince = new Date(user.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' , day: 'numeric' });
-
-    // --- NEW: Check for Level-Up on page load ---
-    const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
-    if (user.FitnessLevel > lastSeenLevel) {
-        showLevelUpAnimation(user.FitnessLevel);
-        localStorage.setItem('lastSeenLevel', user.FitnessLevel);
-    }
     
-    // --- NEW: Update the XP Bar UI ---
-    updateXPBarUI(user.FitnessLevel, user.CurrentXP);
+    // All data is now in data.user
+    const stu = data.user; 
+    
+    studentTR = stu.TR;
+    studentName = stu.Name;
+    branch = stu.Branch;
+    gender = stu.Gender;
+    studentHeight = stu.Height; // <-- Height is set here
+    membersince = new Date(stu.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
-    // Update welcome UI
+    // --- XP & Level ---
+    document.getElementById('xpBarText').textContent = 'Loading...';
+    const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
+    if (stu.FitnessLevel > lastSeenLevel) {
+        showLevelUpAnimation(stu.FitnessLevel);
+        localStorage.setItem('lastSeenLevel', stu.FitnessLevel);
+    }
+    updateXPBarUI(stu.FitnessLevel, stu.CurrentXP);
+
+    // --- Welcome Text ---
     document.getElementById('studentName').innerText = studentName || 'Student';
     const title =
-      gender?.toLowerCase() === 'male'
-        ? 'Talabat'
-        : gender?.toLowerCase() === 'female'
-          ? 'Talebaat'
-          : 'Student';
-
+      gender?.toLowerCase() === 'male' ? 'Talabat'
+      : gender?.toLowerCase() === 'female' ? 'Talebaat'
+      : 'Student';
+    
     document.getElementById('welcomeText').innerText =
       `Your personal Fitness Dashboard 
        Member Since ${membersince}
        ${branch} | ${title}`;
 
-        // --- NEW: Check if password change is needed ---
-    if (data.user.HasLoggedInBefore === false) {
+    // --- Password Check ---
+    if (stu.HasLoggedInBefore === false) {
         const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
         passwordModal.show();
         handleInitialPasswordSet(); // Set up the form listener
     }
 
-    // Load extra info (Darajah, Goal etc.)
-    fetch(`/api/student-info/me`, {
-      method: 'GET',
-      credentials: 'include'
-    })
-      .then(res => res.json()) 
-      .then(infoData => {
-        if (infoData.success) {
-          const stu = infoData.student;
-          document.getElementById('studentSlot').innerText = stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
-          document.getElementById('studentDarajah').innerText = stu.Darajah;
-          document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
-          document.getElementById('studentTR').innerText = studentTR;
-          loadTip(stu.Goal);
-        }
-      });
-      loadWeeklyPlan();
-      loadWeeks();
-      loadDashboardStats(); 
-      loadCurrentWeightStat();
+    // --- Student Info (from the same API call) ---
+    document.getElementById('studentSlot').innerText = stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
+    document.getElementById('studentDarajah').innerText = stu.Darajah;
+    document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
+    document.getElementById('studentTR').innerText = studentTR;
+    
+    // --- Load Other Dashboard Components ---
+    loadTip(stu.Goal);
+    loadWeeklyPlan();
+    loadWeeks();
+    loadDashboardStats(); 
+    loadCurrentWeightStat();
+
   } catch (err) {
     console.error('Error fetching student session:', err);
     window.location.href = '../Forbidden.html';
@@ -434,6 +546,7 @@ async function handleWeightLogSubmit(e) {
         // Refresh both the history table AND the main progression chart
         loadWeightLogHistory();
         loadFitnessProgress(); // This now fetches combined data
+        loadCurrentWeightStat(); // <-- Add this
 
     } catch (err) {
         Swal.fire('Error', err.message, 'error');
@@ -518,6 +631,7 @@ function handleWeightLogDelete(e) {
             // Refresh both the table and the main chart
             loadWeightLogHistory();
             loadFitnessProgress(); // This now fetches combined data
+            loadCurrentWeightStat(); // <-- Add this
 
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
@@ -526,53 +640,142 @@ function handleWeightLogDelete(e) {
 }
 
 /**
- * Fetches and displays the most recent weight log on the main dashboard stat card.
- */
-/**
- * Fetches and displays the most recent weight log on the main dashboard stat card.
- * This version updates the text inside the clickable shortcut link.
+ * Fetches and displays the most recent weight log AND BMI on the dashboard stat card.
+ * (This version reads the global studentHeight variable set on page load)
  */
 async function loadCurrentWeightStat() {
     const weightEl = document.getElementById('stat-current-weight');
     const dateEl = document.getElementById('stat-weight-date');
-    
-    // 1. Target the <a> tag directly, not its parent <p>
-    const motivationLink = document.getElementById('log-weight-shortcut'); 
+    const motivationLink = document.getElementById('log-weight-shortcut');
+    const bmiArea = document.getElementById('bmi-display-area');
 
-    // Safety check in case the link isn't found
-    if (!motivationLink) {
-        console.error("Developer error: Cannot find #log-weight-shortcut element.");
-        return;
-    }
+    // Reset BMI area
+    bmiArea.innerHTML = '<span class="bmi-value-loading">...</span>';
 
     try {
-        const res = await fetch('/api/student/weight-history', { credentials: 'include' });
-        const result = await res.json();
+        // --- THIS IS THE UPDATED LOGIC ---
+        // We ONLY need to fetch the weight history now.
+        const weightRes = await fetch('/api/student/weight-history', { credentials: 'include' });
+        const weightResult = await weightRes.json();
+        
+        let currentWeight = null;
+        // studentHeight is now read from the global variable (set by getStudentSession)
 
-        if (result.success && result.data.length > 0) {
+        if (weightResult.success && weightResult.data.length > 0) {
             // API returns DESC, so the first item is the most recent
-            const recentLog = result.data[0];
+            const recentLog = weightResult.data[0];
+            currentWeight = recentLog.Weight;
             
-            weightEl.textContent = recentLog.Weight.toFixed(1);
+            weightEl.textContent = currentWeight.toFixed(1);
             dateEl.textContent = `Logged: ${recentLog.FormattedDate}`;
-            
-            // 2. Update the text CONTENT of the link
             motivationLink.textContent = "Great job! Keep logging to see your trend.";
             
         } else {
             // Default state if no weight is logged
             weightEl.textContent = '--';
             dateEl.textContent = 'Log your weight to start!';
-            
-            // 3. Update the text CONTENT of the link
             motivationLink.textContent = 'Log your weight frequently to see your progress.';
         }
+
+        // --- NOW, HANDLE THE BMI DISPLAY (using the global studentHeight) ---
+        if (studentHeight) {
+            // We know the height. Do we know the weight?
+            if (currentWeight) {
+                // We have both! Calculate BMI.
+                const bmi = currentWeight / (studentHeight * studentHeight);
+                let category = 'Healthy';
+                let categoryClass = 'bmi-healthy';
+
+                if (bmi < 18.5) {
+                    category = 'Underweight';
+                    categoryClass = 'bmi-underweight';
+                } else if (bmi >= 25 && bmi < 30) {
+                    category = 'Overweight';
+                    categoryClass = 'bmi-overweight';
+                } else if (bmi >= 30) {
+                    category = 'Obese';
+                    categoryClass = 'bmi-obese';
+                }
+                
+                bmiArea.innerHTML = `
+                    <div class="bmi-value-wrapper">
+                        <span class="bmi-value ${categoryClass}" id="stat-bmi-value">${bmi.toFixed(1)}</span>
+                        <button id="edit-height-btn" class="btn-edit-height" title="Edit Height">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </div>
+                    <p class="stat-category ${categoryClass}" id="stat-bmi-category">${category}</p>
+                `;
+
+                // Add event listener to the NEWLY created edit button
+                document.getElementById('edit-height-btn').addEventListener('click', handleSetHeight);
+
+            } else {
+                // Have height, but no weight
+                bmiArea.innerHTML = '<span class="bmi-value-loading">--.-</span>';
+            }
+        } else {
+            // We don't know the height. Show the button.
+            bmiArea.innerHTML = '<button id="add-height-btn" class="btn btn-sm btn-outline-primary">Add Height</button>';
+            
+            // Add an event listener to this new button
+            document.getElementById('add-height-btn').addEventListener('click', handleSetHeight);
+        }
+
     } catch (err) {
         console.error('Error loading current weight stat:', err);
         weightEl.textContent = 'Error';
         dateEl.textContent = 'Could not load data';
-        // 4. Update the link text on error
+        bmiArea.innerHTML = '<span class="bmi-value-loading">Error</span>';
         motivationLink.textContent = 'Click here to log weight'; 
+    }
+}
+
+/**
+ * Shows a popup to ask for and save the student's height
+ */
+async function handleSetHeight() {
+    const { value: heightCm } = await Swal.fire({
+        title: 'Enter Your Height',
+        input: 'number',
+        inputLabel: 'Height (in cm)',
+        inputPlaceholder: 'e.g., 175',
+        inputAttributes: {
+            min: 100,
+            max: 300,
+            step: 1
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        inputValidator: (value) => {
+            if (!value) {
+                return 'You need to enter a value!'
+            }
+            if (value < 100 || value > 300) {
+                return 'Please enter a realistic height (100-300 cm)'
+            }
+        }
+    });
+
+    if (heightCm) {
+        try {
+            const res = await fetch('/api/student/set-height', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ heightInCm: heightCm })
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message);
+
+            Swal.fire('Saved!', 'Your height has been saved.', 'success');
+            studentHeight = result.newHeight; // <-- ADD THIS LINE
+            loadCurrentWeightStat(); // Re-run the stat card load to show the BMI
+
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
     }
 }
 //-------------------------------------------------------------------------------------------
@@ -787,51 +990,40 @@ async function loadTrainingAnalytics() {
 }
 
 //------------------------------------------------------------------------------
+// REPLACE your old loadTip function with this one
+function loadTip(goal) {
+  // Set a fallback goal if the user's goal isn't in our database
+  const fallbackGoal = "General Fitness";
+  
+  // Find the tip data, or use the fallback
+  const tipData = goalTipsDatabase[goal] || goalTipsDatabase[fallbackGoal];
 
-  function loadTip(goal) {
-    let title = "💡 General Tip";
-    let html = "Stay active and hydrated!";
-    let video = "";
+  // Create the YouTube search link
+  const youtubeLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(tipData.youtubeQuery)}`;
 
-    if (goal.includes('Fat Loss')) {
-      title = "🔥 Fat Loss Guide";
-      html = `
-        <ul>
-          <li>Focus on high-protein, low-carb meals.</li>
-          <li>Try HIIT (High Intensity Interval Training) workouts.</li>
-          <li>Get enough sleep to support fat metabolism.</li>
-        </ul>
-        <p><strong>Starter Workout:</strong></p>
-        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/ml6cT4AZdqI" frameborder="0" allowfullscreen></iframe>
-      `;
-    } else if (goal.includes('Muscle Gain')) {
-      title = "💪 Muscle Gain Tips";
-      html = `
-        <ul>
-          <li>Increase protein intake (2g per kg bodyweight).</li>
-          <li>Train each muscle group 2x per week with progressive overload.</li>
-          <li>Rest well—recovery is key for growth.</li>
-        </ul>
-        <p><strong>Starter Workout:</strong></p>
-        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/XpP1gZzDMHY" frameborder="0" allowfullscreen></iframe>
-      `;
-    } else if (goal.includes('Fitness') || goal.includes('Endurance')) {
-      title = "🏃 Fitness Boost";
-      html = `
-        <ul>
-          <li>Do steady cardio 3–4x/week (e.g., jogging, cycling).</li>
-          <li>Add bodyweight strength training for all-around performance.</li>
-          <li>Focus on flexibility and mobility too!</li>
-        </ul>
-        <p><strong>Starter Workout:</strong></p>
-        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/3p8EBPVZ2Iw" frameborder="0" allowfullscreen></iframe>
-      `;
-    }
+  // Build the new HTML
+  const html = `
+    <div class="goal-tip-card">
+      <h4>${tipData.emoji} Your Goal: ${tipData.title}</h4>
+      <p class="goal-description">${tipData.description}</p>
+      
+      <h5>Actionable Tips:</h5>
+      <ul class="goal-tips-list">
+        ${tipData.tips.map(tip => `<li>${tip}</li>`).join('')}
+      </ul>
+      
+      <div class="pro-tip-box">
+        <strong><i class="bi bi-lightbulb-fill"></i> Pro-Tip:</strong> ${tipData.proTip}
+      </div>
+      
+      <a href="${youtubeLink}" class="btn btn-outline-danger btn-youtube" target="_blank">
+        <i class="bi bi-youtube"></i> Watch & Learn: ${tipData.title}
+      </a>
+    </div>
+  `;
 
-    // Also update the basic area (for fallback)
-    document.getElementById('tipArea').innerHTML = html;
-  }
-
+  document.getElementById('tipArea').innerHTML = html;
+}
 //--------------------------------------------------------------------------------
 
 const partTips = {
@@ -1323,65 +1515,108 @@ async function applyLastWeeksPlan() {
 }
 
  //----------------------------------------------------------------------------------------------------------
+// REPLACE your old loadFitnessProgress function with this one
 
-// Updated function to render the Fitness Progression chart
 async function loadFitnessProgress() {
   try {
-    const res = await fetch('/api/student/fitness-test-history', { credentials: 'include' });
-    const result = await res.json();
+    const res = await fetch('/api/student/fitness-test-history', { credentials: 'include' }); 
+    const result = await res.json(); 
     
+    // Get the new wrapper and the canvas
+    const chartWrapper = document.getElementById('fitnessChartWrapper');
+    const canvasElement = document.getElementById('fitnessProgressChart');
+    if (!chartWrapper || !canvasElement) return;
+
+    // Find or create the message <p> tag
+    let messageElement = chartWrapper.querySelector('p');
+    if (!messageElement) {
+        messageElement = document.createElement('p');
+        chartWrapper.appendChild(messageElement);
+    }
+
     if (result.success && result.data.length > 1) {
-      const labels = result.data.map(d => d.TestDate);
-      const weightData = result.data.map(d => d.Weight);
-      const bodyFatData = result.data.map(d => d.BodyFat);
+        // --- STATE 1: We have 2+ data points ---
+        
+        // 1. Show the chart, hide the message
+        canvasElement.style.display = 'block';
+        messageElement.style.display = 'none';
 
-      const canvasElement = document.getElementById('fitnessProgressChart');
-      if (!canvasElement) return;
+        // 2. Prepare data
+        const labels = result.data.map(d => d.TestDate); 
+        const weightData = result.data.map(d => d.Weight); 
+        const bodyFatData = result.data.map(d => d.BodyFat); 
 
-      const ctx = canvasElement.getContext('2d');
-
-      // Destroy existing chart if it exists
-      if (fitnessProgressChart) fitnessProgressChart.destroy();
-
-      fitnessProgressChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            { 
-              label: 'Weight (kg)', 
-              data: weightData, 
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.2)',
-              fill: true,
-              tension: 0.1 
+        // 3. Draw the chart
+        const ctx = canvasElement.getContext('2d'); 
+        if (fitnessProgressChart) fitnessProgressChart.destroy(); 
+        
+        fitnessProgressChart = new Chart(ctx, { 
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { 
+                        label: 'Weight (kg)', 
+                        data: weightData, 
+                        borderColor: 'rgba(54, 162, 235, 1)', 
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)', 
+                        fill: true,
+                        tension: 0.1 
+                    },
+                    { 
+                        label: 'Body Fat (%)', 
+                        data: bodyFatData, 
+                        borderColor: 'rgba(255, 99, 132, 1)', 
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)', 
+                        fill: true,
+                        tension: 0.1,
+                        // This makes the line dotted if BodyFat is NULL (from weight log)
+                        spanGaps: true 
+                    }
+                ]
             },
-            { 
-              label: 'Body Fat (%)', 
-              data: bodyFatData, 
-              borderColor: 'rgba(255, 99, 132, 1)',
-              backgroundColor: 'rgba(255, 99, 132, 0.2)',
-              fill: true,
-              tension: 0.1 
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: 'Weight & Body Fat Over Time' }
+                }
             }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            title: { display: true, text: 'Weight & Body Fat Over Time' }
-          }
-        }
-      });
+        });
+
     } else {
-      document.getElementById('fitnessProgressChart').parentElement.innerHTML = '<p>Take at least two fitness tests to see your progression chart.</p>';
+        // --- STATE 2 or 3: We have 0 or 1 data point ---
+        
+        // 1. Hide the chart, show the message
+        canvasElement.style.display = 'none';
+        messageElement.style.display = 'block';
+        if (fitnessProgressChart) fitnessProgressChart.destroy(); 
+
+        // 2. Set the correct message
+        if (result.success && result.data.length === 1) {
+            messageElement.textContent = 'You\'ve logged your weight once. Log it again to see your progression chart!';
+        } else {
+            messageElement.textContent = 'Log your weight or take a fitness test to start tracking your progression.';
+        }
     }
   } catch (err) { 
-    console.error('Failed to load fitness progress:', err);
-    document.getElementById('fitnessProgressChart').parentElement.innerHTML = '<p>Could not load progression data.</p>';
+    console.error('Failed to load fitness progress:', err); 
+    
+    // Handle error: Hide chart, show error message
+    const chartWrapper = document.getElementById('fitnessChartWrapper');
+    const canvasElement = document.getElementById('fitnessProgressChart');
+    if (canvasElement) canvasElement.style.display = 'none';
+    
+    if (chartWrapper) {
+        let messageElement = chartWrapper.querySelector('p');
+        if (!messageElement) {
+            messageElement = document.createElement('p');
+            chartWrapper.appendChild(messageElement);
+        }
+        messageElement.style.display = 'block';
+        messageElement.textContent = 'Could not load progression data.'; 
+    }
   }
 }
-
 // New function to render the Workout Consistency heatmap
 async function loadWorkoutConsistency() {
     try {
@@ -2187,29 +2422,6 @@ function routeFromHash() {
         if (correspondingWeeklyCard) {
             correspondingWeeklyCard.innerHTML = todayCard.innerHTML;
         }
-    });
-
-    // Replace YouTube links with embedded iframes in Tips
-    const links = document.querySelectorAll("a.embed-link");
-    links.forEach(link => {
-      const videoURL = new URL(link.href);
-      const videoID = videoURL.searchParams.get("v");
-
-      if (!videoID) return; // skip non-YouTube links
-
-      const iframe = document.createElement("iframe");
-      iframe.src = `https://www.youtube.com/embed/${videoID}`;
-      iframe.width = "100%";
-      iframe.height = "180";
-      iframe.frameBorder = "0";
-      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-      iframe.allowFullscreen = true;
-      iframe.loading = "lazy";
-
-      // Replace the link with iframe
-      const td = link.parentElement;
-      td.innerHTML = "";
-      td.appendChild(iframe);
     });
 
     // --- Initial Data Loading ---

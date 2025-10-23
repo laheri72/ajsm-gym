@@ -2225,12 +2225,11 @@ input:checked+.slider:before {
     }
 }
 /* =================================================================== */
-/* 22. CURRENT WEIGHT STAT MODULE
-/* (Add this to your main CSS file)
+/* 22. CURRENT WEIGHT & BMI STAT MODULE
+/* (This REPLACES your old .weight-module CSS)
 /* =================================================================== */
 
 .stat-module.weight-module {
-    /* A nice blue gradient for the light theme */
     background: linear-gradient(135deg, #e3f2fd, #bbdefb);
 }
 
@@ -2239,87 +2238,284 @@ input:checked+.slider:before {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    margin-bottom: 1.5rem; /* More space */
 }
 
-.weight-display {
+/* New 2-column grid */
+.weight-bmi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(13, 71, 161, 0.1);
+    padding-bottom: 1rem;
+}
+
+.stat-item {
     text-align: center;
+}
+.stat-item:first-child {
+    border-right: 1px solid rgba(13, 71, 161, 0.1);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e88e5;
+    display: block;
     margin-bottom: 0.5rem;
 }
 
+/* Weight Display */
+.weight-display {
+    margin-bottom: 0.5rem;
+}
 #stat-current-weight {
     font-size: 2.5rem;
     font-weight: 700;
     color: #1565c0; /* Strong blue */
     line-height: 1;
 }
-
 .kg-label {
     font-size: 1rem;
     font-weight: 500;
     color: #1e88e5;
     margin-left: 4px;
 }
+.stat-date {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin: 0;
+    min-height: 1.2em; /* Prevents layout jump */
+}
 
-.stat-weight-date,
-#stat-weight-date { /* Target both */
-    text-align: center;
-    font-size: 0.85rem;
+/* BMI Display Area */
+#bmi-display-area {
+    min-height: 60px; /* Consistent height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#add-height-btn {
     font-weight: 600;
-    color: #1e88e5;
-    margin-top: 0;
+    border-color: #1565c0;
+    color: #1565c0;
+}
+#add-height-btn:hover {
+    background-color: #1565c0;
+    color: #fff;
+}
+
+.bmi-value-loading {
+    font-size: 2.5rem;
+    color: #90a4ae;
+}
+
+.bmi-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
     margin-bottom: 0.5rem;
-    min-height: 1.2em; /* Prevents layout jump when text loads */
+}
+.stat-category {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0;
 }
 
+/* BMI Category Colors */
+.bmi-underweight { color: #0288d1; } /* Blue */
+.bmi-healthy { color: #388e3c; } /* Green */
+.bmi-overweight { color: #f57c00; } /* Orange */
+.bmi-obese { color: #d32f2f; } /* Red */
+
+
+/* Bottom Shortcut Link */
 #weight-motivation-text {
-    font-size: 0.85rem;
-    color: var(--gray);
-    margin: 0.5rem 0 0 0;
+    text-align: center;
+    margin: 0;
 }
-
-/* --- Dark Mode --- */
-[data-theme="dark"] .stat-module.weight-module {
-    /* A deep blue gradient for the dark theme */
-    background: linear-gradient(135deg, #1e3a8a, #172554);
-    border-color: var(--dark-border);
-}
-
-[data-theme="dark"] .weight-module h4 {
-    color: #90caf9; /* Light blue */
-}
-
-[data-theme="dark"] #stat-current-weight {
-    color: #e3f2fd; /* Very light blue/white */
-}
-
-[data-theme="dark"] .kg-label,
-[data-theme="dark"] .stat-weight-date,
-[data-theme="dark"] #stat-weight-date {
-    color: #90caf9; /* Light blue */
-}
-/* (Inside your .stat-module.weight-module CSS) */
-
-#weight-motivation-text {
-    font-size: 0.85rem;
-    color: var(--gray);
-    margin: 0.5rem 0 0 0;
-}
-
-/* --- NEW: Style for the shortcut link --- */
 #log-weight-shortcut {
-    color: #0d47a1; /* Dark blue to match the light-mode header */
+    color: #0d47a1; 
     text-decoration: underline;
     font-weight: 600;
     cursor: pointer;
+    font-size: 0.85rem;
 }
-#log-weight-shortcut:hover {
-    color: #002171; /* Darker blue on hover */
-}
+#log-weight-shortcut:hover { color: #002171; }
 
-/* --- Dark Mode for the link --- */
+
+/* --- Dark Mode --- */
+[data-theme="dark"] .stat-module.weight-module {
+    background: linear-gradient(135deg, #1e3a8a, #172554);
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .weight-module h4 {
+    color: #90caf9; /* Light blue */
+}
+[data-theme="dark"] .weight-bmi-grid {
+    border-color: rgba(144, 202, 249, 0.2);
+}
+[data-theme="dark"] .stat-item:first-child {
+    border-color: rgba(144, 202, 249, 0.2);
+}
+[data-theme="dark"] .stat-label {
+    color: #90caf9;
+}
+[data-theme="dark"] #stat-current-weight {
+    color: #e3f2fd; /* Very light blue/white */
+}
+[data-theme="dark"] .kg-label {
+    color: #90caf9; 
+}
+[data-theme="dark"] #add-height-btn {
+    border-color: #90caf9;
+    color: #90caf9;
+}
+[data-theme="dark"] #add-height-btn:hover {
+    background-color: #90caf9;
+    color: #172554;
+}
+[data-theme="dark"] .bmi-value-loading {
+    color: #546e7a;
+}
 [data-theme="dark"] #log-weight-shortcut {
-    color: #90caf9; /* Light blue to match the dark-mode header */
+    color: #90caf9;
 }
 [data-theme="dark"] #log-weight-shortcut:hover {
-    color: #e3f2fd; /* Lighter blue on hover */
+    color: #e3f2fd;
+}
+/* BMI Dark Mode Colors */
+[data-theme="dark"] .bmi-underweight { color: #4fc3f7; } /* Light Blue */
+[data-theme="dark"] .bmi-healthy { color: #81c784; } /* Light Green */
+[data-theme="dark"] .bmi-overweight { color: #ffb74d; } /* Light Orange */
+[data-theme="dark"] .bmi-obese { color: #e57373; } /* Light Red */
+/* =================================================================== */
+/* 24. BMI EDIT BUTTON
+/* =================================================================== */
+
+.bmi-value-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem; /* This was on .bmi-value before */
+}
+
+.bmi-value {
+    margin-bottom: 0; /* We moved the margin to the wrapper */
+}
+
+.btn-edit-height {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.25rem;
+    line-height: 1;
+    display: inline-block;
+}
+.btn-edit-height:hover {
+    color: var(--primary);
+}
+
+[data-theme="dark"] .btn-edit-height {
+    color: var(--gray);
+}
+[data-theme="dark"] .btn-edit-height:hover {
+    color: var(--accent);
+}
+
+/* =================================================================== */
+/* 25. GOAL TIP CARD (in Tips Section)
+/* =================================================================== */
+
+.goal-tip-card {
+    background-color: #f8f9fa;
+    border-radius: 1rem;
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.goal-tip-card h4 {
+    color: var(--primary);
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.goal-description {
+    font-size: 1.05rem;
+    color: var(--gray);
+    margin-bottom: 1.5rem;
+}
+
+.goal-tips-list {
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.goal-tips-list li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.pro-tip-box {
+    background-color: rgba(76, 175, 80, 0.05); /* Light green tint */
+    border-left: 4px solid var(--primary);
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.pro-tip-box strong {
+    color: var(--primary);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.btn-youtube {
+    width: 100%;
+    font-weight: 600;
+    padding: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn-youtube .bi {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+    vertical-align: middle;
+}
+
+/* --- Dark Mode --- */
+[data-theme="dark"] .goal-tip-card {
+    background-color: #0f1722;
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .goal-tip-card h4,
+[data-theme="dark"] .pro-tip-box strong {
+    color: var(--accent);
+}
+
+[data-theme="dark"] .goal-description {
+    color: var(--text-on-dark);
+}
+
+[data-theme="dark"] .pro-tip-box {
+    background-color: rgba(0, 255, 234, 0.05); /* Light accent tint */
+    border-left-color: var(--accent);
+}
+
+[data-theme="dark"] .btn-youtube {
+    color: #f44336;
+    border-color: #f44336;
+}
+[data-theme="dark"] .btn-youtube:hover {
+    color: #fff;
+    background-color: #f44336;
 }

@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let allDataTables = []; // Stores all table instances
 
     const GOAL_OPTIONS = [
-        "General Fitness", "Weight Loss", "Muscle Gain", "Strength", "Endurance"
+        "General Fitness", "Weight Loss", "Muscle Gain", "Strength", "Endurance", "Flexibility", "Energy Boost", "Stress Relief", "Overall Health"
     ];
 
     /**
