@@ -18,9 +18,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
 
 
-  <script type="module" crossorigin src="/assets/studentDashboard-Daj5uOby.js"></script>
+  <script type="module" crossorigin src="/assets/studentDashboard-o3HmOJ7y.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-DPT30snR.css">
+  <link rel="stylesheet" crossorigin href="/assets/studentDashboard-CaVkbqsk.css">
 </head>
 <body>
 
@@ -127,7 +127,7 @@
                 <!-- Key Stats Modules -->
               <div class="stats-container">
                   <div class="stat-module consistency-module">
-                      <h4>Consistency Streak</h4>
+                      <h4><i class="bi bi-calendar-check"></i> Consistency Streak</h4>
                       
                       <div class="consistency-progress-bar-container">
                           <div class="consistency-progress-bar-fill" id="stat-streak-progress-fill"></div> 
@@ -139,6 +139,22 @@
                       </div>
                       <p id="streak-motivation-text">Log workouts to beat your best streak!</p>
                   </div>
+                   <div class="stat-module weight-module">
+                        <h4><i class="bi bi-person-badge"></i> Current Weight</h4>
+                        
+                        <div class="weight-display">
+                            <span id="stat-current-weight">--</span>
+                            <span class="kg-label">kg</span>
+                        </div>
+                        
+                        <p class="stat-weight-date" id="stat-weight-date">Log your weight to start!</p>
+                        
+                        <p id="weight-motivation-text">
+                          <a href="#" id="log-weight-shortcut">Log your weight frequently to see your progress.</a>
+                        </p>
+                   </div>
+                   
+          </div>
               </div>
             </div>
         </div>
@@ -263,7 +279,8 @@
 
 <section class="card" id="logs-low" style="display: none;">
     <div class="analytics-tabs">
-        <div class="tab-nav" style="overflow-x: auto;">
+      <!-- Tab Navigation, horizontal scrolling  no overflow-x : because it creates vertical scrollbar -->
+        <div class="tab-nav" style="overflow-y: hidden; overflow-x: auto;">
             <button class="tab-link active" data-tab="overview">📈 Performance Overview</button>
             <button class="tab-link" data-tab="logs">📓 Workout Logs</button>
             <button class="tab-link" data-tab="history">📜 Session History</button>
@@ -365,7 +382,44 @@
                         <i class="bi bi-info-circle-fill"></i>
                       </span>
                     </h3>
-                    <p>Tracking key metrics from your fitness tests over time.</p>
+                    <p>Tracking key metrics from your fitness tests and personal logs over time.</p>
+                    <div class="weight-logger-grid">
+    
+    <div class="weight-logger-form">
+        <h4><i class="bi bi-rulers"></i> Log Your Weight</h4>
+        <p>Log your weight regularly to see a more detailed trend on the chart.</p>
+        <form id="weightLogForm">
+            <div class="input-group">
+                <input type="number" step="0.1" id="weightInput" class="form-control" placeholder="Enter weight (e.g., 75.5)" required>
+                <span class="input-group-text">kg</span>
+                <button type="submit" class="btn btn-primary" id="logWeightBtn">
+                    <span class="button-text">Log</span>
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="weight-logger-history">
+        <h4><i class="bi bi-clock-history"></i> Your Weight Log</h4>
+        <div class="table-responsive history-table-container">
+            <table id="weightHistoryTable" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Weight (kg)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="weightHistoryBody">
+                    <tr><td colspan="3" class="text-center">Loading history...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+<hr class="section-divider"> 
                     <canvas id="fitnessProgressChart"></canvas>
                 </div>
             </div>

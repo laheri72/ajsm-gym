@@ -3,30 +3,31 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fitness Test</title> <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
+    <title>Fitness Test</title>
+    <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
 
-        <script>
+    <script>
         // This script runs instantly, before anything is displayed.
-        try {
+try {
             const userString = localStorage.getItem('staffUser');
-            if (userString) {
+if (userString) {
                 const user = JSON.parse(userString);
-                const classList = [];
+const classList = [];
 
                 if (user.Role === 'Admin') {
                     classList.push('is-admin');
-                }
+}
                 if (user.Branch === 'Marol' && user.Gender === 'Male') {
                     classList.push('is-marol-male');
-                }
+}
 
                 if (classList.length > 0) {
                     document.documentElement.className = classList.join(' ');
-                }
+}
             }
         } catch (e) {
             // If something fails, do nothing and let the main script handle it.
-            console.error('Bootstrap script failed:', e);
+console.error('Bootstrap script failed:', e);
         }
     </script>
     
@@ -34,7 +35,56 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <script type="module" crossorigin src="/assets/staffTest-C4wXKCZr.js"></script>
+    
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px; /* Give charts a defined height */
+            width: 100%;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        /* Responsive charts */
+        @media (max-width: 992px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* * NEW Row Highlighting Styles
+         * [cite_start]Modeled after your .attendance-danger-row [cite: 91, 92]
+        */
+        .bmi-danger td {
+            background-color: #f8d7da !important; /* Light Red */
+            color: #721c24 !important;
+        }
+        
+        .grade-success td {
+            background-color: #d4edda !important; /* Light Green */
+            color: #155724 !important;
+        }
+
+        .grade-fail td {
+            background-color: #f5c6cb !important; /* Lighter Red/Pink */
+            color: #721c24 !important;
+            font-weight: 500;
+        }
+
+        /* Style for the filter row selects */
+        #filter-row th {
+            padding: 0.5rem;
+        }
+        #filter-row select {
+            width: 100%;
+            min-width: 120px;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/staffTest-D6vAe53s.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-B0p6mXTA.js">
   <link rel="stylesheet" crossorigin href="/assets/auth-C3YTSdM4.css">
@@ -45,19 +95,22 @@
             <div class="brand">
                 <a href="overview.html">FitTracker</a>
             </div>
-            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+        
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
             <nav class="navbar" id="navbar">
-                <a href="overview.html" id="tab-overview">📊 Overview</a>
+                <a href="overview.html" 
+id="tab-overview">📊 Overview</a>
                 <a href="entry.html" id="tab-entry">Slot Entry</a>
                 <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
                 <a href="records.html" id="tab-record">Active Students</a>
                 <a href="progress.html" id="tab-Progress">Analysis</a>
                 <a href="test.html" id="tab-test">Fitness Test</a>
-                <a href="attendance.html" id="tab-attendance">Attendance</a>
+    
+            <a href="attendance.html" id="tab-attendance">Attendance</a>
                 <a href="leaves.html" id="tab-leaves">Leave Management</a>
                 <a href="profile.html" id="tab-profile">👤 Profile</a>
                 <a href="#" id="logoutLink">Logout</a>
@@ -65,15 +118,69 @@
         </header>
 
         <main class="main-content">
-            <div class="content">
+           <div class="content">
+
+                <section id="test-stats" class="mb-4">
+                    <h2 class="h4 mb-3">Statistics Overview</h2>
+                    <div class="stat-cards-container">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-total-tests">...</div>
+                            <div class="stat-label">Total Tests</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-trainer-submitted">...</div>
+                            <div class="stat-label">Submitted by Trainer</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-student-submitted">...</div>
+                            <div class="stat-label">Submitted by Student</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-avg-bmi">...</div>
+                            <div class="stat-label">Average BMI</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-avg-body-fat">...</div>
+                            <div class="stat-label">Average Body Fat %</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-common-grade">...</div>
+                            <div class="stat-label">Most Common Grade</div>
+                        </div>
+                    </div>
+                </section>
+                <section id="test-charts" class="card mb-4">
+                    <h2 class="h4 mb-3">Distributions</h2>
+                    <div class="charts-grid">
+                        <div>
+                            <h5 class="text-center">BMI Status Distribution</h5>
+                            <div class="chart-container">
+                                <canvas id="bmiStatusChart"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="text-center">Grade Distribution</h5>
+                            <div class="chart-container">
+                                <canvas id="gradeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
                 <section id="test-record" class="card">
-                    <div class="container mt-5">
-                        <h2>🧪 All Fitness Test Records</h2>
-                        <button id="exportTestRecordsBtn" class="btn btn-success mb-3">Export to Excel</button>
+                    <div class="container-fluid mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                            <h2 class="h4 mb-0">🧪 Fitness Test Records</h2>
+                    <button id="exportTestRecordsBtn" class="btn btn-success">Export to Excel</button>
+                        </div>
                         
                         <div style="overflow-x: auto;">
                             <table id="test-records-table" class="table table-striped table-bordered nowrap" style="width:100%">
-                                <thead>
+                          <thead>
                                     <tr>
                                         <th>Date</th>
                                         <th>TR</th>
@@ -93,15 +200,17 @@
                                         <th>Total</th>
                                         <th>Grade</th>
                                         <th>Submitted By</th>
-                                    </tr>
+                                      </tr>
+                                    <tr id="filter-row">
+                                        <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> </tr>
                                 </thead>
                                 <tbody></tbody>
-                            </table>
+                </table>
                         </div>
                     </div>
                 </section>
-                </div>
-        </main>
+            </div>
+</main>
     </div>
 
     <div class="nav-overlay" id="nav-overlay"></div>
@@ -112,6 +221,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
     <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
@@ -121,15 +232,15 @@
                 <h5 class="modal-title">Create Your New Password</h5>
             </div>
             <div class="modal-body">
-                <p>Welcome! For your security, you must create a new password for your account.</p>
+<p>Welcome! For your security, you must create a new password for your account.</p>
                 <form id="setPasswordForm">
                     <div class="mb-3">
                         <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
-                        <input type="password" class="form-control" id="newPassword" required>
+    <input type="password" class="form-control" id="newPassword" required>
                     </div>
                     <div class="mb-3">
                         <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirmPassword" required>
+ <input type="password" class="form-control" id="confirmPassword" required>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Set New Password</button>
                 </form>

@@ -395,8 +395,23 @@
         body.dark-mode .choices__list--dropdown .choices__item--selectable.is-highlighted {
             background-color: var(--secondary-color);
         }
+        /* ... inside your <style> block ... */
+
+        #testing-area {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 1rem;
+            overflow-x: auto;
+            padding: 1rem 0.5rem; /* Add padding for scrollbar */
+            min-height: 200px; /* Ensure it has some space */
+        }
+
+        #testing-area .accordion-item {
+            flex: 0 0 300px; /* Don't grow, don't shrink, base width 300px */
+            margin-bottom: 0; /* Override default margin */
+        }
     </style>
-  <script type="module" crossorigin src="/assets/trainerDashboard-CvZcYobY.js"></script>
+  <script type="module" crossorigin src="/assets/trainerDashboard-Deol42pP.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
 </head>
 <body>

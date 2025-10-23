@@ -506,6 +506,50 @@ app.put('/api/change-student-slot', async (req, res) => {
   }
 });
 
+// ADD THIS NEW ENDPOINT
+// Updates a student's preferred goal
+app.put('/api/change-student-goal', async (req, res) => {
+    // 1. Security Check: Ensure user is logged in
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+
+    const { TR, Goal } = req.body;
+
+    if (!TR || !Goal) {
+        return res.status(400).json({ success: false, message: 'TR and Goal are required.' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+        request.input('Goal', sql.NVarChar(100), Goal); // Assuming Goal is NVarChar
+
+        // 2. Security Check (Optional but Recommended):
+        //    Ensure the staff member can only edit students in their own branch/gender
+        request.input('Branch', sql.NVarChar(50), req.session.user.Branch);
+        request.input('Gender', sql.NVarChar(10), req.session.user.Gender);
+
+        const result = await request.query(`
+            UPDATE Master
+            SET Goal = @Goal
+            WHERE TR = @TR
+              AND Branch = @Branch
+              AND Gender = @Gender;
+        `);
+
+        if (result.rowsAffected[0] > 0) {
+            res.json({ success: true, message: 'Goal updated successfully!' });
+        } else {
+            res.status(404).json({ success: false, message: 'Student not found or not in your branch.' });
+        }
+
+    } catch (err) {
+        console.error('Error changing student goal:', err);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 
 //--------------------------------------------------------------------------------------------------------------------------
 

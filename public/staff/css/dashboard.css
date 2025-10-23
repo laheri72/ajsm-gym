@@ -890,3 +890,223 @@ body.nav-open .nav-overlay {
   height: 400px !important;
   width: 100% !important;
 }
+/* --- ADD THIS TO YOUR dashboard.css FILE --- */
+
+/* 1. Container for the new slot cards */
+#slot-cards-container {
+    display: grid;
+    grid-template-columns: 1fr; /* Stack cards by default */
+    gap: 1.5rem; /* Space between cards */
+}
+
+/* 2. Header for each card */
+.slot-card-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary);
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 1rem;
+}
+
+/* 3. Make DataTables UI more compact to fit in cards */
+.slot-card .dataTables_length,
+.slot-card .dataTables_filter {
+    margin-bottom: 0.75rem;
+}
+
+.slot-card .dataTables_length label,
+.slot-card .dataTables_filter label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Make inputs and selects smaller */
+.slot-card .dataTables_length select,
+.slot-card .dataTables_filter input {
+    font-size: 0.9rem !important;
+    padding: 0.25rem 0.5rem !important;
+    height: auto !important;
+    display: inline-block !important;
+    width: auto !important;
+    min-width: 150px; /* Give search bar some space */
+}
+
+/* Make "Showing X..." and pagination smaller */
+.slot-card .dataTables_info,
+.slot-card .dataTables_paginate {
+    font-size: 0.85rem !important;
+}
+
+.slot-card .pagination .page-link {
+    padding: 0.4rem 0.6rem;
+}
+/* --- ADD THIS TO YOUR dashboard.css FILE --- */
+
+/* 1. Container for the new slot cards */
+#slot-cards-container {
+    display: grid;
+    grid-template-columns: 1fr; /* Stack cards by default */
+    gap: 1.5rem; /* Space between cards */
+}
+
+/* 2. Header for each card */
+.slot-card-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary);
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 1rem;
+}
+
+/* 3. Make DataTables UI more compact to fit in cards */
+.slot-card .dataTables_length,
+.slot-card .dataTables_filter {
+    margin-bottom: 0.75rem;
+}
+
+.slot-card .dataTables_length label,
+.slot-card .dataTables_filter label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.slot-card .dataTables_length select,
+.slot-card .dataTables_filter input {
+    font-size: 0.9rem !important;
+    padding: 0.25rem 0.5rem !important;
+    height: auto !important;
+    display: inline-block !important;
+    width: auto !important;
+    min-width: 150px; /* Give search bar some space */
+}
+
+.slot-card .dataTables_info,
+.slot-card .dataTables_paginate {
+    font-size: 0.85rem !important;
+}
+
+.slot-card .pagination .page-link {
+    padding: 0.4rem 0.6rem;
+}
+
+
+/* --- 4. NEW Print Styles --- */
+
+/* Hide print headers/footers by default */
+.print-only {
+    display: none;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+#print-header h1 {
+    font-weight: 700;
+    color: #000;
+}
+#print-header p {
+    font-size: 1.2rem;
+    margin: 0;
+}
+#print-footer {
+    text-align: center;
+    font-style: italic;
+    color: #666;
+    margin-top: 2rem;
+}
+/* --- REPLACE your @media print block with this SIMPLER one --- */
+
+@media print {
+
+    /* --- 1. HIDE UNWANTED UI --- */
+    /* (JS will hide the columns) */
+    .app-header,
+    .navbar,
+    .nav-overlay,
+    #student-record .btn-group,
+    #student-record h2,
+    #student-record .text-muted,
+    .hamburger-btn,
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info,
+    .dataTables_paginate,
+    .btn, .edit-goal-btn, .edit-slot-btn { /* Hide all buttons */
+        display: none !important;
+    }
+
+    /* --- 2. SHOW PRINT-ONLY ELEMENTS --- */
+    .print-only {
+        display: block !important;
+    }
+
+    /* --- 3. RESET PAGE LAYOUT (Fixes blank page) --- */
+    body, 
+    .dashboard-container, 
+    .main-content, 
+    .content, 
+    #student-record {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        background-color: #fff !important;
+    }
+    
+    * {
+        color: #000 !important;
+    }
+
+    /* --- 4. FORMAT THE CARDS (PAGES) --- */
+    .slot-card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid; 
+        page-break-after: always; 
+        margin-bottom: 2rem;
+    }
+    
+    .slot-card-header {
+        background-color: #eee !important;
+        padding: 0.5rem;
+        border-bottom: 1px solid #ccc;
+    }
+    
+    /* --- 5. FIX SCROLLBAR & TABLE STACKING --- */
+    
+    /* This disables the horizontal scrollbar */
+    .slot-card div[style="overflow-x: auto;"] {
+        overflow-x: visible !important;
+    }
+    
+    /* This forces a normal table layout */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    .stacking-card-table thead {
+        display: table-header-group !important;
+    }
+    .stacking-card-table tbody tr {
+        display: table-row !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    .stacking-card-table th,
+    .stacking-card-table td {
+        display: table-cell !important;
+        text-align: left !important;
+        border: 1px solid #999 !important;
+        padding: 8px !important;
+        font-size: 10pt !important;
+    }
+    .stacking-card-table th {
+         background-color: #f9f9ff !important;
+    }
+    .stacking-card-table td:before {
+        content: none !important;
+    }
+}

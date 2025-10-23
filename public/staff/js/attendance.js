@@ -252,7 +252,7 @@ const startDate = new Date(result.weekStartDate);
             const row = document.createElement('tr');
             
             // === MODIFICATION: Danger row logic updated to > 3 ===
-            if (absentCount > 3) {
+            if (absentCount > 2) {
                 row.classList.add('attendance-danger-row');
             }
 
@@ -268,7 +268,7 @@ const startDate = new Date(result.weekStartDate);
 
             // === MODIFICATION: Add Actions Cell ===
             let actionsCellHtml = '<td>-</td>'; // Default
-            if (absentCount > 3) {
+            if (absentCount > 2) {
                 actionsCellHtml = `
                     <td>
                         <button class="btn btn-sm btn-danger deactivate-btn" data-tr="${student.TR}">
