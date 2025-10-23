@@ -646,19 +646,25 @@ table th, table td {
 [data-theme="dark"] .table,
 [data-theme="dark"] .table tbody tr,
 [data-theme="dark"] #studentPlanTable,
-[data-theme="dark"] #sessionHistoryTable {
+[data-theme="dark"] #sessionHistoryTable,
+[data-theme="dark"] #weightHistoryTable {
     background-color: #0f1722;
 }
 
 [data-theme="dark"] #studentPlanTable tbody td,
-[data-theme="dark"] #sessionHistoryTable tbody td {
+[data-theme="dark"] #sessionHistoryTable tbody td,
+[data-theme="dark"] #weightHistoryTable tbody td {
     background-color: #0f1722;
     color: var(--text-on-light);
 }
 [data-theme="dark"] #studentPlanTable thead th,
-[data-theme="dark"] #sessionHistoryTable thead th {
+[data-theme="dark"] #sessionHistoryTable thead th,
+[data-theme="dark"] #weightHistoryTable thead th {
     background-color: #1f2d40;
     color: var(--text-on-light);
+}
+[data-theme="dark"] #weightHistoryTable tbody td {
+    border-color: #1f2d40;
 }
 [data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
     background-color: #0f1c2a;
@@ -2192,11 +2198,6 @@ input:checked+.slider:before {
 
 
 /* --- Dark Mode Styles --- */
-/* for table content and transparency */
-[data-theme="dark"] #weightHistoryTable tbody tr {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-on-light);
-}
 [data-theme="dark"] .weight-logger-form,
 [data-theme="dark"] .weight-logger-history {
     background-color: #0f1722; /* Darker card bg */
@@ -2216,7 +2217,6 @@ input:checked+.slider:before {
 [data-theme="dark"] .section-divider {
     border-color: var(--dark-border);
 }
-
 
 /* --- Responsive Styles --- */
 @media (max-width: 992px) {

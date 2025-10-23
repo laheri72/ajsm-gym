@@ -1,4 +1,4 @@
-let studentTR, studentName, branch, gender;
+let studentTR, studentName, branch, gender, membersince;
 let bodyPartChart = null;
 let fitnessProgressChart = null;
 let weeklyHoursChart = null;
@@ -126,6 +126,8 @@ async function getStudentSession() {
     studentName = user.Name;
     branch = user.Branch;
     gender = user.Gender;
+    // NEW LINE: Format the join date properly
+    membersince = new Date(user.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' , day: 'numeric' });
 
     // --- NEW: Check for Level-Up on page load ---
     const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
@@ -148,6 +150,7 @@ async function getStudentSession() {
 
     document.getElementById('welcomeText').innerText =
       `Your personal Fitness Dashboard 
+       Member Since ${membersince}
        ${branch} | ${title}`;
 
         // --- NEW: Check if password change is needed ---

@@ -999,7 +999,7 @@ app.get('/api/student-session', async (req, res) => {
       const result = await pool.request()
         .input('TR', sql.Int, TR)
         .query(`
-          SELECT FitnessLevel, CurrentXP, HasLoggedInBefore 
+          SELECT FitnessLevel, CurrentXP, HasLoggedInBefore, joinedAt
           FROM Master 
           WHERE TR = @TR
         `);
