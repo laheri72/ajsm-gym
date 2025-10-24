@@ -135,28 +135,70 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- EVENT LISTENERS (NOW SAFELY INSIDE DOMCONTENTLOADED) ---
+document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
 
-    document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const payload = {
-            TR: document.getElementById('trNo').value.trim(), 
-            Name: document.getElementById('studentName').value,
-            Darajah: document.getElementById('darajah').value,
-            Goal: document.getElementById('goal').value
-        };
+    // 1. Get references to the button and its parts
+    const submitBtn = document.getElementById('addStudentBtn'); // Use the ID we added
+    const buttonText = submitBtn.querySelector('.button-text');
+    const spinner = submitBtn.querySelector('.spinner-border');
+
+    // 2. Start Loader: Disable button, show spinner
+    submitBtn.disabled = true;
+    buttonText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    // 3. Prepare payload (same as before)
+    const payload = {
+        TR: document.getElementById('trNo').value.trim(), 
+        Name: document.getElementById('studentName').value,
+        Darajah: document.getElementById('darajah').value,
+        Goal: document.getElementById('goal').value
+    };
+
+    try {
+        // 4. Make the API call (same as before)
         const res = await fetch('/api/add-student', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
         const data = await res.json();
+
+        // 5. Handle response (same as before)
         if (res.ok && data.success) {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Student added to Waiting List!', showConfirmButton: false, timer: 2000 });
-            refreshSlotEntryPage();
-            this.reset();
+            Swal.fire({ 
+                toast: true, 
+                position: 'top-end', 
+                icon: 'success', 
+                title: 'Student added to Waiting List!', 
+                showConfirmButton: false, 
+                timer: 2000 
+            });
+            refreshSlotEntryPage(); // Refreshes tables
+            this.reset(); // Resets the form fields
         } else {
-            Swal.fire({ icon: 'error', title: 'Oops...', text: 'Error: ' + data.message });
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Oops...', 
+                text: 'Error: ' + data.message 
+            });
         }
-    });
+    } catch (err) {
+        // Handle potential network errors
+        console.error("Add student error:", err);
+        Swal.fire({ 
+            icon: 'error', 
+            title: 'Server Error', 
+            text: 'Could not add student. Please try again later.' 
+        });
+    } finally {
+        // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
+        submitBtn.disabled = false;
+        buttonText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+});
 
 $('#waitingListTable tbody').on('click', '.assign-btn', async function () {
         const assignBtn = $(this); // Get the jQuery object for the clicked button
@@ -209,26 +251,68 @@ $('#waitingListTable tbody').on('click', '.assign-btn', async function () {
             assignBtn.html(originalBtnText);
         }
     });
+document.getElementById('createSlotForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
 
-    document.getElementById('createSlotForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const payload = {
-            SlotName: document.getElementById('slot').value.trim(),
-            MaxCapacity: parseInt(document.getElementById('maxCapacity').value, 10)
-        };
+    // 1. Get references to the button and its parts
+    const submitBtn = document.getElementById('createSlotBtn'); // Use the ID we added
+    const buttonText = submitBtn.querySelector('.button-text');
+    const spinner = submitBtn.querySelector('.spinner-border');
+
+    // 2. Start Loader: Disable button, show spinner
+    submitBtn.disabled = true;
+    buttonText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    // 3. Prepare payload (same as before) [cite: 434]
+    const payload = {
+        SlotName: document.getElementById('slot').value.trim(),
+        MaxCapacity: parseInt(document.getElementById('maxCapacity').value, 10)
+    };
+
+    try {
+        // 4. Make the API call (same as before) [cite: 434-435]
         const res = await fetch('/api/slots', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        const data = await res.json();
+        const data = await res.json(); // [cite: 435]
+
+        // 5. Handle response (same as before)
         if (res.ok) {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Slot created!', showConfirmButton: false, timer: 2000 });
-            this.reset();
-            refreshSlotEntryPage();
+            Swal.fire({ 
+                toast: true, 
+                position: 'top-end', 
+                icon: 'success', 
+                title: 'Slot created!', 
+                showConfirmButton: false, 
+                timer: 2000 
+            }); // [cite: 435]
+            this.reset(); // [cite: 435]
+            refreshSlotEntryPage(); // [cite: 435]
         } else {
-            Swal.fire({ icon: 'error', title: 'Oops...', text: 'Error: ' + data.error });
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Oops...', 
+                text: 'Error: ' + data.error 
+            }); // [cite: 436]
         }
-    });
+    } catch (err) {
+        // Handle potential network errors
+        console.error("Create slot error:", err);
+        Swal.fire({ 
+            icon: 'error', 
+            title: 'Server Error', 
+            text: 'Could not create slot. Please try again later.' 
+        });
+    } finally {
+        // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
+        submitBtn.disabled = false;
+        buttonText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+});
 
     // --- PAGE INITIALIZATION ---
 

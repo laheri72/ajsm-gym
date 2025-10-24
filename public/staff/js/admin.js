@@ -64,32 +64,62 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Event listener for adding a new user
-    document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newUser = {
-            username: document.getElementById('newUsername').value.trim(),
-            gender: document.getElementById('newGender').value,
-            role: document.getElementById('newRole').value,
-            branch: user.Branch
-        };
-        
+document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // 1. Get references to the button and its parts
+    const submitBtn = document.getElementById('addUserBtn'); // Use the ID we added
+    const buttonText = submitBtn.querySelector('.button-text');
+    const spinner = submitBtn.querySelector('.spinner-border');
+
+    // 2. Start Loader: Disable button, show spinner
+    submitBtn.disabled = true;
+    buttonText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    // 3. Prepare payload (same as before) [cite: 90]
+    const newUser = {
+        username: document.getElementById('newUsername').value.trim(),
+        gender: document.getElementById('newGender').value,
+        role: document.getElementById('newRole').value,
+        branch: user.Branch // Assuming 'user' is accessible here from page load [cite: 90]
+    };
+
+    try {
+        // 4. Make the API call (same as before) [cite: 90]
         const res = await fetch('/api/admin/add-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newUser)
         });
-        const data = await res.json();
-        if (data.success) {
-            Swal.fire({
+        const data = await res.json(); //
+
+        // 5. Handle response (same as before)
+        if (data.success) { // [cite: 91]
+            Swal.fire({ // [cite: 91]
                 toast: true, position: 'top-end', icon: 'success',
                 title: 'User Added Successfully!', showConfirmButton: false, timer: 3000
             });
-            loadAdminUsers(); // Refresh the user list
-            e.target.reset();
+            loadAdminUsers(); // Refresh the user list [cite: 91]
+            e.target.reset(); // [cite: 92]
         } else {
-            Swal.fire('Error', 'Failed to add user: ' + data.message, 'error');
+            Swal.fire('Error', 'Failed to add user: ' + data.message, 'error'); // [cite: 92, 93]
         }
-    });
+    } catch (err) {
+        // Handle potential network errors
+        console.error("Add user error:", err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Server Error',
+            text: 'Could not add user. Please try again later.'
+        });
+    } finally {
+        // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
+        submitBtn.disabled = false;
+        buttonText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+});
 
     // Delegated event listener for deleting a user
     $('#adminUserTable').on('click', '.delete-user-btn', function() {
