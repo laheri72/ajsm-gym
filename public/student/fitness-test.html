@@ -354,16 +354,22 @@
                     <div class="col-md-8">
                         <div id="studentInfo" class="card mb-4">
                             <h5><i class="fas fa-info-circle"></i> Personal Information</h5>
-                            <table class="table table-bordered">
-                                <tbody>
-                                    <tr><th>ITS</th><td id="studentITS"></td></tr>
-                                    <tr><th>Darajah</th><td id="studentDarajah"></td></tr>
-                                    <tr><th>Class</th><td id="studentClass"></td></tr>
-                                    <tr><th>House</th><td id="studentHouse"></td></tr>
-                                    <tr><th>Age</th><td id="studentAge"></td></tr>
-                                    <tr><th>DOB</th><td id="studentDOB"></td></tr>
-                                </tbody>
-                            </table>
+                        <table class="table table-bordered">
+                        <tbody>
+                        <tr><th>ITS</th><td id="studentITS"></td></tr>
+                        <tr><th>Darajah</th><td id="studentDarajah"></td></tr>
+                        <tr><th>Age</th><td id="studentAge">Loading...</td></tr> 
+                        <tr><th>DOB</th><td><span id="studentDOBDisplay">Loading...</span>
+                                
+                                <div id="dobInputGroup" class="input-group" style="display: none;">
+                                    <input type="date" id="dobInput" class="form-control form-control-sm" placeholder="YYYY-MM-DD">
+                                    <button class="btn btn-sm btn-success" type="button" onclick="saveDOB()">Save DOB</button>
+                                </div>
+                                <small id="dobHelp" class="form-text text-muted" style="display: none;">Please enter your Date of Birth to calculate accurate results.</small>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
                         </div>
                     </div>
                 </div>
@@ -582,6 +588,10 @@ async function validateStudentSession() {
         const studentInfo = document.getElementById("studentInfo");
         const fitnessForm = document.getElementById("fitnessForm");
         const reportSection = document.getElementById("reportSection");
+        const dobDisplay = document.getElementById('studentDOBDisplay');
+        const dobInputGroup = document.getElementById('dobInputGroup');
+        const dobHelp = document.getElementById('dobHelp');
+        const ageDisplay = document.getElementById('studentAge');
 
         if (saveWarning) {
             saveWarning.textContent = 'ℹ️ Please submit accurate details. One record allowed per week.';
@@ -594,6 +604,10 @@ async function validateStudentSession() {
         if (studentInfo) studentInfo.classList.add("hidden");
         if (fitnessForm) fitnessForm.classList.add("hidden");
         if (reportSection) reportSection.classList.add("hidden");
+        if (dobDisplay) dobDisplay.textContent = 'Loading...';
+        if (dobInputGroup) dobInputGroup.style.display = 'none';
+        if (dobHelp) dobHelp.style.display = 'none';
+        if (ageDisplay) ageDisplay.textContent = 'Loading...';
 
         const testForm = document.getElementById("testForm");
         const reportTableBody = document.getElementById("reportTableBody");
@@ -612,20 +626,34 @@ async function validateStudentSession() {
 
             studentData = student;
 
-            const fields = [
-                { id: "studentName", value: student.Name },
-                { id: "studentITS", value: student.ITS },
-                { id: "studentDarajah", value: student.Darajah },
-                { id: "studentClass", value: student.Class },
-                { id: "studentHouse", value: student.House },
-                { id: "studentAge", value: student.Age },
-                { id: "studentDOB", value: new Date(student.DOB).toLocaleDateString() }
-            ];
+            // Populate static fields
+            document.getElementById("studentName").innerText = student.Name || 'N/A';
+            document.getElementById("studentITS").innerText = student.ITS || 'N/A';
+            document.getElementById("studentDarajah").innerText = student.Darajah || 'N/A';
 
-            fields.forEach(({ id, value }) => {
-                const element = document.getElementById(id);
-                if (element) element.innerText = value;
-            });
+            // --- Handle DOB and Age ---
+            if (student.DOB) {
+                const birthDate = new Date(student.DOB);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                studentData.calculatedAge = age; // Store calculated age
+                
+                if (ageDisplay) ageDisplay.innerText = age;
+                if (dobDisplay) dobDisplay.innerText = birthDate.toLocaleDateString(); // Show formatted DOB
+                if (dobInputGroup) dobInputGroup.style.display = 'none'; // Hide input
+                if (dobHelp) dobHelp.style.display = 'none';
+
+            } else {
+                studentData.calculatedAge = 18; // Use default age
+                if (ageDisplay) ageDisplay.innerText = 'N/A (Enter DOB)';
+                if (dobDisplay) dobDisplay.innerText = ''; // Clear display span
+                if (dobInputGroup) dobInputGroup.style.display = 'flex'; // Show input group
+                if (dobHelp) dobHelp.style.display = 'block'; // Show help text
+            }
 
             if (studentInfo) studentInfo.classList.remove("hidden");
             if (fitnessForm) fitnessForm.classList.remove("hidden");
@@ -696,6 +724,71 @@ async function validateStudentSession() {
 }
 
 
+// --- NEW FUNCTION: Save Date of Birth ---
+async function saveDOB() {
+    const dobInput = document.getElementById('dobInput');
+    const dobValue = dobInput.value; // Format should be 'YYYY-MM-DD'
+
+    if (!dobValue) {
+        Swal.fire('Missing Date', 'Please select your Date of Birth.', 'warning');
+        return;
+    }
+
+    // Optional: Add more robust date validation if needed
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dobValue)) {
+         Swal.fire('Invalid Format', 'Please use the YYYY-MM-DD format for Date of Birth.', 'error');
+         return;
+    }
+
+
+    try {
+        const res = await fetch('/api/testmaster/me/dob', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ DOB: dobValue })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to save DOB.');
+        }
+
+        Swal.fire('Success!', 'Date of Birth saved successfully.', 'success');
+
+        // --- Update UI immediately ---
+        const dobDisplay = document.getElementById('studentDOBDisplay');
+        const dobInputGroup = document.getElementById('dobInputGroup');
+        const dobHelp = document.getElementById('dobHelp');
+        const ageDisplay = document.getElementById('studentAge');
+
+        const birthDate = new Date(dobValue);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        
+        // Update global studentData as well
+        if (studentData) {
+             studentData.DOB = dobValue; 
+             studentData.calculatedAge = age;
+        }
+
+        if (ageDisplay) ageDisplay.innerText = age;
+        if (dobDisplay) dobDisplay.innerText = birthDate.toLocaleDateString();
+        if (dobInputGroup) dobInputGroup.style.display = 'none';
+        if (dobHelp) dobHelp.style.display = 'none';
+        // --- End UI Update ---
+
+    } catch (err) {
+        console.error("Save DOB failed", err);
+        Swal.fire('Save Failed', `There was an error saving your Date of Birth: ${err.message}`, 'error');
+    }
+}
+
         function showTestInfo() {
             Swal.fire({
                 title: "Fitness Test Overview",
@@ -745,7 +838,7 @@ async function validateStudentSession() {
             const PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
             const Gender = form.querySelector('[name="Gender"]').value;
 
-            const Age = studentData?.Age ? parseInt(studentData.Age) : 18; // fallback if missing
+            const Age = studentData?.calculatedAge || 18; // Use fetched/calculated age or default to 18
 
             const PushUps = parseInt(form.querySelector('[name="PushUps"]').value) || 0;
             const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
@@ -893,10 +986,7 @@ async function validateStudentSession() {
                 return;
             }
 
-            const requiredChecks = [
-                { name: 'TR', value: studentData.TR },
-                { name: 'DOB', value: studentData.DOB },
-                { name: 'Age', value: studentData.Age },
+            const requiredChecks = [    
                 { name: 'Weight', value: calculated.Weight },
                 { name: 'Height', value: calculated.Height },
                 { name: 'Waist', value: calculated.Waist },
@@ -923,24 +1013,23 @@ async function validateStudentSession() {
                 }
             }
 
-            const body = {
-                TR: studentData.TR,
-                DOB: studentData.DOB,
-                Age: studentData.Age,
-                Weight: calculated.Weight,
-                Height: calculated.Height,
-                Waist: calculated.Waist,
-                Hips: calculated.Hips,
-                Neck: calculated.Neck,
-                BMI: parseFloat(calculated.BMI),
-                BMIStatus: calculated.BMIStatus,
-                BodyFat: parseFloat(calculated.BodyFat),
-                BMR: parseFloat(calculated.BMR),
-                CalorieIntake: parseFloat(calculated.CalorieIntake),
-                VO2Max: parseFloat(calculated.VO2Max),
-                Total: parseFloat(calculated.Total),
-                Grade: calculated.Grade
-            };
+                const body = {
+                        // TR is taken from session on backend
+                        Weight: calculated.Weight,
+                        Height: calculated.Height,
+                        Waist: calculated.Waist,
+                        Hips: calculated.Hips,
+                        Neck: calculated.Neck,
+                        BMI: parseFloat(calculated.BMI),
+                        BMIStatus: calculated.BMIStatus,
+                        BodyFat: parseFloat(calculated.BodyFat),
+                        BMR: parseFloat(calculated.BMR),
+                        CalorieIntake: parseFloat(calculated.CalorieIntake),
+                        VO2Max: calculated.VO2Max === "N/A" ? null : parseFloat(calculated.VO2Max), // Handle "N/A"
+                        Total: parseFloat(calculated.Total),
+                        Grade: calculated.Grade
+                        // Branch and Gender will be added by the backend API
+                    };
 
             // 🔹 Confirmation SweetAlert before actual save
         Swal.fire({
@@ -948,7 +1037,7 @@ async function validateStudentSession() {
             html: `
                 <p>Please confirm your details before submitting:</p>
                 <ul style="text-align:left">
-                    <li><b>Age:</b> ${calculated.Age} years</li>
+                    <li><b>Age Used:</b> ${calculated.Age} years</li>
                     <li><b>Gender:</b> ${calculated.Gender || 'Not specified'}</li>
                     <li><b>Weight:</b> ${body.Weight} kg</li>
                     <li><b>Height:</b> ${body.Height} cm</li>

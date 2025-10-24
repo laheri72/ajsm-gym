@@ -184,16 +184,7 @@ const navOverlay = document.getElementById('nav-overlay');
                 navOverlay.addEventListener('click', toggleNav);
 }
 
-            // Logic to set the 'active' class on the correct nav link
-            const currentPage = window.location.pathname.split('/').pop();
-const navLinks = document.querySelectorAll('.navbar a');
-            
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.href.includes(currentPage)) {
-                    link.classList.add('active');
-                }
-            });
+
 });
     </script>
     <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">

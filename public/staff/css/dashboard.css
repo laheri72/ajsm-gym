@@ -39,10 +39,10 @@ body {
 /* --- Components --- */
 .navbar {
     background: white;
-    padding: 1rem;
+    padding: 0.5rem;
     display: flex;
     justify-content: center;
-    gap: 2rem;
+    gap: 0.8rem;
     box-shadow: 0 2px 10px var(--card-shadow);
     flex-wrap: wrap; /* Added for better mobile view */
 }
@@ -402,7 +402,11 @@ html.is-admin #tab-admin {
     margin-top: auto; /* Pushes this item to the bottom */
     border-top: 1px solid #4a4a4a; /* Add a separator line above */
     border-bottom: none; /* Remove the bottom border */
+        color: var(--danger); /* Make logout red */
 }
+#logoutLink:hover {
+        background-color: rgba(244, 67, 54, 0.1); /* Light red hover */
+     }
 
 .navbar a.active {
     background-color: var(--primary);
@@ -935,57 +939,6 @@ body.nav-open .nav-overlay {
 .slot-card .pagination .page-link {
     padding: 0.4rem 0.6rem;
 }
-/* --- ADD THIS TO YOUR dashboard.css FILE --- */
-
-/* 1. Container for the new slot cards */
-#slot-cards-container {
-    display: grid;
-    grid-template-columns: 1fr; /* Stack cards by default */
-    gap: 1.5rem; /* Space between cards */
-}
-
-/* 2. Header for each card */
-.slot-card-header {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--primary);
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #f0f0f0;
-    margin-bottom: 1rem;
-}
-
-/* 3. Make DataTables UI more compact to fit in cards */
-.slot-card .dataTables_length,
-.slot-card .dataTables_filter {
-    margin-bottom: 0.75rem;
-}
-
-.slot-card .dataTables_length label,
-.slot-card .dataTables_filter label {
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.slot-card .dataTables_length select,
-.slot-card .dataTables_filter input {
-    font-size: 0.9rem !important;
-    padding: 0.25rem 0.5rem !important;
-    height: auto !important;
-    display: inline-block !important;
-    width: auto !important;
-    min-width: 150px; /* Give search bar some space */
-}
-
-.slot-card .dataTables_info,
-.slot-card .dataTables_paginate {
-    font-size: 0.85rem !important;
-}
-
-.slot-card .pagination .page-link {
-    padding: 0.4rem 0.6rem;
-}
-
-
 /* --- 4. NEW Print Styles --- */
 
 /* Hide print headers/footers by default */

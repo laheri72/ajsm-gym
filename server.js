@@ -3238,7 +3238,7 @@ app.post('/api/attendance/bulk-leave', async (req, res) => {
 //--------------------------------- FITNESS TEST --------------------------------------------
 //-------------------------------------------------------------------------------------------
 
-// CORRECTED FITNESS TEST ROUTE
+// CORRECTED: Fetches current student data from TestMaster
 app.get('/api/testmaster/me', async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ error: 'Unauthorized. Please log in.' });
@@ -3250,51 +3250,93 @@ app.get('/api/testmaster/me', async (req, res) => {
         const result = await pool.request() 
             .input('TR', sql.Int, TR)
             .query(`
-                SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
-                FROM TestMaster WHERE TR = @TR
+                SELECT 
+                    TR, 
+                    ITS, 
+                    Name, 
+                    Darajah, 
+                    -- DOB is now nullable
+                    CONVERT(varchar, DOB, 23) AS DOB, 
+                    Branch, 
+                    Gender
+                FROM TestMaster 
+                WHERE TR = @TR
             `);
 
-        res.json(result.recordset[0] || {});
+        if (result.recordset.length === 0) {
+             return res.status(404).json({ error: 'Student profile not found in TestMaster.' });
+        }
+        
+        res.json(result.recordset[0]); // Return the single student record or empty if not found
+
     } catch (err) {
-        console.error('Error fetching TestMaster:', err);
-        res.status(500).json({ error: 'Failed to fetch student data' });
+        console.error('Error fetching TestMaster for student:', err);
+        res.status(500).json({ error: 'Failed to fetch student profile data' });
     }
 });
-
 // --------------- for trainers ----------------------------
 
-// NEW route: fetch TestMaster by TR (for trainer dashboard)
+// UPDATED: Fetches student details, verifies branch/gender, uses current schema
 app.get('/api/testmaster/:tr', async (req, res) => {
-    if (!req.session.user || !req.session.user.Role || req.session.user.Role !== 'Trainer') {
-        return res.status(401).json({ error: 'Unauthorized. Please log in as a trainer.' });
+    // Check if logged-in user is a Trainer
+    if (req.session.user?.Role !== 'Trainer') {
+        return res.status(403).json({ error: 'Forbidden. Trainers only.' });
+    }
+
+    // Get trainer's info
+    const { Branch: trainerBranch, Gender: trainerGender } = req.session.user;
+    if (!trainerBranch || !trainerGender) {
+        return res.status(401).json({ error: 'Unauthorized. Session missing branch or gender.' });
     }
 
     const { tr } = req.params;
 
-  try {
-    const result = await pool.request()
-      .input('TR', sql.Int, tr)
-      .query(`
-        SELECT TR, ITS, Darajah, Age, Name, Hizb, Class, House, Check18, Email, DOB
-        FROM TestMaster WHERE TR = @TR
-      `);
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, tr);
+        request.input('TrainerBranch', sql.NVarChar(50), trainerBranch);
+        request.input('TrainerGender', sql.NVarChar(10), trainerGender);
 
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ error: 'Student not found' });
+        const result = await request.query(`
+            SELECT 
+                TR, 
+                ITS, 
+                Name, 
+                Darajah, 
+                CONVERT(varchar, DOB, 23) AS DOB, -- DOB is needed for Age calculation
+                Branch, 
+                Gender
+            FROM TestMaster 
+            WHERE TR = @TR 
+              AND Branch = @TrainerBranch -- Verify student belongs to trainer
+              AND Gender = @TrainerGender
+        `);
+
+        if (result.recordset.length === 0) {
+            // Student not found OR doesn't belong to this trainer's section
+            return res.status(404).json({ error: 'Student not found in your section.' });
+        }
+
+        res.json(result.recordset[0]); // Return the student data
+
+    } catch (err) {
+        console.error('❌ Error fetching TestMaster by TR for trainer:', err);
+        res.status(500).json({ error: 'Failed to fetch student data' });
     }
-
-    res.json(result.recordset[0]);
-  } catch (err) {
-    console.error('❌ Error fetching TestMaster by TR:', err);
-    res.status(500).json({ error: 'Failed to fetch student data' });
-  }
 });
 
 
-
+// CORRECTED: Saves a new fitness test record
 app.post('/api/testrecords', async (req, res) => {
+    // Student TR comes from session for security
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+    const TR = req.session.user.TR;
+
+    // Data from the form (Age and DOB are removed)
     const {
-        TR, DOB, Age, Weight, Height, Waist, Hips, Neck,
+        Weight, Height, Waist, Hips, Neck,
         BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade
     } = req.body;
 
@@ -3302,11 +3344,24 @@ app.post('/api/testrecords', async (req, res) => {
 
     try {
         await transaction.begin();
-        const request = new sql.Request(transaction);  // Use transaction-scoped request
+        const request = new sql.Request(transaction); // Use transaction-scoped request
 
+        // --- 1. Get Branch and Gender from TestMaster ---
+        const studentInfo = await request // Reuse the request object
+            .input('TR_Lookup', sql.Int, TR) // Use a different parameter name to avoid conflict
+            .query('SELECT Branch, Gender FROM TestMaster WHERE TR = @TR_Lookup');
+
+        if (studentInfo.recordset.length === 0) {
+            throw new Error('Student master record not found.');
+        }
+        const { Branch, Gender } = studentInfo.recordset[0];
+        // --- End Get Branch/Gender ---
+
+        // Clear existing inputs before adding new ones
+        request.parameters = {}; 
+
+        // --- 2. Input Parameters for TestRecords ---
         request.input('TR', sql.Int, TR);
-        request.input('DOB', sql.Date, DOB);
-        request.input('Age', sql.Int, Age);
         request.input('Weight', sql.Float, Weight);
         request.input('Height', sql.Float, Height);
         request.input('Waist', sql.Float, Waist);
@@ -3320,31 +3375,86 @@ app.post('/api/testrecords', async (req, res) => {
         request.input('VO2Max', sql.Float, VO2Max === "N/A" ? null : VO2Max);
         request.input('Total', sql.Float, Total);
         request.input('Grade', sql.NVarChar(2), Grade);
+        request.input('Branch', sql.NVarChar(50), Branch); // Add Branch
+        request.input('Gender', sql.NVarChar(10), Gender); // Add Gender
+        // --- End Input Parameters ---
 
+
+        // --- 3. Execute INSERT ---
         await request.query(`
             INSERT INTO TestRecords 
-            (TR, DOB, Age, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade) 
-            VALUES (@TR, @DOB, @Age, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade)
+            (TR, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, 
+             BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, 
+             Branch, Gender) -- Added Branch, Gender; Removed DOB, Age
+            VALUES 
+            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, 
+             @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade,
+             @Branch, @Gender) -- Added Branch, Gender
         `);
+        // --- End INSERT ---
 
-        // --- ✅ NEW: Award XP for student test ---
-        const levelUpInfo = await awardXP(TR, 100, transaction);
+        // --- 4. Award XP (remains the same) ---
+        const levelUpInfo = await awardXP(TR, 100, transaction ); // Pass the new request
+        // --- End Award XP ---
 
         await transaction.commit();
         res.status(200).json({ 
             message: "Test record saved successfully",
             levelUpInfo
         });
-
     } catch (err) {
-        if (transaction._aborted === false) {
-            await transaction.rollback();
+        console.error("Error saving test record:", err); // Log the specific error
+        if (transaction && transaction._aborted === false && transaction._rolledBack === false) {
+             try { await transaction.rollback(); } catch (rbErr) { console.error("Rollback failed:", rbErr); }
         }
-        console.error("Error saving test record:", err);
-        res.status(500).json({ error: "Server error saving test record" });
+        // Provide more specific error if possible
+        if (err.message.includes('7 days')) { // Check if it's the 7-day restriction error
+             res.status(409).json({ error: err.message });
+        } else {
+             res.status(500).json({ error: "Server error saving test record. " + err.message });
+        }
     }
 });
 
+
+//update DOB in testmaster
+
+// NEW: Updates the logged-in student's Date of Birth
+app.put('/api/testmaster/me/dob', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+    
+    const TR = req.session.user.TR;
+    const { DOB } = req.body; // Expecting DOB in 'YYYY-MM-DD' format
+
+    // Basic validation for the date format
+    if (!DOB || !/^\d{4}-\d{2}-\d{2}$/.test(DOB)) {
+        return res.status(400).json({ error: 'Invalid date format. Please use YYYY-MM-DD.' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+        request.input('DOB', sql.Date, DOB);
+
+        const result = await request.query(`
+            UPDATE TestMaster 
+            SET DOB = @DOB 
+            WHERE TR = @TR
+        `);
+
+        if (result.rowsAffected[0] === 0) {
+             return res.status(404).json({ error: 'Student profile not found.' });
+        }
+
+        res.json({ success: true, message: 'Date of Birth updated successfully.' });
+
+    } catch (err) {
+        console.error('Error updating DOB:', err);
+        res.status(500).json({ error: 'Failed to update Date of Birth.' });
+    }
+});
 
 app.get('/api/testrecords/me', async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
@@ -3367,33 +3477,78 @@ app.get('/api/testrecords/me', async (req, res) => {
 
 
 
+// UPDATED: Saves multiple test records submitted by a trainer
 app.post('/api/trainer-test-records', async (req, res) => {
-    const records = req.body;
-
-    if (req.session.user?.Role !== 'Trainer' && req.session.user?.Role !== 'Admin') {
-        return res.status(403).json({ error: 'Unauthorized' });
+    // Check role and session
+    if (req.session.user?.Role !== 'Trainer') {
+        return res.status(403).json({ error: 'Forbidden. Trainers only.' });
+    }
+    const { Branch: trainerBranch, Gender: trainerGender } = req.session.user;
+    if (!trainerBranch || !trainerGender) {
+        return res.status(401).json({ error: 'Unauthorized. Session missing branch or gender.' });
     }
 
+    const records = req.body; // Array of test records from frontend
     if (!Array.isArray(records) || records.length === 0) {
-        return res.status(400).json({ error: 'Request body must be a non-empty array of test records.' });
+        return res.status(400).json({ error: 'Request body must be a non-empty array.' });
     }
 
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
 
+        // --- Validation Step ---
+        const studentTRs = records.map(r => r.TR);
+        const validationRequest = new sql.Request(transaction);
+        validationRequest.input('TrainerBranch', sql.NVarChar(50), trainerBranch);
+        validationRequest.input('TrainerGender', sql.NVarChar(10), trainerGender);
+        
+        // Prepare parameters for IN clause
+        const trParams = studentTRs.map((tr, i) => `@TR${i}`);
+        studentTRs.forEach((tr, i) => validationRequest.input(`TR${i}`, sql.Int, tr));
+
+        const validationResult = await validationRequest.query(`
+            SELECT TR, Branch, Gender 
+            FROM TestMaster 
+            WHERE TR IN (${trParams.join(',')})
+        `);
+        
+        // Create a map for easy lookup
+        const studentDetailsMap = new Map();
+        validationResult.recordset.forEach(s => studentDetailsMap.set(s.TR, { Branch: s.Branch, Gender: s.Gender }));
+
+        // Check if all students belong to the trainer's section
+        for (const record of records) {
+            const details = studentDetailsMap.get(parseInt(record.TR));
+            if (!details || details.Branch !== trainerBranch || details.Gender !== trainerGender) {
+                 await transaction.rollback(); // Abort early
+                 return res.status(403).json({ error: `Student TR ${record.TR} does not belong to your section or was not found.` });
+            }
+            // Store fetched Branch/Gender in the record for insertion
+            record.Branch = details.Branch;
+            record.Gender = details.Gender;
+        }
+        // --- End Validation ---
+
+
+        // --- Insertion Step ---
         const insertQuery = `
             INSERT INTO TestRecords 
-            (TR, DOB, Age, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, SubmittedBy) 
-            VALUES (@TR, @DOB, @Age, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade, @SubmittedBy)
+            (TR, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, 
+             BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, 
+             Branch, Gender, SubmittedBy) -- Added Branch, Gender; Removed DOB, Age
+            VALUES 
+            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, 
+             @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade,
+             @Branch, @Gender, @SubmittedBy) -- Added Branch, Gender
         `;
 
         for (const record of records) {
-            const request = new sql.Request(transaction);
-
+            // Create a new request for each insert within the transaction
+            const request = new sql.Request(transaction); 
+            
+            // Input parameters (no Age/DOB, yes Branch/Gender)
             request.input('TR', sql.Int, record.TR);
-            request.input('DOB', sql.Date, record.DOB);
-            request.input('Age', sql.Int, record.Age);
             request.input('Weight', sql.Float, record.Weight);
             request.input('Height', sql.Float, record.Height);
             request.input('Waist', sql.Float, record.Waist);
@@ -3407,26 +3562,27 @@ app.post('/api/trainer-test-records', async (req, res) => {
             request.input('VO2Max', sql.Float, record.VO2Max === "N/A" ? null : record.VO2Max);
             request.input('Total', sql.Float, record.Total);
             request.input('Grade', sql.NVarChar(2), record.Grade);
-            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer');
+            request.input('Branch', sql.NVarChar(50), record.Branch); // Use fetched Branch
+            request.input('Gender', sql.NVarChar(10), record.Gender); // Use fetched Gender
+            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer'); // Explicitly set
 
             await request.query(insertQuery);
 
-            // --- ✅ NEW: Award XP for trainer test ---
-            await awardXP(record.TR, 150, transaction);
+            // Award XP for each student
+             await awardXP(record.TR, 150, transaction); 
         }
 
         await transaction.commit();
         res.status(200).json({ message: `${records.length} test records saved successfully.` });
 
     } catch (err) {
-        if (transaction._aborted === false) {
-            await transaction.rollback();
-        }
         console.error("Error saving trainer test records:", err);
-        res.status(500).json({ error: "Server error during bulk insert." });
+        if (transaction && transaction._aborted === false && transaction._rolledBack === false) {
+             try { await transaction.rollback(); } catch (rbErr) { console.error("Rollback failed:", rbErr); }
+        }
+        res.status(500).json({ error: "Server error during bulk insert. " + err.message });
     }
 });
-
 
 
 // A new, more powerful search endpoint
@@ -3474,13 +3630,26 @@ app.get('/api/student-lookup/:query', async (req, res) => {
 });
 
 // API to get all students formatted for a dropdown selector
+// UPDATED: Fetches students ONLY for the trainer's branch/gender
 app.get('/api/students-list', async (req, res) => {
+    // Get trainer's info from session
+    const { Branch, Gender } = req.session.user || {};
+    if (!Branch || !Gender) {
+        return res.status(401).json({ error: 'Unauthorized. Session missing branch or gender.' });
+    }
+
     try {
-        const result = await pool.request().query(`
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+
+        const result = await request.query(`
             SELECT 
                 TR AS value, 
                 Name + ' (' + CAST(TR AS NVARCHAR(10)) + ')' AS label 
             FROM TestMaster
+            -- Filter by trainer's section
+            WHERE Branch = @Branch AND Gender = @Gender
             ORDER BY Name
         `);
         res.json(result.recordset);
@@ -3489,7 +3658,6 @@ app.get('/api/students-list', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch student list' });
     }
 });
-
 // =================================================================
 // --- 🍃 LEAVE MANAGEMENT API ---
 // =================================================================
