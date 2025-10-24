@@ -13,8 +13,6 @@
             if (userString) {
                 const user = JSON.parse(userString);
                 if (user.Role === 'Admin') document.documentElement.classList.add('is-admin');
-                if (user.Branch === 'Marol' && user.Gender === 'Male')
-                    document.documentElement.classList.add('is-marol-male');
             }
         } catch (e) { console.error('Bootstrap role script failed:', e); }
     </script>

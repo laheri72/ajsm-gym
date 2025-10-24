@@ -1921,22 +1921,38 @@ app.post('/api/logout', (req, res) => {
 //-----------------------------------------------------------------------------------------------------------------------------
 
 
-
+/**
+ * GET: Fetches all fitness test records for the staff's specific branch and gender.
+ * Calculates age on-the-fly.
+ */
 app.get('/api/all-test-records', async (req, res) => {
+  // 1. Get Branch and Gender from the logged-in staff's session
   const { Branch, Gender } = req.session.user || {};
 
-  // Allow only Marol Male staff to access
-  if (Branch !== 'Marol' || Gender !== 'Male') {
-    return res.status(403).json({ success: false, message: 'Access denied: Not authorized' });
+  // 2. Validate session
+  if (!Branch || !Gender) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Unauthorized. Session is missing branch or gender.' 
+    });
   }
 
   try {
-    const result = await pool.request().query(`
+    // 3. Create a parameterized request
+    const request = pool.request();
+    request.input('Branch', sql.NVarChar(50), Branch);
+    request.input('Gender', sql.NVarChar(10), Gender);
+
+    // 4. Update the SQL query to filter and calculate Age
+    const result = await request.query(`
       SELECT 
         TRS.CreatedAt AS CreatedAt,
         TRS.TR,
         TMS.Name,
-        TRS.Age,
+        
+        /* Age is calculated dynamically based on test date and DOB */
+        DATEDIFF(year, TMS.DOB, TRS.CreatedAt) AS Age, 
+        
         TRS.Weight,
         TRS.Height,
         TRS.Waist,
@@ -1953,6 +1969,9 @@ app.get('/api/all-test-records', async (req, res) => {
         TRS.SubmittedBy
       FROM TestRecords TRS
       JOIN TestMaster TMS ON TRS.TR = TMS.TR
+      
+      /* Securely filters by the staff's Branch and Gender */
+      WHERE TRS.Branch = @Branch AND TRS.Gender = @Gender
       ORDER BY TRS.CreatedAt DESC
     `);
 
@@ -1964,6 +1983,238 @@ app.get('/api/all-test-records', async (req, res) => {
 });
 
 
+//**
+//  * POST: Validates a list of students for the fitness test bulk import.
+//  * - Enforces 8-digit ITS, 5-digit TR, and mandatory Name/Darajah.
+//  * - Checks for duplicates *within the file*.
+//  * - Checks for *global* duplicates in the database (TR or ITS).
+//  */
+app.post('/api/fitness-test/bulk-validate', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ message: 'Unauthorized.' });
+  }
+  
+  try {
+    const { students } = req.body;
+    if (!students || !Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ message: 'No student data provided.' });
+    }
+
+    const invalidRows = [];
+    const structurallyValidStudents = [];
+    const itsInFile = new Set();
+    const trInFile = new Set(); // Check for TR duplicates in the file too
+
+    const itsRegex = /^\d{8}$/;
+    const trRegex = /^\d{5}$/;
+
+    // 1. First pass: Check format and in-file duplicates
+    for (let i = 0; i < students.length; i++) {
+      const student = students[i];
+      const fileRow = i + 2;
+      const { TR, ITS, Name, Darajah } = student;
+      let reason = null;
+
+      const itsStr = ITS ? ITS.toString() : "";
+      const trStr = TR ? TR.toString() : "";
+
+      if (!itsStr || !itsRegex.test(itsStr)) {
+        reason = "ITS must be exactly 8 digits.";
+      } else if (!trStr || !trRegex.test(trStr)) {
+        reason = "TR must be exactly 5 digits.";
+      } else if (!Name || Name.toString().trim() === "") {
+        reason = "Name is missing.";
+      } else if (!Darajah || Darajah.toString().trim() === "") {
+        reason = "Darajah is missing.";
+      } else if (itsInFile.has(itsStr)) {
+        reason = `Duplicate ITS in file: ${itsStr}.`;
+      } else if (trInFile.has(trStr)) {
+        reason = `Duplicate TR in file: ${trStr}.`;
+      }
+
+      if (reason) {
+        invalidRows.push({ fileRow, rowData: student, reason });
+      } else {
+        itsInFile.add(itsStr);
+        trInFile.add(trStr);
+        structurallyValidStudents.push({
+          TR: parseInt(trStr),
+          ITS: parseInt(itsStr),
+          Name: Name.toString(),
+          Darajah: Darajah.toString()
+        });
+      }
+    }
+
+    if (structurallyValidStudents.length === 0) {
+      // Return lists of new, skipped, and invalid
+      return res.json({ newStudents: [], skippedStudents: [], invalidRows });
+    }
+    
+    // 2. Second pass: Check for DB duplicates (TR and ITS)
+    const incomingTRs = structurallyValidStudents.map(s => s.TR);
+    const incomingITS = structurallyValidStudents.map(s => s.ITS);
+
+    const request = pool.request();
+
+    // Create parameters for TRs
+    const trParams = incomingTRs.map((tr, i) => `@TR${i}`);
+    incomingTRs.forEach((tr, i) => request.input(`TR${i}`, sql.Int, tr));
+    
+    // Create parameters for ITS
+    const itsParams = incomingITS.map((its, i) => `@ITS${i}`);
+    incomingITS.forEach((its, i) => request.input(`ITS${i}`, sql.BigInt, its));
+
+    // Query for existing TRs OR ITS numbers in ONE query
+    const dbCheckResult = await request.query(`
+        SELECT TR, ITS 
+        FROM TestMaster 
+        WHERE TR IN (${trParams.join(',')}) OR ITS IN (${itsParams.join(',')})
+    `);
+
+    const existingTRs = new Set(dbCheckResult.recordset.map(r => r.TR));
+    const existingITS = new Set(dbCheckResult.recordset.map(r => r.ITS));
+
+    // 3. Partition the results
+    const newStudents = [];
+    const skippedStudents = []; // Renamed for clarity
+
+    for (const s of structurallyValidStudents) {
+      let skipReason = null;
+      if (existingTRs.has(s.TR)) {
+        skipReason = `TR ${s.TR} already exists in database.`;
+      } else if (existingITS.has(s.ITS)) {
+        skipReason = `ITS ${s.ITS} already exists in database.`;
+      }
+
+      if (skipReason) {
+        skippedStudents.push({ ...s, reason: skipReason });
+      } else {
+        newStudents.push(s);
+      }
+    }
+
+    res.json({ newStudents, skippedStudents, invalidRows });
+
+  } catch (err) {
+    console.error('Bulk validation error:', err);
+    res.status(500).json({ message: 'Server error during validation.' });
+  }
+});
+
+/**
+ * POST: Commits a validated list of *new* students to the TestMaster table.
+ * CORRECTED METHOD: Creates a new request object inside the loop to avoid parameter collision.
+ */
+app.post('/api/fitness-test/bulk-commit', async (req, res) => {
+  const { Branch, Gender } = req.session.user || {};
+  if (!Branch || !Gender) {
+    return res.status(401).json({ message: 'Unauthorized.' });
+  }
+  
+  try {
+    const { students } = req.body; 
+    if (!students || !Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ message: 'No new students to commit.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // 1. Define the query string *once* outside the loop
+      const query = `
+        INSERT INTO TestMaster 
+          (TR, ITS, Name, Darajah, Branch, Gender)
+        VALUES 
+          (@TR, @ITS, @Name, @Darajah, @Branch, @Gender);
+      `;
+
+      // 2. Loop through each student
+      for (const student of students) {
+        
+        // *** THE FIX IS HERE ***
+        // Create a *new* request object for *each* loop.
+        // This request is part of the same transaction.
+        const request = new sql.Request(transaction);
+
+        // 3. Add all parameters for this *one* student
+        request.input('TR', sql.Int, student.TR);
+        request.input('ITS', sql.BigInt, student.ITS);
+        request.input('Name', sql.NVarChar(100), student.Name);
+        request.input('Darajah', sql.NVarChar(50), student.Darajah);
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+        
+        // 4. Execute the query just for this student
+        await request.query(query);
+      }
+
+      // 5. If all loops succeeded, commit the transaction
+      await transaction.commit();
+
+      res.json({ success: true, count: students.length });
+
+    } catch (err) {
+      // If any single insert fails, roll back the *entire* batch
+      await transaction.rollback();
+      throw err; // Re-throw to be caught by the outer catch
+    }
+  } catch (err) {
+    console.error('Bulk commit error:', err);
+    
+    if (err.number === 2627 || err.number === 2601) { 
+      res.status(409).json({ success: false, message: 'Conflict: A student with one of these TR or ITS numbers already exists.' });
+    } else {
+      res.status(500).json({ success: false, message: 'Failed to enroll students. ' + err.message });
+    }
+  }
+});
+
+
+
+/**
+ * GET: Fetches all enrolled students from TestMaster for the staff's section.
+ * Returns the count and the list of students.
+ */
+app.get('/api/fitness-test/all-students', async (req, res) => {
+  const { Branch, Gender } = req.session.user || {};
+  if (!Branch || !Gender) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Unauthorized. Session is missing branch or gender.' 
+    });
+  }
+
+  try {
+    const request = pool.request();
+    request.input('Branch', sql.NVarChar(50), Branch);
+    request.input('Gender', sql.NVarChar(10), Gender);
+
+    // Query TestMaster for all students in this section
+    const result = await request.query(`
+      SELECT 
+        TR, 
+        ITS, 
+        Name, 
+        Darajah,
+        CONVERT(varchar, DOB, 23) AS DOB -- Format DOB for readability
+      FROM TestMaster
+      WHERE Branch = @Branch AND Gender = @Gender
+      ORDER BY Name ASC
+    `);
+
+    res.json({ 
+      success: true, 
+      count: result.recordset.length,
+      students: result.recordset 
+    });
+
+  } catch (err) {
+    console.error('Error fetching all students:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 //--------------------------------------------------------------------------------------------------------
 app.post('/api/save-workout-plan', async (req, res) => {
   try {

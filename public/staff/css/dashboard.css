@@ -261,21 +261,15 @@ thead select {
     
 /* --- NAVBAR VISIBILITY RULES (NO-FLICKER) --- */
 
-/* Hide the conditional tabs by default */
-#tab-admin,
-#tab-test {
+/* Replace with this: */
+#tab-admin {
     display: none;
 }
-
-/* Show the Admin tab ONLY if the <html> tag has the 'is-admin' class */
 html.is-admin #tab-admin {
     display: inline-block;
 }
 
-/* Show the Fitness Test tab ONLY if the <html> tag has the 'is-marol-male' class */
-html.is-marol-male #tab-test {
-    display: inline-block;
-}
+
 .body-part-pill {
     display: inline-block;
     padding: 0.25rem 0.6rem;

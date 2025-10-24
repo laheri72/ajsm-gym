@@ -282,4 +282,249 @@ const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "TestRecords");
         XLSX.writeFile(workbook, "Fitness_Test_Records.xlsx");
     });
-});
+
+    const bulkImportBtn = document.getElementById('bulkImportBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    // 1. Trigger hidden file input
+bulkImportBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // 2. Download template (Unchanged from last time)
+document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+        const headers = [ ["TR", "ITS", "Name", "Darajah"] ];
+        const ws = XLSX.utils.aoa_to_sheet(headers);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Fitness_Student_Template");
+        XLSX.writeFile(wb, "Fitness_Student_Template.xlsx");
+    });
+
+    // 3. Process selected file (Unchanged from last time)
+fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const students = XLSX.utils.sheet_to_json(firstSheet);
+                
+                if (students.length === 0) {
+                    Swal.fire('Empty File', 'The selected file has no student data.', 'warning');
+                    return;
+                }
+
+                // Stricter client-side validation
+                const validStudents = [];
+                const invalidRows = [];
+                const itsRegex = /^\d{8}$/; // Must be exactly 8 digits
+                const trRegex = /^\d{5}$/;  // Must be exactly 5 digits
+
+        students.forEach((student, index) => {
+                    const fileRow = index + 2;
+                    const { TR, ITS, Name, Darajah } = student;
+
+                    if (!ITS || !itsRegex.test(ITS.toString())) {
+                        invalidRows.push(`Row ${fileRow}: ITS must be exactly 8 digits.`);
+                    } else if (!TR || !trRegex.test(TR.toString())) {
+                        invalidRows.push(`Row ${fileRow}: TR must be exactly 5 digits.`);
+                    } else if (!Name || Name.toString().trim() === "") {
+                        invalidRows.push(`Row ${fileRow}: Name is missing.`);
+                    } else if (!Darajah || Darajah.toString().trim() === "") {
+                        invalidRows.push(`Row ${fileRow}: Darajah is missing.`);
+                    } else {
+                        validStudents.push(student);
+                    }
+                });
+
+        if (invalidRows.length > 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Data Format',
+            html: `Please fix these errors in your file and re-upload:<br><br><div class="swal-list">${invalidRows.join('<br>')}</div>`,
+                    });
+            return;
+                }
+
+        await validateAndPreview(validStudents);
+    } catch (err) {
+                console.error('File parsing error:', err);
+                Swal.fire('Error', 'Could not read or parse the file.', 'error');
+    } finally {
+        fileInput.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // 4. Validate against database (UPDATED for new API response)
+async function validateAndPreview(students) {
+        Swal.fire({
+            title: 'Validating Students...',
+            text: 'Checking for global duplicates...',
+            didOpen: () => { Swal.showLoading() }
+        });
+
+        const res = await fetch('/api/fitness-test/bulk-validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ students })
+        });
+const result = await res.json();
+
+    if (!res.ok) {
+            Swal.fire('Validation Error', result.message || 'An unknown error occurred.', 'error');
+            return;
+        }
+
+        // *** UPDATED to handle 'skippedStudents' ***
+    const { newStudents, skippedStudents, invalidRows } = result;
+        
+        let summaryHtml = `<div style="text-align: left; margin-top: 1rem;">`;
+    if (newStudents.length > 0) {
+            summaryHtml += `<p class="text-success"><strong>✅ New students to be ENROLLED: ${newStudents.length}</strong></p>`;
+        }
+    if (skippedStudents.length > 0) {
+            summaryHtml += `
+                <hr>
+                <p class="text-warning"><strong>⚠️ Skipping ${skippedStudents.length} duplicate(s) (TR or ITS already exists):</strong></p>
+                <ul class="swal-list">
+                    ${skippedStudents.map(s => `<li>ITS ${s.ITS}, TR ${s.TR} - <strong>${s.reason}</strong></li>`).join('')}
+                </ul>`;
+        }
+    if (invalidRows.length > 0) {
+            summaryHtml += `
+                <hr>
+                <p class="text-danger"><strong>❌ Skipping ${invalidRows.length} invalid row(s):</strong></p>
+                <ul class="swal-list">
+                    ${invalidRows.map(row => `<li>Row ${row.fileRow}: <strong>${row.reason}</strong></li>`).join('')}
+                </ul>`;
+        }
+        summaryHtml += `</div>`;
+
+    Swal.fire({
+            title: 'Import Summary',
+            html: summaryHtml,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#4CAF50',
+            cancelButtonColor: '#d33',
+            confirmButtonText: `Yes, add ${newStudents.length} new students!`,
+        preConfirm: () => {
+                if (newStudents.length === 0) {
+                    Swal.showValidationMessage('There are no new students to import.');
+                    return false;
+                }
+                return true;
+            }
+    }).then((action) => {
+            if (action.isConfirmed) {
+                commitBulkAdd(newStudents);
+            }
+        });
+    }
+    
+    // 5. Commit to database (Unchanged, still just sends newStudents)
+async function commitBulkAdd(newStudents) {
+        const res = await fetch('/api/fitness-test/bulk-commit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ students: newStudents }) 
+        });
+const data = await res.json();
+
+        if (res.ok) {
+    Swal.fire('Success!', `${data.count} new students have been enrolled.`, 'success');
+        } else {
+    Swal.fire('Error!', 'Could not add students: ' + data.message, 'error');
+        }
+    }
+
+// --- === NEW: Load All Students Card & Modal === ---
+    async function loadStudentListCard() {
+        const card = document.getElementById('student-list-card');
+        const countEl = document.getElementById('stat-total-students');
+        const tableBody = document.getElementById('all-students-table-body');
+        let studentListModal = null; // To hold the modal instance
+
+        try {
+            // 1. Fetch data from the new API
+            const res = await fetch('/api/fitness-test/all-students', { credentials: 'include' });
+            const data = await res.json();
+
+            if (!data.success) throw new Error(data.message);
+
+            // 2. Update the stat card
+            countEl.textContent = data.count;
+
+            // 3. Populate the modal table
+            if (data.students.length > 0) {
+                tableBody.innerHTML = ''; // Clear "Loading..."
+                data.students.forEach(student => {
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${student.TR}</td>
+                        <td>${student.ITS}</td>
+                        <td>${student.Name}</td>
+                        <td>${student.Darajah}</td>
+                        <td>${student.DOB || 'N/A'}</td>
+                    `;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No students found.</td></tr>';
+            }
+
+            // 4. Add click listener to the card to show the modal
+            card.addEventListener('click', () => {
+                if (!studentListModal) { // Initialize modal only once
+                    studentListModal = new bootstrap.Modal(document.getElementById('studentListModal'));
+                }
+                studentListModal.show();
+            });
+
+        } catch (err) {
+            console.error('Error loading student list:', err);
+            countEl.textContent = 'Error';
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading list.</td></tr>`;
+        }
+    }
+
+    // Call the new function on page load
+    loadStudentListCard();
+
+    // --- === NEW: Admin Warning Logic === ---
+    function populateAdminWarning() {
+        // Find the spans inside the alert
+        const genderSpan = document.getElementById('admin-gender-warning');
+        const branchSpan = document.getElementById('admin-branch-warning');
+        
+        // This check ensures we're on the right page
+        if (genderSpan && branchSpan) {
+            try {
+                const userString = localStorage.getItem('staffUser');
+                if (userString) {
+                    const user = JSON.parse(userString);
+                    // Only populate text if the user is an Admin
+                    // The CSS already handles visibility
+                    if (user.Role === 'Admin') {
+                        genderSpan.textContent = user.Gender || '[Unknown Gender]';
+                        branchSpan.textContent = user.Branch || '[Unknown Branch]';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to populate admin warning:', e);
+                genderSpan.textContent = '[Error]';
+                branchSpan.textContent = '[Error]';
+            }
+        }
+    }
+
+    // Call the new function on page load
+    populateAdminWarning();
+
+}); 
+
