@@ -4687,7 +4687,7 @@ async function awardXP(tr, xpAmount, transaction) {
 // code for install anything via terminal 
 // Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-// --- REPLACE the old app.get('*',...) with THIS new version ---
+
 // This catch-all route MUST be at the end, after all API routes.
 app.get('*', (req, res) => {
     // Construct the potential path to a file or directory on the server

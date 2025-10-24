@@ -1,15 +1,15 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
-import { viteStaticCopy } from 'vite-plugin-static-copy'; // <-- ADD THIS LINE
+import { viteStaticCopy } from 'vite-plugin-static-copy'; 
 
 export default defineConfig({
   root: 'public',
-  plugins: [ // <-- ADD THIS PLUGINS SECTION
+  plugins: [ 
     viteStaticCopy({
       targets: [
         {
-          src: 'images', // Source is relative to your 'root'
-          dest: ''       // Destination is relative to 'outDir' (dist)
+          src: 'images', 
+          dest: ''       
         },
         {
           src: 'gifs',
@@ -23,7 +23,6 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        // ... your existing input configuration remains the same ...
         main: resolve(__dirname, 'public/index.html'),
         homepage: resolve(__dirname, 'public/homepage.html'),
         blog: resolve(__dirname, 'public/blog.html'),
