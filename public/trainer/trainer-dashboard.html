@@ -389,6 +389,12 @@
             flex: 0 0 300px; /* Don't grow, don't shrink, base width 300px */
             margin-bottom: 0; /* Override default margin */
         }
+        /* Inside your <style> block */
+
+.search-group .choices {
+    flex-grow: 1;  /* This tells the element to fill the available space */
+    width: 1%;     /* This is a flexbox trick to ensure 'flex-grow' works properly */
+}
     </style>
 </head>
 <body>
@@ -944,7 +950,6 @@ function initHomeListeners() {
     
                     searchChoices.clearInput();
                     dailyAttendanceCache = []; // Clear cache after selection
-                    initializeSearchSelector([]); // Reinitialize with empty data if needed
                 }
             } finally 
             {
@@ -1328,7 +1333,8 @@ function initHomeListeners() {
         });
     }
 
-    // --- Modal Action Buttons ---
+// --- Modal Action Buttons ---
+// --- Modal Action Buttons ---
     function initProfileModalListeners() {
         elements.profileAttendanceBtn.addEventListener('click', async () => {
             const button = elements.profileAttendanceBtn;
@@ -1337,22 +1343,54 @@ function initHomeListeners() {
             modal.hide();
             await promptForWorkoutAndSubmit(currentStudent.TR, currentStudent.Name);
             toggleButtonSpinner(button, false);
-        });
+        }); 
 
+        // --- MODIFIED "View History" Button ---
         elements.profileHistoryBtn.addEventListener('click', () => {
-            const modal = bootstrap.Modal.getInstance(elements.profileModal);
+            // 1. Get the modal instance and hide it
+            const modal = bootstrap.Modal.getInstance(elements.profileModal); 
             modal.hide();
+
+            elements.profileHistoryBtn.blur();
+
+            // 2. Render the history page with a new "Back" button
             elements.mainContent.innerHTML = `
                 <div class="card fade-in">
-                    <h3>Training Plan History for ${currentStudent.Name}</h3>
-                    <table id="planHistoryTable">
-                        <thead><tr><th>Date</th><th>Body Parts</th></tr></thead>
-                        <tbody id="plan-history-body"></tbody>
-                    </table>
-                </div>
-            `;
-            loadTrainingPlans(currentStudent.TR);
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0;">History: ${currentStudent.Name}</h3>
+                        
+                        <button id="backToModalBtn" class="btn" style="width: auto; background-color: var(--text-color); color: var(--card-bg);">
+                            <i class="fas fa-arrow-left"></i> Back to Profile
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="planHistoryTable">
+                            <thead><tr><th>Date</th><th>Body Parts</th></tr></thead>
+                            <tbody id="plan-history-body"></tbody>
+                        </table>
+                    </div>
+                </div>`; 
+
+            // 3. Add a listener to the new "Back" button
+            document.getElementById('backToModalBtn').addEventListener('click', () => {
+                // (a) Re-render the home page content (to remove the history table)
+                renderHomePage(); 
+                
+                // (b) Get the modal instance again and show it.
+                // The modal element still exists in the DOM and its content is preserved.
+                const modalInstance = bootstrap.Modal.getInstance(elements.profileModal);
+                if (modalInstance) {
+                    modalInstance.show();
+                } else {
+                    // Fallback in case instance was lost (shouldn't happen)
+                    showMiniProfile(currentStudent.TR);
+                }
+            });
+
+            // 4. Load the training plan data
+            loadTrainingPlans(currentStudent.TR); 
         });
+        // --- End of Modification ---
 
         elements.profileTestBtn.addEventListener('click', () => {
             const modal = bootstrap.Modal.getInstance(elements.profileModal);
