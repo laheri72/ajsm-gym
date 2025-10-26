@@ -450,21 +450,47 @@ const data = await res.json();
         const countEl = document.getElementById('stat-total-students');
         const tableBody = document.getElementById('all-students-table-body');
         let studentListModal = null; // To hold the modal instance
+        let studentsDataCache = null; // Cache for the full list
+
+
+        countEl.textContent = '...'; // Show loading state for count
+        try {
+            const countRes = await fetch('/api/fitness-test/students/count', { credentials: 'include' });
+            const countData = await countRes.json();
+            if (!countData.success) throw new Error(countData.message || 'Failed to fetch count');
+            countEl.textContent = countData.count; // Update the stat card with the count
+        } catch (err) {
+            console.error('Error loading student list:', err);
+            countEl.textContent = 'Error';
+            // Optionally disable the card click if count fails
+            card.style.cursor = 'not-allowed';
+            card.title = 'Could not load student count';
+        return; // Stop if count fails
+        }
+        // 4. Add click listener to the card to show the modal (fetches full list on demand)
+    card.addEventListener('click', async () => {
+        if (!studentListModal) { // Initialize modal only once
+            studentListModal = new bootstrap.Modal(document.getElementById('studentListModal'));
+        }
+
+        // Show loading state in modal table
+        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Loading student list...</td></tr>';
+        studentListModal.show(); // Show modal immediately
 
         try {
-            // 1. Fetch data from the new API
-            const res = await fetch('/api/fitness-test/all-students', { credentials: 'include' });
-            const data = await res.json();
+            // Fetch the full list ONLY when the card is clicked
+            // (Optionally check cache first if needed, but fetching on click is fine)
+            const listRes = await fetch('/api/fitness-test/all-students', { credentials: 'include' });
+            const listData = await listRes.json();
 
-            if (!data.success) throw new Error(data.message);
+            if (!listData.success) throw new Error(listData.message);
 
-            // 2. Update the stat card
-            countEl.textContent = data.count;
+            studentsDataCache = listData.students; // Cache the data
 
-            // 3. Populate the modal table
-            if (data.students.length > 0) {
-                tableBody.innerHTML = ''; // Clear "Loading..."
-                data.students.forEach(student => {
+            // Populate the modal table (same logic as before)
+            if (studentsDataCache.length > 0) {
+                tableBody.innerHTML = '';
+                studentsDataCache.forEach(student => {
                     const row = tableBody.insertRow();
                     row.innerHTML = `
                         <td>${student.TR}</td>
@@ -478,19 +504,14 @@ const data = await res.json();
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No students found.</td></tr>';
             }
 
-            // 4. Add click listener to the card to show the modal
-            card.addEventListener('click', () => {
-                if (!studentListModal) { // Initialize modal only once
-                    studentListModal = new bootstrap.Modal(document.getElementById('studentListModal'));
-                }
-                studentListModal.show();
-            });
-
         } catch (err) {
-            console.error('Error loading student list:', err);
-            countEl.textContent = 'Error';
+            console.error('Error loading full student list for modal:', err);
             tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading list.</td></tr>`;
+            // Optionally show a Swal error as well
+            Swal.fire('Error', 'Could not load the full student list.', 'error');
         }
+    });
+    
     }
 
     // Call the new function on page load

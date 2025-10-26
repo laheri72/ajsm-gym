@@ -2215,6 +2215,42 @@ app.get('/api/fitness-test/all-students', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
+// ADD THIS NEW ROUTE in server.js
+
+app.get('/api/fitness-test/students/count', async (req, res) => {
+    // Reuse the same session/auth check as your other staff endpoints
+    const { Branch, Gender } = req.session.user || {};
+    if (!Branch || !Gender) {
+        return res.status(401).json({
+            success: false,
+            message: 'Unauthorized. Session is missing branch or gender.'
+        });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+
+        // Efficiently get only the count from the database
+        const result = await request.query(`
+            SELECT COUNT(*) AS totalStudents
+            FROM TestMaster
+            WHERE Branch = @Branch AND Gender = @Gender
+        `);
+
+        res.json({
+            success: true,
+            // Send back just the count number
+            count: result.recordset[0].totalStudents
+        });
+
+    } catch (err) {
+        console.error('Error fetching student count:', err.message);
+        res.status(500).json({ success: false, message: 'Server error fetching count' });
+    }
+});
 //--------------------------------------------------------------------------------------------------------
 app.post('/api/save-workout-plan', async (req, res) => {
   try {
@@ -2425,40 +2461,7 @@ app.post('/api/student/apply-last-week', async (req, res) => {
 
 //--------------------------------------------------------------------------------------------------------
 
-app.get('/api/all-training-plans', async (req, res) => {
-  if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
-    return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
-  }
 
-  const { Branch, Gender } = req.session.user;
-
-  try {
-    const result = await pool.request()
-      .input('Branch', sql.NVarChar(50), Branch)
-      .input('Gender', sql.NVarChar(50), Gender)
-      // ✅ THIS IS THE NEW, NORMALIZED QUERY
-      .query(`
-        SELECT 
-          P.TR,
-          M.Name, -- Include the student's name
-          P.CreatedAt,
-          -- Use STRING_AGG to combine multiple body parts back into one string for display
-          STRING_AGG(B.Name, ', ') AS BodyParts
-        FROM TrainingPlan P
-        JOIN Master M ON P.TR = M.TR
-        JOIN TrainingLog L ON P.PlanID = L.PlanID
-        JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
-        WHERE P.Branch = @Branch AND P.Gender = @Gender
-        GROUP BY P.PlanID, P.TR, M.Name, P.CreatedAt
-        ORDER BY P.CreatedAt DESC;
-      `);
-
-    res.json({ success: true, data: result.recordset });
-  } catch (err) {
-    console.error('Error fetching all training plans:', err.message);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
 
 app.get('/api/leaderboard', async (req, res) => {
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
@@ -2517,31 +2520,131 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
-// API to get Body Part trends for the bar chart
-app.get('/api/staff/body-part-trends', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
+
+
+//--------------------------------------------------------------------------------------------------------
+
+// ADD THIS NEW ROUTE IN server.js (ideally group it with other staff routes)
+
+app.get('/api/staff/progress-page-data', async (req, res) => {
+    // Session check (same as your other staff routes)
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
     const { Branch, Gender } = req.session.user;
 
+    // Use a transaction for consistency, although reads don't strictly need it
+    const transaction = new sql.Transaction(pool);
     try {
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                SELECT B.Name as bodyPart, COUNT(L.LogID) as count
-                FROM TrainingLog L
-                JOIN TrainingPlan P ON L.PlanID = P.PlanID
-                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
-                WHERE P.Branch = @Branch AND P.Gender = @Gender
-                GROUP BY B.Name
-                ORDER BY count DESC;
-            `);
-        res.json({ success: true, data: result.recordset });
+        await transaction.begin();
+        const request = new sql.Request(transaction); // Use one request object within the transaction
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(50), Gender);
+
+        // --- Execute all 6 queries ---
+
+        // Query 1: Activity Summary (Modified slightly for transaction)
+        const activitySummaryQuery = `
+            DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
+            DECLARE @PrevWeekStart DATE = DATEADD(wk, -1, @WeekStart);
+            SELECT TOP 1 B.Name AS mostTrainedBodyPart FROM TrainingLog L
+            JOIN TrainingPlan P ON L.PlanID = P.PlanID
+            JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+            WHERE P.Branch = @Branch AND P.Gender = @Gender AND P.CreatedAt >= @WeekStart
+            GROUP BY B.Name ORDER BY COUNT(*) DESC;
+            SELECT
+                (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as workoutsThisWeek,
+                (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt BETWEEN @PrevWeekStart AND @WeekStart) as workoutsLastWeek;
+        `;
+        const activitySummaryResult = await request.query(activitySummaryQuery);
+
+        // Query 2: Body Part Trends
+        const bodyPartTrendsQuery = `
+            SELECT B.Name as bodyPart, COUNT(L.LogID) as count
+            FROM TrainingLog L
+            JOIN TrainingPlan P ON L.PlanID = P.PlanID
+            JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+            WHERE P.Branch = @Branch AND P.Gender = @Gender
+            GROUP BY B.Name ORDER BY count DESC;
+        `;
+        const bodyPartTrendsResult = await request.query(bodyPartTrendsQuery);
+
+        // Query 3: Duration Summary
+        const durationSummaryQuery = `
+            DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
+            SELECT
+                (SELECT ISNULL(AVG(CAST(DurationInMinutes AS FLOAT)), 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND DurationInMinutes IS NOT NULL) as avgDuration,
+                (SELECT TOP 1 S.SlotName FROM Attendance A JOIN Master M ON A.TR = M.TR JOIN Slots S ON M.SlotID = S.SlotID WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL GROUP BY S.SlotName ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
+                (SELECT ISNULL(SUM(DurationInMinutes) / 60.0, 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as totalHoursThisWeek;
+        `;
+        const durationSummaryResult = await request.query(durationSummaryQuery);
+
+        // Query 4: Peak Hours
+        const peakHoursQuery = `
+            SELECT DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) AS hour, COUNT(*) AS count
+            FROM Attendance
+            WHERE Branch = @Branch AND Gender = @Gender AND IsPresent = 1
+              AND MONTH(DATEADD(MINUTE, 330, CreatedAt)) = MONTH(DATEADD(MINUTE, 330, GETUTCDATE()))
+              AND YEAR(DATEADD(MINUTE, 330, CreatedAt)) = YEAR(DATEADD(MINUTE, 330, GETUTCDATE()))
+            GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) ORDER BY hour ASC;
+        `;
+        const peakHoursResult = await request.query(peakHoursQuery);
+
+        // Query 5: All Training Plans
+        const allTrainingPlansQuery = `
+            SELECT P.TR, M.Name, P.CreatedAt, STRING_AGG(B.Name, ', ') AS BodyParts
+            FROM TrainingPlan P
+            JOIN Master M ON P.TR = M.TR
+            JOIN TrainingLog L ON P.PlanID = L.PlanID
+            JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+            WHERE P.Branch = @Branch AND P.Gender = @Gender
+            GROUP BY P.PlanID, P.TR, M.Name, P.CreatedAt ORDER BY P.CreatedAt DESC;
+        `;
+        const allTrainingPlansResult = await request.query(allTrainingPlansQuery);
+
+        // Query 6: Engagement Report
+        const engagementReportQuery = `
+            WITH LastVisit AS (SELECT TR, MAX(CreatedAt) as lastVisitDate FROM Attendance GROUP BY TR)
+            SELECT M.Name, ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours, ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration, DATEDIFF(day, LV.lastVisitDate, DATEADD(MINUTE, 330, GETUTCDATE())) as DaysSinceLastVisit
+            FROM Master M
+            LEFT JOIN Attendance A ON M.TR = A.TR
+            LEFT JOIN LastVisit LV ON M.TR = LV.TR
+            WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
+            GROUP BY M.Name, LV.lastVisitDate;
+        `;
+        const engagementReportResult = await request.query(engagementReportQuery);
+
+        await transaction.commit(); // Commit after all reads are successful
+
+        // --- Structure the combined response ---
+        res.json({
+            success: true,
+            data: {
+                activitySummary: {
+                    mostTrained: activitySummaryResult.recordsets[0][0]?.mostTrainedBodyPart || 'N/A',
+                    workoutsThisWeek: activitySummaryResult.recordsets[1][0].workoutsThisWeek,
+                    workoutsLastWeek: activitySummaryResult.recordsets[1][0].workoutsLastWeek
+                },
+                bodyPartTrends: bodyPartTrendsResult.recordset,
+                durationSummary: {
+                    avgDuration: durationSummaryResult.recordset[0].avgDuration,
+                    busiestSlot: durationSummaryResult.recordset[0].busiestSlot || 'N/A',
+                    totalHoursThisWeek: durationSummaryResult.recordset[0].totalHoursThisWeek
+                },
+                peakHours: peakHoursResult.recordset,
+                allTrainingPlans: allTrainingPlansResult.recordset,
+                engagementReport: engagementReportResult.recordset
+            }
+        });
+
     } catch (err) {
-        console.error('Error fetching body part trends:', err);
-        res.status(500).json({ success: false });
+        if (transaction.active) await transaction.rollback(); // Rollback on error
+        console.error('Error fetching combined progress page data:', err);
+        res.status(500).json({ success: false, message: 'Failed to load progress data.' });
     }
 });
 
+//---------------------------------------------------------------------------------------------------------------
 
 // API to get a ranked summary of students by a specific body part workout
 app.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
@@ -2580,157 +2683,6 @@ app.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
 });
 
 
-app.get('/api/staff/activity-summary', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
-    const { Branch, Gender } = req.session.user;
-
-    try {
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                -- --- ✅ REFINED LOGIC ---
-                -- This line now defines the start of the week based on the IST calendar.
-                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
-                -- --- END REFINEMENT ---
-
-                DECLARE @PrevWeekStart DATE = DATEADD(wk, -1, @WeekStart);
-
-                -- Most Trained Body Part This Week
-                SELECT TOP 1 B.Name AS mostTrainedBodyPart FROM TrainingLog L
-                JOIN TrainingPlan P ON L.PlanID = P.PlanID
-                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
-                WHERE P.Branch = @Branch AND P.Gender = @Gender AND P.CreatedAt >= @WeekStart
-                GROUP BY B.Name ORDER BY COUNT(*) DESC;
-
-                -- Workouts This Week vs Last Week
-                SELECT
-                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as workoutsThisWeek,
-                    (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt BETWEEN @PrevWeekStart AND @WeekStart) as workoutsLastWeek;
-            `);
-
-        res.json({
-            success: true,
-            mostTrained: result.recordsets[0][0]?.mostTrainedBodyPart || 'N/A',
-            workoutsThisWeek: result.recordsets[1][0].workoutsThisWeek,
-            workoutsLastWeek: result.recordsets[1][0].workoutsLastWeek
-        });
-    } catch (err) {
-        console.error('Error fetching activity summary:', err);
-        res.status(500).json({ success: false });
-    }
-});
-
-//---------------------------------------------------------------------------------------------------------------
-// Place these new routes in your main server.js file
-
-app.get('/api/staff/duration-summary', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
-    const { Branch, Gender } = req.session.user;
-
-    try {
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                -- --- ✅ REFINED LOGIC ---
-                -- This line is also changed to define the week's start using the IST calendar.
-                DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
-                -- --- END REFINEMENT ---
-
-                SELECT 
-                    (SELECT ISNULL(AVG(CAST(DurationInMinutes AS FLOAT)), 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND DurationInMinutes IS NOT NULL) as avgDuration,
-                    
-                    (SELECT TOP 1 S.SlotName 
-                     FROM Attendance A 
-                     JOIN Master M ON A.TR = M.TR
-                     JOIN Slots S ON M.SlotID = S.SlotID
-                     WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL 
-                     GROUP BY S.SlotName 
-                     ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
-                     
-                    (SELECT ISNULL(SUM(DurationInMinutes) / 60.0, 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as totalHoursThisWeek
-            `);
-        const data = result.recordset[0];
-        res.json({ 
-            success: true, 
-            avgDuration: data.avgDuration.toFixed(0),
-            busiestSlot: data.busiestSlot || 'N/A',
-            totalHoursThisWeek: data.totalHoursThisWeek.toFixed(1)
-        });
-    } catch (err) {
-        console.error('Error fetching duration summary:', err);
-        res.status(500).json({ success: false });
-    }
-});
-
-// API for the Peak Gym Hours line chart (Now Monthly)
-app.get('/api/staff/peak-hours', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
-    const { Branch, Gender } = req.session.user;
-
-    try {
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                SELECT 
-                    DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) AS hour, 
-                    COUNT(*) AS count
-                FROM Attendance
-                WHERE 
-                    Branch = @Branch 
-                    AND Gender = @Gender 
-                    AND IsPresent = 1
-                    -- --- ✅ REFINED LOGIC: Filter for the current month in IST ---
-                    AND MONTH(DATEADD(MINUTE, 330, CreatedAt)) = MONTH(DATEADD(MINUTE, 330, GETUTCDATE()))
-                    AND YEAR(DATEADD(MINUTE, 330, CreatedAt)) = YEAR(DATEADD(MINUTE, 330, GETUTCDATE()))
-                    -- --- END REFINEMENT ---
-                GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt))
-                ORDER BY hour ASC;
-            `);
-        res.json({ success: true, data: result.recordset });
-    } catch (err) {
-        console.error('Error fetching peak hours:', err);
-        res.status(500).json({ success: false });
-    }
-});
-
-// API for the Member Engagement data table
-app.get('/api/staff/engagement-report', async (req, res) => {
-    if (!req.session.user) return res.status(401).json({ success: false });
-    const { Branch, Gender } = req.session.user;
-
-    try {
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .query(`
-                WITH LastVisit AS (
-                    SELECT TR, MAX(CreatedAt) as lastVisitDate
-                    FROM Attendance
-                    GROUP BY TR
-                )
-                SELECT
-                    M.Name,
-                    ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours,
-                    ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration,
-                    -- --- ✅ REFINED LOGIC ---
-                    -- DATEDIFF now compares against the current IST time, not UTC.
-                    DATEDIFF(day, LV.lastVisitDate, DATEADD(MINUTE, 330, GETUTCDATE())) as DaysSinceLastVisit
-                    -- --- END REFINEMENT ---
-                FROM Master M
-                LEFT JOIN Attendance A ON M.TR = A.TR
-                LEFT JOIN LastVisit LV ON M.TR = LV.TR
-                WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
-                GROUP BY M.Name, LV.lastVisitDate;
-            `);
-        res.json({ success: true, data: result.recordset });
-    } catch (err) {
-        console.error('Error fetching engagement report:', err);
-        res.status(500).json({ success: false });
-    }
-});
 
 // API for the Goal Alignment data table
 app.get('/api/staff/goal-alignment', async (req, res) => {

@@ -2,18 +2,63 @@
 
 // Global variables to hold the DataTable instances
 let trainingPlansTable, summaryTable, engagementTable, goalAlignmentTable;
+let bodyPartChartInstance = null; // Store chart instances
+let peakHoursChartInstance = null;
+
+// === NEW: Main data loading function ===
+async function loadAllProgressData() {
+    // Show some initial loading state if desired (e.g., in cards/charts)
+    updateStat('stat-workouts-this-week', '...');
+    updateStat('stat-workouts-change', '...');
+    // ... potentially add loaders to chart areas ...
+    showLoadingIndicator('bodyPartChartContainer');
+    showLoadingIndicator('peakHoursChartContainer');
+
+    try {
+        const res = await fetch('/api/staff/progress-page-data', { credentials: 'include' });
+        const result = await res.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to load data');
+        }
+
+        const data = result.data;
+
+        // --- Distribute the fetched data ---
+        renderActivitySummary(data.activitySummary);
+        renderBodyPartChart(data.bodyPartTrends);
+        renderStatCards(data.durationSummary);
+        renderPeakHoursChart(data.peakHours);
+        renderTrainingPlansTable(data.allTrainingPlans); // Pass data directly
+        renderEngagementTable(data.engagementReport);   // Pass data directly
+
+    } catch (err) {
+        console.error('Failed to load progress page data:', err);
+        Swal.fire('Error', `Could not load page data: ${err.message}`, 'error');
+        // Update UI to show errors in cards/tables
+        updateStat('stat-workouts-this-week', 'Error');
+        updateStat('stat-avg-duration', 'Error');
+        // Update chart containers to show error message instead of loader
+        const bpContainer = document.getElementById('bodyPartChartContainer');
+        if (bpContainer) bpContainer.innerHTML = '<p class="text-danger p-5 text-center">Error loading chart data.</p>';
+        const phContainer = document.getElementById('peakHoursChartContainer');
+        if (phContainer) phContainer.innerHTML = '<p class="text-danger p-5 text-center">Error loading chart data.</p>';
+        $('#training-plans-table').DataTable().clear().draw(); // Clear tables
+        $('#engagement-table').DataTable().clear().draw();
+    }
+}
+
 
 // Main entry point when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Load all static charts and cards for both sections
-    loadActivitySummary();
-    loadBodyPartChart();
-    loadStatCards();
-    loadPeakHoursChart();
-    
-    // 2. Initialize the default tables that are visible on load
+
+    // 1. Initialize the default tables that are visible on load
     initializeTrainingPlansTable();
     initializeEngagementTable();
+
+    // 2. Load all data from the single endpoint
+    loadAllProgressData();
+
 
     // 3. Set up all interactive elements like buttons and dropdowns
     setupEventListeners();
@@ -87,118 +132,187 @@ function populateFilters() {
 
 // --- Data Loading and Rendering Functions ---
 
-async function loadActivitySummary() {
-    try {
-        const res = await fetch('/api/staff/activity-summary', { credentials: 'include' });
-        const result = await res.json();
-        if (result.success) {
-            document.getElementById('stat-workouts-this-week').textContent = result.workoutsThisWeek;
-            document.getElementById('stat-most-trained').textContent = result.mostTrained;
-            let change = 0;
-            if (result.workoutsLastWeek > 0) {
-                change = ((result.workoutsThisWeek - result.workoutsLastWeek) / result.workoutsLastWeek) * 100;
-            } else if (result.workoutsThisWeek > 0) { change = 100; }
-            const changeEl = document.getElementById('stat-workouts-change');
-            changeEl.textContent = `${change.toFixed(0)}%`;
-            changeEl.style.color = change >= 0 ? 'var(--primary)' : 'var(--danger)';
-        }
-    } catch (err) { console.error('Failed to load activity summary:', err); }
+// Helper to update stat cards (NEW)
+function updateStat(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
 }
 
-async function loadBodyPartChart() {
-    try {
-        const res = await fetch('/api/staff/body-part-trends', { credentials: 'include' });
-        const result = await res.json();
-        if (result.success && result.data.length > 0) {
-            const labels = result.data.map(item => item.bodyPart);
-            const data = result.data.map(item => item.count);
-            const ctx = document.getElementById('bodyPartChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Workouts Logged',
-                        data: data,
-                        backgroundColor: 'rgba(76, 175, 80, 0.5)',
-                        borderColor: 'rgba(76, 175, 80, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } } }
-            });
-        }
-    } catch (err) { console.error('Failed to load body part chart:', err); }
-}
-
-async function loadStatCards() {
-    try {
-        const res = await fetch('/api/staff/duration-summary', { credentials: 'include' });
-        const result = await res.json();
-        if (result.success) {
-            document.getElementById('stat-avg-duration').textContent = result.avgDuration;
-            document.getElementById('stat-busiest-slot').textContent = result.busiestSlot;
-            document.getElementById('stat-total-hours').textContent = result.totalHoursThisWeek;
-        }
-    } catch (err) { console.error('Failed to load stat cards:', err); }
-}
-
-async function loadPeakHoursChart() {
-    try {
-        const res = await fetch('/api/staff/peak-hours', { credentials: 'include' });
-        const result = await res.json();
-        if (result.success && result.data.length > 0) {
-            
-            // ▼▼▼ THIS IS THE FIX ▼▼▼
-            // We use Moment.js to convert the 24-hour number into a 12-hour AM/PM format.
-            const labels = result.data.map(item => moment().hour(item.hour).format('h A'));
-            // --- END FIX ---
-
-            const data = result.data.map(item => item.count);
-            const ctx = document.getElementById('peakHoursChart').getContext('2d');
-            
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Number of Active Members',
-                        data: data,
-                        backgroundColor: 'rgba(76, 175, 80, 0.2)',
-                        borderColor: 'rgba(76, 175, 80, 1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } } }
-            });
-        } else {
-            // If there's no data, show a message
-            document.getElementById('peakHoursChart').parentElement.innerHTML = '<p>No peak hours data available for this week yet.</p>';
-        }
-    } catch (err) { 
-        console.error('Failed to load peak hours chart:', err); 
+function showLoadingIndicator(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        // Clear previous content and show the spinner + text
+        container.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center p-5">
+                <div class="loader me-3"></div> 
+                <span class="text-muted">Loading Chart...</span>
+            </div>
+        `;
     }
 }
 
+function hideLoadingIndicator(containerId, canvasId) {
+    const container = document.getElementById(containerId);
+    // Target the CONTAINER div
+    if (container) {
+        // Clear loading text and add the canvas back
+        container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+    }
+}
+
+// Renders Activity Summary card data
+function renderActivitySummary(summary) {
+    if (!summary) return;
+    updateStat('stat-workouts-this-week', summary.workoutsThisWeek);
+    updateStat('stat-most-trained', summary.mostTrained);
+    let change = 0;
+    if (summary.workoutsLastWeek > 0) {
+        change = ((summary.workoutsThisWeek - summary.workoutsLastWeek) / summary.workoutsLastWeek) * 100;
+    } else if (summary.workoutsThisWeek > 0) { change = 100; }
+    const changeEl = document.getElementById('stat-workouts-change');
+    changeEl.textContent = `${change.toFixed(0)}%`;
+    changeEl.style.color = change >= 0 ? 'var(--primary)' : 'var(--danger)';
+}
+
+// Renders Body Part Chart data
+function renderBodyPartChart(trends) {
+    const containerId = 'bodyPartChartContainer';
+    const canvasId = 'bodyPartChart';
+
+
+    if (bodyPartChartInstance) {
+        bodyPartChartInstance.destroy(); // Destroy previous chart
+    }
+
+    if (!trends || trends.length === 0) {
+        ctx.canvas.parentElement.innerHTML = '<p>No body part data yet.</p>';
+        return;
+    }
+
+    hideLoadingIndicator(containerId, canvasId);
+    
+    const ctx = document.getElementById('bodyPartChart')?.getContext('2d');
+    if (!ctx) return;
+
+    const labels = trends.map(item => item.bodyPart);
+    const data = trends.map(item => item.count);
+    bodyPartChartInstance = new Chart(ctx, { // Store the instance
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Workouts Logged',
+                data: data,
+                backgroundColor: 'rgba(76, 175, 80, 0.5)',
+                borderColor: 'rgba(76, 175, 80, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+}
+
+// Renders Duration Stat card data
+function renderStatCards(summary) {
+    if (!summary) return;
+    updateStat('stat-avg-duration', summary.avgDuration?.toFixed(0) || '--');
+    updateStat('stat-busiest-slot', summary.busiestSlot);
+    updateStat('stat-total-hours', summary.totalHoursThisWeek?.toFixed(1) || '--');
+}
+
+// Renders Peak Hours Chart data
+function renderPeakHoursChart(peakHours) {
+    const containerId = 'peakHoursChartContainer';
+    const canvasId = 'peakHoursChart';
+
+    if (peakHoursChartInstance) {
+        peakHoursChartInstance.destroy(); // Destroy previous chart
+    }
+
+    if (!peakHours || peakHours.length === 0) {
+        ctx.canvas.parentElement.innerHTML = '<p>No peak hours data available yet.</p>';
+        return;
+    }
+
+    hideLoadingIndicator(containerId, canvasId); // Add canvas back
+
+    const ctx = document.getElementById('peakHoursChart')?.getContext('2d');
+    if (!ctx) return;
+
+
+
+    const labels = peakHours.map(item => moment().hour(item.hour).format('h A'));
+    const data = peakHours.map(item => item.count);
+    peakHoursChartInstance = new Chart(ctx, { // Store the instance
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Number of Active Members',
+                data: data,
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: 'rgba(76, 175, 80, 1)',
+                borderWidth: 2, fill: true, tension: 0.4
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+}
+
+// Initializes the Training Plans Table (now just sets up the structure)
 function initializeTrainingPlansTable() {
-    if (trainingPlansTable) return;
+    if (trainingPlansTable) return; // Only initialize once
     trainingPlansTable = $('#training-plans-table').DataTable({
-        ajax: { url: '/api/all-training-plans', credentials: 'include', dataSrc: 'data' },
+        // Columns definition remains the same
         columns: [
-            { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
+            { data: 'CreatedAt', render: d => d ? new Date(d).toLocaleDateString() : 'N/A' }, // Added check for null
             { data: 'TR' },
             { data: 'Name' },
             { data: 'BodyParts', render: data => data ? data.split(', ').map(part => `<span class="body-part-pill">${part}</span>`).join(' ') : '' },
             { data: 'CreatedAt', render: data => {
+                if (!data) return 'N/A'; // Added check for null
                 const daysSince = Math.floor((new Date() - new Date(data)) / (1000 * 3600 * 24));
                 let color = daysSince <= 6 ? 'green' : (daysSince <= 13 ? 'orange' : 'red');
                 return `<span style="color: ${color}; font-weight: bold;">${daysSince} days ago</span>`;
             }}
         ],
-        order: [[0, 'desc']], pageLength: 25, responsive: true
+        data: [], // Start with empty data
+        order: [[0, 'desc']], pageLength: 25, responsive: true,
+        language: { emptyTable: "Loading data or no logs found." } // Update empty message
     });
+}
+
+// Renders data into the Training Plans Table
+function renderTrainingPlansTable(plans) {
+    if (!trainingPlansTable) initializeTrainingPlansTable(); // Ensure initialized
+    trainingPlansTable.clear().rows.add(plans || []).draw(); // Add data and redraw
+}
+
+// Initializes the Engagement Table (now just sets up the structure)
+function initializeEngagementTable() {
+    if (engagementTable) return; // Only initialize once
+    engagementTable = $('#engagement-table').DataTable({
+        // Columns definition remains the same
+        columns: [
+            { data: 'Name' },
+            { data: 'TotalHours', render: d => d?.toFixed(1) || '0.0' }, // Added check for null
+            { data: 'AvgDuration', render: d => d?.toFixed(0) || '0' },   // Added check for null
+            { data: 'DaysSinceLastVisit', render: data => {
+                const days = data != null ? data : Infinity; // Treat null as very long ago
+                let color = days <= 6 ? 'green' : (days <= 13 ? 'orange' : 'red');
+                return `<span style="color: ${color}; font-weight: bold;">${days === Infinity ? 'N/A' : days}</span>`;
+            }}
+        ],
+        data: [], // Start with empty data
+        order: [[1, 'desc']], responsive: true,
+        language: { emptyTable: "Loading data or no engagement data found." } // Update empty message
+    });
+}
+
+// Renders data into the Engagement Table
+function renderEngagementTable(engagementData) {
+    if (!engagementTable) initializeEngagementTable(); // Ensure initialized
+    engagementTable.clear().rows.add(engagementData || []).draw(); // Add data and redraw
 }
 
 function loadTrainingSummaryData(partName) {
@@ -214,23 +328,6 @@ function loadTrainingSummaryData(partName) {
     });
 }
 
-function initializeEngagementTable() {
-    if (engagementTable) return;
-    engagementTable = $('#engagement-table').DataTable({
-        ajax: { url: '/api/staff/engagement-report', credentials: 'include', dataSrc: 'data' },
-        columns: [
-            { data: 'Name' },
-            { data: 'TotalHours', render: d => d.toFixed(1) },
-            { data: 'AvgDuration', render: d => d.toFixed(0) },
-            { data: 'DaysSinceLastVisit', render: data => {
-                const days = data || 0;
-                let color = days <= 6 ? 'green' : (days <= 13 ? 'orange' : 'red');
-                return `<span style="color: ${color}; font-weight: bold;">${days}</span>`;
-            }}
-        ],
-        order: [[1, 'desc']], responsive: true
-    });
-}
 
 function loadGoalAlignmentData() {
     // ✅ Use the new unique IDs to get filter values
