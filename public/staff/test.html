@@ -254,29 +254,19 @@ class="table table-striped table-bordered nowrap" style="width:100%">
     <script type ="module">
         document.addEventListener('DOMContentLoaded', function () {
             const hamburgerBtn = document.getElementById('hamburger-btn');
-    const navOverlay = document.getElementById('nav-overlay');
+            const navOverlay = document.getElementById('nav-overlay');
             
             function toggleNav() {
                 document.body.classList.toggle('nav-open');
-    }
+            }
 
             if (hamburgerBtn) {
                 hamburgerBtn.addEventListener('click', toggleNav);
-    }
+            }
 
             if (navOverlay) {
                 navOverlay.addEventListener('click', toggleNav);
-    }
-
-            const currentPage = window.location.pathname.split('/').pop();
-    const navLinks = document.querySelectorAll('.navbar a');
-            
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.href.includes(currentPage)) {
-                    link.classList.add('active');
-                }
-            });
+            }
     });
     </script>
 <div class="modal fade" id="studentListModal" tabindex="-1" aria-labelledby="studentListModalLabel" aria-hidden="true">

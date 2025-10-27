@@ -1897,6 +1897,67 @@ app.post('/api/get-or-create-week', async (req, res) => {
     }
 });
 
+// api for cron automatic week generation
+
+
+// Secret key for cron job authentication (use the same strong key as before)
+const CRON_SECRET_KEY_WEEK = process.env.CRON_SECRET_WEEK || 'AjsmGetWeek'; // Or your preferred key
+
+app.post('/api/cron/create-next-week', async (req, res) => { // Renamed for clarity
+    // --- Corrected Security Check ---
+    const providedKey = req.headers['x-internal-secret'] || req.query.secret;
+    if (providedKey !== CRON_SECRET_KEY_WEEK) {
+        console.warn('⚠️ Unauthorized attempt to run create-next-week task.');
+        return res.status(403).json({ success: false, message: 'Forbidden: Invalid secret key.' });
+    }
+    // --- End Security Check ---
+
+    console.log('Received scheduled request to check/create upcoming week...');
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        const request = transaction.request();
+
+        // --- Calculate NEXT week's dates ---
+        const nextMonday = moment.tz("Asia/Kolkata").startOf('isoWeek').add(1, 'week');
+        const nextSunday = nextMonday.clone().endOf('isoWeek');
+        const weekStartStr = nextMonday.format('YYYY-MM-DD');
+        const weekEndStr = nextSunday.format('YYYY-MM-DD');
+        // --- End Calculation ---
+
+        // Input the calculated dates for checking and potential insertion
+        request.input('WeekStartDate', sql.Date, weekStartStr);
+        request.input('WeekEndDate', sql.Date, weekEndStr);
+
+        // --- Check specifically for the calculated NEXT week ---
+        const checkResult = await request.query(`
+            SELECT 1 FROM AttendanceWeek WHERE WeekStartDate = @WeekStartDate
+        `);
+
+        if (checkResult.recordset.length === 0) {
+            // Week doesn't exist, create it using the calculated dates
+            await request.query(`
+                INSERT INTO AttendanceWeek (WeekStartDate, WeekEndDate)
+                VALUES (@WeekStartDate, @WeekEndDate)
+            `);
+            await transaction.commit();
+            console.log(`✅ Cron Job: Created AttendanceWeek record for ${weekStartStr} to ${weekEndStr}`);
+            // Use 201 Created status code
+            res.status(201).json({ success: true, message: `Created week: ${weekStartStr}` });
+        } else {
+            // Week already exists, do nothing
+            await transaction.rollback(); // Rollback empty transaction
+            console.log(`❕ Cron Job: AttendanceWeek record for ${weekStartStr} already exists.`);
+            // Use 200 OK status code
+            res.status(200).json({ success: true, message: `Week ${weekStartStr} already exists.` });
+        }
+    } catch (err) {
+        if (transaction.active) await transaction.rollback(); // Rollback on error
+        console.error('❌ Error in scheduled create-next-week API:', err);
+        res.status(500).json({ success: false, message: 'Internal server error during week creation.' });
+    }
+});
+
 
 
 app.get('/api/current-tr', (req, res) => {
@@ -4253,8 +4314,6 @@ async function runAchievementEvaluation() {
                 }
             }
 
-            // Inside the main student loop in runAchievementEvaluation
-
             // --- NEW: 3. Iron Dedication Check ---
             const totalHours = student.TotalMinutesLogged / 60;
             const dedicationAchievements = {
@@ -4289,7 +4348,7 @@ async function runAchievementEvaluation() {
 
 // THE "FIRE-AND-FORGET" API ROUTE (No changes here, remains the same)
 app.post('/api/achievements/evaluate', (req, res) => {
-    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') { // Use your actual secret key
+    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') { 
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     res.status(202).json({ success: true, message: 'Achievement evaluation process has been initiated in the background.' });
