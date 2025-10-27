@@ -1918,12 +1918,16 @@ app.post('/api/cron/create-next-week', async (req, res) => { // Renamed for clar
         await transaction.begin();
         const request = transaction.request();
 
-        // --- Calculate NEXT week's dates ---
-        const nextMonday = moment.tz("Asia/Kolkata").startOf('isoWeek').add(1, 'week');
-        const nextSunday = nextMonday.clone().endOf('isoWeek');
-        const weekStartStr = nextMonday.format('YYYY-MM-DD');
-        const weekEndStr = nextSunday.format('YYYY-MM-DD');
+// REPLACE this section in your /api/cron/create-next-week endpoint
+
+        // --- Calculate THIS week's dates ---
+        // 'startOf('isoWeek')' when run on Monday gives THIS Monday's date.
+        const thisMonday = moment.tz("Asia/Kolkata").startOf('isoWeek');
+        const thisSunday = thisMonday.clone().endOf('isoWeek'); // Gets Sunday of the same week
+        const weekStartStr = thisMonday.format('YYYY-MM-DD');
+        const weekEndStr = thisSunday.format('YYYY-MM-DD');
         // --- End Calculation ---
+
 
         // Input the calculated dates for checking and potential insertion
         request.input('WeekStartDate', sql.Date, weekStartStr);
