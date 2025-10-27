@@ -2,6 +2,8 @@ let studentTR, studentName, branch, gender, membersince, studentHeight;
 let bodyPartChart = null;
 let fitnessProgressChart = null;
 let weeklyHoursChart = null;
+let cachedStudentWeeks = [];
+let flatpickrInstance = null; // To hold the date picker instance
 
 // Add this new data structure at the top of your student.js file
 // REPLACE your old exerciseDatabase object with this complete version.
@@ -288,7 +290,6 @@ async function getStudentSession() {
     // --- Load Other Dashboard Components ---
     loadTip(stu.Goal);
     loadWeeklyPlan();
-    loadWeeks();
     loadDashboardStats(); 
     loadCurrentWeightStat();
 
@@ -781,23 +782,26 @@ async function handleSetHeight() {
 //-------------------------------------------------------------------------------------------
 // REPLACE your old loadAttendance function with this one
 
-function loadAttendance() {
-    const selectedWeek = document.getElementById('weekSelect').value;
-    const loadButton = document.getElementById('loadAttendanceBtn');
-    
-    if (!selectedWeek) {
-        return Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select a week.' });
+// REPLACE the entire loadAttendance function with this corrected version
+
+function loadAttendance(selectedWeekId) { // Accepts the ID correctly
+
+    if (!selectedWeekId) { // Check the passed ID correctly
+        clearAttendanceTable("Invalid week selected.");
+        return;
     }
 
-    loadButton.disabled = true;
+    // Hide summary/warning (same as before)
     document.getElementById('attendanceSummaryCard').style.display = 'none';
     document.getElementById('attendanceWarning').style.display = 'none';
 
     const tbody = document.querySelector('#attendanceTable tbody');
-    // --- NEW: Inject the loader directly into the table body ---
-    tbody.innerHTML = `<tr><td colspan="8" class="loader-cell"><div class="loader"></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="loader-cell"><div class="loader"></div></td></tr>`; // Show loader
 
-    fetch(`/api/student-attendance/${selectedWeek}/me`, {
+    // --- !!! THE FIX IS HERE !!! ---
+    // Use the function argument `selectedWeekId` in the URL, not the old `selectedWeek`
+    fetch(`/api/student-attendance/${selectedWeekId}/me`, {
+    // --- !!! END OF FIX !!! ---
         method: 'GET',
         credentials: 'include'
     }).then(res => res.json())
@@ -807,7 +811,11 @@ function loadAttendance() {
           tbody.innerHTML = ''; // Clear the loader
 
           const data = result.attendance;
-          const weekStartDate = new Date(result.weekStartDate);
+          // IMPORTANT: Check if result.weekStartDate exists before using it
+          const weekStartDate = result.weekStartDate ? new Date(result.weekStartDate) : null;
+          if (!weekStartDate) {
+              throw new Error('Week start date missing from API response.');
+          }
 
           if (data.length > 0 && data[0].JoinedAt) {
               const student = data[0];
@@ -816,18 +824,18 @@ function loadAttendance() {
 
               const joinedDate = new Date(student.JoinedAt);
               joinedDate.setHours(0, 0, 0, 0);
-              
+
               const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-              
+
               let presentCount = 0;
               let absentCount = 0;
               let onLeaveCount = 0;
 
               const cells = daysOfWeek.map((day, i) => {
                   const status = student[day];
-                  const currentDate = new Date(weekStartDate);
+                  const currentDate = new Date(weekStartDate); // Use fetched start date
                   currentDate.setDate(weekStartDate.getDate() + i);
-                  
+
                   if (currentDate < joinedDate) return `<td>-</td>`;
                   if (status === 'Present') {
                       presentCount++;
@@ -835,11 +843,11 @@ function loadAttendance() {
                   } else if (status === 'On Leave') {
                       onLeaveCount++;
                       return `<td class="on-leave">On Leave</td>`;
-                  } else if (currentDate <= today) {
+                  } else if (currentDate <= today) { // Only count absence if the day has passed or is today
                       absentCount++;
                       return `<td class="absent">Absent</td>`;
                   } else {
-                      return `<td></td>`;
+                      return `<td></td>`; // Future days are blank
                   }
               });
 
@@ -851,25 +859,41 @@ function loadAttendance() {
               `;
               tbody.appendChild(row);
 
-              document.getElementById('presentCount').innerText = presentCount;
-              document.getElementById('absentCount').innerText = absentCount;
-              document.getElementById('onLeaveCount').innerText = onLeaveCount;
-              document.getElementById('attendanceSummaryCard').style.display = 'block';
+              // Update summary card (check elements exist)
+              const presentEl = document.getElementById('presentCount');
+              const absentEl = document.getElementById('absentCount');
+              const onLeaveEl = document.getElementById('onLeaveCount');
+              if(presentEl) presentEl.innerText = presentCount;
+              if(absentEl) absentEl.innerText = absentCount;
+              if(onLeaveEl) onLeaveEl.innerText = onLeaveCount;
 
-              if (absentCount >= 2) {
-                  document.getElementById('attendanceWarning').style.display = 'flex';
+              const summaryCard = document.getElementById('attendanceSummaryCard');
+              if(summaryCard) summaryCard.style.display = 'block';
+
+              // Show warning if needed (check element exists)
+              const warningEl = document.getElementById('attendanceWarning');
+              if (warningEl && absentCount >= 2) {
+                  warningEl.style.display = 'flex';
               }
+
           } else {
               tbody.innerHTML = `<tr><td colspan="8" class="text-center">No attendance record found for this week.</td></tr>`;
           }
       })
       .catch(err => {
           console.error('Failed to load student attendance:', err);
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading data. Please try again.</td></tr>`;
-      })
-      .finally(() => {
-          loadButton.disabled = false;
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading data: ${err.message}. Please try again.</td></tr>`;
       });
+}
+
+// --- NEW Helper to Clear Attendance Table ---
+function clearAttendanceTable(message = "Select a week above to view attendance.") {
+    const tbody = document.querySelector('#attendanceTable tbody');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">${message}</td></tr>`;
+    }
+    document.getElementById('attendanceSummaryCard').style.display = 'none';
+    document.getElementById('attendanceWarning').style.display = 'none';
 }
 //-------------------------------------------------------------------------------------------
 
@@ -1119,53 +1143,112 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString(undefined, options);
 }
 
-// Function to load weeks from the API
-function loadWeeks() {
-    // --- THIS IS THE UPDATED PART ---
-    // We now call the new, secure endpoint and include session credentials
-    fetch('/api/student/eligible-weeks', {
-        method: 'GET',
-        credentials: 'include' // IMPORTANT: This sends the session cookie
-    })
-    // ---------------------------------
-        .then(res => {
-            if (!res.ok) {
-                // Handle potential errors like if the session expired
-                throw new Error('Could not fetch weeks. Please log in again.');
-            }
-            return res.json();
-        })
-        .then(data => {
-            const weekSelect = document.getElementById('weekSelect');
-            weekSelect.innerHTML = '<option value="" disabled selected>Select Range</option>'; // Reset dropdown
 
-            if (data.success && data.weeks.length > 0) {
-                data.weeks.forEach(week => {
-                    const option = document.createElement('option');
-                    option.value = week.WeekID;
+// This function now fetches AND initializes the picker
+async function initializeWeekPicker() {
+    const weekPickerInput = document.getElementById('weekPickerInput');
+    if (!weekPickerInput) return; // Exit if the element isn't found
 
-                    const startFormatted = formatDate(week.WeekStartDate);
-                    const endFormatted = formatDate(week.WeekEndDate);
+    try {
+        // 1. Fetch eligible weeks (as before)
+        const res = await fetch('/api/student/eligible-weeks', { credentials: 'include' });
+        const data = await res.json();
 
-                    option.text = `(${startFormatted} → ${endFormatted})`;
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Could not fetch eligible weeks.');
+        }
 
-                    weekSelect.appendChild(option);
-                });
-            } else {
-                 // If a student has no eligible weeks yet, show a message
-                 weekSelect.innerHTML = '<option value="" disabled selected>No attendance weeks yet</option>';
-            }
-        })
-        .catch(err => {
-            console.error('Failed to load weeks:', err);
-            Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                text: err.message || 'Failed to load week data. Please check your connection and try again.'
-            });
+        cachedStudentWeeks = data.weeks || [];
+
+        if (cachedStudentWeeks.length === 0) {
+            weekPickerInput.placeholder = "No attendance weeks available yet.";
+            weekPickerInput.disabled = true;
+            return;
+        }
+        // --- Convert week start/end dates to Moment objects ONCE for efficiency ---
+        const momentRanges = cachedStudentWeeks.map(week => ({
+            start: moment(week.WeekStartDate), // Parse into Moment objects
+            end: moment(week.WeekEndDate)
+        }));
+        
+        // 3. Initialize Flatpickr
+        flatpickrInstance = flatpickr(weekPickerInput, {
+            dateFormat: "M d, Y", // How the date looks in the input
+            weekNumbers: false,   // We don't need ISO week numbers
+            enable: [
+                function(date) {
+                    // Check if 'date' falls within any of the fetched week ranges
+                    const currentMoment = moment(date); // Convert the calendar date to Moment
+                    // Use .some() to efficiently check if ANY range includes the date
+                    return momentRanges.some(range =>
+                        currentMoment.isBetween(range.start, range.end, 'day', '[]') // Inclusive check
+                    );
+                }
+            ],
+            mode: "single", // Select a single date to represent the week
+            altInput: true, // Shows a user-friendly format but submits standard one
+            altFormat: "D, M j, Y", // Format shown to the user
+            plugins: [],
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length === 0) {
+                    clearAttendanceTable(); // Clear if date is cleared
+                    return;
+                }
+                const selectedDate = selectedDates[0]; // Get the Date object
+                findAndLoadAttendanceForDate(selectedDate);
+            },
         });
+
+        // 4. (Optional) Set initial value to the current/latest week
+        const today = moment.tz("Asia/Kolkata").toDate(); // Use Moment Timezone
+        findAndLoadAttendanceForDate(today, true); // Pass true to set initial picker value
+
+    } catch (err) {
+        console.error('Failed to initialize week picker:', err);
+        weekPickerInput.placeholder = "Error loading weeks.";
+        weekPickerInput.disabled = true;
+        Swal.fire({
+            icon: 'error', title: 'Error',
+            text: err.message || 'Could not load week data for selection.'
+        });
+    }
 }
 
+// --- NEW Helper Function to find the week ID and load data ---
+function findAndLoadAttendanceForDate(selectedDate, setPickerValue = false) {
+    // Ensure cached weeks are available
+    if (cachedStudentWeeks.length === 0) {
+        console.warn("No cached weeks to search within.");
+        clearAttendanceTable("No attendance weeks available.");
+        return;
+    }
+
+    // Find the week in our cached list that contains the selected date
+    const selectedMoment = moment(selectedDate); // Use Moment for easier comparison
+    const targetWeek = cachedStudentWeeks.find(week => {
+        const start = moment(week.WeekStartDate);
+        const end = moment(week.WeekEndDate);
+        return selectedMoment.isBetween(start, end, 'day', '[]'); // '[]' includes start/end days
+    });
+
+    if (targetWeek) {
+        // Found the week! Load attendance using its WeekID
+        loadAttendance(targetWeek.WeekID); // Call the modified loadAttendance
+
+        // Optionally update the Flatpickr input visually
+        if (setPickerValue && flatpickrInstance) {
+            // Find the *Monday* of the target week to set the picker consistently
+            const weekStartMoment = moment(targetWeek.WeekStartDate);
+            flatpickrInstance.setDate(weekStartMoment.toDate(), false); // Set date without triggering onChange again
+        }
+    } else {
+        // Selected date doesn't fall into any known week range
+        console.warn("Selected date is not within any eligible week:", selectedDate);
+        clearAttendanceTable("Selected date is outside available attendance weeks.");
+        // Optionally clear the Flatpickr input if desired:
+        // if (flatpickrInstance) flatpickrInstance.clear(false);
+    }
+}
 //----------------------------------------------------------------------------------------------------------
 
 function savePlan() {
@@ -2223,13 +2306,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Attendance button
-    document.getElementById('loadAttendanceBtn').addEventListener('click', loadAttendance);
-    const weekSelectEl = document.getElementById('weekSelect');
-    weekSelectEl.addEventListener('change', () => {
-        if (weekSelectEl.value) loadAttendance();
-    });
-
+    initializeWeekPicker();
+    
     document.getElementById('weightLogForm').addEventListener('submit', handleWeightLogSubmit);
     document.getElementById('weightHistoryBody').addEventListener('click', handleWeightLogDelete);
 

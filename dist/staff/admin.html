@@ -15,9 +15,6 @@
                 if (user.Role === 'Admin') {
                     classList.push('is-admin');
                 }
-                if (user.Branch === 'Marol' && user.Gender === 'Male') {
-                    classList.push('is-marol-male');
-                }
 
                 if (classList.length > 0) {
                     document.documentElement.className = classList.join(' ');
@@ -33,10 +30,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <script type="module" crossorigin src="/assets/staffAdmin-DPfe_XiB.js"></script>
+  <script type="module" crossorigin src="/assets/staffAdmin-CEqotd5e.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-DikVW-wS.js">
-  <link rel="stylesheet" crossorigin href="/assets/auth-DRntokY8.css">
+  <link rel="modulepreload" crossorigin href="/assets/auth-B0I8VC2N.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-Cu-tpoBt.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -95,7 +92,10 @@
                                     <option value="Trainer">Trainer</option>
                                     <option value="Staff">Staff</option>
                                 </select>
-                                <button type="submit" class="btn btn-success mb-3">Add User</button>
+                                <button type="submit" class="btn btn-success mb-3" id="addUserBtn">
+                            <span class="button-text">Add User</span>
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
                             </form>
                             <p class="text-muted small">
                                 Note: A new user's default password will be "<strong>jamea1446</strong>". They will be required to change it upon their first login.

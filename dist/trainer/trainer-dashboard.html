@@ -4,19 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trainer Dashboard - FitTracker</title>
-    <script>
-    try {
-        const userString = localStorage.getItem('staffUser');
-        if (userString) {
-            const user = JSON.parse(userString);
-            if (user.Branch === 'Marol' && user.Gender === 'Male') {
-                document.documentElement.className = 'is-marol-male';
-            }
-        }
-    } catch (e) {
-        console.error('Initial auth script failed:', e);
-    }
-    </script>
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -292,14 +279,6 @@
             transition: opacity 0.2s ease;
         }
 
-        #nav-fitness-test {
-            display: none;
-        }
-
-        html.is-marol-male #nav-fitness-test {
-            display: flex;
-        }
-
         .hidden {
             display: none;
         }
@@ -410,8 +389,14 @@
             flex: 0 0 300px; /* Don't grow, don't shrink, base width 300px */
             margin-bottom: 0; /* Override default margin */
         }
+        /* Inside your <style> block */
+
+.search-group .choices {
+    flex-grow: 1;  /* This tells the element to fill the available space */
+    width: 1%;     /* This is a flexbox trick to ensure 'flex-grow' works properly */
+}
     </style>
-  <script type="module" crossorigin src="/assets/trainerDashboard-Deol42pP.js"></script>
+  <script type="module" crossorigin src="/assets/trainerDashboard-DwpxAerS.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
 </head>
 <body>

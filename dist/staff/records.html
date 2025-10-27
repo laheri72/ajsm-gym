@@ -16,9 +16,7 @@
                 if (user.Role === 'Admin') {
                     classList.push('is-admin');
                 }
-                if (user.Branch === 'Marol' && user.Gender === 'Male') {
-                    classList.push('is-marol-male');
-                }
+
 
                 if (classList.length > 0) {
                     document.documentElement.className = classList.join(' ');
@@ -35,10 +33,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
-  <script type="module" crossorigin src="/assets/staffRecords-BKSyc6vX.js"></script>
+  <script type="module" crossorigin src="/assets/staffRecords-DWo1wSpc.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-DikVW-wS.js">
-  <link rel="stylesheet" crossorigin href="/assets/auth-DRntokY8.css">
+  <link rel="modulepreload" crossorigin href="/assets/auth-B0I8VC2N.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-Cu-tpoBt.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -72,7 +70,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <h2>Active Students</h2>
                         <div class="btn-group" role="group" aria-label="Export Options">
-                            <button id="print-btn" class="btn btn-outline-secondary">🖨️ Print / PDF</button>
+                            <button id="print-btn" class="btn btn-outline-secondary">🖨️ Print as PDF</button>
                             <span class="mx-3 align-self-center"></span>
                             <button id="excel-btn" class="btn btn-outline-success">📄 Export to Excel</button>
                         </div>
@@ -81,7 +79,7 @@
                     <p class="text-muted">Students are grouped by their assigned slot. Use the ✏️ to change a student's goal or slot.</p>
 
                     <div id="print-header" class="print-only">
-                        <h1><strong>Jamea tus Saifiyah - GYM</strong></h1>
+                        <h1><strong>Al Jamea tus Saifiyah - GYM</strong></h1>
                         <p>Active Gym Members</p>
                         <p><strong>Branch:</strong> <span id="print-branch-name"></span></p>
                         <p><strong>Date:</strong> <span id="print-date"></span></p>

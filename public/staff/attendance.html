@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
     <title>Attendance Management</title> <link rel="icon" href="../images/favicon.png" type="image/png">
         <script>
         // This script runs instantly, before anything is displayed.
@@ -129,27 +133,25 @@ console.error('Bootstrap script failed:', e);
                         </div>
                     </section>
 
-                    <div class="container mt-5">
-                      
-                        <h2>Weekly Attendance</h2>
-                        <div class="form-group">
-                            <label for="weekSelect">Select Week</label>
-                            <select id="weekSelect" class="form-control" required>
-           
-                     <option value="" disabled selected>Loading Weeks...</option>
-                            </select>
-                            <button class="btn" id="loadAttendanceBtn" style="margin-top: 0.5rem;">Load Attendance</button>
-              
-          </div>
-          <!-- Export Button and a small note to export attendance weekly for stable and unaltered data -->
-          <div class="d-flex justify-content-end">
-              <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
-          </div>
-          <b><p class="text-muted">Note: Please export attendance data weekly to ensure stable and proper records.</p></b>
+                <div class="container mt-5">
+                    <h2>Weekly Attendance</h2>
 
-          <div id="slot-attendance-container" class="mt-4">
-                            </div>
-                                          </div>
+                    <div class="form-group mb-4"> 
+                        <label for="staffWeekPickerInput" class="form-label">Select Week:</label>
+                        <input type="text" id="staffWeekPickerInput" class="form-control" placeholder="Select a week...">
+                        
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
+                    </div>
+                    <b><p class="text-muted">Note: Please export attendance data weekly for consistency</p></b>
+
+                    
+                    <div id="slot-attendance-container" class="mt-4">
+                        
+                    </div>
+                </div>
+
                 </section>
                 </div>
         </main>

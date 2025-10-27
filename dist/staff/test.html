@@ -5,20 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Fitness Test</title>
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
-
-    <script>
+            <script>
         // This script runs instantly, before anything is displayed.
-try {
-            const userString = localStorage.getItem('staffUser');
-if (userString) {
+        try {
+                const userString = localStorage.getItem('staffUser');
+                if (userString) {
                 const user = JSON.parse(userString);
-const classList = [];
+                const classList = [];
 
                 if (user.Role === 'Admin') {
                     classList.push('is-admin');
-}
-                if (user.Branch === 'Marol' && user.Gender === 'Male') {
-                    classList.push('is-marol-male');
 }
 
                 if (classList.length > 0) {
@@ -30,64 +26,61 @@ const classList = [];
 console.error('Bootstrap script failed:', e);
         }
     </script>
-    
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     
     <style>
+        /* All your existing styles for charts and rows remain */
         .chart-container {
             position: relative;
-            height: 300px; /* Give charts a defined height */
+        height: 300px;
             width: 100%;
-        }
-
+    }
         .charts-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
             gap: 2rem;
         }
-
-        /* Responsive charts */
         @media (max-width: 992px) {
             .charts-grid {
                 grid-template-columns: 1fr;
-            }
         }
-
-        /* * NEW Row Highlighting Styles
-         * [cite_start]Modeled after your .attendance-danger-row [cite: 91, 92]
-        */
+        }
         .bmi-danger td {
-            background-color: #f8d7da !important; /* Light Red */
-            color: #721c24 !important;
+        background-color: #f8d7da !important;
+        color: #721c24 !important;
         }
-        
         .grade-success td {
-            background-color: #d4edda !important; /* Light Green */
-            color: #155724 !important;
+        background-color: #d4edda !important;
+        color: #155724 !important;
         }
-
         .grade-fail td {
-            background-color: #f5c6cb !important; /* Lighter Red/Pink */
-            color: #721c24 !important;
+        background-color: #f5c6cb !important;
+        color: #721c24 !important;
             font-weight: 500;
         }
-
-        /* Style for the filter row selects */
         #filter-row th {
-            padding: 0.5rem;
+        padding: 0.5rem;
         }
         #filter-row select {
-            width: 100%;
+        width: 100%;
             min-width: 120px;
         }
+        /* Hide the admin warning by default */
+        #admin-import-warning {
+            display: none;
+        }
+        /* Show it ONLY if the html tag has the is-admin class */
+        html.is-admin #admin-import-warning {
+            display: block;
+        }
     </style>
-  <script type="module" crossorigin src="/assets/staffTest-DPugIHUH.js"></script>
+  <script type="module" crossorigin src="/assets/staffTest-KYlT8--9.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-DikVW-wS.js">
-  <link rel="stylesheet" crossorigin href="/assets/auth-DRntokY8.css">
+  <link rel="modulepreload" crossorigin href="/assets/auth-B0I8VC2N.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-Cu-tpoBt.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -96,21 +89,19 @@ console.error('Bootstrap script failed:', e);
                 <a href="overview.html">FitTracker</a>
             </div>
         
-    <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+<button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
             <nav class="navbar" id="navbar">
-                <a href="overview.html" 
-id="tab-overview">📊 Overview</a>
+                <a href="overview.html" id="tab-overview">📊 Overview</a>
                 <a href="entry.html" id="tab-entry">Slot Entry</a>
                 <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
                 <a href="records.html" id="tab-record">Active Students</a>
                 <a href="progress.html" id="tab-Progress">Analysis</a>
                 <a href="test.html" id="tab-test">Fitness Test</a>
-    
-            <a href="attendance.html" id="tab-attendance">Attendance</a>
+                <a href="attendance.html" id="tab-attendance">Attendance</a>
                 <a href="leaves.html" id="tab-leaves">Leave Management</a>
                 <a href="profile.html" id="tab-profile">👤 Profile</a>
                 <a href="#" id="logoutLink">Logout</a>
@@ -120,103 +111,139 @@ id="tab-overview">📊 Overview</a>
         <main class="main-content">
            <div class="content">
 
+                <section id="bulk-import-students" class="card mb-4">
+                    <h2>Enroll Students for Fitness Test</h2>
+
+                    <div class="alert alert-warning" role="alert" id="admin-import-warning">
+                        <h5 class="alert-heading">Admin Import Note</h5>
+                        <p>
+                            As an Admin, your imports are tied to your <strong>own</strong> session. You are currently logged in as
+                            <strong><span id="admin-gender-warning" class="text-danger">...</span></strong> "Talabat" for the
+                            <strong><span id="admin-branch-warning" class="text-danger">...</span></strong> branch.
+                        </p>
+                        <p class="mb-0">
+                            All students you import will be added to this section. To import for <strong>Talebaat</strong>,
+                            login as a staff for Talebaat. If no such user exists, you can
+                            <a href="admin.html" class="alert-link">create one in the Admin Panel</a>.
+                        </p>
+                    </div>
+
+                    <p class="text-muted small">Import students into the fitness test program.
+                            the template given below must be used to ensure proper formatting.
+
+                    </p>
+                    <div class="btn-group" role="group">
+                        <button id="bulkImportBtn" class="btn btn-primary">
+                              Import Student List
+                        </button>
+                        <span class="mx-2"></span>
+                        <button id="downloadTemplateBtn" class="btn btn-outline-secondary" style="background-color: rgb(79, 130, 197);">
+                               Download Template
+                        </button>
+                    </div>
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display: none;" />
+                </section>
                 <section id="test-stats" class="mb-4">
-                    <h2 class="h4 mb-3">Statistics Overview</h2>
+           <h2 class="h4 mb-3">Statistics Overview</h2>
                     <div class="stat-cards-container">
-                        <div class="stat-card">
+
+                        <div class="stat-card" id="student-list-card" style="cursor: pointer;" title="Click to view list">
+                            <div class="stat-value" id="stat-total-students">...</div>
+                            <div class="stat-label">All Enrolled Students <br> <small class="text-muted">Click to view list</small></div>
+                        </div>
+
+            <div class="stat-card">
                             <div class="stat-value" id="stat-total-tests">...</div>
                             <div class="stat-label">Total Tests</div>
                         </div>
-                        
-                        <div class="stat-card">
+            <div class="stat-card">
                             <div class="stat-value" id="stat-trainer-submitted">...</div>
                             <div class="stat-label">Submitted by Trainer</div>
                         </div>
-                        
-                        <div class="stat-card">
+            <div class="stat-card">
                             <div class="stat-value" id="stat-student-submitted">...</div>
-                            <div class="stat-label">Submitted by Student</div>
+                <div class="stat-label">Submitted by Student</div>
                         </div>
-                        
-                        <div class="stat-card">
+            <div class="stat-card">
                             <div class="stat-value" id="stat-avg-bmi">...</div>
                             <div class="stat-label">Average BMI</div>
                         </div>
-                        
-                        <div class="stat-card">
+            <div class="stat-card">
                             <div class="stat-value" id="stat-avg-body-fat">...</div>
                             <div class="stat-label">Average Body Fat %</div>
                         </div>
-
-                        <div class="stat-card">
+            <div class="stat-card">
                             <div class="stat-value" id="stat-common-grade">...</div>
                             <div class="stat-label">Most Common Grade</div>
                         </div>
-                    </div>
+           </div>
                 </section>
-                <section id="test-charts" class="card mb-4">
+                
+                <section id="test-charts" class="card mb-4" style="overflow-x: auto;">
                     <h2 class="h4 mb-3">Distributions</h2>
                     <div class="charts-grid">
-                        <div>
+            <div>
                             <h5 class="text-center">BMI Status Distribution</h5>
                             <div class="chart-container">
-                                <canvas id="bmiStatusChart"></canvas>
+                <canvas id="bmiStatusChart"></canvas>
                             </div>
                         </div>
-                        <div>
+            <div>
                             <h5 class="text-center">Grade Distribution</h5>
                             <div class="chart-container">
-                                <canvas id="gradeChart"></canvas>
+                <canvas id="gradeChart"></canvas>
                             </div>
                         </div>
                     </div>
                 </section>
+                
                 <section id="test-record" class="card">
-                    <div class="container-fluid mt-4">
+       <div class="container-fluid mt-4">
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
                             <h2 class="h4 mb-0">🧪 Fitness Test Records</h2>
-                    <button id="exportTestRecordsBtn" class="btn btn-success">Export to Excel</button>
+                <button id="exportTestRecordsBtn" class="btn btn-success">Export to Excel</button>
                         </div>
                         
                         <div style="overflow-x: auto;">
-                            <table id="test-records-table" class="table table-striped table-bordered nowrap" style="width:100%">
+                            <table id="test-records-table" 
+class="table table-striped table-bordered nowrap" style="width:100%">
                           <thead>
                                     <tr>
-                                        <th>Date</th>
+                  <th>Date</th>
                                         <th>TR</th>
                                         <th>Name</th>
-                                        <th>Age</th>
+                  <th>Age</th>
                                         <th>Weight</th>
-                                        <th>Height</th>
+                  <th>Height</th>
                                         <th>Waist</th>
                                         <th>Hips</th>
-                                        <th>Neck</th>
+                  <th>Neck</th>
                                         <th>BMI</th>
-                                        <th>BMI Status</th>
+                  <th>BMI Status</th>
                                         <th>Body Fat %</th>
                                         <th>BMR</th>
-                                        <th>Calorie Intake</th>
+                  <th>Calorie Intake</th>
                                         <th>VO₂ Max</th>
-                                        <th>Total</th>
+                  <th>Total</th>
                                         <th>Grade</th>
                                         <th>Submitted By</th>
-                                      </tr>
+                </tr>
                                     <tr id="filter-row">
-                                        <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> </tr>
+                  <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> <th></th> </tr>
                                 </thead>
                                 <tbody></tbody>
-                </table>
+         </table>
                         </div>
                     </div>
                 </section>
             </div>
-</main>
+        </main>
     </div>
 
     <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -225,6 +252,40 @@ id="tab-overview">📊 Overview</a>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
+<div class="modal fade" id="studentListModal" tabindex="-1" aria-labelledby="studentListModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="studentListModalLabel">All Enrolled Students</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div style="overflow-x: auto;">
+              <table class="table table-striped table-bordered" id="all-students-table">
+                <thead>
+                  <tr>
+                    <th>TR</th>
+                    <th>ITS</th>
+                    <th>Name</th>
+                    <th>Darajah</th>
+                    <th>DOB</th>
+                  </tr>
+                </thead>
+                <tbody id="all-students-table-body">
+                  <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
     <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -232,15 +293,15 @@ id="tab-overview">📊 Overview</a>
                 <h5 class="modal-title">Create Your New Password</h5>
             </div>
             <div class="modal-body">
-<p>Welcome! For your security, you must create a new password for your account.</p>
+    <p>Welcome! For your security, you must create a new password for your account.</p>
                 <form id="setPasswordForm">
                     <div class="mb-3">
                         <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
-    <input type="password" class="form-control" id="newPassword" required>
+        <input type="password" class="form-control" id="newPassword" required>
                     </div>
                     <div class="mb-3">
                         <label for="confirmPassword" class="form-label">Confirm New Password</label>
- <input type="password" class="form-control" id="confirmPassword" required>
+     <input type="password" class="form-control" id="confirmPassword" required>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Set New Password</button>
                 </form>

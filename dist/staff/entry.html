@@ -16,9 +16,6 @@
                 if (user.Role === 'Admin') {
                     classList.push('is-admin');
                 }
-                if (user.Branch === 'Marol' && user.Gender === 'Male') {
-                    classList.push('is-marol-male');
-                }
 
                 if (classList.length > 0) {
                     document.documentElement.className = classList.join(' ');
@@ -35,10 +32,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
-  <script type="module" crossorigin src="/assets/staffEntry-tF7PYBST.js"></script>
+  <script type="module" crossorigin src="/assets/staffEntry-C9ekZXyD.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
-  <link rel="modulepreload" crossorigin href="/assets/auth-DikVW-wS.js">
-  <link rel="stylesheet" crossorigin href="/assets/auth-DRntokY8.css">
+  <link rel="modulepreload" crossorigin href="/assets/auth-B0I8VC2N.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-Cu-tpoBt.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -115,12 +112,22 @@
                             <label for="goal">Preferred Goal</label>
                             <select id="goal" class="form-control" required>
                                 <option value="" disabled selected>Select Goal</option>
+                                <!-- General Fitness , Weight Loss, Muscle Gain, Strength , Endurance, Flexibility, Energy Boost, Stress Relief, Overall Health-->
+                                <option value="General Fitness">General Fitness</option>
+                                <option value="Weight Loss">Weight Loss</option>
                                 <option value="Muscle Gain">Muscle Gain</option>
-                                <option value="Fat Loss">Fat Loss</option>
-                                <option value="Increase Fitness Level">Increase Fitness Level</option>
+                                <option value="Strength">Strength</option>
+                                <option value="Endurance">Endurance</option>
+                                <option value="Flexibility">Flexibility</option>
+                                <option value="Energy Boost">Energy Boost</option>
+                                <option value="Stress Relief">Stress Relief</option>
+                                <option value="Overall Health">Overall Health</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn">Add Student</button>
+                        <button type="submit" class="btn btn-primary" id="addStudentBtn">
+                            <span class="button-text">Add Student</span>
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
                     </form>
                 </section>
 
@@ -156,7 +163,10 @@
                             <label for="maxCapacity">Max Capacity</label>
                             <input type="number" id="maxCapacity" class="form-control" min="1" required />
                         </div>
-                        <button type="submit" class="btn">Create Slot</button>
+                        <button type="submit" class="btn btn-primary" id="createSlotBtn">
+                            <span class="button-text">Create Slot</span>
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
                     </form>
                     <div style="margin-top: 2rem; overflow-x:auto;">
                         <table id="slotTable">
