@@ -16,7 +16,7 @@ const { pool, connectDB } = require('./utils/db.js');
 const adminRoutes = require('./routes/admin.js');
 const authRoutes = require('./routes/auth.js');
 const fitnessTestRoutes = require('./routes/fitnessTest.js');
-const studentRoutes = require('./routes/student.js');
+const studentRoutes = require('./routes/stu-routes.js');
 const staffRoutes = require('./routes/staff.js');
 const gamificationRoutes = require('./routes/gamification.js');
 
