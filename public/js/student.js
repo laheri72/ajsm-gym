@@ -1596,6 +1596,75 @@ async function applyLastWeeksPlan() {
     });
   }
 }
+//--------------------------------------------------------------------------------------------------------
+
+// ADD this new function to student.js
+
+function showXpInfoModal() {
+    const level = parseInt(document.getElementById('fitnessLevel').textContent || '1');
+    const currentXP = parseInt(document.getElementById('xpBarText').textContent.split(' / ')[0] || '0');
+    const xpForNextLevel = level * 100;
+    const xpNeeded = xpForNextLevel - currentXP;
+
+    const html = `
+        <div class="xp-modal-content">
+            <div class="xp-modal-header">
+                <h3>How to Level Up</h3>
+                <p>Leveling up unlocks new header themes and bragging rights! Here's how you earn XP.</p>
+            </div>
+
+            <ul class="xp-earning-list">
+                <li>
+                    <span class="xp-icon">⏱️</span>
+                    <span class="xp-action">Time in Gym</span>
+                    <span class="xp-value">1 XP / minute</span>
+                </li>
+                <li>
+                    <span class="xp-icon">💪</span>
+                    <span class="xp-action">Body Part Logged</span>
+                    <span class="xp-value">10 XP / part</span>
+                </li>
+                <li>
+                    <span class="xp-icon">📋</span>
+                    <span class="xp-action">Complete Fitness Test</span>
+                    <span class="xp-value">100 XP</span>
+                </li>
+                <li>
+                    <span class="xp-icon">🏆</span>
+                    <span class="xp-action">Earn a New Badge</span>
+                    <span class="xp-value">50 XP</span>
+                </li>
+                <li>
+                    <span class="xp-icon">🧑‍🏫</span>
+                    <span class="xp-action">Trainer-led Fitness Test</span>
+                    <span class="xp-value">150 XP</span>
+                </li>
+            </ul>
+
+            <div class="xp-modal-footer">
+                <h4>Your Next Level</h4>
+                <p>
+                    You are <strong>Level ${level}</strong>. You need <strong>${xpNeeded} XP</strong> to reach Level ${level + 1}.
+                </p>
+                <div class="mini-xp-bar-wrapper">
+                    <div class="mini-xp-bar-fill" style="width: ${(currentXP / xpForNextLevel) * 100}%;"></div>
+                </div>
+                <p class="xp-formula">Leveling up costs <strong>(Current Level x 100) XP</strong>.</p>
+            </div>
+        </div>
+    `;
+
+    Swal.fire({
+        title: '💎 XP & Leveling Guide',
+        html: html,
+        width: '600px',
+        showCloseButton: true,
+        showConfirmButton: false,
+        customClass: {
+            popup: 'xp-info-popup'
+        }
+    });
+}
 
  //----------------------------------------------------------------------------------------------------------
 // REPLACE your old loadFitnessProgress function with this one
@@ -2241,6 +2310,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Setup Event Listeners ---
     // Header and navigation buttons
     document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('xpInfoBtn').addEventListener('click', showXpInfoModal);
 
     // Theme: load persisted theme and set up toggle
     const rootEl = document.documentElement;

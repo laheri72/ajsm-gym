@@ -2519,3 +2519,84 @@ input:checked+.slider:before {
     color: #fff;
     background-color: #f44336;
 }
+/* =================================================================== */
+/* 3. "HOW TO EARN XP" MODAL
+/* =================================================================== */
+
+.xp-info-popup {
+    background: var(--dark-bg-secondary) !important;
+    color: var(--text-on-light) !important;
+}
+.xp-info-popup .swal2-title {
+    color: var(--accent) !important;
+}
+
+.xp-modal-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.xp-modal-header h3 {
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+.xp-modal-header p {
+    color: var(--text-on-dark);
+    font-size: 1rem;
+}
+
+.xp-earning-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.xp-earning-list li {
+    display: flex;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.xp-icon {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+.xp-action {
+    font-weight: 600;
+    flex-grow: 1;
+    color: white;
+}
+.xp-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent);
+}
+
+.xp-modal-footer {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--dark-border);
+    text-align: center;
+}
+.xp-modal-footer h4 {
+    color: #fff;
+}
+.xp-modal-footer p {
+    color: var(--text-on-dark);
+}
+.xp-formula {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-top: 0.5rem;
+}
+.mini-xp-bar-wrapper {
+    height: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    margin: 0.5rem 0;
+}
+.mini-xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #81C784, #4CAF50);
+    border-radius: 5px;
+}
