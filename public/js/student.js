@@ -4,6 +4,7 @@ let fitnessProgressChart = null;
 let weeklyHoursChart = null;
 let cachedStudentWeeks = [];
 let flatpickrInstance = null; // To hold the date picker instance
+let leaveHistoryTable = null;
 
 // Add this new data structure at the top of your student.js file
 // REPLACE your old exerciseDatabase object with this complete version.
@@ -1966,45 +1967,96 @@ async function loadLeaveData() {
 }
 
 /**
- * Renders the provided leave requests into the status table.
+ * Renders the provided leave requests into the status table using DataTables.
+ * Sorts by LeaveID (newest first) by default.
  * @param {Array} leaves - An array of leave request objects.
  */
 function renderLeaveTable(leaves) {
-    const tbody = document.querySelector('#leaveStatusTable tbody');
-    tbody.innerHTML = '';
+    // 1. Check if the DataTable is already initialized
+    if ($.fn.DataTable.isDataTable('#leaveStatusTable')) {
+        // If it is, just clear it, add new data, and redraw
+        leaveHistoryTable = $('#leaveStatusTable').DataTable();
+        leaveHistoryTable.clear().rows.add(leaves).draw();
+    } else {
+        // 2. If it's not, initialize it
+        leaveHistoryTable = $('#leaveStatusTable').DataTable({
+            data: leaves,
+            columns: [
+                // --- THIS IS THE NEW COLUMN ---
+                // Add LeaveID as the first column, but make it invisible.
+                // We will use this for sorting.
+                { 
+                    data: 'LeaveID', 
+                    visible: false 
+                },
+                // --- END OF NEW COLUMN ---
 
-    if (leaves.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center">You have no leave requests.</td></tr>`;
-        return;
+                { 
+                    title: 'Leave Dates',
+                    data: null, // We'll create this from two data points
+                    render: (data, type, row) => {
+                        const start = moment(row.LeaveStartDate).format('MMM D');
+                        const end = moment(row.LeaveEndDate).format('MMM D');
+                        return start === end ? start : `${start} to ${end}`;
+                    }
+                },
+                { 
+                    title: 'Status',
+                    data: 'Status',
+                    render: (data) => {
+                        const statusClasses = {
+                            'Approved': 'badge-green',
+                            'Rejected': 'badge-red',
+                            'On Hold': 'badge-yellow',
+                            'Pending': 'badge-gray'
+                        };
+                        const statusClass = statusClasses[data] || 'badge-gray';
+                        return `<span class="badge ${statusClass}">${data}</span>`;
+                    }
+                },
+                { 
+                    title: 'Reason',
+                    data: 'Reason' 
+                },
+                { 
+                    title: 'Staff Remarks',
+                    data: 'Remarks',
+                    render: (data) => data || 'N/A' // Show N/A if remarks are null
+                },
+                { 
+                    title: 'Action',
+                    data: 'LeaveID',
+                    orderable: false, // Don't let users sort by this column
+                    render: (data, type, row) => {
+                        // Only show the "Cancel" button if the status is "Pending"
+                        if (row.Status === 'Pending') {
+                            return `<button class="btn btn-sm btn-danger cancel-leave-btn" data-id="${data}">Cancel</button>`;
+                        }
+                        return 'N/A'; // No action for other statuses
+                    }
+                }
+            ],
+            responsive: true,
+
+            // --- THIS IS THE CHANGED LINE ---
+            // Sort by the first column (index 0), which is our new invisible LeaveID,
+            // in descending ('desc') order.
+            order: [[0, 'desc']], 
+            // --- END OF CHANGE ---
+
+            pageLength: 5,
+            lengthChange: false, // Hides the "Show X entries" dropdown
+            language: {
+                emptyTable: "You have no leave requests.",
+                search: "Search:",
+                paginate: {
+                    previous: "Prev",
+                    next: "Next"
+                }
+            }
+        });
     }
-
-    leaves.forEach(leave => {
-        const tr = document.createElement('tr');
-        const start = moment(leave.LeaveStartDate).format('MMM D');
-        const end = moment(leave.LeaveEndDate).format('MMM D');
-        const dates = start === end ? start : `${start} to ${end}`;
-
-        const statusClasses = {
-            'Approved': 'badge-green',
-            'Rejected': 'badge-red',
-            'On Hold': 'badge-yellow',
-            'Pending': 'badge-gray'
-        };
-        const statusClass = statusClasses[leave.Status] || 'badge-gray';
-
-        tr.innerHTML = `
-            <td>${dates}</td>
-            <td><span class="badge ${statusClass}">${leave.Status}</span></td>
-            <td>${leave.Reason}</td>
-            <td>${leave.Remarks || 'N/A'}</td>
-            <td>
-                ${leave.Status === 'Pending' ? `<button class="btn btn-sm btn-danger cancel-leave-btn" data-id="${leave.LeaveID}">Cancel</button>` : 'N/A'}
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
 }
-
 /**
  * Handles the submission of the leave request form.
  * @param {Event} e - The form submission event.

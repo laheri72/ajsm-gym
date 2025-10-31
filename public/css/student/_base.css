@@ -1,0 +1,497 @@
+
+
+html {
+    /* Default is 16px. This value makes the entire UI about 12% smaller. */
+    font-size: 14px; 
+}
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background-color: var(--light);
+    font-family: 'Poppins', sans-serif; /* Standardized font for the dashboard */
+    color: black;
+    overflow-x: hidden;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] .card,
+[data-theme="dark"] .leaderboard-container,
+[data-theme="dark"] .trophy-case-container,
+[data-theme="dark"] .progress-card,
+[data-theme="dark"] .leave-form-container,
+[data-theme="dark"] .leave-status-container {
+    color: var(--text-on-light);
+    background-color: #141c27;
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .analytics-widget,
+[data-theme="dark"] .stat-card {
+    color: var(--text-on-light);
+}
+
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .leaderboard-container,
+[data-theme="dark"] .trophy-case-container,
+[data-theme="dark"] .progress-card,
+[data-theme="dark"] .leave-form-container,
+[data-theme="dark"] .leave-status-container {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+h2 {
+    color: var(--primary);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+}
+
+
+/* =================================================================== */
+/* 5. MAIN CONTENT & CARDS
+/* =================================================================== */
+
+.content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1140px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
+}
+
+.card p {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.card-title {
+    text-align: center;
+    font-size: 1rem;
+}
+
+/* =================================================================== */
+/* 6. FORMS & BUTTONS
+/* =================================================================== */
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-family: inherit;
+    transition: all 0.3s;
+    color: black;
+}
+.form-text {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+[data-theme="dark"] .form-control {
+    background: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+[data-theme="dark"] input[type="date"] { color: #ffffff; }
+[data-theme="dark"] .form-select {
+    background: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] select.form-control option,
+[data-theme="dark"] .form-select option {
+    color: var(--text-on-light);
+    background-color: #0f1722;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+select.form-control {
+    color: #000;
+    background-color: white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234CAF50' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    appearance: none;
+}
+
+select.form-control option {
+    color: #000;
+}
+
+/* Styles for disabled elements */
+select:disabled,
+button:disabled {
+    background-color: #f2f2f2;
+    color: #888;
+    cursor: not-allowed;
+    border: 1px solid #ccc;
+}
+
+button:disabled {
+    background-color: #ccc;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+#loadAttendanceBtn {
+    background-color: var(--primary); /* Your green color: #4CAF50 */
+    color: white; /* White text is more readable on a green background */
+    border: none;
+}
+
+#loadAttendanceBtn:hover {
+    background-color: var(--secondary); /* Your darker green for hover: #3e8e41 */
+}
+.btn:hover {
+    transform: translateY(-3px);
+}
+
+
+/* Specific rule to make the header's logout button text white */
+.header .btn {
+    color: #000000;
+    background-color: var(--accent);
+}
+.header .btn:hover {
+    background-color: #00e6d1; /* Slightly lighter accent on hover */
+}
+/* Accessibility improvement for keyboard users */
+.btn:focus-visible,
+.navbar a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+/* =================================================================== */
+/* 6. UNIFIED BUTTON SYSTEM
+/* =================================================================== */
+
+/* --- Base Button Style --- */
+.btn {
+    display: inline-block;
+    font-weight: 500;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: 0.5rem 1rem; /* Standard padding */
+    font-size: 0.9rem;
+    border-radius: 0.5rem; /* Standard radius */
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* --- Button Size Modifier --- */
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+/* --- Solid Button Modifiers --- */
+.btn-primary {
+    color: #fff;
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+.btn-primary:hover {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+}
+
+/* --- Outline Button Modifiers --- */
+.btn-outline-primary {
+    color: var(--primary);
+    border-color: var(--primary);
+    background-color: transparent;
+}
+.btn-outline-primary:hover {
+    color: #fff;
+    background-color: var(--primary);
+}
+
+.btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+    background-color: transparent;
+}
+.btn-outline-danger:hover {
+    color: #fff;
+    background-color: var(--danger);
+}
+
+/* --- Dark Mode Button Styles --- */
+[data-theme="dark"] .btn-outline-primary {
+    color: var(--primary);
+    border-color: var(--primary);
+}
+[data-theme="dark"] .btn-outline-primary:hover {
+    color: #fff;
+    background-color: var(--primary);
+}
+[data-theme="dark"] .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+[data-theme="dark"] .btn-outline-danger:hover {
+    color: #fff;
+    background-color: var(--danger);
+}
+[data-theme="dark"] .quick-add-btn {
+    background-color: var(--accent);
+    color: #000;
+    border: none;
+}
+
+.quick-add-btn {
+    background-color: var(--accent);
+    color: #000;
+    border: none;
+} 
+
+
+/* =================================================================== */
+/* 7. TABLES
+/* =================================================================== */
+
+/* Universal table styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+table th, table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    color: black;
+}
+
+[data-theme="dark"] table thead th {
+    background-color: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] table th,
+[data-theme="dark"] table td {
+    border-bottom: 1px solid #1f2d40;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] .table,
+[data-theme="dark"] .table tbody tr,
+[data-theme="dark"] #studentPlanTable,
+[data-theme="dark"] #sessionHistoryTable,
+[data-theme="dark"] #weightHistoryTable {
+    background-color: #0f1722;
+}
+
+[data-theme="dark"] #studentPlanTable tbody td,
+[data-theme="dark"] #sessionHistoryTable tbody td,
+[data-theme="dark"] #weightHistoryTable tbody td {
+    background-color: #0f1722;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] #studentPlanTable thead th,
+[data-theme="dark"] #sessionHistoryTable thead th,
+[data-theme="dark"] #weightHistoryTable thead th {
+    background-color: #1f2d40;
+    color: var(--text-on-light);
+}
+[data-theme="dark"] #weightHistoryTable tbody td {
+    border-color: #1f2d40;
+}
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #0f1c2a;
+}
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(even) {
+    background-color: #0f1722;
+}
+
+table thead th {
+    background-color: var(--primary);
+    color: white;
+}
+
+table tr:nth-child(even) {
+    background: rgba(67, 97, 238, 0.05);
+}
+
+/* Specific styles for #attendanceTable */
+#attendanceTable th, #attendanceTable td {
+    border: 1px solid #ccc;
+    padding: 12px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.present {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.absent {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+.on-leave {
+    background-color: #fff3cd; /* Light yellow background */
+    color: #856404; /* Dark yellow/brown text */
+    font-weight: bold;
+}
+[data-theme="dark"] .present,
+[data-theme="dark"] .on-leave,
+[data-theme="dark"] .absent {
+    color: #000 !important; 
+    font-weight: bold;
+}
+
+/* Specific styles for .styled-plan-table */
+.styled-plan-table {
+    margin-top: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.styled-plan-table th, .styled-plan-table td {
+    padding: 10px 14px;
+}
+
+.styled-plan-table th {
+    background-color: #37c8ed;
+    color: #444; /* Changed from white for better contrast */
+    font-weight: 600;
+}
+
+.styled-plan-table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+[data-theme="dark"] .styled-plan-table tr,
+[data-theme="dark"] .styled-plan-table tr:nth-child(even) {
+    background-color: #0f1722;
+}
+[data-theme="dark"] .styled-plan-table th,
+[data-theme="dark"] .styled-plan-table td {
+    color: var(--text-on-light);
+    border-color: #1f2d40;
+}
+
+td iframe {
+    /* Ensures embedded iframes are square and proper viewing angle from all devices */
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    height: 200px;
+    border: none;
+    border-radius: 8px;
+
+}
+
+
+/* =================================================================== */
+/* 18. TABLE LOADER STYLES
+/* =================================================================== */
+
+.loader-cell {
+    text-align: center;
+    padding: 3rem 1rem !important; /* Use !important to override other table styles */
+    border: none !important;
+}
+
+.loader {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 5px solid #e0f7fa; /* A light, complementary color */
+    border-top-color: var(--primary); /* Your main theme color */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- UPDATED: Leaderboard Toast Styling --- */
+#leaderboard-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px; /* Slightly wider */
+     background-color: #ffffff; /* <-- Ensures a solid white background */
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    padding: 1.25rem; /* More padding */
+    border-top: 4px solid var(--primary-color);
+    z-index: 1000;
+    
+    /* Animation properties */
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+#leaderboard-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+#leaderboard-toast h3 {
+    margin-top: 0;
+    margin-bottom: 1rem; /* More space below header */
+    font-size: 1.25rem; /* Larger header */
+    font-weight: 700;   /* Bolder header */
+    text-align: center;
+}
+[data-theme="dark"] #leaderboard-toast h3 { color: #111111; }
+
+#leaderboard-toast ol {
+    margin: 0;
+    padding-left: 1.75rem; /* Adjusted padding for medals */
+}
+
+#leaderboard-toast li {
+    padding: 0.4rem 0;  /* More vertical space */
+    font-size: 1.1rem;    /* Larger text */
+    font-weight: 600;   /* Bolder text */
+    color: #111111;
+}
+[data-theme="dark"] .footer .footer-link { color: #ffffff !important; }
+.footer .footer-link { color: #000000; text-decoration: underline; }

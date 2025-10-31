@@ -1,0 +1,430 @@
+/* Add this to your stu-styles.css file */
+
+.analytics-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    align-items: stretch;
+}
+
+.stat-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+[data-theme="dark"] .stat-card { background-color: #0f1722; color: var(--text-on-light); }
+[data-theme="dark"] .stat-card span { color: #c7d3df; }
+
+.stat-card .stat-value {
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.stat-card span {
+    font-size: 1.2rem;
+    color: var(--gray);
+    margin-top: 0.5rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+/* table head with other bg color than table body */
+
+[data-theme="dark"] .table-responsive table thead th {
+    background-color: #1f2d40;
+    color: #c7d3df;
+}
+
+
+/* Add this CSS to your stu-styles.css file */
+
+.analytics-tabs {
+    width: 100%;
+}
+
+.tab-nav {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.tab-link {
+    padding: 12px 20px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gray);
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.tab-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.tab-link.active {
+    color: var(--dark);
+}
+
+.tab-link.active::after {
+    transform: scaleX(1);
+}
+
+.tab-pane {
+    display: none; /* Hide all panels by default */
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.tab-pane.active {
+    display: block; /* Show only the active panel */
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* =================================================================== */
+/* 21. WEIGHT LOGGER (in Progression Tab)
+/* =================================================================== */
+
+.weight-logger-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 2rem;
+}
+
+.weight-logger-form,
+.weight-logger-history {
+    background-color: #f8f9fa; /* Light background */
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.weight-logger-form h4,
+.weight-logger-history h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.weight-logger-form p {
+    font-size: 0.9rem;
+    color: var(--gray);
+    margin-bottom: 1.5rem;
+}
+
+.weight-logger-form .input-group {
+    display: flex;
+}
+.weight-logger-form .input-group-text {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background-color: #e9ecef;
+    color: var(--dark);
+    font-weight: 600;
+}
+.weight-logger-form .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.weight-logger-form .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* History Table Container */
+.history-table-container {
+    max-height: 250px; /* Gives the table a fixed height with scroll */
+    overflow-y: auto;
+}
+
+#weightHistoryTable {
+    margin-top: 0;
+}
+
+#weightHistoryTable thead {
+    position: sticky; /* Makes the header stay put while scrolling */
+    top: 0;
+    z-index: 1;
+}
+
+.btn-delete-log {
+    color: var(--danger);
+    background: transparent;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+.btn-delete-log:hover {
+    color: #fff;
+    background-color: var(--danger);
+    border-radius: 0.25rem;
+}
+
+/* A simple separator line */
+.section-divider {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* --- Dark Mode Styles --- */
+[data-theme="dark"] .weight-logger-form,
+[data-theme="dark"] .weight-logger-history {
+    background-color: #0f1722; /* Darker card bg */
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .weight-logger-form h4 {
+    color: var(--accent); /* Vibrant accent */
+}
+
+[data-theme="dark"] .weight-logger-form .input-group-text {
+    background-color: #1f2c39;
+    color: var(--text-on-dark);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .section-divider {
+    border-color: var(--dark-border);
+}
+
+
+
+/* =================================================================== */
+/* 22. CURRENT WEIGHT & BMI STAT MODULE
+/* (This REPLACES your old .weight-module CSS)
+/* =================================================================== */
+
+.stat-module.weight-module {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+}
+
+.weight-module h4 {
+    color: #0d47a1; /* Dark blue text */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem; /* More space */
+}
+
+/* New 2-column grid */
+.weight-bmi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(13, 71, 161, 0.1);
+    padding-bottom: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+.stat-item:first-child {
+    border-right: 1px solid rgba(13, 71, 161, 0.1);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e88e5;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Weight Display */
+.weight-display {
+    margin-bottom: 0.5rem;
+}
+#stat-current-weight {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1565c0; /* Strong blue */
+    line-height: 1;
+}
+.kg-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1e88e5;
+    margin-left: 4px;
+}
+.stat-date {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin: 0;
+    min-height: 1.2em; /* Prevents layout jump */
+}
+
+/* BMI Display Area */
+#bmi-display-area {
+    min-height: 60px; /* Consistent height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#add-height-btn {
+    font-weight: 600;
+    border-color: #1565c0;
+    color: #1565c0;
+}
+#add-height-btn:hover {
+    background-color: #1565c0;
+    color: #fff;
+}
+
+.bmi-value-loading {
+    font-size: 2.5rem;
+    color: #90a4ae;
+}
+
+.bmi-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+.stat-category {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* BMI Category Colors */
+.bmi-underweight { color: #0288d1; } /* Blue */
+.bmi-healthy { color: #388e3c; } /* Green */
+.bmi-overweight { color: #f57c00; } /* Orange */
+.bmi-obese { color: #d32f2f; } /* Red */
+
+
+/* Bottom Shortcut Link */
+#weight-motivation-text {
+    text-align: center;
+    margin: 0;
+}
+#log-weight-shortcut {
+    color: #0d47a1; 
+    text-decoration: underline;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+#log-weight-shortcut:hover { color: #002171; }
+
+
+/* --- Dark Mode --- */
+[data-theme="dark"] .stat-module.weight-module {
+    background: linear-gradient(135deg, #1e3a8a, #172554);
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .weight-module h4 {
+    color: #90caf9; /* Light blue */
+}
+[data-theme="dark"] .weight-bmi-grid {
+    border-color: rgba(144, 202, 249, 0.2);
+}
+[data-theme="dark"] .stat-item:first-child {
+    border-color: rgba(144, 202, 249, 0.2);
+}
+[data-theme="dark"] .stat-label {
+    color: #90caf9;
+}
+[data-theme="dark"] #stat-current-weight {
+    color: #e3f2fd; /* Very light blue/white */
+}
+[data-theme="dark"] .kg-label {
+    color: #90caf9; 
+}
+[data-theme="dark"] #add-height-btn {
+    border-color: #90caf9;
+    color: #90caf9;
+}
+[data-theme="dark"] #add-height-btn:hover {
+    background-color: #90caf9;
+    color: #172554;
+}
+[data-theme="dark"] .bmi-value-loading {
+    color: #546e7a;
+}
+[data-theme="dark"] #log-weight-shortcut {
+    color: #90caf9;
+}
+[data-theme="dark"] #log-weight-shortcut:hover {
+    color: #e3f2fd;
+}
+/* BMI Dark Mode Colors */
+[data-theme="dark"] .bmi-underweight { color: #4fc3f7; } /* Light Blue */
+[data-theme="dark"] .bmi-healthy { color: #81c784; } /* Light Green */
+[data-theme="dark"] .bmi-overweight { color: #ffb74d; } /* Light Orange */
+[data-theme="dark"] .bmi-obese { color: #e57373; } /* Light Red */
+/* =================================================================== */
+/* 24. BMI EDIT BUTTON
+/* =================================================================== */
+
+.bmi-value-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem; /* This was on .bmi-value before */
+}
+
+.bmi-value {
+    margin-bottom: 0; /* We moved the margin to the wrapper */
+}
+
+.btn-edit-height {
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.25rem;
+    line-height: 1;
+    display: inline-block;
+}
+.btn-edit-height:hover {
+    color: var(--primary);
+}
+
+[data-theme="dark"] .btn-edit-height {
+    color: var(--gray);
+}
+[data-theme="dark"] .btn-edit-height:hover {
+    color: var(--accent);
+}

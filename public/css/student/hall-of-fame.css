@@ -1,0 +1,295 @@
+
+
+/* =================================================================== */
+/* 11. HALL OF FAME & ACHIEVEMENTS SECTION
+/* =================================================================== */
+
+.fame-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.fame-header h1 {
+    font-weight: 700;
+    color: var(--dark);
+}
+.fame-header p {
+    font-size: 1.1rem;
+    color: var(--gray);
+}
+
+.fame-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2.5rem;
+    align-items: start;
+}
+
+.leaderboard-container, .trophy-case-container {
+    background-color: #f8f9fa;
+    padding: 1.5rem 2rem;
+    border-radius: 1rem;
+}
+
+.leaderboard-container h3, .trophy-case-container h3 {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.subtitle {
+    text-align: center;
+    color: var(--gray);
+    margin-bottom: 2rem;
+}
+
+/* Leaderboard List Styling */
+.leaderboard-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.leaderboard-list li {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.leaderboard-list li:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.leaderboard-list li .rank {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    width: 50px;
+    flex-shrink: 0;
+}
+.leaderboard-list li .name {
+    font-weight: 600;
+    flex-grow: 1;
+}
+.leaderboard-list li .score {
+    font-weight: 500;
+    color: var(--gray);
+}
+
+/* Trophy Case Grid Styling */
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+.badge-card {
+    background: linear-gradient(145deg, #2c3e50, #232526);
+    color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    border: 1px solid #4a4a4a;
+    transition: transform 0.3s ease;
+    overflow: hidden; /* Important for animation */
+}
+.badge-card:hover {
+    transform: translateY(-10px);
+}
+
+.badge-image {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 5px 15px rgba(0, 255, 234, 0.3));
+    animation: float 3s ease-in-out infinite;
+}
+
+.badge-name {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+}
+.badge-description {
+    font-size: 0.9rem;
+    color: var(--text-on-dark);
+    margin-bottom: 1rem;
+    min-height: 54px; /* Give it a consistent height */
+}
+.badge-earned {
+    font-size: 0.8rem;
+    color: var(--gray);
+    border-top: 1px solid #4a4a4a;
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+}
+.achievements-grid .loading {
+    color: var(--gray);
+}
+
+/* Floating animation for badges */
+@keyframes float {
+	0% { transform: translateY(0px); }
+	50% { transform: translateY(-8px); }
+	100% { transform: translateY(0px); }
+}
+
+
+/* =================================================================== */
+/* 12. ACHIEVEMENT PROGRESS TRACKERS
+/* =================================================================== */
+
+.progress-trackers-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.progress-card {
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    gap: 1rem;
+}
+
+.progress-badge-img {
+    width: 60px;
+    height: 60px;
+    filter: grayscale(80%) opacity(0.7); /* Grayscale unearned badges */
+    flex-shrink: 0;
+}
+
+.progress-info {
+    width: 100%;
+}
+
+.progress-info h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+[data-theme="dark"] .progress-card { background-color: #0f1722; border-color: #1f2d40; }
+[data-theme="dark"] .progress-info h4 { color: var(--text-on-light); }
+
+.progress-bar-container {
+    width: 100%;
+    height: 12px;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    width: 0%; /* Default to 0, JS will update this */
+    background: linear-gradient(90deg, #4CAF50, #81C784);
+    border-radius: 6px;
+    transition: width 0.5s ease-in-out;
+}
+
+.progress-text {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin: 0;
+    font-weight: 500;
+}
+/* =================================================================== */
+/* 13. ENHANCED GAMIFICATION STYLES
+/* =================================================================== */
+
+/* For the Consistency King personal best stat */
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.personal-best-streak {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* For the info icon tooltip */
+/* --- REPLACEMENT for your .info-icon style --- */
+.info-icon {
+    display: inline-block;
+    vertical-align: middle; /* Aligns the icon nicely with the text */
+    margin-left: 8px; /* The original margin [cite: 438] */
+    cursor: pointer; /* Shows it's clickable [cite: 438] */
+    color: #adb5bd; /* A subtle, modern gray color */
+    font-size: 1rem; /* Adjust size as needed */
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+
+    /* REMOVED the old background, border, width, height, etc. */
+}
+
+.info-icon:hover {
+    color: var(--primary); /* Use your theme color on hover */
+    transform: scale(1.2); /* Makes the icon pop slightly */
+}
+
+/* Badge Unlocked Animation */
+.badge-unlocked-animation {
+    padding: 2rem 0;
+}
+.badge-unlocked-image {
+    width: 150px;
+    height: 150px;
+    animation: badge-reveal 0.8s ease-out forwards, float 3s 0.8s ease-in-out infinite;
+}
+
+@keyframes badge-reveal {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+    80% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+
+
+/* Level Up! Animation (No changes needed here) */
+.level-up-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 0;
+}
+.level-up-number {
+    font-size: 6rem;
+    font-weight: 900;
+    color: var(--accent);
+    border: 8px solid var(--accent);
+    border-radius: 50%;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: level-up-reveal 1s ease-out forwards;
+    text-shadow: 0 0 20px var(--accent);
+}
+@keyframes level-up-reveal {
+    0% { transform: scale(0.3) rotate(-90deg); opacity: 0; box-shadow: 0 0 0px var(--accent); }
+    80% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); box-shadow: 0 0 40px var(--accent); }
+}

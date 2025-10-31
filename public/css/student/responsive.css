@@ -1,0 +1,94 @@
+
+
+/* =================================================================== */
+/* 9. RESPONSIVE DESIGN FOR MOBILE DEVICES
+/* =================================================================== */
+
+@media (max-width: 768px) {
+
+    /* --- Header on Mobile --- */
+    .header {
+        flex-direction: column; /* Stack welcome text and button vertically */
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .header h1 {
+        font-size: 1.5rem; /* Smaller font for small screens */
+    }
+
+    .header h2 {
+        font-size: 0.8rem;
+    }
+
+    /* --- Info Bar on Mobile --- */
+    .info-bar {
+        justify-content: flex-start; /* Align items to the left */
+        gap: 15px;
+        padding: 10px 15px;
+    }
+    
+    .info-item:not(:first-child)::before {
+        display: none; /* Hide the separators on mobile to save space */
+    }
+
+    /* --- Navigation on Mobile --- */
+    /* Bootstrap handles the collapse, so remove custom stacking */
+    .navbar .nav-link {
+        border-bottom: 1px solid #465a70;
+        border-radius: 0;
+    }
+
+    /* --- Main Content on Mobile --- */
+    .content {
+        padding: 1rem; /* Reduce padding on smaller screens */
+    }
+    
+    /* --- Planner on Mobile --- */
+    .planner {
+        flex-direction: column; /* Ensure day cards stack in a single column */
+    }
+
+    
+
+}
+
+
+
+@media (max-width: 992px) {
+    .today-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+
+/* Make it responsive on smaller screens */
+@media (max-width: 992px) {
+    .analytics-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Responsive Styles --- */
+@media (max-width: 992px) {
+    .weight-logger-grid {
+        grid-template-columns: 1fr; /* Stack columns on mobile */
+    }
+}
+
+/* Responsive adjustments for the fame section */
+@media (max-width: 992px) {
+    .fame-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

@@ -1,0 +1,450 @@
+
+
+  
+
+
+/* =================================================================== */
+/* 8. SPECIFIC COMPONENTS
+/* =================================================================== */
+
+.filter-group {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.attendance-summary {
+    margin-top: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    background-color: #e0f7e9;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    animation: fadeInSlide 1s ease forwards;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    user-select: none;
+}
+
+.planner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    padding: 0 15px;
+}
+
+.day-wrapper {
+    flex: 1 1 240px;
+    max-width: 260px;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #3a3897 50%, #2c2a72 50%, #1a1a4e 100%);
+    border-radius: 16px;
+    padding: 15px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+    transition: transform 0.2s ease-in-out;
+}
+
+.day-wrapper:hover {
+    transform: translateY(-3px);
+}
+
+.day-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-align: center;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.day-card {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 140px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    overflow-y: auto;
+}
+
+[data-theme="dark"] .day-card {
+    background: #0f1722;
+    border-color: #1f2d40;
+    color: var(--text-on-light);
+}
+
+
+/* Achievement leaderboard items readable in dark mode */
+[data-theme="dark"] .leaderboard-list li {
+    background-color: #0f1722;
+}
+[data-theme="dark"] .leaderboard-list li .name,
+[data-theme="dark"] .leaderboard-list li .score {
+    color: var(--text-on-light);
+}
+[data-theme="dark"] #leaderboard-toast h3,
+[data-theme="dark"] #leaderboard-toast li { color: #111111; }
+[data-theme="dark"] #leaderboard-toast { background-color: #ffffff; }
+
+.day-card[contenteditable="true"]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* --- Unified Badge/Tag System --- */
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 999px; /* Pill shape */
+    color: #fff;
+}
+
+/* Color Modifiers */
+.badge-green { background-color: var(--success); }
+.badge-red { background-color: var(--danger); }
+.badge-yellow { background-color: #ffc107; color: #212529; }
+.badge-gray { background-color: #6c757d; }
+.badge-blue { background-color: #0d6efd; }
+.badge-teal { background-color: #20c997; }
+.badge-dark { background-color: var(--dark-bg-primary); }
+
+
+/* =================================================================== */
+/* 19. EXERCISE EXPLORER MODAL (SweetAlert)
+/* =================================================================== */
+
+.exercise-explorer .filters {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.exercise-explorer .exercise-list {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.exercise-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.exercise-item:last-child {
+    border-bottom: none;
+}
+
+.exercise-item:hover {
+    background-color: #f8f9fa;
+}
+
+.exercise-item.selected {
+    background-color: #e0f2f1; /* A light green to indicate selection */
+    border-radius: 0.25rem;
+}
+
+.exercise-item .tags {
+    margin-top: 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.sets-reps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.sets-reps-container h4 {
+    margin: 0;
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+/* --- Dark Mode for Exercise Explorer --- */
+[data-theme="dark"] .swal2-popup {
+    background-color: #141c27;
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .swal2-select,
+[data-theme="dark"] .swal2-input {
+    background-color: #0f1722 !important;
+    border-color: #1f2d40 !important;
+    color: var(--text-on-light) !important;
+}
+
+[data-theme="dark"] .exercise-explorer .filters,
+[data-theme="dark"] .exercise-item,
+[data-theme="dark"] .sets-reps-container {
+    border-color: #1f2d40;
+}
+
+[data-theme="dark"] .exercise-explorer .exercise-list {
+    border-color: #1f2d40;
+}
+
+[data-theme="dark"] .exercise-item:hover {
+    background-color: #0f1722;
+}
+
+[data-theme="dark"] .exercise-item.selected {
+    background-color: #1a3d3a; /* Darker green selection */
+}
+
+
+/* =================================================================== */
+/* 20. TODAY HUB & DASHBOARD STYLES
+/* =================================================================== */
+
+/* --- Header & Toggle --- */
+.planner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.planner-title {
+    margin: 0;
+    color: var(--dark);
+}
+.view-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+[data-theme="dark"] .planner-header { border-color: var(--dark-border); }
+[data-theme="dark"] .planner-title, [data-theme="dark"] .view-toggle span { color: var(--text-on-light); }
+
+/* The toggle switch itself */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+input:checked+.slider {
+    background-color: var(--primary);
+}
+input:focus+.slider {
+    box-shadow: 0 0 1px var(--primary);
+}
+input:checked+.slider:before {
+    transform: translateX(22px);
+}
+.slider.round {
+    border-radius: 34px;
+}
+.slider.round:before {
+    border-radius: 50%;
+}
+
+
+/* --- Today's View Layout --- */
+.today-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+/* --- Today's Plan Card --- */
+/* --- CORRECTED: Today's Plan Card (Light by Default) --- */
+.today-plan-card {
+    background: #ffffff; /* Light background for default theme */
+    color: var(--dark);
+    padding: 2rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+.today-plan-card h3 {
+    margin-top: 0;
+    color: var(--primary); /* Use primary color for heading in light mode */
+    text-align: center;
+    margin-bottom: 1rem;
+}
+.today-plan-card .day-card {
+    background-color: #f8f9fa; /* Light gray for the card itself */
+    border: 1px dashed #ced4da;
+    color: var(--dark);
+    min-height: 200px;
+}
+
+/* --- ADD: Dark Mode Override for Today's Plan Card --- */
+[data-theme="dark"] .today-plan-card {
+    background: var(--dark-bg-secondary);
+    color: white;
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .today-plan-card h3 {
+    color: var(--accent); /* Use vibrant accent color in dark mode */
+}
+[data-theme="dark"] .today-plan-card .day-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--dark-border);
+    color: var(--text-on-light);
+}
+
+/* --- ADD: Styles for Consistency Progress Bar --- */
+.consistency-progress-bar-container {
+    height: 10px;
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+.consistency-progress-bar-fill {
+    height: 100%;
+    width: 0%; /* JS will update this */
+    background: linear-gradient(90deg, #FFC107, #FFA000);
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
+}
+[data-theme="dark"] .consistency-progress-bar-container {
+    background-color: rgba(0,0,0,0.3);
+}
+
+
+.today-plan-card .day-card:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
+}
+.placeholder-text {
+    color: var(--gray);
+    text-align: center;
+    margin-top: 3rem;
+}
+.today-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* --- Stats Modules --- */
+.stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.stat-module {
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+}
+.stat-module h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: 600;
+}
+.stat-module p {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin: 0.5rem 0 0 0;
+}
+[data-theme="dark"] .stat-module {
+    background-color: #0f1722;
+    border-color: var(--dark-border);
+}
+
+.xp-module .xp-bar-wrapper {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+.xp-module .xp-bar-fill {
+    background: linear-gradient(90deg, #81C784, #4CAF50);
+}
+[data-theme="dark"] .xp-module .xp-bar-wrapper {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.consistency-module {
+    background: linear-gradient(135deg, #FFFDE7, #FFF8E1);
+}
+.consistency-module h4 { color: #F57F17; }
+.streak-display {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+    text-align: center;
+}
+.streak-current {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #FFC107;
+    line-height: 1;
+}
+.streak-best {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #FFA000;
+}
+[data-theme="dark"] .consistency-module {
+    background: linear-gradient(135deg, #3e2723, #212121);
+}
+/* Add this to stu-styles.css */
+
+/* Fill for the dashboard streak bar */
+#stat-streak-progress-fill {
+    height: 100%;
+    width: 0%; /* JS will update this */
+    background: linear-gradient(90deg, #FFC107, #FFA000);
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
+}

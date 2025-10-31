@@ -1,0 +1,47 @@
+/* =================================================================== */
+/* 10. LEAVE MANAGEMENT SECTION
+/* =================================================================== */
+
+/* Replace with this block */
+.leave-grid {
+    display: grid;
+    /* This new line is more responsive */
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 2rem;
+    align-items: start;
+}
+
+.leave-form-container, .leave-status-container {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e9ecef;
+}
+
+.leave-counter-card {
+    background: linear-gradient(135deg, #4b6cb7, #182848);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.counter-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.counter-label {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+
+
+.status-approved { background-color: var(--success); }
+.status-rejected { background-color: var(--danger); }
+.status-on-hold { background-color: #ffc107; color: #212529; }
+.status-pending { background-color: #6c757d; }
