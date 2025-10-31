@@ -1,0 +1,70 @@
+import { loadHallOfFameData } from './hallOfFame.js';
+import { loadLeaveData } from './leaves.js';
+import { loadSessionAnalytics, loadWorkoutConsistency } from './analysis.js';
+
+/**
+ * Programmatically switches the dashboard view to a specific section.
+ */
+export function navigateToSection(targetSectionId) {
+    const mainNav = document.querySelector('.navbar');
+    const contentSections = document.querySelectorAll('.content .card');
+    const targetLink = mainNav.querySelector(`[data-target="${targetSectionId}"]`);
+
+    if (!targetLink) return;
+
+    // Update nav link states
+    mainNav.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
+    targetLink.classList.add('active');
+
+    // Update section visibility
+    contentSections.forEach(section => {
+        section.style.display = (section.id === targetSectionId) ? 'block' : 'none';
+    });
+
+    // Trigger data loading for the new section if needed
+    if (targetSectionId === 'fame-low') {
+        loadHallOfFameData();
+    }
+    if (targetSectionId === 'leaves-low') {
+        loadLeaveData();
+    }
+    if (targetSectionId === 'logs-low') {
+        loadSessionAnalytics();
+        loadWorkoutConsistency();
+    }
+}
+
+/**
+ * Reads the URL hash and routes to the correct section and sub-tab.
+ */
+export function routeFromHash() {
+    let hash = window.location.hash.replace('#', '') || 'planner';
+    let mainHash = hash;
+    let subTab = null;
+
+    if (hash.includes('&tab=')) {
+        const parts = hash.split('&tab=');
+        mainHash = parts[0];
+        subTab = parts[1];
+    }
+
+    const map = {
+        planner: 'planner-low',
+        logs: 'logs-low',
+        attendance: 'attendance-low',
+        leaves: 'leaves-low',
+        tips: 'tips-low',
+        fame: 'fame-low'
+    }; 
+    
+    const targetSectionId = map[mainHash] || 'planner-low';
+    
+    navigateToSection(targetSectionId); 
+
+    if (subTab) {
+        const tabLink = document.querySelector(`.tab-nav .tab-link[data-tab="${subTab}"]`);
+        if (tabLink) {
+            tabLink.click();
+        }
+    }
+}
