@@ -24,73 +24,92 @@
 </head>
 <body>
 
-    <div class="app-header loading-theme">
-        <header class="header">
-            <div class="header-content">
-                <h1>✨<span id="studentName"></span></h1>
-                <h2 id="welcomeText"></h2>
+<header class="app-header-main navbar navbar-expand-lg loading-theme">
+    <div class="container-fluid">
+        <a class="header-brand" id="brand-info-trigger" href="#" 
+           data-bs-toggle="popover" data-bs-trigger="hover focus" 
+           title="Your Fitness Dashboard" 
+           data-bs-content="Loading...">
+              <div class="brand-logo">
+                <i class="bi bi-activity"></i>
+              </div>
+              <div class="brand-text">
+              <span class="brand-highlight"><div id="studentName"></div></span>
             </div>
+        </a>
+
+<button class="navbar-toggler" type="button"
+        aria-controls="mainNavCollapse"
+        aria-expanded="false"
+        aria-label="Toggle navigation">
+  <i class="bi bi-list"></i>
+</button>
+
+
+<div class="collapse navbar-collapse" id="mainNavCollapse">
+            <nav class="header-center">
+                <ul class="main-nav-list navbar-nav">
+                    <li>
+                        <a href="#planner" class="nav-link active" data-target="planner-low">Workout Planner</a>
+                    </li>
+                    <li class="nav-item-dropdown">
+                        <a href="#logs" class="nav-link" data-target="logs-low">Analysis</a>
+                        <div class="dropdown-menu">
+                            <a href="#logs&tab=overview">📈 Performance Overview</a>
+                            <a href="#logs&tab=logs">📓 Workout Logs</a>
+                            <a href="#logs&tab=history">📜 Session History</a>
+                            <a href="#logs&tab=progression">🏋️ Fitness Progression</a>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#attendance" class="nav-link" data-target="attendance-low">Attendance</a>
+                    </li>
+                    <li>
+                        <a href="#leaves" class="nav-link" data-target="leaves-low">Leave Portal</a>
+                    </li>
+                    <li>
+                        <a href="#tips" class="nav-link" data-target="tips-low">Tips</a>
+                    </li>
+                    <li>
+                        <a href="#fame" class="nav-link" data-target="fame-low">🏆 Hall of Fame</a>
+                    </li>
+                </ul>
+            </nav>
+
             <div class="header-actions">
-                <button id="themeToggleBtn" class="btn" aria-label="Toggle theme" title="Toggle light/dark Mode">
+                <button id="themeToggleBtn" class="btn btn-icon" title="Toggle theme">
                     <i class="bi bi-moon-stars"></i>
                 </button>
-                <button id="logoutBtn" class="btn btn-primary" title="logout button">Logout</button>
-            </div>
-        </header>
-
-        <nav class="navbar navbar-expand-md navbar-dark">
-            <div class="container-fluid">
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav w-100">
-                        <li class="nav-item">
-                            <a href="#planner" class="nav-link active" id="planner-main" data-target="planner-low">Workout Planner</a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#logs" class="nav-link" id="logs-main" data-target="logs-low">Analysis</a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#attendance" class="nav-link" id="attendance-main" data-target="attendance-low">Attendance</a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#leaves" class="nav-link" id="leaves-main" data-target="leaves-low">Leave Portal</a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#tips" class="nav-link" id="tips-main" data-target="tips-low">Tips</a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#fame" class="nav-link" id="fame-main" data-target="fame-low">🏆 Hall of Fame</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-
-        <div class="info-bar">
-            <div class="xp-level-container">
-                <div class="level-display">
-                    LEVEL <span id="fitnessLevel"></span>
-                </div>
-                <div class="rank-tag" id="rankTag"></div>
-                <div class="xp-bar-wrapper">
-                    <div class="xp-bar-fill" id="xpBarFill"></div>
-                    <div class="xp-bar-text" id="xpBarText"></div>
-                </div>
-                <button id="xpInfoBtn" class="info-icon" aria-label="How to earn XP" title="How to earn XP">
-                <i class="bi bi-info-circle-fill"></i>
-            </button>
-            </div>
-            <div class="info-item-group">
-                <div id="studentGoal" class="info-item goal"></div>
-                <div class="info-item">Slot: <span id="studentSlot"></span></div>
-                <div class="info-item">Darajah: <span id="studentDarajah"></span></div>
-                <div class="info-item">TR: <span id="studentTR"></span></div>
+                <button id="logoutBtn" class="btn btn-primary" title="Logout">Logout</button>
             </div>
         </div>
     </div>
-    <main class="content">
+</header>
+
+<div class="app-header-info loading-theme">
+    <div class="container-fluid">
+        
+
+
+        <div class="xp-level-container">
+            <div class="level-display">
+                LEVEL <span id="fitnessLevel"></span>
+            </div>
+            <div class="rank-tag" id="rankTag"
+                 data-bs-toggle="popover" data-bs-trigger="hover focus"
+                 title="Your Rank Roadmap">
+            </div>
+            <div class="xp-bar-wrapper">
+                <div class="xp-bar-fill" id="xpBarFill"></div>
+                <div class="xp-bar-text" id="xpBarText"></div>
+            </div>
+            <button id="xpInfoBtn" class="info-icon" title="How to earn XP">
+                <i class="bi bi-info-circle-fill"></i>
+            </button>
+        </div>
+
+    </div>
+</div>
 
  <main class="content">
       <!-- =================================================================== -->
@@ -1033,6 +1052,7 @@
 
 
 <!-- All scripts placed at the end of the document so the pages load faster -->
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>

@@ -21,6 +21,10 @@
     --dark-bg-secondary: #2c3e50; /* For headers and gradients */
     --border-color: #e0e0e0;
     --dark-border: #465a70; /* For borders on dark elements */
+
+
+    --header-height: 80px;
+    --info-height: 50px;
 }
 
 /* Dark theme variables */
@@ -32,4 +36,12 @@
     --dark-bg-primary: #142030;
     --dark-bg-secondary: #0f1a28;
     --gray: #9fb0c3;
+}
+
+/* Smaller defaults for mobile */
+@media (max-width: 991.98px) {
+  :root {
+    --header-height: 60px;
+    --info-height: 50px;
+  }
 }

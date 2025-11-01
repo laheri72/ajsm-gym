@@ -9,7 +9,7 @@
 @import url('./student/_base.css');
 
 /* 2. Main layout components */
-@import url('./student/header.css');
+@import url('./student/new-header.css');
 
 /* 3. Theming */
 @import url('./student/themes.css');

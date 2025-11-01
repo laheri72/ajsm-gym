@@ -181,16 +181,16 @@ button:disabled {
 
 
 /* Specific rule to make the header's logout button text white */
-.header .btn {
+.app-header-main .btn {
     color: #000000;
     background-color: var(--accent);
 }
-.header .btn:hover {
+.app-header-main .btn:hover {
     background-color: #00e6d1; /* Slightly lighter accent on hover */
 }
 /* Accessibility improvement for keyboard users */
 .btn:focus-visible,
-.navbar a:focus-visible {
+.main-nav-list .nav-link:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
@@ -460,7 +460,7 @@ td iframe {
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     padding: 1.25rem; /* More padding */
     border-top: 4px solid var(--primary-color);
-    z-index: 1000;
+    z-index: 1050;
     
     /* Animation properties */
     transform: translateX(120%);

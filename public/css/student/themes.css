@@ -1,249 +1,78 @@
-
-
 /* =================================================================== */
-/* 4. TIER-BASED THEMES (REPLACEMENT)
+/* GLOBAL THEMES (BODY, MODALS)
 /* =================================================================== */
 
-/* --- TIER: BRONZE (Rookie/Challenger) --- */
-.app-header.xp-tier-bronze {
-    background: linear-gradient(to right, #2c3e50, #4b6cb7);
+/* --- TIER: BRONZE (Rookie) --- */
+body.xp-tier-bronze {
+    --light: #f6fbf7; /* Fresh light green */
 }
-.app-header.xp-tier-bronze .level-display {
-    background: linear-gradient(135deg, #4CAF50, #3e8e41);
-    color: white;
-}
-.app-header.xp-tier-bronze .xp-bar-fill {
-    background: linear-gradient(90deg, #81C784, #4CAF50);
-}
-.app-header.xp-tier-bronze .rank-tag {
-    background-color: #4CAF50;
-    color: white;
-}
-/* Active nav link remains default accent */
-.app-header.xp-tier-bronze .nav-link.active {
-     color: var(--accent);
-     border-bottom-color: var(--accent);
+[data-theme="dark"] body.xp-tier-bronze {
+    --light: #121915; /* Dark desaturated green */
 }
 
-/* --- TIER: SILVER (Athlete) --- */
-.app-header.xp-tier-silver {
-    background: linear-gradient(to right, #526D82, #27374D);
+/* --- TIER: SILVER --- */
+body.xp-tier-silver {
+    --light: #f4f6f7; /* Light silver */
 }
-.app-header.xp-tier-silver .level-display {
-    background: linear-gradient(135deg, #b0bec5, #78909c);
-    color: #263238;
-}
-.app-header.xp-tier-silver .xp-bar-fill {
-    background: linear-gradient(90deg, #CFD8DC, #90A4AE);
-}
-.app-header.xp-tier-silver .rank-tag {
-    background-color: #78909c;
-    color: white;
-}
-/* Theme the active nav link */
-.app-header.xp-tier-silver .nav-link.active {
-     color: #CFD8DC;
-     border-bottom-color: #CFD8DC;
+[data-theme="dark"] body.xp-tier-silver {
+    --light: #1c252c; /* Dark silver */
 }
 
-/* --- TIER: GOLD (Pro) --- */
-.app-header.xp-tier-gold {
-    background: linear-gradient(to right, #594700, #2b2100);
+/* --- TIER: GOLD --- */
+body.xp-tier-gold {
+    --light: #fffbeb; /* Light gold */
 }
-/* Theme all text to be gold-ish */
-.app-header.xp-tier-gold .header h1,
-.app-header.xp-tier-gold .header h2,
-.app-header.xp-tier-gold .nav-link,
-.app-header.xp-tier-gold .info-item {
-    color: #FFEB3B;
-    text-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
-}
-.app-header.xp-tier-gold .info-item span,
-.app-header.xp-tier-gold .info-item.goal {
-    color: #FFFFFF; /* Brighter white for values */
-    text-shadow: 0 0 5px rgba(255, 235, 179, 0.7);
-}
-.app-header.xp-tier-gold .level-display {
-    background: linear-gradient(135deg, #ffeb3b, #fbc02d);
-    color: #212121;
-}
-.app-header.xp-tier-gold .xp-bar-fill {
-    background: linear-gradient(90deg, #FFECB3, #FFC107);
-}
-.app-header.xp-tier-gold .rank-tag {
-    background-color: #FFC107;
-    color: #212121;
-}
-/* Theme the active nav link */
-.app-header.xp-tier-gold .nav-link.active {
-     color: #FFFFFF;
-     border-bottom-color: #FFC107;
+[data-theme="dark"] body.xp-tier-gold {
+    --light: #1f1b0a; /* Dark gold */
 }
 
-/* --- TIER: EMERALD (Elite) --- */
-.app-header.xp-tier-emerald {
-    background: linear-gradient(to right, #004D40, #00251A);
+/* --- TIER: EMERALD --- */
+body.xp-tier-emerald {
+    --light: #f0fdfa; /* Light emerald */
 }
-/* Theme all text to be emerald-ish */
-.app-header.xp-tier-emerald .header h1,
-.app-header.xp-tier-emerald .header h2,
-.app-header.xp-tier-emerald .nav-link,
-.app-header.xp-tier-emerald .info-item {
-    color: #64FFDA;
-    text-shadow: 0 0 5px rgba(0, 255, 234, 0.5);
+[data-theme="dark"] body.xp-tier-emerald {
+    --light: #0a1f1a; /* Dark emerald */
 }
-.app-header.xp-tier-emerald .info-item span,
-.app-header.xp-tier-emerald .info-item.goal {
-    color: #FFFFFF;
-    text-shadow: 0 0 5px rgba(100, 255, 218, 0.7);
-}
-.app-header.xp-tier-emerald .level-display {
-    background: linear-gradient(135deg, #1de9b6, #00bfa5);
-    color: #212121;
-}
-.app-header.xp-tier-emerald .xp-bar-fill {
-    background: linear-gradient(90deg, #A7FFEB, #1DE9B6);
-}
-.app-header.xp-tier-emerald .rank-tag {
-    background-color: #1DE9B6;
-    color: #212121;
-}
-/* Theme the active nav link */
-.app-header.xp-tier-emerald .nav-link.active {
-     color: #FFFFFF;
-     border-bottom-color: #1DE9B6;
-}
-
 
 /* =================================================================== */
-/* 16. TIERED LEVEL-UP MODAL STYLES
+/* TIERED LEVEL-UP MODAL STYLES
 /* =================================================================== */
 
-.level-up-title {
-    color: var(--accent);
-    margin-top: 1rem;
-}
-.level-up-text {
-    color: var(--text-on-dark);
-}
+.level-up-title { color: var(--accent); margin-top: 1rem; }
+.level-up-text { color: var(--text-on-dark); }
 
 /* --- Silver Tier --- */
-.swal-tier-silver.swal2-popup {
-    background: linear-gradient(145deg, #607d8b, #37474f) !important;
-}
-.swal-tier-silver .level-up-number {
-    color: #eceff1;
-    border-color: #eceff1;
-    text-shadow: 0 0 20px #b0bec5;
-}
-.swal-tier-silver .level-up-title {
-    color: #eceff1;
-}
+.swal-tier-silver.swal2-popup { background: linear-gradient(145deg, #607d8b, #37474f) !important; }
+.swal-tier-silver .level-up-number { color: #eceff1; border-color: #eceff1; text-shadow: 0 0 20px #b0bec5; }
+.swal-tier-silver .level-up-title { color: #eceff1; }
 
 /* --- Gold Tier --- */
-.swal-tier-gold.swal2-popup {
-    background: linear-gradient(145deg, #594700, #2b2100) !important;
-}
-.swal-tier-gold .level-up-number {
-    color: #ffca28;
-    border-color: #ffca28;
-    text-shadow: 0 0 25px #ffab00;
-}
-.swal-tier-gold .level-up-title {
-    color: #ffca28;
-}
+.swal-tier-gold.swal2-popup { background: linear-gradient(145deg, #594700, #2b2100) !important; }
+.swal-tier-gold .level-up-number { color: #ffca28; border-color: #ffca28; text-shadow: 0 0 25px #ffab00; }
+.swal-tier-gold .level-up-title { color: #ffca28; }
 
 /* --- Emerald Tier --- */
-.swal-tier-emerald.swal2-popup {
-    background: linear-gradient(145deg, #004d40, #00251a) !important;
-}
-.swal-tier-emerald .level-up-number {
-    color: #64ffda;
-    border-color: #64ffda;
-    text-shadow: 0 0 30px #1de9b6;
-}
-.swal-tier-emerald .level-up-title {
-    color: #64ffda;
-}
+.swal-tier-emerald.swal2-popup { background: linear-gradient(145deg, #004d40, #00251a) !important; }
+.swal-tier-emerald .level-up-number { color: #64ffda; border-color: #64ffda; text-shadow: 0 0 30px #1de9b6; }
+.swal-tier-emerald .level-up-title { color: #64ffda; }
 
 /* =================================================================== */
-/* 3. "HOW TO EARN XP" MODAL
+/* "HOW TO EARN XP" MODAL
 /* =================================================================== */
 
-.xp-info-popup {
-    background: var(--dark-bg-secondary) !important;
-    color: var(--text-on-light) !important;
-}
-.xp-info-popup .swal2-title {
-    color: var(--accent) !important;
-}
-
-.xp-modal-header {
-    text-align: center;
-    margin-bottom: 1.5rem;
-}
-.xp-modal-header h3 {
-    color: #fff;
-    margin-bottom: 0.5rem;
-}
-.xp-modal-header p {
-    color: var(--text-on-dark);
-    font-size: 1rem;
-}
-
-.xp-earning-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.xp-earning-list li {
-    display: flex;
-    align-items: center;
-    background-color: rgba(0, 0, 0, 0.2);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-}
-.xp-icon {
-    font-size: 1.5rem;
-    margin-right: 1rem;
-}
-.xp-action {
-    font-weight: 600;
-    flex-grow: 1;
-    color: white;
-}
-.xp-value {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--accent);
-}
-
-.xp-modal-footer {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--dark-border);
-    text-align: center;
-}
-.xp-modal-footer h4 {
-    color: #fff;
-}
-.xp-modal-footer p {
-    color: var(--text-on-dark);
-}
-.xp-formula {
-    font-size: 0.8rem;
-    color: var(--gray);
-    margin-top: 0.5rem;
-}
-.mini-xp-bar-wrapper {
-    height: 10px;
-    background-color: rgba(0, 0, 0, 0.3);
-    border-radius: 5px;
-    margin: 0.5rem 0;
-}
-.mini-xp-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #81C784, #4CAF50);
-    border-radius: 5px;
-}
+.xp-info-popup { background: var(--dark-bg-secondary) !important; color: var(--text-on-light) !important; }
+.xp-info-popup .swal2-title { color: var(--accent) !important; }
+.xp-modal-header { text-align: center; margin-bottom: 1.5rem; }
+.xp-modal-header h3 { color: #fff; margin-bottom: 0.5rem; }
+.xp-modal-header p { color: var(--text-on-dark); font-size: 1rem; }
+.xp-earning-list { list-style: none; padding: 0; margin: 0; }
+.xp-earning-list li { display: flex; align-items: center; background-color: rgba(0, 0, 0, 0.2); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; }
+.xp-icon { font-size: 1.5rem; margin-right: 1rem; }
+.xp-action { font-weight: 600; flex-grow: 1; color: white; }
+.xp-value { font-weight: 700; font-size: 1.1rem; color: var(--accent); }
+.xp-modal-footer { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-border); text-align: center; }
+.xp-modal-footer h4 { color: #fff; }
+.xp-modal-footer p { color: var(--text-on-dark); }
+.xp-formula { font-size: 0.8rem; color: var(--gray); margin-top: 0.5rem; }
+.mini-xp-bar-wrapper { height: 10px; background-color: rgba(0, 0, 0, 0.3); border-radius: 5px; margin: 0.5rem 0; }
+.mini-xp-bar-fill { height: 100%; background: linear-gradient(90deg, #81C784, #4CAF50); border-radius: 5px; }

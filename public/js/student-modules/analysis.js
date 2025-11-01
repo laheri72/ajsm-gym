@@ -4,6 +4,7 @@ import {
 } from './state.js';
 import { generateColors } from './utils.js';
 
+// --- (loadStudentPlans, renderTrainingPlans, loadTrainingAnalytics are unchanged) ---
 /**
  * Fetches and renders the saved workout plan history table.
  */
@@ -30,22 +31,26 @@ export async function loadStudentPlans() {
  */
 function renderTrainingPlans(plans) {
     const tbody = document.querySelector('#studentPlanTable tbody');
-    tbody.innerHTML = ''; 
 
+    // 1. Destroy the DataTable instance FIRST
     if ($.fn.DataTable.isDataTable('#studentPlanTable')) {
         $('#studentPlanTable').DataTable().destroy();
     }
+    // 2. Clear the HTML
+    tbody.innerHTML = ''; 
 
+    // 3. Populate the HTML rows
     plans.forEach(plan => {
         const tr = document.createElement('tr');
         const dateTd = document.createElement('td');
         dateTd.textContent = plan.LogDate;
-        const partsTd = document.createElement('td');
         
+        const partsTd = document.createElement('td');
         if (plan.BodyParts) {
             const partsArray = plan.BodyParts.split(', ');
+            // --- THIS IS THE TYPO FIX ---
             partsTd.innerHTML = partsArray.map(part => 
-                `<span class="body-part-pill">${part}</span>`
+                `<span class="body-part-pill">${part}</span>` // Was "class."
             ).join('');
         } else {
             partsTd.textContent = 'N/A';
@@ -55,7 +60,12 @@ function renderTrainingPlans(plans) {
         tr.appendChild(partsTd);
         tbody.appendChild(tr);
     });
-    $('#studentPlanTable').DataTable();
+
+    // 4. Re-initialize DataTable with the correct sorting
+    $('#studentPlanTable').DataTable({
+        "order": [[0, 'desc']], // <-- FIX 1: Sort by Date column (index 0) descending
+        "responsive": true      // <-- FIX 2: Add mobile responsiveness
+    });
 }
 
 /**
@@ -137,23 +147,38 @@ export async function loadWorkoutConsistency() {
     }
 }
 
-/**
- * Fetches all session analytics (avg time, weekly hours, history).
- */
-export async function loadSessionAnalytics() {
+// --- END OF UNCHANGED CODE ---
+
+// NEW: Fetches only the "Overview" tab data
+export async function loadOverviewAnalytics() {
     try {
-        const res = await fetch('/api/student/session-analytics', { credentials: 'include' });
+        const res = await fetch('/api/student/analytics/overview', { credentials: 'include' });
         const result = await res.json();
 
         if (result.success) {
             renderAverageSession(result.data.average);
             renderWeeklyHoursChart(result.data.weekly);
-            renderSessionHistory(result.data.history);
         } else {
-            console.error('Failed to load session analytics');
+            console.error('Failed to load overview analytics');
         }
     } catch (err) {
-        console.error('Error fetching session analytics:', err);
+        console.error('Error fetching overview analytics:', err);
+    }
+}
+
+// NEW: Fetches only the "Session History" tab data
+export async function loadHistoryAnalytics() {
+    try {
+        const res = await fetch('/api/student/analytics/history', { credentials: 'include' });
+        const result = await res.json();
+
+        if (result.success) {
+            renderSessionHistory(result.data.history);
+        } else {
+            console.error('Failed to load session history');
+        }
+    } catch (err) {
+        console.error('Error fetching session history:', err);
     }
 }
 
@@ -216,33 +241,101 @@ export function applyChartTheme() {
 
 /**
  * Renders the session history DataTable.
+ * This version passes raw data to DataTables and uses render functions.
  */
 function renderSessionHistory(historyData) {
-    const tbody = document.getElementById('sessionHistoryBody');
-    tbody.innerHTML = ''; 
-
+    // 1. Destroy the DataTable instance FIRST
     if ($.fn.DataTable.isDataTable('#sessionHistoryTable')) {
         $('#sessionHistoryTable').DataTable().destroy();
     }
 
+    // 2. Clear the HTML tbody
+    const tbody = document.getElementById('sessionHistoryBody');
+    tbody.innerHTML = ''; // Clear old rows/messages
+
+    // 3. Handle empty data
     if (!historyData || historyData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4">No session history found.</td></tr>';
-        return;
+        return; // Don't initialize DataTable on an empty table
     }
 
-    historyData.forEach(session => {
-        const date = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format('ddd, DD MMM YYYY');
-        const inTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format('h:mm A');
-        const outTime = session.OutTime ? moment.utc(session.OutTime).tz("Asia/Kolkata").format('h:mm A') : 'N/A';
+    // 4. Initialize DataTable WITH data and column definitions
+    $('#sessionHistoryTable').DataTable({
+        // Pass the raw, sorted JSON data directly
+        data: historyData,
+        
+        // Define what to do with the data for each column
+        columns: [
+            { 
+                // Column 0: Date
+                data: 'CreatedAt', // Use the 'CreatedAt' field
+                render: function (data, type, row) {
+                    // 'type' tells us what DataTables is doing
+                    if (type === 'display') {
+                        // For DISPLAY: show the formatted string
+                        return moment.utc(data).tz("Asia/Kolkata").format('ddd, DD MMM YYYY');
+                    } else {
+                        // For SORTING: use the raw numerical timestamp
+                        return moment.utc(data).valueOf();
+                    }
+                }
+            },
+            { 
+                // Column 1: Check-in
+                data: 'CreatedAt',
+                render: function (data, type, row) {
+                    return moment.utc(data).tz("Asia/Kolkata").format('h:mm A');
+                }
+            },
+            { 
+                // Column 2: Check-out
+                data: 'OutTime',
+                render: function (data, type, row) {
+                    return data ? moment.utc(data).tz("Asia/Kolkata").format('h:mm A') : 'N/A';
+                }
+            },
+            { 
+                // Column 3: Duration
+                data: 'DurationInMinutes',
+                render: function (data, type, row) {
+                    // This handles the 'N/A' and negative values from your data
+                    if (data === null || typeof data === 'undefined') {
+                        return 'N/A';
+                    }
+                    return data;
+                }
+            }
+        ],
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${inTime}</td>
-            <td>${outTime}</td>
-            <td>${session.DurationInMinutes || 'N/A'}</td>
-        `;
-        tbody.appendChild(tr);
+        // 5. Set the default sort order
+        // This explicitly tells it to sort by Column 0 (our Date)
+        // in descending ('desc') order.
+        "order": [[0, 'desc']],
+        
+        // This is a good practice to ensure it cleanly replaces any old table
+        "destroy": true,
+
+        "responsive": true, // 1. This makes the table mobile-friendly
+
+        "createdRow": function(row, data, dataIndex) {
+            // 2. This function adds our custom classes
+            const duration = data.DurationInMinutes;
+            
+            // Find the 4th cell (index 3) which is the duration cell
+            const durationCell = $(row).find('td:eq(3)');
+
+            if (duration === null || typeof duration === 'undefined' || duration < 0) {
+                durationCell.addClass('duration-na');
+            } else if (duration < 15) {
+                durationCell.addClass('duration-short'); // Short workout
+            } else if (duration < 60) {
+                durationCell.addClass('duration-good'); // Good workout
+            } else {
+                durationCell.addClass('duration-long'); // Long workout
+            }
+        }
+
+
     });
-    $('#sessionHistoryTable').DataTable();
+    
 }

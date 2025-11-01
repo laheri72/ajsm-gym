@@ -1,13 +1,20 @@
 import { loadHallOfFameData } from './hallOfFame.js';
 import { loadLeaveData } from './leaves.js';
-import { loadSessionAnalytics, loadWorkoutConsistency } from './analysis.js';
+import { loadOverviewAnalytics, loadWorkoutConsistency } from './analysis.js'; 
 
 /**
  * Programmatically switches the dashboard view to a specific section.
  */
 export function navigateToSection(targetSectionId) {
-    const mainNav = document.querySelector('.navbar');
+    // --- THIS IS THE FIX ---
+    // The main nav list is no longer .navbar, it's .main-nav-list
+    const mainNav = document.querySelector('.main-nav-list'); 
+    // --- END OF FIX ---
+    
     const contentSections = document.querySelectorAll('.content .card');
+    
+    // The querySelector now correctly runs on mainNav
+    if (!mainNav) return; // Failsafe
     const targetLink = mainNav.querySelector(`[data-target="${targetSectionId}"]`);
 
     if (!targetLink) return;
@@ -29,7 +36,7 @@ export function navigateToSection(targetSectionId) {
         loadLeaveData();
     }
     if (targetSectionId === 'logs-low') {
-        loadSessionAnalytics();
+        loadOverviewAnalytics();
         loadWorkoutConsistency();
     }
 }

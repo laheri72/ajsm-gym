@@ -177,6 +177,15 @@
     z-index: 1;
 }
 
+/* Center-align text in the session history table */
+#sessionHistoryTable th,
+#sessionHistoryTable td {
+    text-align: center;
+    vertical-align: middle; /* This looks better when centered */
+}
+
+
+
 .btn-delete-log {
     color: var(--danger);
     background: transparent;
@@ -427,4 +436,161 @@
 }
 [data-theme="dark"] .btn-edit-height:hover {
     color: var(--accent);
+}
+
+/* =================================================================== */
+/* 26. MODERNIZED SESSION HISTORY TABLE
+/* Place this at the end of public/css/student/analysis.css
+/* =================================================================== */
+
+/* 1. Remove old borders and add vertical spacing between rows */
+#sessionHistoryTable {
+    border: none; /* Remove the outer table border */
+    border-collapse: separate; /* This is key for border-spacing */
+    border-spacing: 0 8px; /* Adds 8px of vertical "air" between rows */
+    margin-top: 1rem !important;
+}
+
+/* 2. Modernize the Header */
+#sessionHistoryTable thead {
+    background-color: transparent !important; /* Remove the old green background */
+}
+
+#sessionHistoryTable thead th {
+    background-color: transparent !important; /* Override any sticky header bg */
+    color: var(--dark); /* Use main text color */
+    font-weight: 600; /* Make header text bolder */
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none; /* Remove all header borders */
+    border-bottom: 2px solid var(--border-color); /* Add one strong horizontal line */
+    padding: 1rem 1.5rem;
+}
+
+/* 3. Style Table Rows as "Cards" */
+#sessionHistoryTable tbody tr {
+    background-color: #ffffff; /* Each row has a solid white background */
+    border-radius: 8px; /* Rounded corners for the "card" feel */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); /* Subtle shadow */
+    transition: all 0.2s ease-in-out;
+    border: none; /* Remove all default row borders */
+}
+
+/* 4. Remove default striping and borders */
+#sessionHistoryTable.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #ffffff; /* Ensure both odd/even rows are white */
+}
+#sessionHistoryTable.table-striped>tbody>tr:nth-child(even)>* {
+    background-color: transparent;
+}
+#sessionHistoryTable td {
+    border: none; /* Remove cell borders */
+    padding: 1.25rem 1.5rem; /* Add more vertical padding */
+}
+
+/* 5. Add a Modern Hover Effect */
+#sessionHistoryTable tbody tr:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 6. Style Columns for Visual Hierarchy */
+#sessionHistoryTable tbody td:first-child {
+    /* Date column */
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 1rem;
+}
+
+#sessionHistoryTable tbody td:nth-child(2),
+#sessionHistoryTable tbody td:nth-child(3) {
+    /* Check-in / Check-out columns */
+    color: var(--gray);
+    font-size: 0.95rem;
+}
+
+#sessionHistoryTable tbody td:last-child {
+    /* Duration (min) column - make it the hero */
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary); /* Use your main theme color */
+}
+
+/* 7. Fix pagination alignment */
+.dataTables_paginate,
+.dataTables_info {
+    padding-top: 1rem;
+}
+
+
+/* =================================================================== */
+/* 8. DARK MODE STYLES
+/* =================================================================== */
+
+[data-theme="dark"] #sessionHistoryTable thead th {
+    color: var(--text-on-light);
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] #sessionHistoryTable tbody tr {
+    background-color: #0f1722; /* Use your dark card background */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Remove dark mode striping */
+[data-theme="dark"] #sessionHistoryTable.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #0f1722;
+}
+[data-theme="dark"] #sessionHistoryTable.table-striped>tbody>tr:nth-child(even)>* {
+    background-color: transparent;
+}
+
+/* Dark mode cell styles */
+[data-theme="dark"] #sessionHistoryTable tbody td:first-child {
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] #sessionHistoryTable tbody td:nth-child(2),
+[data-theme="dark"] #sessionHistoryTable tbody td:nth-child(3) {
+    color: var(--gray);
+}
+
+[data-theme="dark"] #sessionHistoryTable tbody td:last-child {
+    color: var(--accent); /* Use your vibrant accent color */
+}
+
+/* Dark mode hover */
+[data-theme="dark"] #sessionHistoryTable tbody tr:hover {
+    background-color: #1f2d40;
+    box-shadow: 0 4px 15px rgba(0, 255, 234, 0.1);
+}
+
+/* ============================================== */
+/* --- 3. TRAINING RECORDS TABLE STYLES         --- */
+/* ============================================== */
+
+/* Center-align all text in the table */
+#studentPlanTable th,
+#studentPlanTable td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Style the body part "chips" */
+.body-part-pill {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    margin: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 999px; /* Pill shape */
+    background-color: #f0fdf4; /* Light green */
+    color: #15803d; /* Dark green */
+}
+
+/* Dark mode styles for the chips */
+[data-theme="dark"] .body-part-pill {
+    background-color: #1a3c2a; /* Dark green */
+    color: #bbf7d0; /* Light green */
 }

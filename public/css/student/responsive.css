@@ -1,5 +1,36 @@
+/* =================================================================== */
+/* RESPONSIVE.CSS - ORGANIZED NAVIGATION GUIDE
+/* =================================================================== */
+/* 
+/* This file has been reorganized for better navigation without altering any original code.
+/* Sections are grouped logically by breakpoint (e.g., all max-width: 992px rules together)
+/* and by component/theme (e.g., header, navigation, grids). 
+/* 
+/* TABLE OF CONTENTS:
+/* 
+/* 1. PREFERS-REDUCED-MOTION RULES
+/* 2. MAX-WIDTH: 768PX (MOBILE-SPECIFIC)
+/* 3. MAX-WIDTH: 992PX (TABLET/MOBILE GRIDS)
+/* 4. MIN-WIDTH: 992PX AND ABOVE (DESKTOP)
+/* 5. MAX-WIDTH: 991.98PX (MOBILE HEADER & NAV)
+/* 
+/* =================================================================== */
 
+/* =================================================================== */
+/* 1. PREFERS-REDUCED-MOTION RULES
+/* =================================================================== */
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}
 
+/* =================================================================== */
+/* 2. MAX-WIDTH: 768PX (MOBILE-SPECIFIC)
+/* =================================================================== */
 /* =================================================================== */
 /* 9. RESPONSIVE DESIGN FOR MOBILE DEVICES
 /* =================================================================== */
@@ -53,23 +84,15 @@
 
 }
 
-
-
+/* =================================================================== */
+/* 3. MAX-WIDTH: 992PX (TABLET/MOBILE GRIDS)
+/* =================================================================== */
+/* Make it responsive on smaller screens */
 @media (max-width: 992px) {
     .today-grid {
         grid-template-columns: 1fr;
     }
 }
-
-/* Reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation: none !important;
-        transition: none !important;
-        scroll-behavior: auto !important;
-    }
-}
-
 
 /* Make it responsive on smaller screens */
 @media (max-width: 992px) {
@@ -92,3 +115,125 @@
     }
 }
 
+/* =================================================================== */
+/* 4. MIN-WIDTH: 992PX AND ABOVE (DESKTOP)
+/* =================================================================== */
+/* This rule hides the toggler on desktop */
+@media (min-width: 991.99px) {
+    .app-header-main .navbar-toggler {
+        display: none;
+    }
+}
+
+/* Only display flex when shown (not when collapsed) */
+@media (min-width: 992px) {
+    #mainNavCollapse {
+        display: flex !important;
+    }
+}
+
+/* =================================================================== */
+/* 5. MAX-WIDTH: 991.98PX (MOBILE HEADER & NAV)
+/* =================================================================== */
+/* =================================================================== */
+/* 7. RESPONSIVE DESIGN (Corrected) */
+/* =================================================================== */
+/* All media queries and responsive overrides grouped here for easy breakpoint management. */
+/* --- FIX: Delete the 1200px rule that was causing the "dead zone" --- */
+
+@media (max-width: 991.98px) {
+    body { padding-top: calc(var(--header-height) + var(--info-height)); } /* 60px + 50px */
+    .app-header-main { height: var(--header-height); }
+    .app-header-info {
+        top: var(--header-height);
+        flex-direction: column;
+        height: auto;
+        padding: 0.5rem 1rem;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .app-header-info .xp-level-container { min-width: 300px; width: 100%; max-width: 450px; }
+    
+    /* --- FIX: We deleted .info-bar-sleek, so this rule is gone --- */
+
+    /* Collapsible menu container */
+    #mainNavCollapse {
+        display: none; /* Bootstrap will handle show/hide */
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        width: 100%;
+        max-height: calc(100vh - 60px);
+        overflow-y: auto;
+        flex-direction: column;
+        flex-grow: 1;
+        align-items: center;
+        justify-content: space-between;
+        background-color: var(--dark-bg-secondary);
+        border-top: 1px solid var(--dark-border);
+        padding: 1rem;
+        box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+        z-index: 1050; /* ensures it sits above content but below modals */
+    }
+    .header-center { margin: 0; width: 100%; }
+    .main-nav-list { flex-direction: column; width: 100%; }
+    .main-nav-list .nav-link { padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--dark-border); }
+    .main-nav-list .nav-link.active { border-bottom-color: var(--accent); }
+    .dropdown-menu { position: static; background: none; border: none; box-shadow: none; padding: 0 0 0 1rem; }
+    .dropdown-menu a { padding: 0.5rem; color: #9fb0c3; }
+    .dropdown-menu a:hover { color: var(--accent); }
+    
+    .header-actions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.8rem;
+        width: 100%;
+        margin-top: 0.5rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--dark-border);
+    }
+    .header-actions .btn {
+        flex-grow: 0; /* remove stretching */
+        flex-shrink: 0;
+        width: auto;
+        min-width: 40px;
+        height: 40px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+
+      #themeToggleBtn.btn-icon i {
+    font-size: 1.1rem;
+  }
+
+  /* Add subtle hover/active polish */
+  .header-actions .btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
+  }
+
+  /* Keep color consistency */
+  #themeToggleBtn {
+    background: linear-gradient(135deg, #00c2ff, #00ffcc);
+    color: #0a2239;
+    box-shadow: 0 2px 5px rgba(0, 255, 204, 0.2);
+  }
+
+  #logoutBtn {
+    background: linear-gradient(135deg, #ff4e50, #f9d423);
+    color: #fff;
+    border: none;
+  }
+
+  #logoutBtn:hover {
+    filter: brightness(1.1);
+  }
+}

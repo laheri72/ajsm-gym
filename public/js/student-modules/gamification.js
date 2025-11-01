@@ -1,11 +1,19 @@
+import { setStudentAuthData, setStudentHeight } from './state.js';
+
 /**
  * Updates all XP bar UI elements with the student's current level and XP.
  */
 export function updateXPBarUI(level, xp) {
     const xpForNextLevel = level * 100;
     const progressPercent = Math.min((xp / xpForNextLevel) * 100, 100);
-    const appHeader = document.querySelector('.app-header');
+    
+    // Find the two headers
+    const appHeader = document.querySelector('.app-header-main');
+    const infoHeader = document.querySelector('.app-header-info');
+    const bodyElement = document.body;
+    
     const rankTag = document.getElementById('rankTag');
+    
     let tierClass = 'xp-tier-bronze';
     let rankName = 'Challenger';
     if (level < 5) { rankName = 'Rookie'; }
@@ -13,14 +21,25 @@ export function updateXPBarUI(level, xp) {
     if (level >= 20) { tierClass = 'xp-tier-gold'; rankName = 'Pro'; }
     if (level >= 30) { tierClass = 'xp-tier-emerald'; rankName = 'Elite'; }
 
+    const tierClasses = ['xp-tier-bronze', 'xp-tier-silver', 'xp-tier-gold', 'xp-tier-emerald'];
+    
+    // Apply classes to all three elements
     if (appHeader) {
-        appHeader.classList.remove('xp-tier-bronze', 'xp-tier-silver', 'xp-tier-gold', 'xp-tier-emerald');
+        appHeader.classList.remove(...tierClasses, 'loading-theme');
         appHeader.classList.add(tierClass);
-        appHeader.classList.remove('loading-theme');
     }
+    if (infoHeader) {
+        infoHeader.classList.remove(...tierClasses, 'loading-theme');
+        infoHeader.classList.add(tierClass);
+    }
+    if (bodyElement) {
+        bodyElement.classList.remove(...tierClasses);
+        bodyElement.classList.add(tierClass);
+    }
+
     if (rankTag) {
         rankTag.textContent = rankName;
-        rankTag.className = `rank-tag`;
+        rankTag.className = `rank-tag`; // Reset classes
     }
 
     // Header Bar
@@ -100,7 +119,7 @@ export function showXpInfoModal() {
 
 /**
  * Shows the "Today's Leaderboard" toast notification.
- **/
+ */
 export async function showLeaderboard() {
     try {
         const res = await fetch('/api/leaderboard');

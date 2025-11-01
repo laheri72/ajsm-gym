@@ -779,10 +779,10 @@ router.get('/api/student/workout-calendar', async (req, res) => {
 });
 
 
-// Replace the entire /api/student/session-analytics - with this new sequential version
-router.get('/api/student/session-analytics', async (req, res) => {
+// NEW: Fetches ONLY data for the "Overview" tab
+router.get('/api/student/analytics/overview', async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
-        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
     }
     const { TR } = req.session.user;
     const transaction = new sql.Transaction(pool);
@@ -790,19 +790,7 @@ router.get('/api/student/session-analytics', async (req, res) => {
     try {
         await transaction.begin();
 
-        // --- ✅ NEW LOGIC: Run queries one after another (sequentially) ---
-
-        // Query 1: Get recent session history
-        const historyResult = await new sql.Request(transaction)
-            .input('TR', sql.Int, TR)
-            .query(`
-                SELECT TOP 20 CreatedAt, OutTime, DurationInMinutes 
-                FROM Attendance 
-                WHERE TR = @TR AND OutTime IS NOT NULL 
-                ORDER BY CreatedAt DESC;
-            `);
-
-        // Query 2: Get average workout duration
+        // Query 1: Get average workout duration
         const averageResult = await new sql.Request(transaction)
             .input('TR', sql.Int, TR)
             .query(`
@@ -811,7 +799,7 @@ router.get('/api/student/session-analytics', async (req, res) => {
                 WHERE TR = @TR AND DurationInMinutes > 0;
             `);
 
-        // Query 3: Get total hours per week
+        // Query 2: Get total hours per week
         const weeklyResult = await new sql.Request(transaction)
             .input('TR', sql.Int, TR)
             .query(`
@@ -824,13 +812,11 @@ router.get('/api/student/session-analytics', async (req, res) => {
                 ORDER BY W.WeekStartDate DESC;
             `);
         
-        // All queries are done, now commit the transaction
         await transaction.commit();
 
         res.json({
             success: true,
             data: {
-                history: historyResult.recordset,
                 average: averageResult.recordset[0] ? averageResult.recordset[0].avgDuration : 0,
                 weekly: weeklyResult.recordset.reverse()
             }
@@ -838,7 +824,38 @@ router.get('/api/student/session-analytics', async (req, res) => {
 
     } catch (err) {
         await transaction.rollback();
-        console.error('Error fetching student session analytics:', err);
+        console.error('Error fetching student overview analytics:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch analytics data' });
+    }
+});
+
+// NEW: Fetches ONLY data for the "Session History" tab
+router.get('/api/student/analytics/history', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    const { TR } = req.session.user;
+
+    try {
+        // Query 1: Get recent session history
+        const historyResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 100 CreatedAt, OutTime, DurationInMinutes, AttendanceID
+                FROM Attendance 
+                WHERE TR = @TR AND OutTime IS NOT NULL 
+                ORDER BY AttendanceID DESC;
+            `);
+        
+        res.json({
+            success: true,
+            data: {
+                history: historyResult.recordset,
+            }
+        });
+
+    } catch (err) {
+        console.error('Error fetching student history analytics:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch analytics data' });
     }
 });

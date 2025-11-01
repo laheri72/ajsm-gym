@@ -4,6 +4,7 @@ import { loadTip } from './tips.js';
 import { loadWeeklyPlan } from './planner.js';
 import { loadDashboardStats } from './dashboard.js';
 import { loadCurrentWeightStat } from './progression.js';
+import { initializeHeaderPopovers } from './new-header.js'; // <-- This is crucial
 
 /**
  * Fetches the student's session data, sets global state, and triggers
@@ -25,14 +26,15 @@ export async function getStudentSession() {
     showLeaderboard();
     
     const stu = data.user; 
-    
+    const memberSinceDate = new Date(stu.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
     // --- Set Global State ---
     setStudentAuthData({
         TR: stu.TR,
         Name: stu.Name,
         Branch: stu.Branch,
         Gender: stu.Gender,
-        membersince: new Date(stu.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+        membersince: memberSinceDate
     });
     setStudentHeight(stu.Height);
     // --- End State Set ---
@@ -46,17 +48,31 @@ export async function getStudentSession() {
     }
     updateXPBarUI(stu.FitnessLevel, stu.CurrentXP);
 
-    // --- Welcome Text ---
-    document.getElementById('studentName').innerText = stu.Name || 'Student';
+    // --- THIS IS THE FIX for WELCOME TEXT ---
+    // 1. Set the visible student name
+document.getElementById('studentName').innerText = stu.Name || 'Student';
+    
     const title =
       stu.Gender?.toLowerCase() === 'male' ? 'Talabat'
       : stu.Gender?.toLowerCase() === 'female' ? 'Talebaat'
       : 'Student';
     
-    document.getElementById('welcomeText').innerText =
-      `Your personal Fitness Dashboard 
-       Member Since ${new Date(stu.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-       ${stu.Branch} | ${title}`;
+    // Create the full popover content with all 4 info items
+    const popoverContent = `
+        <p class="mb-1"><strong>Member Since:</strong> ${memberSinceDate}</p>
+        <p class="mb-1"><strong>Branch:</strong> ${stu.Branch} | ${title}</p>
+        <hr class="my-2">
+        <p class="mb-1"><strong>Goal:</strong> ${stu.Goal || 'N/A'}</p>
+        <p class="mb-1"><strong>Slot:</strong> ${stu.SlotName || 'N/A'}</p>
+        <p class="mb-1"><strong>Class:</strong> ${stu.Darajah || 'N/A'}</p>
+        <p class="mb-0"><strong>TR:</strong> ${stu.TR}</p>
+    `;
+    
+    const brandTrigger = document.getElementById('brand-info-trigger');
+    if (brandTrigger) {
+        brandTrigger.setAttribute('data-bs-content', popoverContent);
+    }
+    // --- END OF FIX ---
 
     // --- Password Check ---
     if (stu.HasLoggedInBefore === false) {
@@ -64,12 +80,6 @@ export async function getStudentSession() {
         passwordModal.show();
         handleInitialPasswordSet(); // Set up the form listener
     }
-
-    // --- Student Info (from the same API call) ---
-    document.getElementById('studentSlot').innerText = stu.SlotName ? `🕒  ${stu.SlotName}` : 'No slot assigned';
-    document.getElementById('studentDarajah').innerText = stu.Darajah;
-    document.getElementById('studentGoal').innerText = `🎯 Goal: ${stu.Goal}`;
-    document.getElementById('studentTR').innerText = stu.TR;
     
     // --- Load Other Dashboard Components ---
     loadTip(stu.Goal);
@@ -77,15 +87,17 @@ export async function getStudentSession() {
     loadDashboardStats(); 
     loadCurrentWeightStat();
 
+    // --- Initialize popovers AFTER all data is set ---
+    initializeHeaderPopovers();
+
   } catch (err) {
     console.error('Error fetching student session:', err);
     window.location.href = '../Forbidden.html';
   }
 }
 
-/**
- * Sets up the listener for the initial password change modal.
- */
+// --- (rest of auth.js file) ---
+
 export function handleInitialPasswordSet() {
     const form = document.getElementById('setPasswordForm');
     form.addEventListener('submit', async (e) => {
@@ -117,9 +129,6 @@ export function handleInitialPasswordSet() {
     });
 }
 
-/**
- * Logs the student out and redirects to the homepage.
- */
 export async function logout(e) {
     e.preventDefault();
     try {
