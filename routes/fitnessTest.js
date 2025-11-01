@@ -201,7 +201,7 @@ router.post('/api/testrecords', async (req, res) => {
         // --- End INSERT ---
 
         // --- 4. Award XP (remains the same) ---
-        const levelUpInfo = await awardXP(TR, 100, transaction ); // Pass the new request
+        const levelUpInfo = await awardXP(TR, 500, transaction ); // Pass the new request
         // --- End Award XP ---
 
         await transaction.commit();

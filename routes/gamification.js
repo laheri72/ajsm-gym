@@ -141,7 +141,7 @@ async function runAchievementEvaluation() {
                     .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${socialButterflyID})`);
 
                 // --- NEW: Award XP for earning Social Butterfly ---
-                await awardXP(winner.TR, 50, transaction);
+                await awardXP(winner.TR, 250, transaction);
             }
         }
 
@@ -180,7 +180,7 @@ async function runAchievementEvaluation() {
                             .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${perfectMonthID})`);
 
                         // --- NEW: Award XP for Perfect 30 Days ---
-                        await awardXP(TR, 50, transaction);
+                        await awardXP(TR, 250, transaction);
                     }
                 }
             }
@@ -246,7 +246,7 @@ async function runAchievementEvaluation() {
                         .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${consistencyKingID})`);
 
                     // --- NEW: Award XP for Consistency King ---
-                    await awardXP(TR, 50, transaction);
+                    await awardXP(TR, 250, transaction);
                 }
 
                 // Update personal best
@@ -281,7 +281,7 @@ async function runAchievementEvaluation() {
                             .query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${milestoneLiftID})`);
 
                         // --- NEW: Award XP for Milestone Lift ---
-                        await awardXP(TR, 50, transaction);
+                        await awardXP(TR, 250, transaction);
                     }
                 }
             }
@@ -303,7 +303,7 @@ async function runAchievementEvaluation() {
                     if (checkDedication.recordset.length === 0) {
                         await new sql.Request(transaction)
                             .input('TR', TR).query(`INSERT INTO StudentAchievements (TR, AchievementID) VALUES (@TR, ${id})`);
-                        await awardXP(TR, 50, transaction); // Award XP for the new badge
+                        await awardXP(TR, 250, transaction); // Award XP for the new badge
                     }
                 }
             }

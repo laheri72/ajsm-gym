@@ -1,4 +1,4 @@
-import { setStudentAuthData, setStudentHeight } from './state.js';
+import { setStudentAuthData, setStudentHeight, isPlannerDirty } from './state.js';
 import { showLeaderboard, updateXPBarUI, showLevelUpAnimation } from './gamification.js';
 import { loadTip } from './tips.js';
 import { loadWeeklyPlan } from './planner.js';
@@ -44,7 +44,6 @@ export async function getStudentSession() {
     const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
     if (stu.FitnessLevel > lastSeenLevel) {
         showLevelUpAnimation(stu.FitnessLevel);
-        localStorage.setItem('lastSeenLevel', stu.FitnessLevel);
     }
     updateXPBarUI(stu.FitnessLevel, stu.CurrentXP);
 
@@ -131,6 +130,22 @@ export function handleInitialPasswordSet() {
 
 export async function logout(e) {
     e.preventDefault();
+    if (isPlannerDirty) {
+        const result = await Swal.fire({
+            title: 'You have unsaved changes!',
+            text: "Your planner hasn't been saved. Are you sure you want to log out?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Logout Anyway',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (!result.isConfirmed) {
+            return; // User clicked "Cancel", so we stop the logout.
+        }
+    }
     try {
         const res = await fetch('/api/logout', {
             method: 'POST',
@@ -138,7 +153,7 @@ export async function logout(e) {
         });
         const data = await res.json();
         if (data.success) {
-            localStorage.clear();
+            // localStorage.clear();
             window.location.href = '../homepage.html';
         } else {
             alert('Logout failed. Please try again.');

@@ -540,8 +540,9 @@ router.post('/api/checkout', async (req, res) => {
             .query('UPDATE Master SET TotalMinutesLogged = TotalMinutesLogged + @Duration_Update WHERE TR = @TR_Update');
 
 
-        // --- ✅ NEW XP Integration ---
-        const levelUpInfo = await awardXP(TR, duration, transaction);
+        // --- ✅ NEW XP Integration (10 XP per minute) ---
+        const xpToAward = duration * 10; // ← Each minute gives 10 XP
+        const levelUpInfo = await awardXP(TR, xpToAward, transaction);
 
         // Commit transaction
         await transaction.commit();
@@ -556,6 +557,7 @@ router.post('/api/checkout', async (req, res) => {
             duration: duration,
             inTime: inTimeFormatted,
             outTime: outTimeFormatted,
+            awardedXP: xpToAward, // ← Added for clarity
             levelUpInfo // ← Extra info about XP/level up
         });
 
@@ -742,7 +744,7 @@ router.post('/api/trainer-test-records', async (req, res) => {
             await request.query(insertQuery);
 
             // Award XP for each student
-             await awardXP(record.TR, 150, transaction); 
+             await awardXP(record.TR, 750, transaction); 
         }
 
         await transaction.commit();

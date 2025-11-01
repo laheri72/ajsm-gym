@@ -50,14 +50,16 @@ export function updateXPBarUI(level, xp) {
 
 /**
  * Displays a celebratory "Level Up!" animation.
+ * After the user clicks "Let's Go!", it saves the new level to localStorage.
  */
-export function showLevelUpAnimation(newLevel) {
+export async function showLevelUpAnimation(newLevel) {
     let tierClass = '';
     if (newLevel >= 10 && newLevel < 20) tierClass = 'swal-tier-silver';
     if (newLevel >= 20 && newLevel < 30) tierClass = 'swal-tier-gold';
     if (newLevel >= 30) tierClass = 'swal-tier-emerald';
 
-    Swal.fire({
+    // 1. Await the modal
+    const result = await Swal.fire({
         title: 'LEVEL UP!',
         html: `
             <div class="level-up-animation">
@@ -72,13 +74,17 @@ export function showLevelUpAnimation(newLevel) {
         background: '#2c3e50',
         showConfirmButton: true,
         confirmButtonText: 'Let\'s Go!',
-        confirmButtonColor: '#4CAF50'
+        confirmButtonColor: '#4CAF50',
+        allowOutsideClick: false // Prevents skipping
     });
+
+    // 2. After the user clicks "Let's Go!" (or closes it)
+    if (result.isConfirmed || result.isDismissed) {
+        // THEN save the new level
+        localStorage.setItem('lastSeenLevel', newLevel);
+    }
 }
 
-/**
- * Shows the "How to Earn XP" modal.
- */
 export function showXpInfoModal() {
     const level = parseInt(document.getElementById('fitnessLevel').textContent || '1');
     const currentXP = parseInt(document.getElementById('xpBarText').textContent.split(' / ')[0] || '0');
@@ -92,11 +98,11 @@ export function showXpInfoModal() {
                 <p>Leveling up unlocks new header themes and bragging rights! Here's how you earn XP.</p>
             </div>
             <ul class="xp-earning-list">
-                <li><span class="xp-icon">⏱️</span><span class="xp-action">Time in Gym</span><span class="xp-value">1 XP / minute</span></li>
+                <li><span class="xp-icon">⏱️</span><span class="xp-action">Time in Gym</span><span class="xp-value">10 XP / minute</span></li>
                 <li><span class="xp-icon">💪</span><span class="xp-action">Body Part Logged</span><span class="xp-value">10 XP / part</span></li>
-                <li><span class="xp-icon">📋</span><span class="xp-action">Complete Fitness Test</span><span class="xp-value">100 XP</span></li>
-                <li><span class="xp-icon">🏆</span><span class="xp-action">Earn a New Badge</span><span class="xp-value">50 XP</span></li>
-                <li><span class="xp-icon">🧑‍🏫</span><span class="xp-action">Trainer-led Fitness Test</span><span class="xp-value">150 XP</span></li>
+                <li><span class="xp-icon">🏆</span><span class="xp-action">Earn a New Badge</span><span class="xp-value">250 XP</span></li>
+                <li><span class="xp-icon">📋</span><span class="xp-action">Complete Fitness Test</span><span class="xp-value">500 XP</span></li>
+                <li><span class="xp-icon">🧑‍🏫</span><span class="xp-action">Trainer-led Fitness Test</span><span class="xp-value">750 XP</span></li>
             </ul>
             <div class="xp-modal-footer">
                 <h4>Your Next Level</h4>

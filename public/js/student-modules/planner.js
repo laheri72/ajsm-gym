@@ -1,4 +1,5 @@
 import { exerciseDatabase } from './data.js';
+import { setPlannerDirty } from './state.js';
 
 /**
  * Saves the current weekly workout plan to the server.
@@ -55,6 +56,9 @@ export function savePlan() {
           timer: 2000,
           showConfirmButton: false
         });
+        setPlannerDirty(false);
+    document.getElementById('savePlanBtn').classList.remove('btn-glowing');
+    localStorage.removeItem('plannerDraft'); // It's saved, so clear the draft
       } else {
         Swal.fire({ icon: 'error', title: 'Save Failed', text: data.message || 'Please try again.' });
       }
@@ -243,7 +247,7 @@ export async function loadWeeklyPlan() {
       if (todayPlan && todayPlan.Content) {
           todayCard.innerHTML = DOMPurify.sanitize(todayPlan.Content);
       } else {
-          todayCard.innerHTML = '<p class="placeholder-text">No workout planned for today. Add one!</p>';
+          todayCard.innerHTML = ''; // <-- THIS IS THE FIX
       }
 
       const weeklyCards = document.querySelectorAll('#weekly-view .day-card');

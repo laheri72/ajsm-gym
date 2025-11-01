@@ -60,30 +60,46 @@ h1 {
 /* 5. MAIN CONTENT & CARDS
 /* =================================================================== */
 
+/* Main container for page content */
 .content {
-    flex: 1;
-    padding: 2rem;
-    max-width: 1140px;
-    margin: 0 auto;
-    width: 100%;
+  flex: 1;
+  padding: clamp(0.75rem, 2vw, 1.25rem); /* responsive padding */
+  max-width: 1250px;                     /* slightly wider for large screens */
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
+/* Card layout refinement */
 .card {
-    background: white;
-    padding: 2rem;
-    border-radius: 1rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-bottom: 2rem;
+  background: #fff;
+  padding: clamp(1rem, 2vw, 1.75rem);    /* adaptive padding */
+  border-radius: 1rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  margin-bottom: 1.5rem;                 /* tighter gap between cards */
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+/* Subtle hover feel (optional but elegant) */
+.card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Typography inside card */
 .card p {
-    font-size: 16px;
-    margin-bottom: 10px;
+  font-size: 0.95rem;
+  margin-bottom: 0.6rem;
+  color: #333;
+  line-height: 1.5;
 }
 
 .card-title {
-    text-align: center;
-    font-size: 1rem;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
 }
 
 /* =================================================================== */
@@ -495,3 +511,15 @@ td iframe {
 }
 [data-theme="dark"] .footer .footer-link { color: #ffffff !important; }
 .footer .footer-link { color: #000000; text-decoration: underline; }
+
+/* --- Glowing Save Button --- */
+@keyframes glowing {
+    0% { box-shadow: 0 0 3px var(--primary); }
+    50% { box-shadow: 0 0 15px var(--primary); }
+    100% { box-shadow: 0 0 3px var(--primary); }
+}
+
+.btn-glowing {
+    /* Use 'infinite' to keep glowing until saved */
+    animation: glowing 2000ms infinite;
+}

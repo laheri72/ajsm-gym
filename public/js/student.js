@@ -11,6 +11,7 @@ import { navigateToSection, routeFromHash } from './student-modules/navigation.j
 import { handleWeightLogSubmit, handleWeightLogDelete, loadFitnessProgress, loadWeightLogHistory } from './student-modules/progression.js';
 import { initializeWeekPicker } from './student-modules/attendance.js';
 import { savePlan, clearPlanner, applyLastWeeksPlan, openQuickAddDialog, addExerciseToCard } from './student-modules/planner.js';
+import { setPlannerDirty } from './student-modules/state.js';
 import { loadStudentPlans, loadTrainingAnalytics, loadHistoryAnalytics, loadWorkoutConsistency, loadOverviewAnalytics, applyChartTheme } from './student-modules/analysis.js';
 import { loadLeaveData, handleLeaveSubmit, handleLeaveCancel } from './student-modules/leaves.js';
 import { loadBodyPartTips } from './student-modules/tips.js';
@@ -103,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 draft[c.getAttribute('data-day')] = c.innerHTML.trim();
             });
             localStorage.setItem('plannerDraft', JSON.stringify(draft));
+            setPlannerDirty(true);
+        document.getElementById('savePlanBtn').classList.add('btn-glowing');
         });
     });
 
@@ -122,6 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (correspondingWeeklyCard) {
             correspondingWeeklyCard.innerHTML = todayCard.innerHTML;
         }
+        setPlannerDirty(true);
+        document.getElementById('savePlanBtn').classList.add('btn-glowing');
     });
 
     // --- Progression (Weight Logging) ---

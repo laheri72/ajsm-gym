@@ -448,3 +448,11 @@ input:checked+.slider:before {
     border-radius: 5px;
     transition: width 0.5s ease-in-out;
 }
+
+/* --- Planner Placeholder --- */
+.day-card[contenteditable="true"]:empty::before {
+    content: "No workout planned. Start typing or add an exercise!";
+    color: var(--gray);
+    font-style: italic;
+    cursor: text;
+}

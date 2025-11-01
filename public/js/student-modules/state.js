@@ -43,3 +43,7 @@ export function setFlatpickrInstance(instance) { flatpickrInstance = instance; }
 export function setLeaveHistoryTable(table) { leaveHistoryTable = table; }
 export function setCachedStudentWeeks(weeks) { cachedStudentWeeks = weeks; }
 export function setAllLeaveRequests(requests) { allLeaveRequests = requests; }
+
+// ... (at the end of the file)
+export let isPlannerDirty = false;
+export function setPlannerDirty(value) { isPlannerDirty = value; }
