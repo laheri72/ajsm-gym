@@ -8,6 +8,7 @@ export let studentTR;
 export let studentName;
 export let branch;
 export let gender;
+export let studentGoal;
 export let membersince;
 export let studentHeight;
 
@@ -34,6 +35,9 @@ export function setStudentAuthData(data) {
     branch = data.Branch;
     gender = data.Gender;
     membersince = data.membersince;
+}
+export function setStudentGoal(goal) {
+    studentGoal = goal;
 }
 export function setStudentHeight(height) { studentHeight = height; }
 export function setBodyPartChart(chart) { bodyPartChart = chart; }

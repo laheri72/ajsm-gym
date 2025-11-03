@@ -1,6 +1,7 @@
 import { loadHallOfFameData } from './hallOfFame.js';
 import { loadLeaveData } from './leaves.js';
 import { loadOverviewAnalytics, loadWorkoutConsistency } from './analysis.js'; 
+import { loadTipsSection } from './tips.js';
 
 /**
  * Programmatically switches the dashboard view to a specific section.
@@ -39,6 +40,14 @@ export function navigateToSection(targetSectionId) {
         loadOverviewAnalytics();
         loadWorkoutConsistency();
     }
+if (targetSectionId === 'tips-low') {
+    // initialize tips UI, tabs and loaders
+    try {
+        loadTipsSection();
+    } catch (err) {
+        console.error('Error initializing tips section:', err);
+    }
+}
 }
 
 /**

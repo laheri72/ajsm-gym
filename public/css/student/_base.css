@@ -90,7 +90,7 @@ h1 {
 .card p {
   font-size: 0.95rem;
   margin-bottom: 0.6rem;
-  color: #333;
+  /* color: #333; */
   line-height: 1.5;
 }
 

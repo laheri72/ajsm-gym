@@ -1,4 +1,10 @@
 import { goalTipsDatabase } from './data.js';
+import { studentGoal } from './state.js';
+/* =====================================================
+   🚀 Auto initialize when section becomes visible
+   ===================================================== */
+// at top: import { goalTipsDatabase } from './data.js';
+
 
 // This is the data for the *accordion* tips, not the goal tips.
 const partTips = {
@@ -90,4 +96,85 @@ export function loadBodyPartTips() {
   });
   html += `</div>`;
   target.innerHTML = html;
+}
+
+/* =====================================================
+   🧭 Tips Tab Handling (Final Fix)
+===================================================== */
+function initTipsTabs() {
+  const tabs = document.querySelectorAll('#tips-low .tab-link');
+  const panes = document.querySelectorAll('#tips-low .tab-pane');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+
+      // Deactivate all
+      tabs.forEach(t => t.classList.remove('active'));
+      panes.forEach(p => p.classList.remove('active'));
+
+      // Activate selected
+      tab.classList.add('active');
+      document.getElementById(`tab-${target}`)?.classList.add('active');
+
+      // --- 🚀 Lazy load content when tab becomes visible ---
+      if (target === 'body') {
+        const targetEl = document.getElementById('bodyPartTips');
+        if (targetEl && targetEl.innerHTML.trim() === '') {
+          targetEl.innerHTML = `<p class="text-muted">Select a body part above to view GIF-based tips.</p>`;
+        }
+      }
+      if (target === 'personal') {
+        const goal = window.studentGoal || (window.stu && stu.Goal) || localStorage.getItem('userGoal') || 'General Fitness';
+        try {
+          loadTip(goal);
+        } catch (err) {
+          console.error('Failed to load personalized tip:', err);
+        }
+      }
+    });
+  });
+}
+
+
+export function loadTipsSection() {
+  initTipsTabs();
+
+  // --- Ensure correct default tab ---
+  const defaultTab = document.querySelector('#tips-low .tab-link.active');
+  const defaultPane = document.querySelector('#tab-list');
+  if (defaultPane) defaultPane.classList.add('active');
+
+  // Delay to let DOM settle before wiring listeners
+  setTimeout(() => {
+    const select = document.getElementById('bodyPartSelect');
+    const target = document.getElementById('bodyPartTips');
+    if (target && select) {
+      target.innerHTML = `<p class="text-muted">Select a body part above to view GIF-based tips.</p>`;
+      select.addEventListener('change', () => {
+        const active = document.querySelector('#tips-low .tab-link.active');
+        if (active && active.dataset.tab === 'body') {
+          loadBodyPartTips();
+        }
+      });
+    }
+
+    // ✅ Force first visible tab logic
+    const activeTab = document.querySelector('#tips-low .tab-link.active');
+    if (activeTab && activeTab.dataset.tab === 'body') {
+      document.getElementById('tab-body')?.classList.add('active');
+    } else if (activeTab && activeTab.dataset.tab === 'personal') {
+      document.getElementById('tab-personal')?.classList.add('active');
+    } else {
+      document.getElementById('tab-list')?.classList.add('active');
+    }
+
+    // ✅ Load personalized card
+    const userGoal = studentGoal || localStorage.getItem('userGoal') || 'General Fitness';
+    try {
+      loadTip(userGoal);
+    } catch (err) {
+      console.error('loadTip error', err);
+    }
+  }, 500); // let animations + collapses settle fully
 }

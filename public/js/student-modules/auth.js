@@ -1,4 +1,4 @@
-import { setStudentAuthData, setStudentHeight, isPlannerDirty } from './state.js';
+import { setStudentAuthData, setStudentHeight, isPlannerDirty, setStudentGoal } from './state.js';
 import { showLeaderboard, updateXPBarUI, showLevelUpAnimation } from './gamification.js';
 import { loadTip } from './tips.js';
 import { loadWeeklyPlan } from './planner.js';
@@ -37,6 +37,7 @@ export async function getStudentSession() {
         membersince: memberSinceDate
     });
     setStudentHeight(stu.Height);
+    setStudentGoal(stu.Goal);
     // --- End State Set ---
 
     // --- XP & Level ---

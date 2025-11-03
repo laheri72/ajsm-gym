@@ -120,3 +120,23 @@
     color: #fff;
     background-color: #f44336;
 }
+
+.tips-tab-content .tab-pane {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tips-tab-content .tab-pane.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tips-tabs .tab-link.active {
+  background-color: var(--primary);
+  color: white;
+
+}

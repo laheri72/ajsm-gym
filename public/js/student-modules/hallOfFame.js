@@ -1,13 +1,14 @@
-/**
- * Main function to load all data for the Hall of Fame section.
- */
-export async function loadHallOfFameData() {
-    await Promise.all([
-        loadAchievementLeaderboard(),
-        loadStudentAchievements(),
-        loadAchievementProgress()
-    ]);
+
+/* ================================================================
+   🚀 Main Loader
+================================================================ */
+export function loadHallOfFameData() {
+  initHallOfFameTabs();
+  loadAchievementProgress?.();
+  loadAchievementLeaderboard?.();
+  loadStudentAchievements?.();
 }
+
 
 /**
  * Fetches and renders the main achievement leaderboard.
@@ -164,4 +165,86 @@ function showBadgeUnlockAnimation(badge) {
         confirmButtonText: 'Awesome!',
         confirmButtonColor: '#4CAF50'
     });
+}
+
+/* ================================================================
+   🧭 Hall of Fame Sub-Tabs (same logic as Analysis)
+================================================================ */
+
+export function initHallOfFameTabs() {
+  const tabLinks = document.querySelectorAll('#fame-low .tab-link');
+  const tabPanes = document.querySelectorAll('#fame-low .tab-pane');
+
+  if (!tabLinks.length) return;
+
+  tabLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      const tabName = link.getAttribute('data-tab');
+
+      // Active visual
+      tabLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      tabPanes.forEach(p => p.classList.remove('active'));
+      document.querySelector(`#tab-${tabName}`).classList.add('active');
+
+      // Update URL hash (for nav.js sync)
+      const currentHash = window.location.hash.split('&')[0];
+      window.location.hash = `${currentHash}&tab=${tabName}`;
+
+      // Load proper data
+      switch (tabName) {
+        case 'progress':
+          loadAchievementProgress?.();
+          break;
+        case 'leaderboard':
+          loadAchievementLeaderboard?.();
+          break;
+        case 'badges':
+          loadStudentAchievements?.();
+          break;
+        case 'today':
+          populateTodayLeaderboard?.();
+          break;
+      }
+    });
+  });
+}
+
+/* ================================================================
+   🏁 Today's Leaderboard (reuses cached toaster data)
+================================================================ */
+/* ================================================================
+   🏁 TODAY'S LEADERBOARD (Reuses /api/leaderboard route)
+================================================================ */
+export async function populateTodayLeaderboard() {
+  const list = document.getElementById('todayLeaderboardList');
+  if (!list) return;
+  
+  list.innerHTML = '<li class="loading">Loading...</li>';
+
+  try {
+    const res = await fetch('/api/leaderboard');
+    const result = await res.json();
+
+    if (result.success && result.data.length > 0) {
+      const medals = ['🥇', '🥈', '🥉'];
+      list.innerHTML = '';
+
+      result.data.forEach((student, index) => {
+        const medal = medals[index] || '•';
+        const li = `
+          <li>
+            <span class="rank">${medal}</span>
+            <span class="name">${student.Name}</span>
+            <span class="score">${student.Score || 0} mins</span>
+          </li>`;
+        list.insertAdjacentHTML('beforeend', li);
+      });
+    } else {
+      list.innerHTML = '<li>No leaderboard data available today.</li>';
+    }
+  } catch (err) {
+    console.error('Error loading today leaderboard:', err);
+    list.innerHTML = '<li>Error loading data.</li>';
+  }
 }
