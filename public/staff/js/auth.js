@@ -46,12 +46,52 @@ async function validateSessionInBackground() {
     try {
         const res = await fetch('/api/session-user', { method: 'GET', credentials: 'include' });
         const data = await res.json();
-        if (!data.success || !data.user || data.user.Role === 'Trainer') {
+
+        // 1. If no user or session, kick to Forbidden page
+        if (!data.success || !data.user) {
             localStorage.removeItem('staffUser');
             window.location.href = '../Forbidden.html';
             return;
         }
+
+        // --- ★★★ NEW ROLE-BASED REDIRECTION LOGIC ★★★ ---
+        const userRole = data.user.Role;
+        const currentPage = window.location.pathname.split('/').pop();
+
+// 2. If user is an Evaluator
+        if (userRole === 'Evaluator') {
+            // Define the list of pages they ARE allowed to be on
+            const allowedPages = ['evaluation.html', 'comment-entry.html'];
+            
+            // If the current page is NOT in the allowed list, redirect them
+            if (!allowedPages.includes(currentPage)) {
+                window.location.href = 'evaluation.html';
+                return; // Stop further execution
+            }
+        } 
+        // 3. If user is a Trainer
+        else if (userRole === 'Trainer') {
+            // Trainers are not allowed in the staff dashboard
+            localStorage.removeItem('staffUser');
+            window.location.href = '../Forbidden.html';
+            return;
+        }
+        // 4. If user is Staff or Admin
+        else if (userRole === 'Staff' || userRole === 'Admin') {
+            // Define the list of pages they are NOT allowed on
+            const evaluatorPages = ['evaluation.html', 'comment-entry.html'];
+            
+            // If they somehow land on an evaluator-only page, send them to the main dashboard
+            if (evaluatorPages.includes(currentPage)) {
+                window.location.href = 'overview.html';
+                return;
+            }
+        }
+        // --- ★★★ END NEW LOGIC ★★★ ---
+
+        // If all checks pass, store the user data
         localStorage.setItem('staffUser', JSON.stringify(data.user));
+
     } catch (err) {
         console.error('Session validation failed:', err);
         localStorage.removeItem('staffUser');

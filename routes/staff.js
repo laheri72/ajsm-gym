@@ -2433,8 +2433,247 @@ router.post('/api/cron/create-next-week', async (req, res) => { // Renamed for c
     }
 });
 
+// =================================================================== //
+// --- 🩺 EVALUATOR (Doctor/Nutritionist) API Routes ---
+// =================================================================== //
 
+/**
+ * Helper function to check if the user is an Evaluator.
+ * This middleware will protect our new routes.
+ */
+const isEvaluator = (req, res, next) => {
+    if (!req.session.user || req.session.user.Role !== 'Evaluator') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Access restricted to evaluators.' });
+    }
+    // If they are an Evaluator, add their info to the request and continue
+    req.Branch = req.session.user.Branch;
+    req.Gender = req.session.user.Gender;
+    req.Username = req.session.user.Username;
+    next();
+};
 
+/**
+ * 1. GET: Fetch Batch Counts
+ * Fetches the counts for each "batch" card on the evaluator dashboard.
+ * Batch 1 = First trainer-submitted test for all students.
+ * Batch 2 = Second trainer-submitted test for students who have one.
+ * etc.
+ */
+/**
+ * 1. GET: Fetch Batch Counts (★★★ UPDATED FOR TWEAK 2 ★★★)
+ * Fetches the counts for each "batch" card, including pending/completed.
+ */
+router.get('/api/evaluation/batches', isEvaluator, async (req, res) => {
+    
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), req.Branch);
+        request.input('Gender', sql.NVarChar(10), req.Gender);
+
+        const result = await request.query(`
+            -- 1. Rank all trainer-submitted tests for this branch/gender
+            WITH RankedTests AS (
+                SELECT 
+                    TR, TestLog, CreatedAt,
+                    ROW_NUMBER() OVER(PARTITION BY TR ORDER BY CreatedAt ASC) AS BatchNumber
+                FROM TestRecords
+                WHERE 
+                    SubmittedBy = 'Trainer'
+                    AND Branch = @Branch
+                    AND Gender = @Gender
+            ),
+            -- 2. Join with comments table to check status
+            BatchWithStatus AS (
+                SELECT 
+                    rt.BatchNumber,
+                    ec.CommentID
+                FROM RankedTests rt
+                LEFT JOIN EvaluatorComments ec ON rt.TestLog = ec.TestLog
+            )
+            -- 3. Group by batch number and count the statuses
+            SELECT 
+                BatchNumber,
+                COUNT(*) AS TotalCount,
+                COUNT(CommentID) AS CompletedCount,
+                COUNT(CASE WHEN CommentID IS NULL THEN 1 END) AS PendingCount
+            FROM BatchWithStatus
+            GROUP BY BatchNumber
+            ORDER BY BatchNumber;
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching evaluation batches:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch evaluation batches.' });
+    }
+});
+
+/**
+ * 2. GET: Fetch Batch Details
+ * Gets all the specific test records for a single batch number.
+ * This populates the data table when an evaluator clicks a batch card.
+ */
+router.get('/api/evaluation/batch-details/:batchNumber', isEvaluator, async (req, res) => {
+    const { batchNumber } = req.params;
+
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), req.Branch);
+        request.input('Gender', sql.NVarChar(10), req.Gender);
+        request.input('BatchNumber', sql.Int, batchNumber);
+
+        const result = await request.query(`
+            -- Use the same ranking logic as the /batches API
+            WITH RankedTests AS (
+                SELECT 
+                    TR,
+                    TestLog,
+                    CreatedAt,
+                    Grade,
+                    ROW_NUMBER() OVER(PARTITION BY TR ORDER BY CreatedAt ASC) AS BatchNumber
+                FROM TestRecords
+                WHERE 
+                    SubmittedBy = 'Trainer'
+                    AND Branch = @Branch
+                    AND Gender = @Gender
+            )
+            -- Select the records that match the requested batch number
+            SELECT 
+                rt.TestLog,
+                rt.TR,
+                tm.Name,
+                rt.Grade,
+                rt.CreatedAt,
+                -- Check if a comment exists in the new table
+                CASE 
+                    WHEN ec.CommentID IS NOT NULL THEN 'Completed'
+                    ELSE 'Pending' 
+                END AS CommentStatus
+            FROM RankedTests rt
+            -- Join with TestMaster to get the student's name
+            JOIN TestMaster tm ON rt.TR = tm.TR
+            -- LEFT Join with EvaluatorComments to check the status
+            LEFT JOIN EvaluatorComments ec ON rt.TestLog = ec.TestLog
+            WHERE 
+                rt.BatchNumber = @BatchNumber
+            ORDER BY
+                CommentStatus ASC, tm.Name ASC;
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching batch details:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch batch details.' });
+    }
+});
+
+/**
+ * 3. POST: Save/Update Comment
+ * Saves or updates the three comment fields for a specific TestLog.
+ * Uses MERGE to perform an "upsert" (update or insert).
+ */
+router.post('/api/evaluation/save-comment', isEvaluator, async (req, res) => {
+    const { TestLog, NutritionNotes, HealthNotes, Recommendations } = req.body;
+
+    if (!TestLog) {
+        return res.status(400).json({ success: false, message: 'TestLog ID is required.' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('TestLog', sql.Int, TestLog);
+        request.input('NutritionNotes', sql.NVarChar(sql.MAX), NutritionNotes);
+        request.input('HealthNotes', sql.NVarChar(sql.MAX), HealthNotes);
+        request.input('Recommendations', sql.NVarChar(sql.MAX), Recommendations);
+        request.input('EvaluatorUsername', sql.NVarChar(50), req.Username); // From session
+
+        // This MERGE statement is an "UPSERT"
+        // It tries to match on TestLog.
+        // If it finds a match, it UPDATES.
+        // If it doesn't find a match, it INSERTS.
+        await request.query(`
+            MERGE INTO EvaluatorComments AS target
+            USING (SELECT @TestLog AS TestLog) AS source
+            ON (target.TestLog = source.TestLog)
+            
+            -- If a record for this TestLog already exists
+            WHEN MATCHED THEN
+                UPDATE SET
+                    NutritionNotes = @NutritionNotes,
+                    HealthNotes = @HealthNotes,
+                    Recommendations = @Recommendations,
+                    EvaluatorUsername = @EvaluatorUsername,
+                    LastUpdatedAt = GETUTCDATE()
+            
+            -- If no record exists for this TestLog
+            WHEN NOT MATCHED THEN
+                INSERT (TestLog, NutritionNotes, HealthNotes, Recommendations, EvaluatorUsername)
+                VALUES (@TestLog, @NutritionNotes, @HealthNotes, @Recommendations, @EvaluatorUsername);
+        `);
+
+        res.json({ success: true, message: 'Comment saved successfully.' });
+
+    } catch (err) {
+        console.error('Error saving comment:', err);
+        res.status(500).json({ success: false, message: 'Failed to save comment.' });
+    }
+});
+
+/**
+ * 4. GET: Get Single Record & Comment Details
+ * Fetches the full test record AND any existing comments for one TestLog.
+ * This is used to populate the comment/edit modal.
+ */
+/**
+ * 4. GET: Get Single Record & Comment Details (★★★ UPDATED FOR TWEAK 3 ★★★)
+ * Fetches the full test record (all 13 fields) AND any existing comments.
+ */
+router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, res) => {
+    const { testLog } = req.params;
+
+    try {
+        const request = pool.request();
+        request.input('TestLog', sql.Int, testLog);
+
+        const result = await request.query(`
+            -- 1. Get the Test Record details (ALL fields)
+            SELECT 
+                tr.TestLog, tr.TR, tm.Name,
+                -- The 13 fields requested
+                tr.Weight, tr.Height, tr.Waist, tr.Hips, tr.Neck,
+                tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
+                tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,
+                tr.CreatedAt
+            FROM TestRecords tr
+            JOIN TestMaster tm ON tr.TR = tm.TR
+            WHERE tr.TestLog = @TestLog;
+
+            -- 2. Get the existing comments, if any
+            SELECT 
+                ec.NutritionNotes, 
+                ec.HealthNotes, 
+                ec.Recommendations
+            FROM EvaluatorComments ec
+            WHERE ec.TestLog = @TestLog;
+        `);
+
+        if (result.recordsets[0].length === 0) {
+            return res.status(404).json({ success: false, message: 'Test Record not found.' });
+        }
+
+        res.json({
+            success: true,
+            record: result.recordsets[0][0], // The test record data
+            comments: result.recordsets[1][0]  // The comment data (or undefined if none)
+        });
+
+    } catch (err) {
+        console.error('Error fetching comment details:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch record details.' });
+    }
+});
 
 
 module.exports = router; // Export the router

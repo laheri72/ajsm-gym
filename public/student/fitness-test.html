@@ -830,12 +830,12 @@ async function saveDOB() {
                 return;
             }
 
-            const Weight = parseFloat(form.querySelector('[name="Weight"]').value);
-            const Height = parseFloat(form.querySelector('[name="Height"]').value);
-            const Waist = parseFloat(form.querySelector('[name="Waist"]').value);
-            const Hips = parseFloat(form.querySelector('[name="Hips"]').value);
-            const Neck = parseFloat(form.querySelector('[name="Neck"]').value);
-            const PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
+            let Weight = parseFloat(form.querySelector('[name="Weight"]').value);
+            let Height = parseFloat(form.querySelector('[name="Height"]').value);
+            let Waist = parseFloat(form.querySelector('[name="Waist"]').value);
+            let Hips = parseFloat(form.querySelector('[name="Hips"]').value);
+            let Neck = parseFloat(form.querySelector('[name="Neck"]').value);
+            let PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
             const Gender = form.querySelector('[name="Gender"]').value;
 
             const Age = studentData?.calculatedAge || 18; // Use fetched/calculated age or default to 18
@@ -844,6 +844,84 @@ async function saveDOB() {
             const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
             const Squats = parseInt(form.querySelector('[name="Squats"]').value) || 0;
             const SitReach = parseFloat(form.querySelector('[name="SitReach"]').value) || 0;
+
+            // --- 🧠 Input Validation & Unit Auto-Detection for Anthropometric Data ---
+            function validateAndConvertUnits() {
+              let warnings = [];
+              let converted = [];
+              
+              let inputs = {
+                waist: Waist,
+                neck: Neck,
+                hips: Hips,
+                height: Height
+              };
+
+              // Quick sanity checks
+              const plausibleRange = (val, min, max) => val && !isNaN(val) && val >= min && val <= max;
+
+              // If waist or neck look too small for cm (e.g. < 50cm), assume inches and auto-convert
+              if (plausibleRange(Waist, 10, 50)) {
+                Waist = Waist * 2.54;
+                converted.push("Waist");
+              } else if (!plausibleRange(Waist, 50, 150)) {
+                warnings.push("Waist value seems unrealistic.");
+              }
+
+              if (plausibleRange(Neck, 5, 25)) {
+                Neck = Neck * 2.54;
+                converted.push("Neck");
+              } else if (!plausibleRange(Neck, 25, 60)) {
+                warnings.push("Neck value seems unrealistic.");
+              }
+
+              // Hips only for females
+              if (Gender === "female" && Hips) {
+                if (plausibleRange(Hips, 10, 50)) {
+                  Hips = Hips * 2.54;
+                  converted.push("Hips");
+                } else if (!plausibleRange(Hips, 50, 160)) {
+                  warnings.push("Hips value seems unrealistic.");
+                }
+              }
+
+              // Height sanity check (too small/large)
+              if (!plausibleRange(Height, 120, 220)) {
+                warnings.push("Height value seems unrealistic.");
+              }
+
+              // If any unrealistic inputs — stop report
+              if (warnings.length > 0) {
+                Swal.fire({
+                  icon: "warning",
+                  title: "Invalid Inputs Detected",
+                  html: warnings.join("<br>") + "<br><br>Please recheck your entries.",
+                  confirmButtonColor: "#3085d6"
+                });
+                return false;
+              }
+
+              // Notify user if conversion applied
+              if (converted.length > 0) {
+                Swal.fire({
+                  icon: "info",
+                  title: "Units Auto-Converted",
+                  html: `Detected values in inches for: <b>${converted.join(", ")}</b><br>
+                  Converted automatically to centimeters.`,
+                  timer: 3000,
+                  showConfirmButton: false,
+                  toast: true,
+                  position: "top-end"
+                });
+              }
+
+              return true;
+            }
+
+            // ✅ Run validation before proceeding
+            if (!validateAndConvertUnits()) {
+              return; // Stop report generation
+            }
 
                  calculated = {
                 Weight,
@@ -868,18 +946,49 @@ async function saveDOB() {
                 else calculated.BMIStatus = "Obese";
             }
 
-            // Body Fat % → different formula for male/female
-            if (Waist && Neck && Height) {
-                if (Gender === "male") {
-                    calculated.BodyFat = (
-                        495 / (1.0324 - 0.19077 * Math.log10(Waist - Neck) + 0.15456 * Math.log10(Height)) - 450
-                    ).toFixed(1);
-                } else if (Gender === "female" && Hips) {
-                    calculated.BodyFat = (
-                        495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450
-                    ).toFixed(1);
-                }
+            // --- 💪 Body Fat % Calculation (Robust Navy Method with Validation) ---
+            function navyBodyFatMale(waist_cm, neck_cm, height_cm) {
+              const denom = 1.0324 - 0.19077 * Math.log10(waist_cm - neck_cm) + 0.15456 * Math.log10(height_cm);
+              if (!isFinite(denom) || denom === 0) return null;
+              return 495 / denom - 450;
             }
+
+            function navyBodyFatFemale(waist_cm, hips_cm, neck_cm, height_cm) {
+              const denom = 1.29579 - 0.35004 * Math.log10(waist_cm + hips_cm - neck_cm) + 0.22100 * Math.log10(height_cm);
+              if (!isFinite(denom) || denom === 0) return null;
+              return 495 / denom - 450;
+            }
+
+            let bodyFat = null;
+
+            try {
+              if (Gender === "male") {
+                if ((Waist - Neck) > 0) bodyFat = navyBodyFatMale(Waist, Neck, Height);
+              } else if (Gender === "female" && Hips) {
+                if ((Waist + Hips - Neck) > 0) bodyFat = navyBodyFatFemale(Waist, Hips, Neck, Height);
+              }
+
+              // sanity clamp
+              if (bodyFat === null || !isFinite(bodyFat) || bodyFat < 2 || bodyFat > 60) {
+                bodyFat = null;
+                Swal.fire({
+                  icon: "error",
+                  title: "Body Fat Error",
+                  html: "Unable to compute a valid Body Fat %. Please verify waist, neck, and height inputs.",
+                  confirmButtonColor: "#d33"
+                });
+              }
+
+            } catch (e) {
+              bodyFat = null;
+              Swal.fire({
+                icon: "error",
+                title: "Body Fat Calculation Failed",
+                text: e.message || "Unexpected error in formula.",
+              });
+            }
+
+            calculated.BodyFat = bodyFat ? parseFloat(bodyFat.toFixed(1)) : "N/A";
 
             // BMR (Mifflin-St Jeor)
             if (Weight && Height) {
@@ -952,7 +1061,11 @@ async function saveDOB() {
             const reportHTML = `
                 <tr><th>BMI</th><td>${calculated.BMI ?? 'N/A'}</td><td>${getEvaluation('BMI', calculated.BMI)}</td></tr>
                 <tr><th>BMI Status</th><td>${calculated.BMIStatus ?? 'N/A'}</td><td>-</td></tr>
-                <tr><th>Body Fat %</th><td>${calculated.BodyFat ?? 'N/A'}</td><td>${getEvaluation('BodyFat', calculated.BodyFat)}</td></tr>
+                <tr>
+                  <th>Body Fat %</th>
+                  <td>${calculated.BodyFat}</td>
+                  <td>${calculated.BodyFat === "N/A" ? "Invalid / Check Inputs" : getEvaluation('BodyFat', calculated.BodyFat)}</td>
+                </tr>
                 <tr><th>BMR</th><td>${calculated.BMR ?? 'N/A'}</td><td>${getEvaluation('BMR', calculated.BMR)}</td></tr>
                 <tr><th>Calorie Intake</th><td>${calculated.CalorieIntake ?? 'N/A'}</td><td>${getEvaluation('CalorieIntake', calculated.CalorieIntake)}</td></tr>
                 <tr><th>VO2 Max</th><td>${calculated.VO2Max}</td><td>${getEvaluation('VO2Max', calculated.VO2Max)}</td></tr>

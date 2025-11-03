@@ -980,6 +980,27 @@ function initHomeListeners() {
     searchBtn.addEventListener('click', handleSearch);
 }
 
+            // --- 🧠 Unit Validation Helper for Trainer Fitness Test ---
+        function detectInchLikeValues(form) {
+        const tr = form.dataset.tr;
+        const waist = parseFloat(form.querySelector('[name="Waist"]').value);
+        const neck = parseFloat(form.querySelector('[name="Neck"]').value);
+        const hips = parseFloat(form.querySelector('[name="Hips"]').value);
+
+        let warnings = [];
+
+        // Likely inches if smaller than realistic cm values
+        if (waist > 0 && waist < 50) warnings.push("Waist");
+        if (neck > 0 && neck < 25) warnings.push("Neck");
+        if (hips > 0 && hips < 50) warnings.push("Hips");
+
+        if (warnings.length > 0) {
+            return { tr, fields: warnings };
+        }
+        return null;
+        }
+
+
     function initFitnessTestListeners() {
         document.getElementById('addStudentsBtn').addEventListener('click', async () => {
             const button = document.getElementById('addStudentsBtn');
@@ -1044,39 +1065,60 @@ function initHomeListeners() {
                 return;
             }
 
+            // --- Inch/CM mismatch check before submission ---
+            const mismatchRecords = [];
+            for (const form of forms) {
+            const mismatch = detectInchLikeValues(form);
+            if (mismatch) mismatchRecords.push(mismatch);
+            }
+
+            // Create warning HTML if mismatches found
+            let warningHTML = `<p>You are about to submit <b>${allRecordsPayload.length}</b> fitness records.</p>`;
+            if (mismatchRecords.length > 0) {
+            warningHTML += `<div style="margin-top:10px; text-align:left; color:#b91c1c;">
+                ⚠️ <b>Possible Unit Mismatch Detected:</b><br>
+                <ul style="margin:0; padding-left:20px;">${mismatchRecords
+                    .map(
+                    (m) =>
+                        `<li><b>TR ${m.tr}</b> — check ${m.fields.join(", ")} values (too small for cm; may be in inches)</li>`
+                    )
+                    .join("")}</ul>
+                <br><b>Please verify before final submission.</b>
+                </div>`;
+            }
+
             Swal.fire({
-                title: `Confirm Submission`,
-                text: `You are about to submit ${allRecordsPayload.length} fitness records. This action cannot be undone.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, Submit All',
-                reverseButtons: true
+            title: 'Confirm Submission',
+            html: warningHTML,
+            icon: mismatchRecords.length > 0 ? 'warning' : 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Submit All',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
             }).then(async (result) => {
-                if (result.isConfirmed) {
-                    try {
-                        const res = await fetch('/api/trainer-test-records', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(allRecordsPayload)
-                        });
+            if (result.isConfirmed) {
+                try {
+                const res = await fetch('/api/trainer-test-records', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(allRecordsPayload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'An unknown error occurred.');
 
-                        const data = await res.json();
-                        if (!res.ok) {
-                            throw new Error(data.error || 'An unknown error occurred.');
-                        }
-
-                        Swal.fire('Success!', data.message, 'success').then(() => {
-                            location.reload();
-                        });
-                    } catch (err) {
-                        Swal.fire('Submission Failed', err.message, 'error');
-                    } finally {
-                        toggleButtonSpinner(button, false);
-                    }
-                } else {
-                    toggleButtonSpinner(button, false);
+                Swal.fire('Success!', data.message, 'success').then(() => {
+                    location.reload();
+                });
+                } catch (err) {
+                Swal.fire('Submission Failed', err.message, 'error');
+                } finally {
+                toggleButtonSpinner(button, false);
                 }
+            } else {
+                toggleButtonSpinner(button, false);
+            }
             });
+
         });
     }
 
