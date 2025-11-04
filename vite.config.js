@@ -43,6 +43,9 @@ export default defineConfig({
         staffAttendance: resolve(__dirname, 'public/staff/attendance.html'),
         staffLeaves: resolve(__dirname, 'public/staff/leaves.html'),
         staffProfile: resolve(__dirname, 'public/staff/profile.html'),
+        // ★★★ ADD THESE TWO NEW LINES ★★★
+        staffEvaluation: resolve(__dirname, 'public/staff/evaluation.html'),
+        staffCommentEntry: resolve(__dirname, 'public/staff/comment-entry.html'),
       },
     },
   },
