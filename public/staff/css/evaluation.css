@@ -399,3 +399,86 @@ and will be perfectly visible.
         grid-column: 3 / 6;
     }
 }
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ NEW: History Accordion Styles ★★★ */
+#historical-data-container h3 {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.accordion-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem !important;
+    margin-bottom: 0.5rem;
+}
+.accordion-item:first-of-type,
+.accordion-item:last-of-type {
+    border-radius: 0.5rem !important;
+}
+
+.accordion-header {
+    border-radius: 0.5rem;
+}
+
+.accordion-button {
+    font-weight: 500;
+    color: var(--dark);
+    background-color: #fcfcfc;
+}
+.accordion-button:not(.collapsed) {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: none;
+}
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: var(--primary-shadow-light);
+}
+
+/* Make the status badge visible in the header */
+.accordion-button .status-badge {
+    margin-left: auto;
+    margin-right: 1rem;
+}
+.accordion-button:not(.collapsed) .status-badge {
+    background-color: white;
+    color: var(--primary);
+}
+
+/* Accordion Body */
+.accordion-body {
+    border-top: 1px solid #e0e0e0;
+}
+
+.history-key-stats {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: flex-start;
+    margin-bottom: 1rem;
+}
+.history-key-stats .test-result-item {
+    text-align: left;
+}
+.history-key-stats .test-result-item-label {
+    font-size: 0.9rem;
+}
+.history-key-stats .test-result-item-value {
+    font-size: 1.5rem;
+}
+
+.accordion-body h5 {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--primary);
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.history-comment {
+    background-color: var(--light);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    white-space: pre-wrap; /* Preserves line breaks */
+}

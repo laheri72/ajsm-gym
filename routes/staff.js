@@ -2622,26 +2622,22 @@ router.post('/api/evaluation/save-comment', isEvaluator, async (req, res) => {
 });
 
 /**
- * 4. GET: Get Single Record & Comment Details
- * Fetches the full test record AND any existing comments for one TestLog.
- * This is used to populate the comment/edit modal.
- */
-/**
- * 4. GET: Get Single Record & Comment Details (★★★ UPDATED FOR TWEAK 3 ★★★)
- * Fetches the full test record (all 13 fields) AND any existing comments.
+ * 4. GET: Get Single Record & FULL History
+ * (★★★ UPDATED FOR FEATURE 1 ★★★)
+ * Fetches the full test record, its comments, AND all previous
+ * test records and their comments for that student.
  */
 router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, res) => {
     const { testLog } = req.params;
 
     try {
-        const request = pool.request();
+        const request = new sql.Request(pool);
         request.input('TestLog', sql.Int, testLog);
 
-        const result = await request.query(`
-            -- 1. Get the Test Record details (ALL fields)
+        // --- 1. Get the current record's details (all 13 fields)
+        const currentRecordQuery = `
             SELECT 
                 tr.TestLog, tr.TR, tm.Name,
-                -- The 13 fields requested
                 tr.Weight, tr.Height, tr.Waist, tr.Hips, tr.Neck,
                 tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
                 tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,
@@ -2649,24 +2645,69 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
             FROM TestRecords tr
             JOIN TestMaster tm ON tr.TR = tm.TR
             WHERE tr.TestLog = @TestLog;
+        `;
 
-            -- 2. Get the existing comments, if any
+        // --- 2. Get the current record's comments
+        const currentCommentsQuery = `
+            SELECT NutritionNotes, HealthNotes, Recommendations
+            FROM EvaluatorComments
+            WHERE TestLog = @TestLog;
+        `;
+        
+        // --- 3. Get ALL historical records and comments
+        const historyQuery = `
+            -- Use a CTE to rank all of the student's trainer-submitted tests
+            WITH AllTrainerTests AS (
+                SELECT 
+                    tr.TestLog, tr.TR, tr.CreatedAt,
+                    tr.Weight, tr.BMI, tr.Grade,
+                    ROW_NUMBER() OVER(PARTITION BY tr.TR ORDER BY tr.CreatedAt ASC) AS BatchNumber
+                FROM TestRecords tr
+                WHERE 
+                    tr.SubmittedBy = 'Trainer'
+                    AND tr.TR = (SELECT TR FROM TestRecords WHERE TestLog = @TestLog)
+            )
+            -- Select all tests that came BEFORE the current one
             SELECT 
-                ec.NutritionNotes, 
-                ec.HealthNotes, 
+                att.TestLog,
+                att.BatchNumber,
+                att.CreatedAt,
+                att.Weight,
+                att.BMI,
+                att.Grade,
+                ec.NutritionNotes,
+                ec.HealthNotes,
                 ec.Recommendations
-            FROM EvaluatorComments ec
-            WHERE ec.TestLog = @TestLog;
-        `);
+            FROM AllTrainerTests att
+            LEFT JOIN EvaluatorComments ec ON att.TestLog = ec.TestLog
+            WHERE 
+                att.TestLog != @TestLog -- Exclude the current test
+                AND att.CreatedAt < (SELECT CreatedAt FROM TestRecords WHERE TestLog = @TestLog)
+            ORDER BY 
+                att.BatchNumber DESC; -- Show newest history first (e.g., Batch 2, then Batch 1)
+        `;
 
-        if (result.recordsets[0].length === 0) {
+        // Run all queries
+        const [
+            currentRecordResult,
+            currentCommentsResult,
+            historicalRecordsResult
+        ] = await Promise.all([
+            request.query(currentRecordQuery),
+            request.query(currentCommentsQuery),
+            request.query(historyQuery)
+        ]);
+
+        if (currentRecordResult.recordset.length === 0) {
             return res.status(404).json({ success: false, message: 'Test Record not found.' });
         }
 
+        // Send the new, structured response
         res.json({
             success: true,
-            record: result.recordsets[0][0], // The test record data
-            comments: result.recordsets[1][0]  // The comment data (or undefined if none)
+            currentRecord: currentRecordResult.recordset[0],
+            currentComments: currentCommentsResult.recordset[0], // (or undefined if none)
+            historicalRecords: historicalRecordsResult.recordset // (or an empty array)
         });
 
     } catch (err) {

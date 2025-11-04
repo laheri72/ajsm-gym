@@ -1,22 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. GET DATA FROM URL & API ---
-
-    // Global state for this page
     let currentTestLog = null;
     let currentBatchNum = null;
-    let batchRecordList = []; // This will hold the list of all TestLogs in the batch
+    let batchRecordList = []; 
     let currentRecordIndex = -1;
 
-    // Get DOM elements
     const pageTitle = document.getElementById('page-title');
     const anchorContainer = document.getElementById('student-info-anchor');
+    const historyContainer = document.getElementById('historical-data-container'); // ★★★ New
     const form = document.getElementById('commentEntryForm');
     const formCard = document.getElementById('comment-form-card');
     const saveBtn = document.getElementById('saveBtn');
     const saveAndNextBtn = document.getElementById('saveAndNextBtn');
 
-    // Helper to parse URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     currentTestLog = urlParams.get('testlog');
     currentBatchNum = urlParams.get('batch');
@@ -26,11 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    /**
-     * This function runs on page load.
-     * It fetches BOTH the full batch list (for navigation)
-     * AND the specific record to be edited.
-     */
     async function initializePage() {
         try {
             // Fetch in parallel
@@ -43,51 +35,43 @@ document.addEventListener('DOMContentLoaded', () => {
             batchRecordList = batchListData.map(record => record.TestLog);
             currentRecordIndex = batchRecordList.indexOf(parseInt(currentTestLog));
             
-            // Update "Save & Next" button text
             if (currentRecordIndex === batchRecordList.length - 1) {
-                saveAndNextBtn.textContent = 'Save & Finish Batch';
+                saveAndNextBtn.innerHTML = 'Save & Finish Batch'; // (No spinner)
             }
 
-            // --- B. Process Specific Record (to fill the page) ---
-            populateAnchor(recordData.record);
-            populateForm(recordData.comments);
+            // --- B. Process API Response (★★★ NEW STRUCTURE ★★★) ---
+            populateAnchor(recordData.currentRecord);
+            populateForm(recordData.currentComments);
+            populateHistory(recordData.historicalRecords); // ★★★ New function call
 
-            // Set hidden TestLog value in the form
             document.getElementById('commentTestLog').value = currentTestLog;
 
         } catch (err) {
             console.error(err);
             anchorContainer.innerHTML = `<p class="text-danger">Error loading record: ${err.message}</p>`;
-            formCard.classList.add('d-none'); // Hide form on error
+            historyContainer.innerHTML = '';
+            formCard.classList.add('d-none');
         }
     }
 
-    // API Helper 1: Get the list of all TestLogs in this batch
     async function fetchBatchList(batchNum) {
         const res = await fetch(`/api/evaluation/batch-details/${batchNum}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Could not fetch batch list.');
         const { data } = await res.json();
-        return data; // Returns the array of records
+        return data; 
     }
 
-    // API Helper 2: Get the full details for the current TestLog
     async function fetchRecordDetails(testLog) {
         const res = await fetch(`/api/evaluation/comment-details/${testLog}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Could not fetch record details.');
         const data = await res.json();
-        return data; // Returns { record: {...}, comments: {...} }
+        return data; // Returns { currentRecord, currentComments, historicalRecords }
     }
 
     // --- 2. POPULATE THE PAGE ---
 
-/**
-     * (★★★ UPDATED FOR TWEAK 3 ★★★)
-     * Fills the anchor card with all 13 test record fields.
-     */
     function populateAnchor(record) {
         pageTitle.textContent = `Evaluating: ${record.Name} (TR: ${record.TR})`;
-        
-        // Helper to format values
         const f = (val, dec = 1, unit = '') => (val != null ? `${parseFloat(val).toFixed(dec)}${unit}` : 'N/A');
 
         anchorContainer.innerHTML = `
@@ -101,18 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     <strong>${record.Grade || 'N/A'}</strong>
                 </div>
             </div>
-
             <div class="test-results-grid full-grid">
                 <div class="test-result-item"><div class="test-result-item-label">Weight</div><div class="test-result-item-value">${f(record.Weight, 1, ' kg')}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">Height</div><div class="test-result-item-value">${f(record.Height, 1, ' cm')}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">Waist</div><div class="test-result-item-value">${f(record.Waist, 1, ' cm')}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">Hips</div><div class="test-result-item-value">${f(record.Hips, 1, ' cm')}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">Neck</div><div class="test-result-item-value">${f(record.Neck, 1, ' cm')}</div></div>
-                
-                <div class="test-result-item"><div class="test-result-item-label">BMI</div><div class="test-result-item-value ${'status-' + record.BMIStatus.split(' ')[0].toLowerCase()}">${f(record.BMI, 1)}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">BMI Status</div><div class="test-result-item-value ${'status-' + record.BMIStatus.split(' ')[0].toLowerCase()}">${record.BMIStatus}</div></div>
+                <div class="test-result-item"><div class="test-result-item-label">BMI</div><div class="test-result-item-value">${f(record.BMI, 1)}</div></div>
+                <div class="test-result-item"><div class="test-result-item-label">BMI Status</div><div class="test-result-item-value">${record.BMIStatus}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">Body Fat</div><div class="test-result-item-value">${f(record.BodyFat, 1, '%')}</div></div>
-                
                 <div class="test-result-item"><div class="test-result-item-label">BMR</div><div class="test-result-item-value">${f(record.BMR, 0, ' kcal')}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">Calorie Intake</div><div class="test-result-item-value">${f(record.CalorieIntake, 0, ' kcal')}</div></div>
                 <div class="test-result-item"><div class="test-result-item-label">VO₂ Max</div><div class="test-result-item-value">${f(record.VO2Max, 0)}</div></div>
@@ -129,26 +110,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ★★★ NEW: Function to build the history accordion ★★★
+    function populateHistory(historicalRecords) {
+        if (!historicalRecords || historicalRecords.length === 0) {
+            historyContainer.innerHTML = '<h4 class="text-muted">No previous test history found for this student.</h4>';
+            return;
+        }
+
+        // Build the accordion HTML
+        let html = `
+            <h3 class="mb-3">Previous Evaluations (${historicalRecords.length})</h3>
+            <div class="accordion" id="historyAccordion">
+        `;
+
+        historicalRecords.forEach((item, index) => {
+            const f = (val, dec = 1, unit = '') => (val != null ? `${parseFloat(val).toFixed(dec)}${unit}` : 'N/A');
+            const c = (val) => val || '<i class="text-muted">No comment.</i>';
+            const isCompleted = item.NutritionNotes || item.HealthNotes || item.Recommendations;
+
+            html += `
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-${index}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}">
+                            <strong>Batch ${item.BatchNumber}</strong> 
+                            <span class="text-muted mx-2">(${new Date(item.CreatedAt).toLocaleDateString()})</span>
+                            <span class="status-badge ${isCompleted ? 'status-completed' : 'status-pending'}">
+                                ${isCompleted ? 'Completed' : 'Pending'}
+                            </span>
+                        </button>
+                    </h2>
+                    <div id="collapse-${index}" class="accordion-collapse collapse" data-bs-parent="#historyAccordion">
+                        <div class="accordion-body">
+                            <div class="history-key-stats">
+                                <div class="test-result-item"><div class="test-result-item-label">Weight</div><div class="test-result-item-value">${f(item.Weight, 1, ' kg')}</div></div>
+                                <div class="test-result-item"><div class="test-result-item-label">BMI</div><div class="test-result-item-value">${f(item.BMI, 1)}</div></div>
+                                <div class="test-result-item"><div class="test-result-item-label">Grade</div><div class="test-result-item-value">${item.Grade || 'N/A'}</div></div>
+                            </div>
+                            <hr>
+                            <h5>Nutrition Notes</h5>
+                            <p class="history-comment">${c(item.NutritionNotes)}</p>
+                            
+                            <h5>Health / Issues Notes</h5>
+                            <p class="history-comment">${c(item.HealthNotes)}</p>
+                            
+                            <h5>Recommendations</h5>
+                            <p class="history-comment">${c(item.Recommendations)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        historyContainer.innerHTML = html;
+    }
+
+
     // --- 3. HANDLE FORM ACTIONS ---
 
-// --- 3. HANDLE FORM ACTIONS ---
-
-    /**
-     * Re-usable save function
-     * (★★★ UPDATED FOR TWEAK 1: Added validation ★★★)
-     */
     async function saveComment() {
-        // 1. Check for empty fields
         const nutritionNotes = form.elements.NutritionNotes.value.trim();
         const healthNotes = form.elements.HealthNotes.value.trim();
         const recommendations = form.elements.Recommendations.value.trim();
 
         if (!nutritionNotes || !healthNotes || !recommendations) {
             Swal.fire('Incomplete Form', 'Please fill out all three comment sections before saving.', 'warning');
-            return false; // Indicate save failure
+            return false; 
         }
 
-        // 2. If valid, proceed with saving
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
@@ -158,22 +187,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
                 body: JSON.stringify(data)
             });
-
             const result = await res.json();
             if (!res.ok) throw new Error(result.message);
-            return true; // Indicate save success
-
+            return true; 
         } catch (err) {
             Swal.fire('Save Failed', err.message, 'error');
-            return false; // Indicate save failure
+            return false; 
         }
     }
 
-    // "Save and Stay" button click
     saveBtn.addEventListener('click', async () => {
         toggleButtonLoading(saveBtn, true);
-        
-        // Check if save was successful
         if (await saveComment()) {
             Swal.fire({
                 toast: true,
@@ -184,50 +208,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 timer: 2000
             });
         }
-        
         toggleButtonLoading(saveBtn, false);
     });
 
-    // "Save & Continue" button click
     saveAndNextBtn.addEventListener('click', async () => {
         toggleButtonLoading(saveAndNextBtn, true);
-        
-        // Check if save was successful
         if (await saveComment()) {
-            // Save was successful, find the next record
             const nextIndex = currentRecordIndex + 1;
             if (nextIndex < batchRecordList.length) {
-                // There is a next record, redirect to it
                 const nextTestLog = batchRecordList[nextIndex];
                 window.location.href = `comment-entry.html?testlog=${nextTestLog}&batch=${currentBatchNum}`;
             } else {
-                // This was the last record
                 Swal.fire(
                     'Batch Complete!',
                     'You have finished evaluating all records in this batch.',
                     'success'
                 ).then(() => {
-                    window.location.href = 'evaluation.html'; // Go back to dashboard
+                    window.location.href = 'evaluation.html';
                 });
             }
         } else {
-            // Save failed (due to validation or error), stop loading spinner
             toggleButtonLoading(saveAndNextBtn, false);
         }
     });
     
-    // Helper to show/hide spinner in buttons
     function toggleButtonLoading(button, isLoading) {
         button.disabled = isLoading;
         const spinner = button.querySelector('.spinner-border');
         if (isLoading) {
             spinner.classList.remove('d-none');
-            button.style.width = '180px'; // Prevent layout shift
+            button.style.width = '180px'; 
         } else {
             spinner.classList.add('d-none');
             button.style.width = 'auto';
         }
     }
+
     // --- 4. START THE PAGE ---
     initializePage();
 });
