@@ -60,18 +60,34 @@
 
             if (data.success && data.user) {
                 // --- THIS IS THE KEY CHANGE ---
-                // We now receive a full 'user' object from the API.
-                // We save it directly to localStorage. It's now perfect from the start.
-                localStorage.setItem('staffUser', JSON.stringify(data.user));
-                                // NEW: Save the flag to sessionStorage
+// --- ★★★ THIS IS THE UPDATED LOGIC ★★★ ---
+
+                // 1. Store the user object
+                const user = data.user;
+                
+                // 2. Save user to localStorage
+                localStorage.setItem('staffUser', JSON.stringify(user));
+                
+                // 3. Save the password flag to sessionStorage
                 sessionStorage.setItem('isDefaultPassword', data.isDefaultPassword);
-                // --- END OF CHANGE ---
 
                 Toast.fire({ icon: 'success', title: '✅ Login successful' });
                 
+                // 4. Determine the correct redirect URL based on role
+                let redirectUrl = "";
+                if (user.Role === 'Evaluator') {
+                    redirectUrl = "../staff/evaluation.html";
+                } else {
+                    // For 'Admin' and 'Staff'
+                    redirectUrl = "../staff/overview.html";
+                }
+                
+                // 5. Redirect to the correct page
                 setTimeout(() => {
-                    window.location.href = "../staff/overview.html";
+                    window.location.href = redirectUrl;
                 }, 700);
+
+                // --- ★★★ END OF UPDATED LOGIC ★★★ ---
 
             } else {
                 Swal.fire('Login Failed', data.message || 'Invalid credentials.', 'error');
