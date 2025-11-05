@@ -100,7 +100,96 @@
                             </p>
                     </section>
 
-
+                    <section class="card mt-4 p-3">
+                        <h2 class="h4">🩺 Evaluation Batch Management</h2>
+                        <p class="text-muted">
+                            Manage evaluation batches for your branch. Only one batch per gender can be "Active" at a time.
+                            New trainer-submitted tests will automatically be assigned to the "Active" batch.
+                        </p>
+                    
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <h4>Talabat Section Batches</h4>
+                                <div id="male-batch-controls" class="mb-3">
+                                    <form id="createMaleBatchForm" class="d-flex gap-2">
+                                        <input type="text" id="newMaleBatchName" class="form-control" placeholder="New Batch Name (e.g., 1446-Q1)" required>
+                                        <button type="submit" id="createMaleBatchBtn" class="btn btn-primary text-nowrap">Create & Activate</button>
+                                    </form>
+                                </div>
+                                <div style="overflow-x: auto;">
+                                    <table class="table table-striped table-bordered" id="maleBatchTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Batch Name</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="maleBatchTableBody">
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                    
+                            <div class="col-lg-6">
+                                <h4>Talebaat Section Batches</h4>
+                                <div id="female-batch-controls" class="mb-3">
+                                    <form id="createFemaleBatchForm" class="d-flex gap-2">
+                                        <input type="text" id="newFemaleBatchName" class="form-control" placeholder="New Batch Name (e.g., 1446-Q1)" required>
+                                        <button type="submit" id="createFemaleBatchBtn" class="btn btn-primary text-nowrap">Create & Activate</button>
+                                    </form>
+                                </div>
+                                <div style="overflow-x: auto;">
+                                    <table class="table table-striped table-bordered" id="femaleBatchTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Batch Name</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="femaleBatchTableBody">
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section class="card mt-4 p-3">
+                        <h2 class="h4">📦 Unbatched Records Management</h2>
+                        <p class="text-muted">
+                            These are records submitted by trainers while no batch was "Active." You must assign them to a **locked** batch to be evaluated.
+                        </p>
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="card p-3" id="male-unbatched-card">
+                                    <h5>Unbatched Talabat Records</h5>
+                                    <h3 id="maleUnbatchedCount" class="display-6">0</h3>
+                                    <form id="assignMaleUnbatchedForm">
+                                        <label for="assignMaleBatchSelect" class="form-label">Assign all to batch:</label>
+                                        <select id="assignMaleBatchSelect" class="form-select mb-2" required>
+                                            <option value="">Select a locked batch...</option>
+                                        </select>
+                                        <button type="submit" id="assignMaleBtn" class="btn btn-secondary w-100">Assign Records</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card p-3" id="female-unbatched-card">
+                                    <h5>Unbatched Talebaat Records</h5>
+                                    <h3 id="femaleUnbatchedCount" class="display-6">0</h3>
+                                    <form id="assignFemaleUnbatchedForm">
+                                        <label for="assignFemaleBatchSelect" class="form-label">Assign all to batch:</label>
+                                        <select id="assignFemaleBatchSelect" class="form-select mb-2" required>
+                                            <option value="">Select a locked batch...</option>
+                                        </select>
+                                        <button type="submit" id="assignFemaleBtn" class="btn btn-secondary w-100">Assign Records</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                                                 <section class="card mt-4 p-3">
                                 <h2>🔑 Reset Student Password</h2>
                                 <p class="text-muted">This will reset the student's password back to their TR number. They will be forced to create a new password on their next login.</p>

@@ -1057,3 +1057,41 @@ body.nav-open .nav-overlay {
         content: none !important;
     }
 }
+/* --- ADD THIS TO THE END OF css/dashboard.css --- */
+
+/* --- Evaluation Batch Management Styles --- */
+.status-badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 0.375rem;
+    color: #fff;
+    text-transform: uppercase;
+    text-align: center;
+}
+.status-active {
+    background-color: var(--primary); 
+    color: white;
+}
+.status-inactive { 
+    background-color: var(--gray); 
+    color: var(--dark);
+}
+
+/* --- Unbatched Card Styles --- */
+#male-unbatched-card, #female-unbatched-card {
+    background-color: var(--light);
+    border: 1px solid #e0e0e0;
+}
+
+#male-unbatched-card h5, #female-unbatched-card h5 {
+    color: var(--dark);
+}
+
+#maleUnbatchedCount, #femaleUnbatchedCount {
+    color: var(--danger);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}

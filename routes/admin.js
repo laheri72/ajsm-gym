@@ -255,6 +255,217 @@ router.put('/api/students/status/:TR', async (req, res) => {
     }
 });
 
+// =================================================================== //
+// --- 👑 ADMIN Batch Management API Routes ---
+// =================================================================== //
+
+/**
+ * Helper middleware to check if the user is an Admin.
+ */
+const isAdmin = (req, res, next) => {
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Access restricted to Admins.' });
+    }
+    // Pass admin details to the next function
+    req.Branch = req.session.user.Branch;
+    req.Username = req.session.user.Username;
+    next();
+};
+
+/**
+ * GET: Fetches all batches for the Admin's branch.
+ * This populates the new management page.
+ */
+router.get('/api/admin/batches', isAdmin, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), req.Branch)
+            .query(`
+                SELECT * FROM EvaluationBatches
+                WHERE Branch = @Branch
+                ORDER BY Gender, IsActive DESC, CreatedAt DESC
+            `);
+        
+        // Group the results by gender for the frontend
+        const batches = {
+            Male: result.recordset.filter(b => b.Gender === 'Male'),
+            Female: result.recordset.filter(b => b.Gender === 'Female')
+        };
+        
+        res.json({ success: true, data: batches });
+    } catch (err) {
+        console.error('Error fetching admin batches:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch batches.' });
+    }
+});
+
+/**
+ * POST: Creates a new, active batch.
+ * Enforces your rule: only one batch can be active at a time per section.
+ */
+router.post('/api/admin/batches', isAdmin, async (req, res) => {
+    const { BatchName, Gender } = req.body;
+
+    if (!BatchName || !Gender) {
+        return res.status(400).json({ success: false, message: 'Batch Name and Gender are required.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        
+        // Rule 2 Check: See if an active batch already exists
+        const checkRequest = new sql.Request(transaction);
+        checkRequest.input('Branch', sql.NVarChar(50), req.Branch);
+        checkRequest.input('Gender', sql.NVarChar(10), Gender);
+        
+        const activeCheck = await checkRequest.query(`
+            SELECT 1 FROM EvaluationBatches
+            WHERE Branch = @Branch AND Gender = @Gender AND IsActive = 1
+        `);
+
+        if (activeCheck.recordset.length > 0) {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'An active batch already exists for this section. You must lock it first.' });
+        }
+
+        // Create the new batch
+        const createRequest = new sql.Request(transaction);
+        createRequest.input('BatchName', sql.NVarChar(100), BatchName);
+        createRequest.input('Branch', sql.NVarChar(50), req.Branch);
+        createRequest.input('Gender', sql.NVarChar(10), Gender);
+        createRequest.input('CreatedBy', sql.NVarChar(50), req.Username);
+
+        await createRequest.query(`
+            INSERT INTO EvaluationBatches (BatchName, Branch, Gender, IsActive, CreatedBy)
+            VALUES (@BatchName, @Branch, @Gender, 1, @CreatedBy)
+        `);
+
+        await transaction.commit();
+        res.status(201).json({ success: true, message: 'New batch created and set to active.' });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error('Error creating batch:', err);
+        res.status(500).json({ success: false, message: 'Failed to create batch.' });
+    }
+});
+
+/**
+ * PUT: Locks an active batch (sets IsActive = 0).
+ */
+router.put('/api/admin/batches/:id/lock', isAdmin, async (req, res) => {
+    const { id } = req.params; // BatchID
+
+    try {
+        const result = await pool.request()
+            .input('BatchID', sql.Int, id)
+            .input('Branch', sql.NVarChar(50), req.Branch)
+            .query(`
+                UPDATE EvaluationBatches
+                SET IsActive = 0
+                WHERE BatchID = @BatchID AND Branch = @Branch
+            `);
+        
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: 'Batch not found or not in your branch.' });
+        }
+
+        res.json({ success: true, message: 'Batch has been locked.' });
+    } catch (err) {
+        console.error('Error locking batch:', err);
+        res.status(500).json({ success: false, message: 'Failed to lock batch.' });
+    }
+});
+
+/**
+ * GET: Gets counts of unbatched records, grouped by gender.
+ */
+router.get('/api/admin/unbatched-records', isAdmin, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), req.Branch)
+            .query(`
+                SELECT Gender, COUNT(*) AS UnbatchedCount 
+                FROM TestRecords
+                WHERE BatchID IS NULL 
+                  AND Branch = @Branch
+                  AND SubmittedBy = 'Trainer'
+                GROUP BY Gender
+            `);
+
+        const counts = {
+            Male: 0,
+            Female: 0
+        };
+
+        for (const row of result.recordset) {
+            if (row.Gender === 'Male') counts.Male = row.UnbatchedCount;
+            if (row.Gender === 'Female') counts.Female = row.UnbatchedCount;
+        }
+
+        res.json({ success: true, data: counts });
+    } catch (err) {
+        console.error('Error fetching unbatched records:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch unbatched records.' });
+    }
+});
+
+/**
+ * POST: Assigns unbatched records to a *locked* batch.
+ */
+router.post('/api/admin/assign-unbatched', isAdmin, async (req, res) => {
+    const { Gender, TargetBatchID } = req.body;
+
+    if (!Gender || !TargetBatchID) {
+        return res.status(400).json({ success: false, message: 'Gender and TargetBatchID are required.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+
+        // 1. Verify the target batch is valid (must be locked)
+        const checkRequest = new sql.Request(transaction);
+        checkRequest.input('TargetBatchID', sql.Int, TargetBatchID);
+        checkRequest.input('Branch', sql.NVarChar(50), req.Branch);
+
+        const batchCheck = await checkRequest.query(`
+            SELECT 1 FROM EvaluationBatches
+            WHERE BatchID = @TargetBatchID 
+              AND Branch = @Branch 
+              AND IsActive = 0
+        `);
+
+        if (batchCheck.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'Invalid target: Batch is active, not found, or not in your branch.' });
+        }
+
+        // 2. Update the records
+        const updateRequest = new sql.Request(transaction);
+        updateRequest.input('TargetBatchID', sql.Int, TargetBatchID);
+        updateRequest.input('Branch', sql.NVarChar(50), req.Branch);
+        updateRequest.input('Gender', sql.NVarChar(10), Gender);
+
+        const updateResult = await updateRequest.query(`
+            UPDATE TestRecords
+            SET BatchID = @TargetBatchID
+            WHERE BatchID IS NULL
+              AND Branch = @Branch
+              AND Gender = @Gender
+              AND SubmittedBy = 'Trainer'
+        `);
+
+        await transaction.commit();
+        res.json({ success: true, message: `${updateResult.rowsAffected[0]} records have been assigned.` });
+
+    } catch (err) {
+        await transaction.rollback();
+        console.error('Error assigning unbatched records:', err);
+        res.status(500).json({ success: false, message: 'Failed to assign records.' });
+    }
+});
 
 // --- End of routes ---
 

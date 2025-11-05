@@ -23,6 +23,22 @@ document.addEventListener("DOMContentLoaded", () => {
     loadAdminUsers();
     loadInactiveStudents();
 
+    // ★★★ ADDING STYLES DYNAMICALLY (since they are in dashboard.css) ★★★
+    // This ensures the new status badges will look correct.
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .status-badge {
+            display: inline-block; padding: 0.25em 0.6em; font-size: 0.8rem;
+            font-weight: 600; line-height: 1; border-radius: 0.375rem;
+            color: #fff; text-transform: uppercase; text-align: center;
+        }
+        .status-active { background-color: var(--primary); color: white; }
+        .status-inactive { background-color: var(--gray); color: var(--dark); }
+        #maleUnbatchedCount, #femaleUnbatchedCount { color: var(--danger); font-weight: 700; margin-bottom: 1rem; }
+    `;
+    document.head.appendChild(style);
+
+
     // --- USER (ROLE) MANAGEMENT LOGIC ---
 
     async function loadAdminUsers() {
@@ -64,62 +80,62 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Event listener for adding a new user
-document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+    document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    // 1. Get references to the button and its parts
-    const submitBtn = document.getElementById('addUserBtn'); // Use the ID we added
-    const buttonText = submitBtn.querySelector('.button-text');
-    const spinner = submitBtn.querySelector('.spinner-border');
+        // 1. Get references to the button and its parts
+        const submitBtn = document.getElementById('addUserBtn'); // Use the ID we added
+        const buttonText = submitBtn.querySelector('.button-text');
+        const spinner = submitBtn.querySelector('.spinner-border');
 
-    // 2. Start Loader: Disable button, show spinner
-    submitBtn.disabled = true;
-    buttonText.classList.add('d-none');
-    spinner.classList.remove('d-none');
+        // 2. Start Loader: Disable button, show spinner
+        submitBtn.disabled = true;
+        buttonText.classList.add('d-none');
+        spinner.classList.remove('d-none');
 
-    // 3. Prepare payload (same as before) [cite: 90]
-    const newUser = {
-        username: document.getElementById('newUsername').value.trim(),
-        gender: document.getElementById('newGender').value,
-        role: document.getElementById('newRole').value,
-        branch: user.Branch // Assuming 'user' is accessible here from page load [cite: 90]
-    };
+        // 3. Prepare payload (same as before)
+        const newUser = {
+            username: document.getElementById('newUsername').value.trim(),
+            gender: document.getElementById('newGender').value,
+            role: document.getElementById('newRole').value,
+            branch: user.Branch // Assuming 'user' is accessible here from page load
+        };
 
-    try {
-        // 4. Make the API call (same as before) [cite: 90]
-        const res = await fetch('/api/admin/add-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newUser)
-        });
-        const data = await res.json(); //
-
-        // 5. Handle response (same as before)
-        if (data.success) { // [cite: 91]
-            Swal.fire({ // [cite: 91]
-                toast: true, position: 'top-end', icon: 'success',
-                title: 'User Added Successfully!', showConfirmButton: false, timer: 3000
+        try {
+            // 4. Make the API call (same as before)
+            const res = await fetch('/api/admin/add-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newUser)
             });
-            loadAdminUsers(); // Refresh the user list [cite: 91]
-            e.target.reset(); // [cite: 92]
-        } else {
-            Swal.fire('Error', 'Failed to add user: ' + data.message, 'error'); // [cite: 92, 93]
+            const data = await res.json(); //
+
+            // 5. Handle response (same as before)
+            if (data.success) { 
+                Swal.fire({ 
+                    toast: true, position: 'top-end', icon: 'success',
+                    title: 'User Added Successfully!', showConfirmButton: false, timer: 3000
+                });
+                loadAdminUsers(); // Refresh the user list
+                e.target.reset(); 
+            } else {
+                Swal.fire('Error', 'Failed to add user: ' + data.message, 'error'); 
+            }
+        } catch (err) {
+            // Handle potential network errors
+            console.error("Add user error:", err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Server Error',
+                text: 'Could not add user. Please try again later.'
+            });
+        } finally {
+            // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
+            submitBtn.disabled = false;
+            buttonText.classList.remove('d-none');
+            spinner.classList.add('d-none');
         }
-    } catch (err) {
-        // Handle potential network errors
-        console.error("Add user error:", err);
-        Swal.fire({
-            icon: 'error',
-            title: 'Server Error',
-            text: 'Could not add user. Please try again later.'
-        });
-    } finally {
-        // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
-        submitBtn.disabled = false;
-        buttonText.classList.remove('d-none');
-        spinner.classList.add('d-none');
-    }
-});
+    });
 
     // Delegated event listener for deleting a user
     $('#adminUserTable').on('click', '.delete-user-btn', function() {
@@ -209,6 +225,237 @@ document.getElementById('adminAddForm').addEventListener('submit', async (e) => 
             Swal.fire('Update Failed', err.message, 'error');
         }
     });
+
+    // --- ★★★ NEW: EVALUATION BATCH MANAGEMENT LOGIC ★★★ ---
+
+    // Get DOM elements for batch management
+    const maleBatchTableBody = document.getElementById('maleBatchTableBody');
+    const femaleBatchTableBody = document.getElementById('femaleBatchTableBody');
+    const createMaleBatchBtn = document.getElementById('createMaleBatchBtn');
+    const createFemaleBatchBtn = document.getElementById('createFemaleBatchBtn');
+    const newMaleBatchNameInput = document.getElementById('newMaleBatchName');
+    const newFemaleBatchNameInput = document.getElementById('newFemaleBatchName');
+    
+    const maleUnbatchedCountEl = document.getElementById('maleUnbatchedCount');
+    const femaleUnbatchedCountEl = document.getElementById('femaleUnbatchedCount');
+    const assignMaleBatchSelect = document.getElementById('assignMaleBatchSelect');
+    const assignFemaleBatchSelect = document.getElementById('assignFemaleBatchSelect');
+    const assignMaleBtn = document.getElementById('assignMaleBtn');
+    const assignFemaleBtn = document.getElementById('assignFemaleBtn');
+
+    // Store batch data globally on this page
+    let allBatches = { Male: [], Female: [] };
+
+    /**
+     * Main function to load all batch data and unbatched counts
+     */
+    async function loadBatchManagementData() {
+        try {
+            // Fetch batches and unbatched counts in parallel
+            const [batchRes, unbatchedRes] = await Promise.all([
+                fetch('/api/admin/batches', { credentials: 'include' }),
+                fetch('/api/admin/unbatched-records', { credentials: 'include' })
+            ]);
+
+            if (!batchRes.ok) throw new Error('Failed to load batches');
+            if (!unbatchedRes.ok) throw new Error('Failed to load unbatched records');
+
+            const batchData = await batchRes.json();
+            const unbatchedData = await unbatchedRes.json();
+
+            allBatches = batchData.data;
+
+            // Render all components
+            renderBatchTable(allBatches.Male, maleBatchTableBody, createMaleBatchBtn, newMaleBatchNameInput);
+            renderBatchTable(allBatches.Female, femaleBatchTableBody, createFemaleBatchBtn, newFemaleBatchNameInput);
+            
+            renderUnbatchedCard(unbatchedData.data.Male, allBatches.Male, maleUnbatchedCountEl, assignMaleBatchSelect, assignMaleBtn);
+            renderUnbatchedCard(unbatchedData.data.Female, allBatches.Female, femaleUnbatchedCountEl, assignFemaleBatchSelect, assignFemaleBtn);
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'Could not load batch management data. ' + err.message, 'error');
+        }
+    }
+
+    /**
+     * Renders the batch table for a specific gender
+     */
+    function renderBatchTable(batches, tableBody, createBtn, createInput) {
+        tableBody.innerHTML = ''; // Clear old data
+        let hasActiveBatch = false;
+
+        if (batches.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="3">No batches found.</td></tr>';
+        }
+
+        batches.forEach(batch => {
+            if (batch.IsActive) {
+                hasActiveBatch = true;
+            }
+            
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${batch.BatchName}</td>
+                <td>
+                    ${batch.IsActive
+                        ? '<span class="status-badge status-active">Active</span>'
+                        : '<span class="status-badge status-inactive">Locked</span>'
+                    }
+                </td>
+                <td>
+                    ${batch.IsActive
+                        ? `<button class="btn btn-sm btn-warning lock-batch-btn" data-batch-id="${batch.BatchID}" data-batch-name="${batch.BatchName}">
+                                🔒 Lock
+                           </button>`
+                        : '-'
+                    }
+                </td>
+            `;
+        });
+
+        // Enforce Rule 2: Disable "Create" button/input if a batch is active
+        createBtn.disabled = hasActiveBatch;
+        createInput.disabled = hasActiveBatch;
+    }
+
+    /**
+     * Renders the unbatched records card for a specific gender
+     */
+    function renderUnbatchedCard(count, batches, countEl, selectEl, assignBtn) {
+        countEl.textContent = count || 0;
+        
+        // Populate the dropdown with locked batches
+        selectEl.innerHTML = '<option value="">Select a locked batch...</option>';
+        const lockedBatches = batches.filter(b => !b.IsActive);
+        
+        if (lockedBatches.length > 0) {
+            lockedBatches.forEach(b => {
+                selectEl.innerHTML += `<option value="${b.BatchID}">${b.BatchName}</option>`;
+            });
+        }
+
+        // Disable the form if there are no records to assign or no batches to assign to
+        if (count === 0 || lockedBatches.length === 0) {
+            selectEl.disabled = true;
+            assignBtn.disabled = true;
+            if (count > 0 && lockedBatches.length === 0) {
+                selectEl.innerHTML = '<option value="">No locked batches available.</option>';
+            }
+        } else {
+            selectEl.disabled = false;
+            assignBtn.disabled = false;
+        }
+    }
+
+    // --- Event Listeners for Batch Management ---
+
+    // Create Male Batch
+    document.getElementById('createMaleBatchForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const batchName = document.getElementById('newMaleBatchName').value;
+        await createBatch(batchName, 'Male', document.getElementById('newMaleBatchName'));
+    });
+
+    // Create Female Batch
+    document.getElementById('createFemaleBatchForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const batchName = document.getElementById('newFemaleBatchName').value;
+        await createBatch(batchName, 'Female', document.getElementById('newFemaleBatchName'));
+    });
+
+    // Re-usable createBatch function
+    async function createBatch(BatchName, Gender, inputElement) {
+        try {
+            const res = await fetch('/api/admin/batches', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                body: JSON.stringify({ BatchName, Gender })
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.message);
+
+            Swal.fire('Success!', 'New active batch created.', 'success');
+            if(inputElement) inputElement.value = '';
+            loadBatchManagementData(); // Refresh everything
+        } catch (err) {
+            Swal.fire('Error Creating Batch', err.message, 'error');
+        }
+    }
+
+    // Event Delegation for "Lock" buttons
+    $('#maleBatchTable, #femaleBatchTable').on('click', '.lock-batch-btn', function() {
+        const batchId = $(this).data('batch-id');
+        const batchName = $(this).data('batch-name');
+        
+        Swal.fire({
+            title: `Lock "${batchName}"?`,
+            text: "This will lock the batch. New tests will go to 'Unbatched' until a new batch is created.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            confirmButtonText: 'Yes, Lock It'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`/api/admin/batches/${batchId}/lock`, {
+                        method: 'PUT',
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message);
+
+                    Swal.fire('Locked!', 'The batch has been locked.', 'success');
+                    loadBatchManagementData(); // Refresh
+                } catch (err) {
+                    Swal.fire('Error', err.message, 'error');
+                }
+            }
+        });
+    });
+
+    // Assign Male Unbatched
+    document.getElementById('assignMaleUnbatchedForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const batchId = document.getElementById('assignMaleBatchSelect').value;
+        await assignUnbatched('Male', batchId);
+    });
+
+    // Assign Female Unbatched
+    document.getElementById('assignFemaleUnbatchedForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const batchId = document.getElementById('assignFemaleBatchSelect').value;
+        await assignUnbatched('Female', batchId);
+    });
+
+    // Re-usable assignUnbatched function
+    async function assignUnbatched(Gender, TargetBatchID) {
+        if (!TargetBatchID) {
+            return Swal.fire('Error', 'Please select a locked batch to assign.', 'warning');
+        }
+
+        try {
+            const res = await fetch('/api/admin/assign-unbatched', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                body: JSON.stringify({ Gender, TargetBatchID })
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.message);
+
+            Swal.fire('Success!', `${data.message || 'Records'} assigned.`, 'success');
+            loadBatchManagementData(); // Refresh everything
+        } catch (err) {
+            Swal.fire('Assignment Failed', err.message, 'error');
+        }
+    }
+    
+    // --- Initial Load for Batch Management ---
+    // We add this call to the end of the existing DOMContentLoaded listener
+    loadBatchManagementData();
+
 
     // --- INACTIVE STUDENT MANAGEMENT LOGIC ---
 

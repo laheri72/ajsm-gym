@@ -482,3 +482,239 @@ and will be perfectly visible.
     font-size: 0.9rem;
     white-space: pre-wrap; /* Preserves line breaks */
 }
+
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ NEW: Partial Pending Status ★★★ */
+.status-partial {
+    background-color: #0d6efd; /* Bootstrap Blue */
+    color: white;
+}
+.row-partial {
+    /* (You can add a style here if you want, e.g., a blue left border) */
+    border-left: 4px solid #0d6efd;
+}
+.stat-partial {
+    color: #0d6efd;
+    margin-right: 1rem;
+}
+
+/* ★★★ NEW: Batch Card Status (Active/Locked) ★★★ */
+.batch-card-status {
+    margin-top: 0.5rem;
+}
+
+/* ★★★ NEW: Comment Metadata (Author/Timestamp) ★★★ */
+.comment-meta-data {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--gray);
+    text-align: right;
+}
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ TWEAK 4: CSS Color Fix ★★★ */
+
+/* This section styles the text inside the grid */
+.test-result-item-value {
+    color: var(--dark); /* Default text color */
+}
+
+/* We ONLY color the text for GRADES */
+.test-result-item-value.grade-a,
+.test-result-item-value.grade-a-plus {
+    color: var(--primary);
+}
+.test-result-item-value.grade-c,
+.test-result-item-value.grade-f {
+    color: var(--danger);
+}
+
+/* We ALSO color the text for BMI STATUS */
+.test-result-item-value.status-normal {
+    color: var(--primary);
+}
+.test-result-item-value.status-overweight,
+.test-result-item-value.status-obese,
+.test-result-item-value.status-underweight {
+    color: var(--danger);
+}
+
+
+/* ★★★ TWEAK 6: Username Display ★★★ */
+.navbar-simple {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.navbar-username {
+    color: var(--dark);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ NEW: Statistics Section Styles ★★★ */
+
+/* Stat card styles (re-using existing class) */
+.stat-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+.stat-card {
+    background-color: white;
+    border-left: 5px solid var(--primary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px var(--card-shadow);
+    text-align: center;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+.stat-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--dark);
+    margin-top: 0.5rem;
+}
+
+/* Chart styles */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 992px) {
+    .charts-grid {
+        grid-template-columns: 1.5fr 1fr; /* Make line chart wider */
+    }
+}
+
+.chart-container {
+    position: relative;
+    height: 300px; /* Give the canvas a height */
+    width: 100%;
+}
+
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ NEW: Styles for atomic save buttons ★★★ */
+.save-comment-btn {
+    padding: 0.25rem 0.75rem; /* Make it smaller */
+    font-size: 0.8rem;
+    min-width: 70px; /* Give it a fixed width for the loader */
+    text-align: center;
+}
+
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ NEW: Student Search Styles ★★★ */
+.search-container {
+    position: relative;
+}
+
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    z-index: 10;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+.search-result-item:last-child {
+    border-bottom: none;
+}
+.search-result-item:hover {
+    background-color: var(--light);
+}
+
+/* ★★★ NEW: Student History Modal ★★★ */
+#student-history-table tbody tr {
+    cursor: pointer;
+}
+#student-history-table-body .loader-cell {
+    text-align: center;
+    padding: 3rem;
+}
+
+/* --- ADD THIS TO THE END OF css/evaluation.css --- */
+
+/* ★★★ NEW: Styles for Student History Modal Accordion ★★★ */
+
+/* Use the same styles as the comment-entry page */
+#student-history-accordion-container .accordion-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem !important;
+    margin-bottom: 0.5rem;
+}
+#student-history-accordion-container .accordion-item:first-of-type,
+#student-history-accordion-container .accordion-item:last-of-type {
+    border-radius: 0.5rem !important;
+}
+#student-history-accordion-container .accordion-header {
+    border-radius: 0.5rem;
+}
+#student-history-accordion-container .accordion-button {
+    font-weight: 500;
+    color: var(--dark);
+    background-color: #fcfcfc;
+}
+#student-history-accordion-container .accordion-button:not(.collapsed) {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: none;
+}
+#student-history-accordion-container .accordion-button:focus {
+    box-shadow: none;
+}
+#student-history-accordion-container .accordion-button .status-badge {
+    margin-left: auto;
+    margin-right: 1rem;
+}
+#student-history-accordion-container .accordion-button:not(.collapsed) .status-badge {
+    background-color: white;
+    color: var(--primary);
+}
+#student-history-accordion-container .accordion-body {
+    border-top: 1px solid #e0e0e0;
+}
+#student-history-accordion-container .accordion-body h5 {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--primary);
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+}
+#student-history-accordion-container .history-comment {
+    background-color: var(--light);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}
+/* This is for the "Last updated by..." text */
+#student-history-accordion-container .comment-meta-data {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--gray);
+}

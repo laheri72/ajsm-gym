@@ -19,6 +19,7 @@
                 <a href="evaluation.html">FitTracker</a>
             </div>
             <nav class="navbar-simple">
+                <span class="navbar-username" id="evaluator-username-display">Loading...</span>
                 <a href="#" id="logoutLink">Logout</a>
             </nav>
         </header>
@@ -27,15 +28,15 @@
            <div class="content">
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <a href="evaluation.html" class="btn btn-secondary">&larr; Back to Dashboard</a>
+                    <a href="evaluation.html" class="btn btn-secondary btn-sm">&larr; Back to Dashboard</a>
                     <h2 class="h4 mb-0" id="page-title">Loading Evaluation...</h2>
                 </div>
 
                 <section id="student-info-anchor" class="card mb-4">
                     <div class="loader-cell"><div class="loader"></div></div>
-                    </section>
+                </section>
                     
-                    <section id="historical-data-container" class="mb-4">
+                <section id="historical-data-container" class="mb-4">
                     <div class="loader-cell"><div class="loader"></div></div>
                 </section>
 
@@ -43,35 +44,53 @@
                     <form id="commentEntryForm">
                         <input type="hidden" id="commentTestLog" name="TestLog">
                         
-                        <div class="form-group mb-3">
-                            <label for="commentNutritionNotes" class="form-label h5">Nutrition Notes</label>
-                            <textarea class="form-control" id="commentNutritionNotes" name="NutritionNotes" rows="6" placeholder="Enter nutritionist comments..." required></textarea>
-                        </div>
-
-                        <div class="form-group mb-3">
-                            <label for="commentHealthNotes" class="form-label h5">Health / Issues Notes</label>
-                            <textarea class="form-control" id="commentHealthNotes" name="HealthNotes" rows="6" placeholder="Enter notes on health or physical issues..." required></textarea>
+                        <div class="form-group mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="commentNutritionNotes" class="form-label h5">Nutrition Notes</label>
+                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveNutritionBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                    <span class="button-text">Save</span>
+                                </button>
+                            </div>
+                            <span class="comment-meta-data" id="metaNutrition"></span>
+                            <textarea class="form-control mt-1" id="commentNutritionNotes" name="NutritionNotes" rows="6" placeholder="Enter nutritionist comments..."></textarea>
                         </div>
 
                         <div class="form-group mb-4">
-                            <label for="commentRecommendations" class="form-label h5">Further Recommendations</label>
-                            <textarea class="form-control" id="commentRecommendations" name="Recommendations" rows="6" placeholder="Enter further recommendations..." required></textarea>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="commentHealthNotes" class="form-label h5">Health / Issues Notes</label>
+                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveHealthBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                    <span class="button-text">Save</span>
+                                </button>
+                            </div>
+                            <span class="comment-meta-data" id="metaHealth"></span>
+                            <textarea class="form-control mt-1" id="commentHealthNotes" name="HealthNotes" rows="6" placeholder="Enter notes on health or physical issues..."></textarea>
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="commentRecommendations" class="form-label h5">Further Recommendations</label>
+                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveRecsBtn">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                    <span class="button-text">Save</span>
+                                </button>
+                            </div>
+                            <span class="comment-meta-data" id="metaRecommendations"></span>
+                            <textarea class="form-control mt-1" id="commentRecommendations" name="Recommendations" rows="6" placeholder="Enter further recommendations..."></textarea>
                         </div>
 
                         <hr>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-outline-primary" id="saveBtn">
-                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                Save and Stay
-                            </button>
 
-                            <button type="button" class="btn btn-success" id="saveAndNextBtn">
-                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                Save & Continue &rarr;
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="evaluation.html" class="btn btn-secondary">&larr; Back to Dashboard</a>
+                            <button type="button" class="btn btn-success" id="continueNextBtn">
+                                Continue to Next Record &rarr;
                             </button>
                         </div>
                     </form>
                 </section>
+
             </div>
         </main>
     </div>

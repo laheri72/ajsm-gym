@@ -20,6 +20,7 @@
                 <a href="evaluation.html">FitTracker</a>
             </div>
             <nav class="navbar-simple">
+                <span class="navbar-username" id="evaluator-username-display">Loading...</span>
                 <a href="#" id="logoutLink">Logout</a>
             </nav>
         </header>
@@ -27,9 +28,51 @@
         <main class="main-content">
            <div class="content">
 
+            <section id="student-search-card" class="card mb-4">
+                    <h2 class="h4 mb-3">Student Search</h2>
+                    <p class="text-muted">Find a student by name or TR to see their full evaluation history.</p>
+                    <div class="search-container">
+                        <input type="text" id="studentSearchInput" class="form-control" placeholder="Type a Name or TR...">
+                        <div id="studentSearchResults" class="search-results-dropdown" style="display: none;">
+                            </div>
+                    </div>
+                </section>
+
+
+            <section id="statistics-overview" class="card mb-4">
+                    <h2 class="h4 mb-3">Statistics Overview</h2>
+                    <p class="text-muted">Analysis of the most recent locked batch.</p>
+                    
+                    <div class="stat-cards-container mb-4">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-avg-bmi">...</div>
+                            <div class="stat-label">Average BMI</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-avg-bodyfat">...</div>
+                            <div class="stat-label">Average Body Fat %</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-common-grade">...</div>
+                            <div class="stat-label">Most Common Grade</div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <h5 class="text-center">Average BMI Over Batches</h5>
+                            <canvas id="bmiOverTimeChart" style="overflow-x: auto;"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h5 class="text-center">BMI Status Distribution</h5>
+                            <canvas id="bmiStatusChart" style="overflow-x: auto;"></canvas>
+                        </div>
+                    </div>
+                </section>
+
                 <section id="batch-overview" class="card">
                     <h2 class="h4 mb-3">Evaluation Batches</h2>
-                    <p class="text-muted">Select a batch to review. Batches are group tests coducted by Trainer. </p>
+                    <p class="text-muted">Select a batch to review. Batches are group tests conducted by Trainer. </p>
                     <div id="batch-cards-container" class="batch-cards-grid">
                         <div class="loader-cell"><div class="loader"></div></div>
                     </div>
@@ -131,6 +174,25 @@
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Set New Password</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="studentHistoryModal" tabindex="-1" aria-labelledby="studentHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="studentHistoryModalLabel">Evaluation History for...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="student-history-accordion-container">
+                        <div class="loader-cell"><div class="loader"></div></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
