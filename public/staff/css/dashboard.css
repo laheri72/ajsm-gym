@@ -294,208 +294,7 @@ html.is-admin #tab-admin {
     border-color: var(--primary);
 }
 
-/* === NEW & POLISHED RESPONSIVE HEADER & NAVIGATION === */
 
-/* Main Layout */
-.dashboard-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-/* Find and replace your existing mobile/sidebar styles with this block */
-
-/* --- Mobile-First Styles (Default to Sidebar) --- */
-.app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 1.5rem;
-    height: 60px;
-    background-color: #ffffff;
-    border-bottom: 1px solid #e0e0e0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
-.brand a {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    text-decoration: none;
-}
-
-.hamburger-btn {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
-    width: 28px;
-    height: 28px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    z-index: 1001;
-}
-
-.hamburger-btn span {
-    width: 28px;
-    height: 3px;
-    background-color: var(--dark);
-    border-radius: 3px;
-}
-
-.navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 280px;
-    height: 100vh;
-    /* TWEAK: New background color for a professional look */
-    background-color: #2d3436; /* Using your --dark color */
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
-    z-index: 1000;
-    display: flex; /* FIX: Enable flexbox for positioning */
-    flex-direction: column; /* Stack items vertically */
-}
-
-/* TWEAK: Added a dedicated header inside the sidebar */
-.navbar .sidebar-header {
-    padding: 0 1.5rem;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
-    flex-shrink: 0; /* Prevents the header from shrinking */
-}
-
-/* TWEAK: Added a dedicated nav container that will scroll */
-.navbar .sidebar-nav {
-    overflow-y: auto; /* This fixes the cutoff logout button */
-    flex-grow: 1; /* Allows this section to fill remaining space */
-}
-
-.navbar a {
-    display: block;
-    /* TWEAK: Reduced padding for less spacing */
-        padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    /* TWEAK: Lighter text color for dark background */
-    color: #f5f7fa; 
-    text-decoration: none;
-    font-weight: 500;
-    border-bottom: 1px solid #4a4a4a; /* Darker border */
-    transition: background-color 0.2s ease;
-}
-
-.navbar a:hover {
-    background-color: #4a4a4a;
-}
-
-/* FIX: Target the Logout link specifically */
-#logoutLink {
-    margin-top: auto; /* Pushes this item to the bottom */
-    border-top: 1px solid #4a4a4a; /* Add a separator line above */
-    border-bottom: none; /* Remove the bottom border */
-        color: var(--danger); /* Make logout red */
-}
-#logoutLink:hover {
-        background-color: rgba(244, 67, 54, 0.1); /* Light red hover */
-     }
-
-.navbar a.active {
-    background-color: var(--primary);
-    color: white;
-    font-weight: 600;
-}
-
-.nav-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-}
-
-body.nav-open .navbar {
-    transform: translateX(0);
-}
-
-body.nav-open .nav-overlay {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* --- Desktop Styles (Media Query) --- */
-/* TWEAK: Breakpoint is now larger (1200px) to prevent wrapping */
-@media (min-width: 1200px) {
-    .dashboard-container {
-        flex-direction: column; 
-    }
-
-    .app-header {
-        position: fixed;
-        width: 100%;
-        justify-content: flex-start;
-        align-items: center; /* Vertically center items in the header */
-    }
-
-    .brand {
-        margin-right: 2rem;
-    }
-    
-    .hamburger-btn {
-        display: none;
-    }
-    
-    .navbar {
-        position: static;
-        flex-direction: row;
-        align-items: center; /* Align links vertically */
-        height: auto;
-        width: auto;
-        transform: none;
-        box-shadow: none;
-        background-color: transparent;
-        padding-top: 0;
-        /* TWEAK: Reduced gap between links */
-        gap: 0.25rem; 
-        flex-wrap: nowrap; /* This ensures no wrapping */
-    }
-
-.navbar a {
-    border-bottom: none;
-    border-radius: 8px;
-    padding: 0.8rem 0.8rem; 
-    font-size: 0.9rem;
-    /* TWEAK: Reset text color for the desktop view */
-    color: var(--dark); 
-}
-
-    .navbar a:hover {
-        background-color: #f5f5f5;
-    }
-
-    .navbar a.active {
-        background-color: var(--primary);
-        color: white;
-    }
-
-    .main-content {
-        padding-top: 60px; 
-        width: 100%;
-    }
-}
 /* === NEW & ROBUST: Stackable Card View for Tables === */
 
 @media (max-width: 768px) {
@@ -1095,3 +894,362 @@ body.nav-open .nav-overlay {
     font-weight: 700;
     margin-bottom: 1rem;
 }
+
+/* --- ADD THIS TO THE END OF dashboard.css --- */
+
+/* === NEW NAVBAR STYLES (Mobile & Desktop) === */
+
+/* --- Header --- */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1.5rem;
+    height: 60px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+.brand a {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+}
+.hamburger-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+}
+.hamburger-btn span {
+    width: 28px;
+    height: 3px;
+    background-color: var(--dark);
+    border-radius: 3px;
+}
+
+/* --- Mobile Sidebar (Default) --- */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background-color: var(--dark);
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    padding-top: 0; /* Changed */
+    gap: 0; /* Changed */
+    flex-wrap: nowrap; /* Changed */
+}
+.navbar .sidebar-header {
+    padding: 0 1.5rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+    border-bottom: 1px solid #4a4a4a;
+}
+.navbar-username-mobile {
+    color: white;
+}
+
+/* Base links in sidebar */
+.navbar a {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: #f5f7fa;
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid #4a4a4a;
+    transition: background-color 0.2s ease;
+}
+.navbar a:hover {
+    background-color: #4a4a4a;
+}
+.navbar a.active {
+    background-color: var(--primary);
+    color: white;
+    font-weight: 600;
+}
+
+/* Fix #1: Show dropdowns and items in mobile */
+.navbar .dropdown {
+    display: block;
+}
+.navbar .dropdown-toggle {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: #f5f7fa;
+    font-weight: 500;
+    border-bottom: 1px solid #4a4a4a;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+.navbar .dropdown-toggle::after {
+    border-top-color: white;
+    border-bottom-color: white;
+}
+.navbar .dropdown-menu {
+    display: none; /* Hide by default, show on click */
+    position: static;
+    background-color: #3f4446;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+/* Show menu when Bootstrap adds 'show' class */
+.navbar .dropdown-menu.show {
+    display: block;
+}
+.navbar .dropdown-item {
+    display: block;
+    padding: 0.75rem 2.5rem;
+    color: #f5f7fa;
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #4a4a4a;
+    transition: background-color 0.2s ease;
+}
+.navbar .dropdown-item:last-child {
+    border-bottom: none;
+}
+.navbar .dropdown-item:hover {
+    background-color: #4a4a4a;
+}
+.navbar .dropdown-toggle.active {
+    background-color: var(--primary);
+    color: white;
+}
+.navbar .dropdown-item.active {
+    background-color: var(--primary);
+    color: white;
+    font-weight: 500;
+}
+
+/* Hide desktop-only elements */
+#user-menu-desktop,
+#logoutLinkDesktop {
+    display: none;
+}
+/* Show mobile-only logout */
+#logoutLinkMobile {
+    display: block;
+    padding: 1rem 1.5rem;
+    color: var(--danger) !important;
+    text-decoration: none;
+    font-weight: 500;
+    border-top: 1px solid #4a4a4a;
+    margin-top: auto;
+}
+#logoutLinkMobile:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* Nav Overlay */
+.nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1010;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+body.nav-open .navbar {
+    transform: translateX(0);
+}
+body.nav-open .nav-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- Desktop Styles (Media Query) --- */
+@media (min-width: 1200px) {
+    .content {
+        padding-top: calc(60px + 1rem);
+    }
+    .hamburger-btn {
+        display: none;
+    }
+    
+    .navbar {
+        position: static;
+        flex-direction: row;
+        align-items: center;
+        height: 60px;
+        width: 100%;
+        transform: none;
+        box-shadow: none;
+        background-color: transparent;
+        padding-top: 0;
+        gap: 0.25rem;
+    }
+
+    /* Hide mobile-only elements */
+    .sidebar-header,
+    #logoutLinkMobile {
+        display: none !important;
+    }
+    
+    /* Show desktop-only elements */
+    #user-menu-desktop,
+    #logoutLinkDesktop {
+        display: flex;
+        align-items: center;
+    }
+    /* Fix #5: User menu */
+    #user-menu-desktop {
+        margin-left: auto;
+        padding: 0.8rem 0.8rem;
+    }
+    .navbar-username-desktop {
+        font-weight: 600;
+        color: var(--dark);
+    }
+    /* Fix #2: Desktop logout */
+    #logoutLinkDesktop {
+        color: var(--danger);
+        padding: 0.8rem 0.8rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border-bottom: none;
+    }
+    #logoutLinkDesktop:hover {
+        background-color: rgba(244, 67, 54, 0.1);
+        border-radius: 8px;
+    }
+    #logoutLinkDesktop.active {
+        background: none; /* Logout should never be active */
+    }
+
+    /* Style base links */
+    .navbar a {
+        border-bottom: none;
+        border-radius: 8px;
+        padding: 0.8rem 0.8rem; 
+        font-size: 0.9rem;
+        color: var(--dark); 
+    }
+    .navbar a:hover {
+        background-color: #f5f5f5;
+    }
+/* This is the new "sleek" style */
+.navbar a.active {
+    background-color: transparent;
+    color: var(--primary);
+    font-weight: 700;
+    box-shadow: 0 3px 0 0 var(--primary); /* Sleek bottom border */
+    border-radius: 0;
+}
+
+    /* Show desktop dropdowns */
+    .navbar .dropdown {
+        display: block;
+    }
+    .navbar .dropdown-toggle {
+        display: block;
+        border-bottom: none;
+        border-radius: 8px;
+        padding: 0.8rem 0.8rem;
+        font-size: 0.9rem;
+        color: var(--dark);
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .navbar .dropdown-toggle:hover {
+        background-color: #f5f5f5;
+    }
+    .navbar .dropdown-toggle.active {
+    background-color: transparent;
+    color: var(--primary);
+    font-weight: 700;
+    box-shadow: 0 3px 0 0 var(--primary); /* Sleek bottom border */
+    border-radius: 0;
+    }
+    .navbar .dropdown-toggle::after {
+        border-top-color: unset;
+        border-bottom-color: unset;
+    }
+
+    /* Fix #6: Style the desktop dropdown menu (now click-to-open) */
+    .navbar .dropdown-menu {
+        display: none; /* JS will handle this */
+        position: absolute;
+        background-color: white;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 0.5rem 0;
+        margin-top: 0.25rem;
+    }
+    .navbar .dropdown-item {
+        color: var(--dark);
+        padding: 0.5rem 1.25rem;
+        border-bottom: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .navbar .dropdown-item:hover {
+        background-color: #f5f5f5;
+    }
+    .navbar .dropdown-item.active {
+    background-color: transparent;
+    color: var(--primary);
+    font-weight: 700;
+    box-shadow: 0 3px 0 0 var(--primary); /* Sleek bottom border */
+    border-radius: 0;
+    }
+    .navbar #tab-admin {
+    margin-left: auto; /* Pushes the links away from the brand */
+}
+    .navbar #tab-test {
+    margin-left: auto; /* Pushes the links away from the brand */
+}
+.navbar #analytics-dropdown {
+    margin-right: auto; /* Pushes the user menu to the right */
+}
+}
+
+/* --- ADD THIS TO THE END OF dashboard.css --- */
+
+/* ★★★ NEW: Professional Popover Styles ★★★ */
+.staff-popover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+    border-radius: 0.75rem !important;
+    border: 1px solid #e0e0e0 !important;
+}
+.staff-popover .popover-header {
+    background-color: var(--light);
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 1rem;
+    color: var(--dark);
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+}
+.staff-popover .popover-body {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+
+

@@ -32,7 +32,7 @@
 
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
-<body>
+<body style="visibility: hidden;">
     <div class="dashboard-container">
         <header class="app-header">
             <div class="brand">
@@ -44,17 +44,57 @@
                 <span></span>
             </button>
             <nav class="navbar" id="navbar">
-                <a href="overview.html" id="tab-overview">📊 Overview</a>
-                <a href="entry.html" id="tab-entry">Slot Entry</a>
-                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-                <a href="records.html" id="tab-record">Active Students</a>
-                <a href="progress.html" id="tab-Progress">Analysis</a>
-                <a href="test.html" id="tab-test">Fitness Test</a>
-                <a href="attendance.html" id="tab-attendance">Attendance</a>
-                <a href="leaves.html" id="tab-leaves">Leave Management</a>
-                <a href="profile.html" id="tab-profile">👤 Profile</a>
-                <a href="#" id="logoutLink">Logout</a>
-            </nav>
+    <div class="sidebar-header">
+        <span id="staff-username-display" class="navbar-username-mobile" 
+              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
+            Loading...
+        </span>
+    </div>
+
+    <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+    <a href="test.html" id="tab-test">Fitness Test</a>
+
+    <div class="nav-item dropdown" id="students-dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Student Records
+        </a>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
+            <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+        </ul>
+    </div>
+    
+    <div class="nav-item dropdown" id="time-dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Attendance
+        </a>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
+            <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
+        </ul>
+    </div>
+
+    <div class="nav-item dropdown" id="analytics-dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Analytics
+        </a>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
+            <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a></li>
+        </ul>
+    </div>
+
+    <div class="nav-item" id="user-menu-desktop">
+        <span id="staff-username-display-desktop" class="navbar-username-desktop"
+              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
+            Loading...
+        </span>
+    </div>
+
+    <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+
+    <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
+</nav>
         </header>
 
         <main class="main-content">
