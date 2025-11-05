@@ -6,16 +6,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let batchRecordList = []; 
     let currentRecordIndex = -1;
 
+    // --- Get all DOM elements ---
     const pageTitle = document.getElementById('page-title');
+    const pageBatchName = document.getElementById('page-batch-name');
     const anchorContainer = document.getElementById('student-info-anchor');
+    const medicalContainer = document.getElementById('medical-history-content');
     const historyContainer = document.getElementById('historical-data-container'); 
-    const form = document.getElementById('commentEntryForm');
-    const formCard = document.getElementById('comment-form-card');
     
-    // ★★★ NEW: Button references ★★★
-    const saveNutritionBtn = document.getElementById('saveNutritionBtn');
-    const saveHealthBtn = document.getElementById('saveHealthBtn');
-    const saveRecsBtn = document.getElementById('saveRecsBtn');
+    // Comment Form
+    const commentForm = document.getElementById('commentEntryForm');
+    const saveStrengthsBtn = document.getElementById('saveStrengthsBtn');
+    const saveImprovementBtn = document.getElementById('saveImprovementBtn');
+    const saveGuidelinesBtn = document.getElementById('saveGuidelinesBtn');
+    
+    // Goals Form
+    const goalsForm = document.getElementById('goalsForm');
+    const saveGoalsBtn = document.getElementById('saveGoalsBtn');
+    
+    // Navigation
     const continueNextBtn = document.getElementById('continueNextBtn');
 
     // Get username from header
@@ -25,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('evaluator-username-display').textContent = `👤 ${user.Username}`;
         }
     } catch (e) { /* ignore */ }
+
+    // Anti-flicker: Show body now that JS is running
+    document.body.style.visibility = 'visible';
 
     const urlParams = new URLSearchParams(window.location.search);
     currentTestLog = urlParams.get('testlog');
@@ -42,41 +53,55 @@ document.addEventListener('DOMContentLoaded', () => {
         return `Last updated by <strong>${evaluator}</strong> on ${date}`;
     }
 
+    // --- Main Initialization ---
     async function initializePage() {
         try {
+            // Fetch batch list (for nav) and main data (for page)
             const [batchListData, recordData] = await Promise.all([
                 fetchBatchList(currentBatchID),
                 fetchRecordDetails(currentTestLog)
             ]);
 
+            // 1. Set up Navigation
             batchRecordList = batchListData.map(record => record.TestLog);
             currentRecordIndex = batchRecordList.indexOf(parseInt(currentTestLog));
-            
             if (currentRecordIndex === batchRecordList.length - 1) {
                 continueNextBtn.innerHTML = 'Finish Batch & Return';
             }
 
-            populateAnchor(recordData.currentRecord);
-            populateForm(recordData.currentComments);
-            populateHistory(recordData.historicalRecords); 
+            // 2. Populate all page sections
+            const { currentRecord, currentComments, historicalRecords, medicalHistory } = recordData;
+            
+            // ★★★ REQ 5: Set Batch Name
+            pageBatchName.textContent = currentRecord.BatchName;
+            
+            // ★★★ REQ 4: Set new Anchor Card
+            populateAnchor(currentRecord);
+            
+            // ★★★ REQ 3: Set Medical History
+            populateMedicalHistory(medicalHistory);
+
+            // ★★★ REQ 1 & 2: Set Comments and Goals
+            populateForm(currentComments); 
+            
+            // Set History Accordion
+            populateHistory(historicalRecords); 
 
             document.getElementById('commentTestLog').value = currentTestLog;
 
         } catch (err) {
             console.error(err);
-            anchorContainer.innerHTML = `<p class="text-danger">Error loading record: ${err.message}</p>`;
-            historyContainer.innerHTML = '';
-            formCard.classList.add('d-none');
+            document.body.innerHTML = `<h1>Error loading page data.</h1><p>${err.message}</p><a href="evaluation.html">Back to Dashboard</a>`;
         }
     }
 
+    // --- API Fetchers ---
     async function fetchBatchList(batchId) {
         const res = await fetch(`/api/evaluation/batch-details/${batchId}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Could not fetch batch list.');
         const { data } = await res.json();
         return data; 
     }
-
     async function fetchRecordDetails(testLog) {
         const res = await fetch(`/api/evaluation/comment-details/${testLog}`, { credentials: 'include' });
         if (!res.ok) throw new Error('Could not fetch record details.');
@@ -84,65 +109,139 @@ document.addEventListener('DOMContentLoaded', () => {
         return data;
     }
 
-    // --- 2. POPULATE THE PAGE --- (Unchanged)
-    function populateAnchor(record) { /* ... (this function is unchanged) ... */ }
-    function populateForm(comments) { /* ... (this function is unchanged) ... */ }
-    function populateHistory(historicalRecords) { /* ... (this function is unchanged) ... */ }
-    
-    // (Pasting the unchanged functions here for completeness)
+    // --- 2. POPULATE THE PAGE ---
+
+    /**
+     * ★★★ REQ 4: Populates the new grouped anchor card ★★★
+     */
     function populateAnchor(record) {
-        pageTitle.textContent = `Evaluating: ${record.Name} (TR: ${record.TR})`;
-        const f = (val, dec = 1, unit = '') => (val != null ? `${parseFloat(val).toFixed(dec)}${unit}` : 'N/A');
-        const statusClass = (record.BMIStatus || '').split(' ')[0].toLowerCase();
+        // Set top-level titles
+        pageTitle.textContent = `${record.Name}`;
+        document.getElementById('anchor-student-details').textContent = `TR: ${record.TR} | Test Date: ${new Date(record.CreatedAt).toLocaleDateString()}`;
+        document.getElementById('anchor-student-name').textContent = record.Name;
+
+        // Helper to format numbers
+        const f = (val, dec = 1) => (val != null ? parseFloat(val).toFixed(dec) : 'N/A');
+        
+        // Helper to populate a stat item
+        const setStat = (id, value, unit = '', cssClass = '') => {
+            const el = document.getElementById(id);
+            if (el) {
+                const valueEl = el.querySelector('.test-result-item-value');
+                valueEl.textContent = value;
+                if (unit) {
+                    valueEl.innerHTML += ` <span class="unit">${unit}</span>`;
+                }
+                if (cssClass) {
+                    valueEl.className = `test-result-item-value ${cssClass}`;
+                }
+            }
+        };
+
+        // --- Populate Stats ---
+
+        // Grade and Total Score
         const gradeClass = (record.Grade || '').replace('+', '-plus').toLowerCase();
-        anchorContainer.innerHTML = `
-            <div class="anchor-header">
-                <div class="anchor-title"><h4>${record.Name}</h4><p class="text-muted">TR: ${record.TR} | Test Date: ${new Date(record.CreatedAt).toLocaleDateString()}</p></div>
-                <div class="anchor-grade ${'grade-' + gradeClass}"><span>Grade</span><strong>${record.Grade || 'N/A'}</strong></div>
-            </div>
-            <div class="test-results-grid full-grid">
-                <div class="test-result-item"><div class="test-result-item-label">Weight</div><div class="test-result-item-value">${f(record.Weight, 1, ' kg')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Height</div><div class="test-result-item-value">${f(record.Height, 1, ' cm')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Waist</div><div class="test-result-item-value">${f(record.Waist, 1, ' cm')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Hips</div><div class="test-result-item-value">${f(record.Hips, 1, ' cm')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Neck</div><div class="test-result-item-value">${f(record.Neck, 1, ' cm')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">BMI</div><div class="test-result-item-value ${'status-' + statusClass}">${f(record.BMI, 1)}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">BMI Status</div><div class="test-result-item-value ${'status-' + statusClass}">${record.BMIStatus}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Body Fat</div><div class="test-result-item-value">${f(record.BodyFat, 1, '%')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">BMR</div><div class="test-result-item-value">${f(record.BMR, 0, ' kcal')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Calorie Intake</div><div class="test-result-item-value">${f(record.CalorieIntake, 0, ' kcal')}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">VO₂ Max</div><div class="test-result-item-value">${f(record.VO2Max, 0)}</div></div>
-                <div class="test-result-item"><div class="test-result-item-label">Total Score</div><div class="test-result-item-value">${f(record.Total, 0)}</div></div>
-            </div>`;
+        document.getElementById('anchor-grade-value').textContent = record.Grade || 'N/A';
+        document.getElementById('anchor-grade-box').className = `anchor-grade grade-${gradeClass}`;
+        
+        document.getElementById('anchor-score-value').textContent = f(record.Total, 1) + '%';
+
+        // Body Comp
+        setStat('stat-Weight', f(record.Weight), 'kg');
+        setStat('stat-Height', f(record.Height), 'cm');
+        setStat('stat-Waist', f(record.Waist), 'cm');
+        setStat('stat-Hips', f(record.Hips), 'cm');
+        setStat('stat-Neck', f(record.Neck), 'cm');
+
+        // BMI Metrics
+        const statusClass = (record.BMIStatus || '').split(' ')[0].toLowerCase();
+        setStat('stat-BMI', f(record.BMI), '', `status-${statusClass}`);
+        
+        // ★★★ FIX for NaN: Set BMIStatus as a direct string, not a number ★★★
+        const bmiStatusEl = document.getElementById('stat-BMIStatus');
+        if (bmiStatusEl) {
+            const valueEl = bmiStatusEl.querySelector('.test-result-item-value');
+            valueEl.textContent = record.BMIStatus; // Set as text
+            valueEl.className = `test-result-item-value status-${statusClass}`;
+        }
+
+        // Metabolism & Fitness
+        setStat('stat-BodyFat', f(record.BodyFat), '%');
+        setStat('stat-BMR', f(record.BMR, 0), 'kcal');
+        setStat('stat-VO2Max', f(record.VO2Max, 0), 'ml/kg');
     }
+    
+    /**
+     * ★★★ REQ 3: Populates the new medical history card ★★★
+     */
+    function populateMedicalHistory(history) {
+        if (!history) {
+            medicalContainer.innerHTML = '<p class="text-muted">No medical history provided by the student.</p>';
+            return;
+        }
+        
+        const c = (val) => val || '<i class="text-muted">N/A</i>';
+        
+        medicalContainer.innerHTML = `
+            <ul class="medical-history-list">
+                <li><strong>Known Allergies:</strong> ${c(history.Allergies)}</li>
+                <li><strong>Current Medications:</strong> ${c(history.Medications)}</li>
+                <li><strong>Family History of Illness:</strong> ${c(history.FamilyHistory)}</li>
+                <li><strong>Previous Injuries/Surgeries:</strong> ${c(history.PreviousInjuries)}</li>
+            </ul>
+        `;
+    }
+
+    /**
+     * ★★★ REQ 1 & 2: Populates the renamed forms ★★★
+     */
     function populateForm(comments) {
-        document.getElementById('metaNutrition').innerHTML = '';
-        document.getElementById('metaHealth').innerHTML = '';
-        document.getElementById('metaRecommendations').innerHTML = '';
+        // Clear old metadata
+        document.getElementById('metaStrengths').innerHTML = '';
+        document.getElementById('metaImprovement').innerHTML = '';
+        document.getElementById('metaGuidelines').innerHTML = '';
+
         if (comments) {
-            form.elements.NutritionNotes.value = comments.NutritionNotes || '';
-            document.getElementById('metaNutrition').innerHTML = formatMetaData(comments.NutritionEvaluator, comments.NutritionUpdatedAt);
-            form.elements.HealthNotes.value = comments.HealthNotes || '';
-            document.getElementById('metaHealth').innerHTML = formatMetaData(comments.HealthEvaluator, comments.HealthUpdatedAt);
-            form.elements.Recommendations.value = comments.Recommendations || '';
-            document.getElementById('metaRecommendations').innerHTML = formatMetaData(comments.RecommendationEvaluator, comments.RecommendationUpdatedAt);
+            // Renamed Comment Fields
+            commentForm.elements.Strengths.value = comments.Strengths || '';
+            document.getElementById('metaStrengths').innerHTML = 
+                formatMetaData(comments.StrengthsEvaluator, comments.StrengthsUpdatedAt);
+            
+            commentForm.elements.AreasOfImprovement.value = comments.AreasOfImprovement || '';
+            document.getElementById('metaImprovement').innerHTML = 
+                formatMetaData(comments.AreasOfImprovementEvaluator, comments.AreasOfImprovementUpdatedAt);
+
+            commentForm.elements.NutritionalGuidelines.value = comments.NutritionalGuidelines || '';
+            document.getElementById('metaGuidelines').innerHTML = 
+                formatMetaData(comments.NutritionalGuidelinesEvaluator, comments.NutritionalGuidelinesUpdatedAt);
+            
+            // New Goal Fields
+            goalsForm.elements.GoalShortTerm.value = comments.GoalShortTerm || '';
+            goalsForm.elements.GoalLongTerm.value = comments.GoalLongTerm || '';
+            goalsForm.elements.GoalTimeFrame.value = comments.GoalTimeFrame || '';
         }
     }
+
+    /**
+     * ★★★ REQ 1: Populates history with renamed columns ★★★
+     */
     function populateHistory(historicalRecords) {
         if (!historicalRecords || historicalRecords.length === 0) {
-            historyContainer.innerHTML = '<h4 class="text-muted">No previous test history found for this student.</h4>';
+            historyContainer.innerHTML = '<h4>No previous test history found.</h4>';
             return;
         }
         let html = `<h3 class="mb-3">Previous Evaluations (${historicalRecords.length})</h3><div class="accordion" id="historyAccordion">`;
         historicalRecords.forEach((item, index) => {
             const c = (val) => val || '<i class="text-muted">No comment.</i>';
-            const isCompleted = item.NutritionNotes && item.HealthNotes && item.Recommendations;
-            const isPartial = item.NutritionNotes || item.HealthNotes || item.Recommendations;
+            const isCompleted = item.Strengths && item.AreasOfImprovement && item.NutritionalGuidelines;
+            const isPartial = item.Strengths || item.AreasOfImprovement || item.NutritionalGuidelines;
             let status = 'Pending';
             let statusClass = 'status-pending';
             if (isCompleted) { status = 'Completed'; statusClass = 'status-completed'; } 
             else if (isPartial) { status = 'Partial'; statusClass = 'status-partial'; }
             const gradeClass = (item.Grade || '').replace('+', '-plus').toLowerCase();
+            
             html += `
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="heading-${index}">
@@ -160,15 +259,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="test-result-item"><div class="test-result-item-label">Grade</div><div class="test-result-item-value ${'grade-' + gradeClass}">${item.Grade || 'N/A'}</div></div>
                             </div>
                             <hr>
-                            <h5>Nutrition Notes</h5>
-                            <span class="comment-meta-data">${formatMetaData(item.NutritionEvaluator, item.NutritionUpdatedAt)}</span>
-                            <p class="history-comment">${c(item.NutritionNotes)}</p>
-                            <h5>Health / Issues Notes</h5>
-                            <span class="comment-meta-data">${formatMetaData(item.HealthEvaluator, item.HealthUpdatedAt)}</span>
-                            <p class="history-comment">${c(item.HealthNotes)}</p>
-                            <h5>Recommendations</h5>
-                            <span class="comment-meta-data">${formatMetaData(item.RecommendationEvaluator, item.RecommendationUpdatedAt)}</span>
-                            <p class="history-comment">${c(item.Recommendations)}</p>
+                            <h5>Strengths</h5>
+                            <span class="comment-meta-data">${formatMetaData(item.StrengthsEvaluator, item.StrengthsUpdatedAt)}</span>
+                            <p class="history-comment">${c(item.Strengths)}</p>
+                            
+                            <h5>Areas of Improvement</h5>
+                            <span class="comment-meta-data">${formatMetaData(item.AreasOfImprovementEvaluator, item.AreasOfImprovementUpdatedAt)}</span>
+                            <p class="history-comment">${c(item.AreasOfImprovement)}</p>
+                            
+                            <h5>Nutritional Guidelines</h5>
+                            <span class="comment-meta-data">${formatMetaData(item.NutritionalGuidelinesEvaluator, item.NutritionalGuidelinesUpdatedAt)}</span>
+                            <p class="history-comment">${c(item.NutritionalGuidelines)}</p>
                         </div>
                     </div>
                 </div>`;
@@ -177,13 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
         historyContainer.innerHTML = html;
     }
 
-    // --- 3. ★★★ NEW: HANDLE FORM ACTIONS ★★★ ---
+    // --- 3. HANDLE FORM ACTIONS ---
 
-    /**
-     * Re-usable save function for the new atomic buttons
-     */
+    // Re-usable save function for atomic buttons
     async function handleAtomicSave(button, apiEndpoint, payload, metaElementId) {
-        // 1. Show loader
         const spinner = button.querySelector('.spinner-border');
         const buttonText = button.querySelector('.button-text');
         button.disabled = true;
@@ -199,78 +297,94 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
 
-            // 2. Show success toast
             Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Saved!',
-                showConfirmButton: false,
-                timer: 2000
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'Saved!', showConfirmButton: false, timer: 2000
             });
-
-            // 3. Update the metadata in real-time
+            
             document.getElementById(metaElementId).innerHTML = 
                 formatMetaData(data.evaluator, data.updatedAt);
 
         } catch (err) {
             Swal.fire('Save Failed', err.message, 'error');
         } finally {
-            // 4. Hide loader
             button.disabled = false;
             spinner.classList.add('d-none');
             buttonText.textContent = 'Save';
         }
     }
 
-    // --- Add listeners for the 3 new save buttons ---
-    
-    saveNutritionBtn.addEventListener('click', () => {
+    // ★★★ REQ 1: Listeners for renamed save buttons ★★★
+    saveStrengthsBtn.addEventListener('click', () => {
         handleAtomicSave(
-            saveNutritionBtn,
-            '/api/evaluation/save-nutrition',
-            {
-                TestLog: currentTestLog,
-                NutritionNotes: form.elements.NutritionNotes.value
-            },
-            'metaNutrition'
+            saveStrengthsBtn,
+            '/api/evaluation/save-strengths',
+            { TestLog: currentTestLog, Strengths: commentForm.elements.Strengths.value },
+            'metaStrengths'
+        );
+    });
+    saveImprovementBtn.addEventListener('click', () => {
+        handleAtomicSave(
+            saveImprovementBtn,
+            '/api/evaluation/save-improvement',
+            { TestLog: currentTestLog, AreasOfImprovement: commentForm.elements.AreasOfImprovement.value },
+            'metaImprovement'
+        );
+    });
+    saveGuidelinesBtn.addEventListener('click', () => {
+        handleAtomicSave(
+            saveGuidelinesBtn,
+            '/api/evaluation/save-guidelines',
+            { TestLog: currentTestLog, NutritionalGuidelines: commentForm.elements.NutritionalGuidelines.value },
+            'metaGuidelines'
         );
     });
 
-    saveHealthBtn.addEventListener('click', () => {
-        handleAtomicSave(
-            saveHealthBtn,
-            '/api/evaluation/save-health',
-            {
+    // ★★★ REQ 2: Listener for new Goals save button ★★★
+    saveGoalsBtn.addEventListener('click', async () => {
+        const button = saveGoalsBtn;
+        const spinner = button.querySelector('.spinner-border');
+        const buttonText = button.querySelector('.button-text');
+        button.disabled = true;
+        spinner.classList.remove('d-none');
+        buttonText.textContent = 'Saving...';
+
+        try {
+            const payload = {
                 TestLog: currentTestLog,
-                HealthNotes: form.elements.HealthNotes.value
-            },
-            'metaHealth'
-        );
+                GoalShortTerm: goalsForm.elements.GoalShortTerm.value,
+                GoalLongTerm: goalsForm.elements.GoalLongTerm.value,
+                GoalTimeFrame: goalsForm.elements.GoalTimeFrame.value
+            };
+            
+            const res = await fetch('/api/evaluation/save-goals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'Goals Saved!', showConfirmButton: false, timer: 2000
+            });
+        } catch (err) {
+            Swal.fire('Save Failed', err.message, 'error');
+        } finally {
+            button.disabled = false;
+            spinner.classList.add('d-none');
+            buttonText.textContent = 'Save Goals';
+        }
     });
 
-    saveRecsBtn.addEventListener('click', () => {
-        handleAtomicSave(
-            saveRecsBtn,
-            '/api/evaluation/save-recommendation',
-            {
-                TestLog: currentTestLog,
-                Recommendations: form.elements.Recommendations.value
-            },
-            'metaRecommendations'
-        );
-    });
-
-    // --- Add listener for the new "Continue" button ---
-    
+    // --- Navigation (Unchanged) ---
     continueNextBtn.addEventListener('click', () => {
         const nextIndex = currentRecordIndex + 1;
         if (nextIndex < batchRecordList.length) {
-            // Go to the next record
             const nextTestLog = batchRecordList[nextIndex];
             window.location.href = `comment-entry.html?testlog=${nextTestLog}&batch=${currentBatchID}`;
         } else {
-            // This was the last record, go back to dashboard
             window.location.href = 'evaluation.html';
         }
     });

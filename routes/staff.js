@@ -2477,7 +2477,7 @@ const isEvaluator = (req, res, next) => {
 
 /**
  * 1. GET: Fetch Batch Counts
- * (★★★ UPDATED FOR "Partial Pending" STATUS ★★★)
+ * (★★★ UPDATED with new column names ★★★)
  * Fetches all named batches AND unbatched records with 3-stage status.
  */
 router.get('/api/evaluation/batches', isEvaluator, async (req, res) => {
@@ -2487,7 +2487,6 @@ router.get('/api/evaluation/batches', isEvaluator, async (req, res) => {
         request.input('Gender', sql.NVarChar(10), req.Gender);
 
         const result = await request.query(`
-            -- 1. Get all Trainer-submitted records
             WITH TrainerRecords AS (
                 SELECT TestLog, BatchID
                 FROM TestRecords
@@ -2495,23 +2494,18 @@ router.get('/api/evaluation/batches', isEvaluator, async (req, res) => {
                   AND Branch = @Branch
                   AND Gender = @Gender
             ),
-            -- 2. Join with comments and determine the new 3-stage status
             RecordStatus AS (
                 SELECT 
                     tr.BatchID,
-                    -- Status Logic:
-                    -- 1. No row in EvaluatorComments = 'Pending'
-                    -- 2. Row exists, but one or more notes are NULL = 'Partial Pending'
-                    -- 3. Row exists, and all three notes are NOT NULL = 'Completed'
+                    -- Status Logic with new column names
                     CASE
                         WHEN ec.CommentID IS NULL THEN 'Pending'
-                        WHEN ec.NutritionNotes IS NULL OR ec.HealthNotes IS NULL OR ec.Recommendations IS NULL THEN 'Partial Pending'
+                        WHEN ec.Strengths IS NULL OR ec.AreasOfImprovement IS NULL OR ec.NutritionalGuidelines IS NULL THEN 'Partial Pending'
                         ELSE 'Completed'
                     END AS Status
                 FROM TrainerRecords tr
                 LEFT JOIN EvaluatorComments ec ON tr.TestLog = ec.TestLog
             )
-            -- 3. Group by BatchID and count
             SELECT 
                 rs.BatchID,
                 ISNULL(eb.BatchName, 'Unbatched Records') AS BatchName,
@@ -2536,26 +2530,24 @@ router.get('/api/evaluation/batches', isEvaluator, async (req, res) => {
 
 /**
  * 2. GET: Fetch Batch Details
- * (★★★ UPDATED FOR "Partial Pending" STATUS ★★★)
+ * (★★★ UPDATED with new column names ★★★)
  * Gets records for a specific BatchID OR for 'null' (unbatched).
  */
 router.get('/api/evaluation/batch-details/:batchID', isEvaluator, async (req, res) => {
-    const { batchID } = req.params; // This will be a number or the string 'null'
+    const { batchID } = req.params; 
 
     try {
         const request = pool.request();
         request.input('Branch', sql.NVarChar(50), req.Branch);
         request.input('Gender', sql.NVarChar(10), req.Gender);
 
-        // This query works for both cases (BatchID = @BatchID OR BatchID IS NULL)
-        // We use a bit of SQL magic to handle both cases in one query.
         let query = `
             SELECT 
                 tr.TestLog, tr.TR, tm.Name, tr.Grade, tr.CreatedAt,
-                -- New 3-Stage Status Logic
+                -- New 3-Stage Status Logic with new column names
                 CASE
                     WHEN ec.CommentID IS NULL THEN 'Pending'
-                    WHEN ec.NutritionNotes IS NULL OR ec.HealthNotes IS NULL OR ec.Recommendations IS NULL THEN 'Partial Pending'
+                    WHEN ec.Strengths IS NULL OR ec.AreasOfImprovement IS NULL OR ec.NutritionalGuidelines IS NULL THEN 'Partial Pending'
                     ELSE 'Completed'
                 END AS CommentStatus
             FROM TestRecords tr
@@ -2567,10 +2559,10 @@ router.get('/api/evaluation/batch-details/:batchID', isEvaluator, async (req, re
         `;
 
         if (batchID === 'null') {
-            query += ' AND tr.BatchID IS NULL'; // Filter for unbatched
+            query += ' AND tr.BatchID IS NULL';
         } else {
             request.input('BatchID', sql.Int, batchID);
-            query += ' AND tr.BatchID = @BatchID'; // Filter for a specific batch
+            query += ' AND tr.BatchID = @BatchID';
         }
         
         query += ' ORDER BY CommentStatus ASC, tr.CreatedAt DESC;';
@@ -2586,12 +2578,10 @@ router.get('/api/evaluation/batch-details/:batchID', isEvaluator, async (req, re
 
 
 /**
- * 3. POST: Save/Update Comment (NEW ATOMIC ROUTES)
- * These three routes replace the old 'save-comment' route.
- * Each route is responsible for saving only one field.
+ * 3. POST: Save/Update Atomic Comments
+ * (★★★ RENAMED routes and fields ★★★)
+ * Helper function to create the 3 atomic save routes
  */
-
-// Helper function for the 3 save routes
 const createSaveRoute = (fieldName, evaluatorField, updatedAtField) => {
     return async (req, res) => {
         const { TestLog } = req.body;
@@ -2605,29 +2595,23 @@ const createSaveRoute = (fieldName, evaluatorField, updatedAtField) => {
         try {
             const request = pool.request();
             request.input('TestLog', sql.Int, TestLog);
-            request.input('CommentText', sql.NVarChar(sql.MAX), commentText || null); // Handle empty strings
+            request.input('CommentText', sql.NVarChar(sql.MAX), commentText || null);
             request.input('Evaluator', sql.NVarChar(50), evaluatorUsername);
 
-            // Use MERGE (upsert) to create or update the record non-destructively
             await request.query(`
                 MERGE INTO EvaluatorComments AS target
                 USING (SELECT @TestLog AS TestLog) AS source
                 ON (target.TestLog = source.TestLog)
-                
-                -- When a row for this TestLog already exists
                 WHEN MATCHED THEN
                     UPDATE SET 
                         ${fieldName} = @CommentText,
                         ${evaluatorField} = @Evaluator,
                         ${updatedAtField} = GETUTCDATE()
-                
-                -- When no row exists for this TestLog
                 WHEN NOT MATCHED THEN
                     INSERT (TestLog, ${fieldName}, ${evaluatorField}, ${updatedAtField})
                     VALUES (@TestLog, @CommentText, @Evaluator, GETUTCDATE());
             `);
 
-            // Return the new author/timestamp to update the UI in real-time
             res.json({ 
                 success: true, 
                 message: 'Comment saved.',
@@ -2642,23 +2626,67 @@ const createSaveRoute = (fieldName, evaluatorField, updatedAtField) => {
     };
 };
 
-// Create the three distinct routes
-router.post('/api/evaluation/save-nutrition', isEvaluator, 
-    createSaveRoute('NutritionNotes', 'NutritionEvaluator', 'NutritionUpdatedAt')
+// Create the three distinct, renamed routes
+router.post('/api/evaluation/save-strengths', isEvaluator, 
+    createSaveRoute('Strengths', 'StrengthsEvaluator', 'StrengthsUpdatedAt')
 );
 
-router.post('/api/evaluation/save-health', isEvaluator, 
-    createSaveRoute('HealthNotes', 'HealthEvaluator', 'HealthUpdatedAt')
+router.post('/api/evaluation/save-improvement', isEvaluator, 
+    createSaveRoute('AreasOfImprovement', 'AreasOfImprovementEvaluator', 'AreasOfImprovementUpdatedAt')
 );
 
-router.post('/api/evaluation/save-recommendation', isEvaluator, 
-    createSaveRoute('Recommendations', 'RecommendationEvaluator', 'RecommendationUpdatedAt')
+router.post('/api/evaluation/save-guidelines', isEvaluator, 
+    createSaveRoute('NutritionalGuidelines', 'NutritionalGuidelinesEvaluator', 'NutritionalGuidelinesUpdatedAt')
 );
 
 /**
- * 4. GET: Get Single Record & FULL History
- * (★★★ UPDATED FOR NEW DB STRUCTURE ★★★)
- * Fetches full record, comments, and all historical authors/timestamps.
+ * 4. POST: Save/Update Goals
+ * (★★★ NEW FEATURE ★★★)
+ * Saves the three goal-setting fields at once.
+ */
+router.post('/api/evaluation/save-goals', isEvaluator, async (req, res) => {
+    const { TestLog, GoalShortTerm, GoalLongTerm, GoalTimeFrame } = req.body;
+
+    if (!TestLog) {
+        return res.status(400).json({ success: false, message: 'TestLog ID is required.' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('TestLog', sql.Int, TestLog);
+        request.input('GoalShortTerm', sql.NVarChar(sql.MAX), GoalShortTerm || null);
+        request.input('GoalLongTerm', sql.NVarChar(sql.MAX), GoalLongTerm || null);
+        request.input('GoalTimeFrame', sql.NVarChar(50), GoalTimeFrame || null);
+
+        // Use MERGE (upsert) to create or update the record
+        await request.query(`
+            MERGE INTO EvaluatorComments AS target
+            USING (SELECT @TestLog AS TestLog) AS source
+            ON (target.TestLog = source.TestLog)
+            -- When a row for this TestLog already exists
+            WHEN MATCHED THEN
+                UPDATE SET 
+                    GoalShortTerm = @GoalShortTerm,
+                    GoalLongTerm = @GoalLongTerm,
+                    GoalTimeFrame = @GoalTimeFrame
+            -- When no row exists for this TestLog
+            WHEN NOT MATCHED THEN
+                INSERT (TestLog, GoalShortTerm, GoalLongTerm, GoalTimeFrame)
+                VALUES (@TestLog, @GoalShortTerm, @GoalLongTerm, @GoalTimeFrame);
+        `);
+
+        res.json({ success: true, message: 'Goals saved successfully.' });
+
+    } catch (err) {
+        console.error('Error saving goals:', err);
+        res.status(500).json({ success: false, message: 'Failed to save goals.' });
+    }
+});
+
+
+/**
+ * 5. GET: Get Single Record, History, & Medical Info
+ * (★★★ UPGRADED with BatchName, MedicalHistory, and Renamed Columns ★★★)
  */
 router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, res) => {
     const { testLog } = req.params;
@@ -2667,39 +2695,43 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
         const request = new sql.Request(pool);
         request.input('TestLog', sql.Int, testLog);
 
-        // --- 1. Get the current record's details
+        // --- 1. Get the current record's details (and BatchName)
         const currentRecordQuery = `
             SELECT 
                 tr.TestLog, tr.TR, tm.Name,
                 tr.Weight, tr.Height, tr.Waist, tr.Hips, tr.Neck,
                 tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
                 tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,
-                tr.CreatedAt, tr.BatchID
+                tr.CreatedAt, tr.BatchID,
+                ISNULL(eb.BatchName, 'Unbatched') AS BatchName
             FROM TestRecords tr
             JOIN TestMaster tm ON tr.TR = tm.TR
+            LEFT JOIN EvaluationBatches eb ON tr.BatchID = eb.BatchID
             WHERE tr.TestLog = @TestLog;
         `;
 
-        // --- 2. Get the current record's comments (with new author fields)
+        // --- 2. Get the current record's comments (with new column names)
         const currentCommentsQuery = `
             SELECT 
-                NutritionNotes, NutritionEvaluator, NutritionUpdatedAt,
-                HealthNotes, HealthEvaluator, HealthUpdatedAt,
-                Recommendations, RecommendationEvaluator, RecommendationUpdatedAt
+                Strengths, StrengthsEvaluator, StrengthsUpdatedAt,
+                AreasOfImprovement, AreasOfImprovementEvaluator, AreasOfImprovementUpdatedAt,
+                NutritionalGuidelines, NutritionalGuidelinesEvaluator, NutritionalGuidelinesUpdatedAt,
+                GoalShortTerm, GoalLongTerm, GoalTimeFrame
             FROM EvaluatorComments
             WHERE TestLog = @TestLog;
         `;
         
-        // --- 3. Get ALL historical records and comments (with new author fields)
+        // --- 3. Get ALL historical records and comments (with new column names)
         const historyQuery = `
             SELECT 
                 tr.TestLog,
                 ISNULL(eb.BatchName, 'Unbatched') AS BatchName,
                 tr.CreatedAt,
                 tr.Weight, tr.BMI, tr.Grade,
-                ec.NutritionNotes, ec.NutritionEvaluator, ec.NutritionUpdatedAt,
-                ec.HealthNotes, ec.HealthEvaluator, ec.HealthUpdatedAt,
-                ec.Recommendations, ec.RecommendationEvaluator, ec.RecommendationUpdatedAt
+                ec.Strengths, ec.StrengthsEvaluator, ec.StrengthsUpdatedAt,
+                ec.AreasOfImprovement, ec.AreasOfImprovementEvaluator, ec.AreasOfImprovementUpdatedAt,
+                ec.NutritionalGuidelines, ec.NutritionalGuidelinesEvaluator, ec.NutritionalGuidelinesUpdatedAt,
+                ec.GoalShortTerm, ec.GoalLongTerm, ec.GoalTimeFrame
             FROM TestRecords tr
             LEFT JOIN EvaluatorComments ec ON tr.TestLog = ec.TestLog
             LEFT JOIN EvaluationBatches eb ON tr.BatchID = eb.BatchID
@@ -2712,27 +2744,36 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
                 tr.CreatedAt DESC;
         `;
 
-        // Run all queries
+        // --- 4. Get Medical History (NEW)
+        const medicalHistoryQuery = `
+            SELECT * FROM MedicalHistory
+            WHERE TR = (SELECT TR FROM TestRecords WHERE TestLog = @TestLog);
+        `;
+
+        // Run all queries in parallel
         const [
             currentRecordResult,
             currentCommentsResult,
-            historicalRecordsResult
+            historicalRecordsResult,
+            medicalHistoryResult
         ] = await Promise.all([
             request.query(currentRecordQuery),
             request.query(currentCommentsQuery),
-            request.query(historyQuery)
+            request.query(historyQuery),
+            request.query(medicalHistoryQuery)
         ]);
 
         if (currentRecordResult.recordset.length === 0) {
             return res.status(404).json({ success: false, message: 'Test Record not found.' });
         }
 
-        // Send the new, structured response
+        // Send the new, combined response
         res.json({
             success: true,
             currentRecord: currentRecordResult.recordset[0],
-            currentComments: currentCommentsResult.recordset[0], 
-            historicalRecords: historicalRecordsResult.recordset
+            currentComments: currentCommentsResult.recordset[0] || null, 
+            historicalRecords: historicalRecordsResult.recordset,
+            medicalHistory: medicalHistoryResult.recordset[0] || null // One row per student
         });
 
     } catch (err) {
@@ -2742,19 +2783,15 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
 });
 
 /**
- * 5. GET: Get Evaluation Statistics
- * (★★★ NEW FEATURE ★★★)
- * Fetches all stats for the evaluator dashboard:
- * 1. Line chart data (progress over time)
- * 2. Latest batch snapshot (for cards and donut chart)
+ * 6. GET: Get Evaluation Statistics
+ * (This route is unchanged, as it uses TestRecords, not EvaluatorComments)
  */
 router.get('/api/evaluation/statistics', isEvaluator, async (req, res) => {
+    // ... (This entire route is unchanged and correct)
     try {
         const request = new sql.Request(pool);
         request.input('Branch', sql.NVarChar(50), req.Branch);
         request.input('Gender', sql.NVarChar(10), req.Gender);
-
-        // --- 1. Get stats for ALL batches (for the line chart) ---
         const lineChartQuery = `
             SELECT 
                 eb.BatchName,
@@ -2771,9 +2808,6 @@ router.get('/api/evaluation/statistics', isEvaluator, async (req, res) => {
             ORDER BY 
                 eb.BatchID ASC;
         `;
-        
-        // --- 2. Find the ID of the most recent *locked* batch ---
-        // We use a locked batch for a stable "snapshot"
         const latestBatchQuery = `
             SELECT TOP 1 BatchID 
             FROM EvaluationBatches
@@ -2784,53 +2818,31 @@ router.get('/api/evaluation/statistics', isEvaluator, async (req, res) => {
             ORDER BY 
                 CreatedAt DESC;
         `;
-
-        // --- Run first two queries ---
         const [lineChartResult, latestBatchResult] = await Promise.all([
             request.query(lineChartQuery),
             request.query(latestBatchQuery)
         ]);
-
         let latestBatchStats = {
             AvgBMI: null,
             AvgBodyFat: null,
             BmiStatusDistribution: [],
             MostCommonGrade: null
         };
-
-        // --- 3. If a "latest locked batch" exists, get its stats ---
         if (latestBatchResult.recordset.length > 0) {
             const latestBatchID = latestBatchResult.recordset[0].BatchID;
-            const statsRequest = new sql.Request(pool); // New request
+            const statsRequest = new sql.Request(pool);
             statsRequest.input('LatestBatchID', sql.Int, latestBatchID);
-
-            // Queries for the snapshot
             const snapshotQuery = `
-                -- Query A: Get Avg BMI and BodyFat
-                SELECT 
-                    AVG(BMI) AS LatestAvgBMI,
-                    AVG(BodyFat) AS LatestAvgBodyFat
-                FROM TestRecords
-                WHERE BatchID = @LatestBatchID;
-
-                -- Query B: Get BMI Status distribution
-                SELECT 
-                    BMIStatus,
-                    COUNT(*) AS StatusCount
-                FROM TestRecords
-                WHERE BatchID = @LatestBatchID
+                SELECT AVG(BMI) AS LatestAvgBMI, AVG(BodyFat) AS LatestAvgBodyFat
+                FROM TestRecords WHERE BatchID = @LatestBatchID;
+                SELECT BMIStatus, COUNT(*) AS StatusCount
+                FROM TestRecords WHERE BatchID = @LatestBatchID
                 GROUP BY BMIStatus;
-
-                -- Query C: Get Most Common Grade
-                SELECT TOP 1 Grade
-                FROM TestRecords
+                SELECT TOP 1 Grade FROM TestRecords
                 WHERE BatchID = @LatestBatchID AND Grade IS NOT NULL
-                GROUP BY Grade
-                ORDER BY COUNT(*) DESC;
+                GROUP BY Grade ORDER BY COUNT(*) DESC;
             `;
-
             const snapshotResult = await statsRequest.query(snapshotQuery);
-
             latestBatchStats = {
                 AvgBMI: snapshotResult.recordsets[0][0]?.LatestAvgBMI,
                 AvgBodyFat: snapshotResult.recordsets[0][0]?.LatestAvgBodyFat,
@@ -2838,8 +2850,6 @@ router.get('/api/evaluation/statistics', isEvaluator, async (req, res) => {
                 MostCommonGrade: snapshotResult.recordsets[2][0]?.Grade
             };
         }
-        
-        // --- 4. Send the combined response ---
         res.json({
             success: true,
             data: {
@@ -2847,7 +2857,6 @@ router.get('/api/evaluation/statistics', isEvaluator, async (req, res) => {
                 latestBatchStats: latestBatchStats
             }
         });
-
     } catch (err) {
         console.error('Error fetching evaluation statistics:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch statistics.' });
@@ -2856,24 +2865,21 @@ router.get('/api/evaluation/statistics', isEvaluator, async (req, res) => {
 
 
 /**
- * 6. GET: Search for a Student
- * (★★★ NEW FEATURE: Student Search ★★★)
- * Searches for students by TR or Name within the evaluator's section.
+ * 7. GET: Search for a Student
+ * (This route is unchanged)
  */
 router.get('/api/evaluation/search-student', isEvaluator, async (req, res) => {
-    const { q } = req.query; // Search query (e.g., ?q=abizer or ?q=25688)
-
+    // ... (This entire route is unchanged and correct)
+    const { q } = req.query;
     if (!q || q.length < 2) {
-        return res.json({ success: true, data: [] }); // Return empty for short queries
+        return res.json({ success: true, data: [] });
     }
-
     try {
         const request = new sql.Request(pool);
         request.input('Branch', sql.NVarChar(50), req.Branch);
         request.input('Gender', sql.NVarChar(10), req.Gender);
-        request.input('Query', sql.NVarChar(100), `%${q}%`); // For name matching
-        request.input('TRQuery', sql.NVarChar(100), `${q}%`); // For TR matching
-
+        request.input('Query', sql.NVarChar(100), `%${q}%`);
+        request.input('TRQuery', sql.NVarChar(100), `${q}%`);
         const result = await request.query(`
             SELECT TOP 10 TR, Name 
             FROM TestMaster
@@ -2883,9 +2889,7 @@ router.get('/api/evaluation/search-student', isEvaluator, async (req, res) => {
                 AND (Name LIKE @Query OR CAST(TR AS VARCHAR(20)) LIKE @TRQuery)
             ORDER BY Name ASC;
         `);
-
         res.json({ success: true, data: result.recordset });
-
     } catch (err) {
         console.error('Error in student search:', err);
         res.status(500).json({ success: false, message: 'Search failed.' });
@@ -2893,8 +2897,8 @@ router.get('/api/evaluation/search-student', isEvaluator, async (req, res) => {
 });
 
 /**
- * 7. GET: Get a Single Student's Full History (with Comments)
- * (★★★ UPDATED to fetch all comment data for the accordion ★★★)
+ * 8. GET: Get a Single Student's Full History
+ * (★★★ UPDATED with new column names ★★★)
  */
 router.get('/api/evaluation/student-history/:tr', isEvaluator, async (req, res) => {
     const { tr } = req.params;
@@ -2905,7 +2909,6 @@ router.get('/api/evaluation/student-history/:tr', isEvaluator, async (req, res) 
         request.input('Branch', sql.NVarChar(50), req.Branch);
         request.input('Gender', sql.NVarChar(10), req.Gender);
         
-        // Authorize
         const authCheck = await request.query(`
             SELECT Name FROM TestMaster 
             WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
@@ -2915,24 +2918,23 @@ router.get('/api/evaluation/student-history/:tr', isEvaluator, async (req, res) 
         }
         const studentName = authCheck.recordset[0].Name;
 
-        // Get the student's full evaluation history with all comment data
         const historyResult = await request.query(`
             SELECT 
                 tr.TestLog,
-                tr.BatchID, -- Added this
+                tr.BatchID,
                 ISNULL(eb.BatchName, 'Unbatched') AS BatchName,
                 tr.CreatedAt,
                 tr.Grade,
                 
-                -- The comment data for the accordion
-                ec.NutritionNotes, ec.NutritionEvaluator, ec.NutritionUpdatedAt,
-                ec.HealthNotes, ec.HealthEvaluator, ec.HealthUpdatedAt,
-                ec.Recommendations, ec.RecommendationEvaluator, ec.RecommendationUpdatedAt,
+                -- Renamed comment data
+                ec.Strengths, ec.StrengthsEvaluator, ec.StrengthsUpdatedAt,
+                ec.AreasOfImprovement, ec.AreasOfImprovementEvaluator, ec.AreasOfImprovementUpdatedAt,
+                ec.NutritionalGuidelines, ec.NutritionalGuidelinesEvaluator, ec.NutritionalGuidelinesUpdatedAt,
                 
-                -- 3-Stage Status Logic
+                -- 3-Stage Status Logic with new column names
                 CASE
                     WHEN ec.CommentID IS NULL THEN 'Pending'
-                    WHEN ec.NutritionNotes IS NULL OR ec.HealthNotes IS NULL OR ec.Recommendations IS NULL THEN 'Partial Pending'
+                    WHEN ec.Strengths IS NULL OR ec.AreasOfImprovement IS NULL OR ec.NutritionalGuidelines IS NULL THEN 'Partial Pending'
                     ELSE 'Completed'
                 END AS CommentStatus
             FROM TestRecords tr
@@ -2947,13 +2949,90 @@ router.get('/api/evaluation/student-history/:tr', isEvaluator, async (req, res) 
 
         res.json({ 
             success: true, 
-            studentName: studentName, // Send the name for the modal title
+            studentName: studentName,
             data: historyResult.recordset 
         });
 
     } catch (err) {
         console.error('Error fetching student history:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch student history.' });
+    }
+});
+
+/**
+ * 8. GET: Export Batch Data
+ * (★★★ NEW FEATURE: Excel Export ★★★)
+ * Fetches all 22 data points for every record in a specific batch.
+ */
+router.get('/api/evaluation/export/:batchID', isEvaluator, async (req, res) => {
+    const { batchID } = req.params; // Will be a number or the string 'null'
+
+    try {
+        const request = new sql.Request(pool);
+        request.input('Branch', sql.NVarChar(50), req.Branch);
+        request.input('Gender', sql.NVarChar(10), req.Gender);
+        
+        let batchName = 'Unbatched Records';
+        let query;
+
+        if (batchID === 'null') {
+            // Query for UNBATCHED records
+            query = `
+                WHERE tr.Branch = @Branch
+                  AND tr.Gender = @Gender
+                  AND tr.SubmittedBy = 'Trainer'
+                  AND tr.BatchID IS NULL
+            `;
+        } else {
+            // Query for a SPECIFIC BATCH
+            request.input('BatchID', sql.Int, batchID);
+            
+            // Get the batch name for the file
+            const batchNameResult = await request.query(`
+                SELECT BatchName FROM EvaluationBatches WHERE BatchID = @BatchID
+            `);
+            if (batchNameResult.recordset.length > 0) {
+                batchName = batchNameResult.recordset[0].BatchName;
+            }
+
+            query = `
+                WHERE tr.Branch = @Branch
+                  AND tr.Gender = @Gender
+                  AND tr.SubmittedBy = 'Trainer'
+                  AND tr.BatchID = @BatchID
+            `;
+        }
+        
+        // This is the main query that joins all 3 tables
+        const dataResult = await request.query(`
+            SELECT 
+                tr.TR,
+                tm.Name,
+                tr.Weight, tr.Height, tr.Waist, tr.Hips, tr.Neck,
+                tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
+                tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,
+                
+                ec.Strengths, ec.StrengthsEvaluator,
+                ec.AreasOfImprovement, ec.AreasOfImprovementEvaluator,
+                ec.NutritionalGuidelines, ec.NutritionalGuidelinesEvaluator,
+                
+                ec.GoalShortTerm, ec.GoalLongTerm, ec.GoalTimeFrame
+            FROM TestRecords tr
+            JOIN TestMaster tm ON tr.TR = tm.TR
+            LEFT JOIN EvaluatorComments ec ON tr.TestLog = ec.TestLog
+            ${query}
+            ORDER BY tm.Name ASC;
+        `);
+
+        res.json({ 
+            success: true, 
+            batchName: batchName,
+            records: dataResult.recordset 
+        });
+
+    } catch (err) {
+        console.error('Error exporting batch data:', err);
+        res.status(500).json({ success: false, message: 'Failed to export data.' });
     }
 });
 

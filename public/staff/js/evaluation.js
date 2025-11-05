@@ -9,8 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Modal & Table variables ---
     let batchDetailsModal = null, studentHistoryModal = null;
+    let exportBatchModal = null; // ★★★ New Modal
     let batchDetailsDataTable = null;
     let currentBatchID = null, currentBatchName = null; 
+    let allBatchesData = []; // ★★★ New: Cache for batch list
 
     // --- Search variables ---
     const searchInput = document.getElementById('studentSearchInput');
@@ -25,22 +27,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) { /* ignore */ }
 
-    // --- ★★★ NEW HELPER FUNCTION (from comment-entry.js) ★★★ ---
+    // Helper function to format author/timestamp
     function formatMetaData(evaluator, timestamp) {
         if (!evaluator) return '';
         const date = new Date(timestamp).toLocaleDateString();
         return `Last updated by <strong>${evaluator}</strong> on ${date}`;
     }
 
-    // (Unchanged functions: loadStatistics, loadBatchCards, initializeBatchDetailsTable, openBatchDetailsModal, chart functions)
-    async function loadStatistics() { /* ... (this function is unchanged) ... */ }
-    async function loadBatchCards() { /* ... (this function is unchanged) ... */ }
-    function initializeBatchDetailsTable() { /* ... (this function is unchanged) ... */ }
-    function openBatchDetailsModal(batchId, batchName) { /* ... (this function is unchanged) ... */ }
-    function drawBmiOverTimeChart(lineChartData) { /* ... (unchanged) ... */ }
-    function drawBmiStatusChart(BmiStatusDistribution) { /* ... (unchanged) ... */ }
-    
-    // (Pasting the unchanged functions for completeness)
+    // (Unchanged: loadStatistics, loadBatchCards, initializeBatchDetailsTable, openBatchDetailsModal, chart functions)
     async function loadStatistics() {
         try {
             const res = await fetch('/api/evaluation/statistics', { credentials: 'include' });
@@ -57,12 +51,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('statistics-overview').innerHTML = `<p class="text-danger">Could not load statistics.</p>`;
         }
     }
+
+    /**
+     * Load Batch Cards
+     * (★★★ UPDATED to cache batch data ★★★)
+     */
     async function loadBatchCards() {
         const container = document.getElementById('batch-cards-container');
         try {
             const res = await fetch('/api/evaluation/batches', { credentials: 'include' });
             if (!res.ok) { if (res.status === 403) throw new Error('Access Denied.'); throw new Error('Failed to fetch evaluation batches.'); }
+            
             const { data } = await res.json();
+            allBatchesData = data; // ★★★ Cache the data for the export modal
+            
             if (data.length === 0) { container.innerHTML = '<p>No test records found to evaluate.</p>'; return; }
             container.innerHTML = ''; 
             data.forEach(batch => {
@@ -96,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = `<p class="text-danger">${err.message}</p>`;
         }
     }
+
     function initializeBatchDetailsTable() {
         if (batchDetailsDataTable) return;
         batchDetailsDataTable = $('#batch-details-table').DataTable({
@@ -157,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bmiStatusChart) { bmiStatusChart.destroy(); }
         const labels = BmiStatusDistribution.map(d => d.BMIStatus);
         const data = BmiStatusDistribution.map(d => d.StatusCount);
-        const colorMap = { 'Normal': primaryColor, 'Overweight': warningColor, 'Obese': dangerColor, 'Obese II': '#a93226', 'Underweight': blueColor, 'Severely Underweight': '#2471a3', };
+        const colorMap = { 'Normal': primaryColor, 'Normal weight': primaryColor, 'Overweight': warningColor, 'Obese': dangerColor, 'Obese II': '#a93226', 'Underweight': blueColor, 'Severely Underweight': '#2471a3', };
         const backgroundColors = labels.map(label => colorMap[label] || '#ccc');
         bmiStatusChart = new Chart(ctx, {
             type: 'doughnut', data: { labels: labels, datasets: [{ label: 'BMI Status', data: data, backgroundColor: backgroundColors, }] },
@@ -201,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = item.dataset.tr;
             searchResultsContainer.style.display = 'none';
             searchInput.value = '';
-            openStudentHistoryModal(tr); // ★★★ Name is no longer needed
+            openStudentHistoryModal(tr); 
         }
     });
     document.addEventListener('click', (e) => {
@@ -209,11 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
             searchResultsContainer.style.display = 'none';
         }
     });
-    // --- ★★★ END UNCHANGED SEARCH LOGIC ★★★ ---
-
-
+    
     /**
-     * ★★★ (REWRITTEN) Open and populate the Student History Modal ★★★
+     * ★★★ (UPDATED with new column names) ★★★
+     * Open and populate the Student History Modal
      */
     async function openStudentHistoryModal(tr) {
         if (!studentHistoryModal) {
@@ -239,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Build the accordion
             let html = `<div class="accordion" id="studentHistoryAccordion">`;
             const c = (val) => val || '<i class="text-muted">No comment.</i>';
 
@@ -265,17 +266,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </button>
                                 </div>
                                 
-                                <h5>Nutrition Notes</h5>
-                                <span class="comment-meta-data">${formatMetaData(item.NutritionEvaluator, item.NutritionUpdatedAt)}</span>
-                                <p class="history-comment">${c(item.NutritionNotes)}</p>
+                                <h5>Strengths</h5>
+                                <span class="comment-meta-data">${formatMetaData(item.StrengthsEvaluator, item.StrengthsUpdatedAt)}</span>
+                                <p class="history-comment">${c(item.Strengths)}</p>
                                 
-                                <h5>Health / Issues Notes</h5>
-                                <span class="comment-meta-data">${formatMetaData(item.HealthEvaluator, item.HealthUpdatedAt)}</span>
-                                <p class="history-comment">${c(item.HealthNotes)}</p>
+                                <h5>Areas of Improvement</h5>
+                                <span class="comment-meta-data">${formatMetaData(item.AreasOfImprovementEvaluator, item.AreasOfImprovementUpdatedAt)}</span>
+                                <p class="history-comment">${c(item.AreasOfImprovement)}</p>
                                 
-                                <h5>Recommendations</h5>
-                                <span class="comment-meta-data">${formatMetaData(item.RecommendationEvaluator, item.RecommendationUpdatedAt)}</span>
-                                <p class="history-comment">${c(item.Recommendations)}</p>
+                                <h5>Nutritional Guidelines</h5>
+                                <span class="comment-meta-data">${formatMetaData(item.NutritionalGuidelinesEvaluator, item.NutritionalGuidelinesUpdatedAt)}</span>
+                                <p class="history-comment">${c(item.NutritionalGuidelines)}</p>
                             </div>
                         </div>
                     </div>
@@ -287,13 +288,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error(err);
-            modalTitle.textContent = `History for ${name} (TR: ${tr})`;
+            modalTitle.textContent = `History for ${tr}`; // Fallback title
             accordionContainer.innerHTML = '<p class="text-center text-danger">Error loading history.</p>';
         }
     }
 
     /**
-     * ★★★ (REWRITTEN) Handle click on an "Edit" button in the history modal ★★★
+     * (Unchanged) Handle click on an "Edit" button in the history modal
      */
     $('#studentHistoryModal').on('click', '.edit-history-btn', function() {
         const testLog = $(this).data('testlog');
@@ -305,6 +306,81 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- ★★★ NEW: EXPORT LOGIC ★★★ ---
+
+    // 1. Open and populate the export modal
+    document.getElementById('openExportModalBtn').addEventListener('click', () => {
+        if (!exportBatchModal) {
+            exportBatchModal = new bootstrap.Modal(document.getElementById('exportBatchModal'));
+        }
+        
+        const select = document.getElementById('exportBatchSelect');
+        select.innerHTML = '<option value="">Select a batch...</option>'; // Clear old
+        
+        // Use the cached batch data
+        if (allBatchesData.length > 0) {
+            allBatchesData.forEach(batch => {
+                const batchId = batch.BatchID === null ? 'null' : batch.BatchID;
+                select.innerHTML += `<option value="${batchId}" data-name="${batch.BatchName}">${batch.BatchName}</option>`;
+            });
+        } else {
+            select.innerHTML = '<option value="">No batches found.</option>';
+        }
+        
+        exportBatchModal.show();
+    });
+
+    // 2. Handle the download click
+    document.getElementById('downloadExportBtn').addEventListener('click', async () => {
+        const select = document.getElementById('exportBatchSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        const batchId = selectedOption.value;
+        const batchName = selectedOption.dataset.name;
+
+        if (!batchId) {
+            return Swal.fire('Error', 'Please select a batch to export.', 'warning');
+        }
+
+        // Show loading state
+        const button = document.getElementById('downloadExportBtn');
+        const spinner = button.querySelector('.spinner-border');
+        const buttonText = button.querySelector('.button-text');
+        button.disabled = true;
+        spinner.classList.remove('d-none');
+        buttonText.textContent = 'Generating...';
+
+        try {
+            const res = await fetch(`/api/evaluation/export/${batchId}`, { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to fetch export data from server.');
+            
+            const data = await res.json();
+            
+            if (!data.success || data.records.length === 0) {
+                throw new Error('No records found in this batch to export.');
+            }
+
+            // Generate Excel file
+            const worksheet = XLSX.utils.json_to_sheet(data.records);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Evaluation Data");
+            
+            // Create the filename and trigger download
+            const filename = `${data.batchName}.xlsx`;
+            XLSX.writeFile(workbook, filename);
+
+            Swal.fire('Success!', `Export for "${data.batchName}" has been downloaded.`, 'success');
+            exportBatchModal.hide();
+
+        } catch (err) {
+            console.error('Export error:', err);
+            Swal.fire('Export Failed', err.message, 'error');
+        } finally {
+            // Hide loading state
+            button.disabled = false;
+            spinner.classList.add('d-none');
+            buttonText.textContent = 'Download';
+        }
+    });
 
     // --- INITIALIZATION ---
     loadStatistics(); 

@@ -28,6 +28,20 @@
         <main class="main-content">
            <div class="content">
 
+
+                <section id="batch-overview" class="card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="h4 mb-0">Evaluation Batches</h2>
+                        <button class="btn btn-sm btn-outline-primary" id="openExportModalBtn">
+                            Export Batch to Excel
+                        </button>
+                    </div>
+                    <p class="text-muted">Select a batch to review. Batches are group tests conducted by Trainer. </p>
+                    <div id="batch-cards-container" class="batch-cards-grid">
+                        <div class="loader-cell"><div class="loader"></div></div>
+                    </div>
+                </section>
+
             <section id="student-search-card" class="card mb-4">
                     <h2 class="h4 mb-3">Student Search</h2>
                     <p class="text-muted">Find a student by name or TR to see their full evaluation history.</p>
@@ -39,7 +53,7 @@
                 </section>
 
 
-            <section id="statistics-overview" class="card mb-4">
+                <section id="statistics-overview" class="card mb-4">
                     <h2 class="h4 mb-3">Statistics Overview</h2>
                     <p class="text-muted">Analysis of the most recent locked batch.</p>
                     
@@ -70,13 +84,7 @@
                     </div>
                 </section>
 
-                <section id="batch-overview" class="card">
-                    <h2 class="h4 mb-3">Evaluation Batches</h2>
-                    <p class="text-muted">Select a batch to review. Batches are group tests conducted by Trainer. </p>
-                    <div id="batch-cards-container" class="batch-cards-grid">
-                        <div class="loader-cell"><div class="loader"></div></div>
-                    </div>
-                </section>
+
 
             </div>
         </main>
@@ -198,6 +206,34 @@
         </div>
     </div>
 
+    <div class="modal fade" id="exportBatchModal" tabindex="-1" aria-labelledby="exportBatchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportBatchModalLabel">Export Batch Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please select the batch you would like to export to an Excel file.</p>
+                <div class="form-group">
+                    <label for="exportBatchSelect" class="form-label">Select Batch:</label>
+                    <select id="exportBatchSelect" class="form-select">
+                        <option value="">Loading batches...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="downloadExportBtn">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    <span class="button-text">Download</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>

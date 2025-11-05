@@ -11,7 +11,7 @@
     
     <link rel="stylesheet" href="css/evaluation.css">
 </head>
-<body>
+<body style="visibility: hidden;">
     <div class="dashboard-container">
         
         <header class="app-header-simple">
@@ -31,65 +31,154 @@
                     <a href="evaluation.html" class="btn btn-secondary btn-sm">&larr; Back to Dashboard</a>
                     <h2 class="h4 mb-0" id="page-title">Loading Evaluation...</h2>
                 </div>
+                <h3 class="h4 mb-3" id="page-batch-name" style="font-weight: 600;"></h3>
 
-                <section id="student-info-anchor" class="card mb-4">
-                    <div class="loader-cell"><div class="loader"></div></div>
-                </section>
+            <section id="student-info-anchor" class="card mb-4">
+                    <div class="anchor-header">
+                        <div class="anchor-title">
+                            <h4 id="anchor-student-name">...</h4>
+                            <p class="text-muted" id="anchor-student-details">TR: ... | Test Date: ...</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <div class="anchor-grade" id="anchor-grade-box">
+                                <span>Grade</span>
+                                <strong id="anchor-grade-value">N/A</strong>
+                            </div>
+                            <div class="anchor-grade" id="anchor-score-box">
+                                <span>Total Score</span>
+                                <strong id="anchor-score-value">N/A</strong>
+                            </div>
+                        </div>
+                    </div>
                     
+                    <div class="anchor-grid-container">
+                        <div class="anchor-grid-group">
+                            <h6 class="anchor-grid-title">Body Composition</h6>
+                            <div class="test-results-grid">
+                                <div class="test-result-item" id="stat-Weight"><span class="test-result-item-label">Weight</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-Height"><span class="test-result-item-label">Height</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-Waist"><span class="test-result-item-label">Waist</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-Hips"><span class="test-result-item-label">Hips</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-Neck"><span class="test-result-item-label">Neck</span><span class="test-result-item-value">...</span></div>
+                            </div>
+                        </div>
+                        <div class="anchor-grid-group">
+                            <h6 class="anchor-grid-title">BMI Metrics</h6>
+                            <div class="test-results-grid">
+                                <div class="test-result-item" id="stat-BMI"><span class="test-result-item-label">BMI</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-BMIStatus"><span class="test-result-item-label">BMI Status</span><span class="test-result-item-value">...</span></div>
+                            </div>
+                        </div>
+                        <div class="anchor-grid-group">
+                            <h6 class="anchor-grid-title">Metabolism & Fitness</h6>
+                            <div class="test-results-grid">
+                                <div class="test-result-item" id="stat-BodyFat"><span class="test-result-item-label">Body Fat %</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-BMR"><span class="test-result-item-label">BMR</span><span class="test-result-item-value">...</span></div>
+                                <div class="test-result-item" id="stat-VO2Max"><span class="test-result-item-label">VO₂ Max</span><span class="test-result-item-value">...</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="medical-history-card" class="card mb-4">
+                    <h5 class="mb-3">Medical History</h5>
+                    <div id="medical-history-content">
+                        <div class="loader-cell"><div class="loader"></div></div>
+                    </div>
+                </section>
+
                 <section id="historical-data-container" class="mb-4">
                     <div class="loader-cell"><div class="loader"></div></div>
                 </section>
 
-                <section id="comment-form-card" class="card">
+                    <section class="card mb-4">
+                    <form id="goalsForm">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Future Goals</h5>
+                            <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveGoalsBtn">
+                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                <span class="button-text">Save Goals</span>
+                            </button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="goalShortTerm" class="form-label">Short Term Goals</label>
+                                    <textarea class="form-control" id="goalShortTerm" name="GoalShortTerm" rows="4"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="goalLongTerm" class="form-label">Long Term Goals</label>
+                                    <textarea class="form-control" id="goalLongTerm" name="GoalLongTerm" rows="4"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="goalTimeFrame" class="form-label">Target Time Frame</label>
+                                    <select class="form-select" id="goalTimeFrame" name="GoalTimeFrame">
+                                        <option value="">Select a time frame...</option>
+                                        <option value="4 Weeks">4 Weeks</option>
+                                        <option value="8 Weeks">8 Weeks</option>
+                                        <option value="12 Weeks">12 Weeks</option>
+                                        <option value="6 Months">6 Months</option>
+                                        <option value="Ongoing">Ongoing</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="card mb-4">
+                    <h5 class="mb-3">Evaluator Comments</h5>
                     <form id="commentEntryForm">
                         <input type="hidden" id="commentTestLog" name="TestLog">
                         
                         <div class="form-group mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="commentNutritionNotes" class="form-label h5">Nutrition Notes</label>
-                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveNutritionBtn">
+                                <label for="commentStrengths" class="form-label h5">Strengths</label>
+                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveStrengthsBtn">
                                     <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                     <span class="button-text">Save</span>
                                 </button>
                             </div>
-                            <span class="comment-meta-data" id="metaNutrition"></span>
-                            <textarea class="form-control mt-1" id="commentNutritionNotes" name="NutritionNotes" rows="6" placeholder="Enter nutritionist comments..."></textarea>
+                            <span class="comment-meta-data" id="metaStrengths"></span>
+                            <textarea class="form-control mt-1" id="commentStrengths" name="Strengths" rows="6" placeholder="Enter student's strengths..."></textarea>
                         </div>
 
                         <div class="form-group mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="commentHealthNotes" class="form-label h5">Health / Issues Notes</label>
-                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveHealthBtn">
+                                <label for="commentImprovement" class="form-label h5">Areas of Improvement</label>
+                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveImprovementBtn">
                                     <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                     <span class="button-text">Save</span>
                                 </button>
                             </div>
-                            <span class="comment-meta-data" id="metaHealth"></span>
-                            <textarea class="form-control mt-1" id="commentHealthNotes" name="HealthNotes" rows="6" placeholder="Enter notes on health or physical issues..."></textarea>
+                            <span class="comment-meta-data" id="metaImprovement"></span>
+                            <textarea class="form-control mt-1" id="commentImprovement" name="AreasOfImprovement" rows="6" placeholder="Enter areas for improvement..."></textarea>
                         </div>
 
                         <div class="form-group mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="commentRecommendations" class="form-label h5">Further Recommendations</label>
-                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveRecsBtn">
+                                <label for="commentGuidelines" class="form-label h5">Nutritional Guidelines</label>
+                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveGuidelinesBtn">
                                     <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                     <span class="button-text">Save</span>
                                 </button>
                             </div>
-                            <span class="comment-meta-data" id="metaRecommendations"></span>
-                            <textarea class="form-control mt-1" id="commentRecommendations" name="Recommendations" rows="6" placeholder="Enter further recommendations..."></textarea>
-                        </div>
-
-                        <hr>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="evaluation.html" class="btn btn-secondary">&larr; Back to Dashboard</a>
-                            <button type="button" class="btn btn-success" id="continueNextBtn">
-                                Continue to Next Record &rarr;
-                            </button>
+                            <span class="comment-meta-data" id="metaGuidelines"></span>
+                            <textarea class="form-control mt-1" id="commentGuidelines" name="NutritionalGuidelines" rows="6" placeholder="Enter nutritional guidelines..."></textarea>
                         </div>
                     </form>
                 </section>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="evaluation.html" class="btn btn-secondary">&larr; Back to Dashboard</a>
+                    <button type="button" class="btn btn-success" id="continueNextBtn">
+                        Continue to Next Record &rarr;
+                    </button>
+                </div>
 
             </div>
         </main>
