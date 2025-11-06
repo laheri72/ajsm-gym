@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
+const bcrypt = require('bcrypt'); 
 
 // Helper functions for this router
 
@@ -132,6 +133,121 @@ router.put('/api/testmaster/me/dob', async (req, res) => {
     }
 });
 
+
+// NEW: Sets the student's new password (for first-time login)
+router.post('/api/test/set-password', async (req, res) => {
+    // 1. Get TR from the session (secure)
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in again.' });
+    }
+    const TR = req.session.user.TR;
+    
+    // 2. Get the new password from the request body
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+    }
+
+    try {
+        // 3. Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        // 4. Update the TestMaster table
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+        request.input('HashedPassword', sql.NVarChar(100), hashedPassword);
+
+        await request.query(`
+            UPDATE TestMaster 
+            SET 
+                Password = @HashedPassword, 
+                IsFirstLogin = 0 
+            WHERE TR = @TR
+        `);
+        
+        res.json({ success: true, message: 'Password updated successfully!' });
+    
+    } catch (err) {
+        console.error('Error setting new test password:', err);
+        res.status(500).json({ success: false, message: 'Failed to update password.' });
+    }
+});
+
+
+// --- 🩺 Medical History Routes ---
+
+/**
+ * GET: Fetches the student's medical history
+ */
+router.get('/api/medical-history/me', async (req, res) => {
+    // 1. Get TR from session
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    const TR = req.session.user.TR;
+
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query('SELECT * FROM MedicalHistory WHERE TR = @TR');
+
+        // Return the record, or null if one doesn't exist (which is not an error)
+        res.json({ success: true, data: result.recordset[0] || null });
+
+    } catch (err) {
+        console.error('Error fetching medical history:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch medical history.' });
+    }
+});
+
+/**
+ * POST: Creates or Updates the student's medical history (Upsert)
+ */
+router.post('/api/medical-history/me', async (req, res) => {
+    // 1. Get TR from session
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    const TR = req.session.user.TR;
+    
+    // 2. Get the 4 fields from the body
+    const { Allergies, Medications, FamilyHistory, PreviousInjuries } = req.body;
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+        request.input('Allergies', sql.NVarChar(sql.MAX), Allergies || null);
+        request.input('Medications', sql.NVarChar(sql.MAX), Medications || null);
+        request.input('FamilyHistory', sql.NVarChar(sql.MAX), FamilyHistory || null);
+        request.input('PreviousInjuries', sql.NVarChar(sql.MAX), PreviousInjuries || null);
+
+        // 3. Use MERGE to perform an "upsert"
+        await request.query(`
+            MERGE INTO MedicalHistory AS target
+            USING (SELECT @TR AS TR) AS source
+            ON (target.TR = source.TR)
+            
+            -- If a row for this TR already exists
+            WHEN MATCHED THEN
+                UPDATE SET
+                    Allergies = @Allergies,
+                    Medications = @Medications,
+                    FamilyHistory = @FamilyHistory,
+                    PreviousInjuries = @PreviousInjuries
+            
+            -- If no row exists for this TR
+            WHEN NOT MATCHED THEN
+                INSERT (TR, Allergies, Medications, FamilyHistory, PreviousInjuries)
+                VALUES (@TR, @Allergies, @Medications, @FamilyHistory, @PreviousInjuries);
+        `);
+
+        res.json({ success: true, message: 'Medical history updated successfully.' });
+
+    } catch (err) {
+        console.error('Error saving medical history:', err);
+        res.status(500).json({ success: false, message: 'Failed to save medical history.' });
+    }
+});
 
 // CORRECTED: Saves a new fitness test record
 router.post('/api/testrecords', async (req, res) => {

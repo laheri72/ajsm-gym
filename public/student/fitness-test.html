@@ -312,6 +312,34 @@
         body.dark-mode #studentInfo {
             background: linear-gradient(135deg, var(--secondary), var(--accent));
         }
+
+        /* ★★★ ADD THESE STYLES FOR MEDICAL HISTORY ★★★ */
+        #medical-history-card .loader-cell {
+            padding: 1rem;
+        }
+        
+        #medical-view .list-group-item {
+            border: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        
+        #medical-view .list-group-item strong {
+            color: var(--primary);
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        #medical-view .list-group-item p {
+            font-size: 0.95rem;
+            margin-bottom: 0;
+            white-space: pre-wrap; /* Preserves line breaks */
+        }
+        
+        #medical-view .text-muted {
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -371,6 +399,45 @@
                     </tbody>
                 </table>
                         </div>
+
+                        <div id="medical-history-card" class="content-section mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5><i class="fas fa-file-medical"></i> Medical History</h5>
+                                <button class="btn btn-sm btn-outline-secondary" id="editMedicalBtn">Edit</button>
+                            </div>
+                            
+                            <div id="medical-view">
+                                <div class="loader-cell"><div class="loader"></div></div>
+                                </div>
+
+                            <form id="medical-form" style="display: none;">
+                                <div class="form-group mb-3">
+                                    <label for="medAllergies" class="form-label">Known Allergies</label>
+                                    <textarea id="medAllergies" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="medMedications" class="form-label">Current Medications</label>
+                                    <textarea id="medMedications" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="medFamilyHistory" class="form-label">Family History of Illness</label>
+                                    <textarea id="medFamilyHistory" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="medPreviousInjuries" class="form-label">Previous Injuries & Surgeries</label>
+                                    <textarea id="medPreviousInjuries" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-secondary" id="cancelMedicalBtn">Cancel</button>
+                                    <button type="button" class="btn btn-primary" id="saveMedicalBtn">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        Save History
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+
                     </div>
                 </div>
             </section>
@@ -669,16 +736,8 @@ async function validateStudentSession() {
                 }
             }
 
-            Swal.fire({
-                icon: 'success',
-                position: 'top-end',
-                title: `Welcome ${student.Name}!`,
-                text: `TR ${tr} loaded successfully.`,
-                timer: 2000,
-                showConfirmButton: false,
-            });
-
             await loadTestHistory(tr);
+            await loadMedicalHistory();
 
         } catch (err) {
             console.warn("TestMaster missing, trying TestRecords…");
@@ -699,6 +758,8 @@ async function validateStudentSession() {
                 }
 
                 await loadTestHistory(tr);
+
+
 
                 Swal.fire({
                     icon: 'info',
@@ -788,6 +849,153 @@ async function saveDOB() {
         Swal.fire('Save Failed', `There was an error saving your Date of Birth: ${err.message}`, 'error');
     }
 }
+
+
+// ★★★ ADD THIS NEW FUNCTION ★★★
+async function handleSetNewPassword(e) {
+    e.preventDefault();
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword !== confirmPassword) {
+        return Swal.fire('Error', 'Passwords do not match.', 'error');
+    }
+
+    try {
+        const res = await fetch('/api/test/set-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Ensures session cookie is sent
+            body: JSON.stringify({ newPassword })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        // Success!
+        sessionStorage.removeItem('forcePasswordChange');
+        await Swal.fire('Success!', 'Your new password has been set.', 'success');
+        
+        // Hide the modal
+        const modalEl = document.getElementById('forcePasswordChangeModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    }
+}
+
+
+// ★★★ ADD THESE NEW FUNCTIONS (MEDICAL HISTORY) ★★★
+
+async function loadMedicalHistory() {
+    const viewDiv = document.getElementById('medical-view');
+    try {
+        viewDiv.innerHTML = '<div class="loader-cell"><div class="loader"></div></div>';
+
+        const res = await fetch('/api/medical-history/me', { credentials: 'include' });
+        if (!res.ok) throw new Error('Could not fetch history');
+
+        const { data } = await res.json();
+
+        // Populate the form fields (even if hidden)
+        document.getElementById('medAllergies').value = data?.Allergies || '';
+        document.getElementById('medMedications').value = data?.Medications || '';
+        document.getElementById('medFamilyHistory').value = data?.FamilyHistory || '';
+        document.getElementById('medPreviousInjuries').value = data?.PreviousInjuries || '';
+
+        // Populate the read-only view
+        if (!data || (!data.Allergies && !data.Medications && !data.FamilyHistory && !data.PreviousInjuries)) {
+            viewDiv.innerHTML = '<p class="text-muted">You have not added any medical history. Click "Edit" to add information.</p>';
+        } else {
+            const c = (val) => val || '<i class="text-muted">N/A</i>';
+            viewDiv.innerHTML = `
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <strong>Known Allergies</strong>
+                        <p>${c(data.Allergies)}</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Current Medications</strong>
+                        <p>${c(data.Medications)}</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Family History of Illness</strong>
+                        <p>${c(data.FamilyHistory)}</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Previous Injuries & Surgeries</strong>
+                        <p>${c(data.PreviousInjuries)}</p>
+                    </li>
+                </ul>
+            `;
+        }
+    } catch (err) {
+        console.error('Error loading medical history:', err);
+        viewDiv.innerHTML = '<p class="text-danger">Failed to load medical history.</p>';
+    }
+}
+
+// --- Add Event Listeners for the new buttons ---
+
+// Toggle between view and edit modes
+document.getElementById('editMedicalBtn').addEventListener('click', () => {
+    document.getElementById('medical-view').style.display = 'none';
+    document.getElementById('medical-form').style.display = 'block';
+    document.getElementById('editMedicalBtn').style.display = 'none';
+});
+
+document.getElementById('cancelMedicalBtn').addEventListener('click', () => {
+    document.getElementById('medical-view').style.display = 'block';
+    document.getElementById('medical-form').style.display = 'none';
+    document.getElementById('editMedicalBtn').style.display = 'block';
+    // Optional: Reload to discard any changes in the textareas
+    loadMedicalHistory(); 
+});
+
+// Handle the save action
+document.getElementById('saveMedicalBtn').addEventListener('click', async () => {
+    const button = document.getElementById('saveMedicalBtn');
+    const spinner = button.querySelector('.spinner-border');
+    button.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const payload = {
+        Allergies: document.getElementById('medAllergies').value,
+        Medications: document.getElementById('medMedications').value,
+        FamilyHistory: document.getElementById('medFamilyHistory').value,
+        PreviousInjuries: document.getElementById('medPreviousInjuries').value
+    };
+
+    try {
+        const res = await fetch('/api/medical-history/me', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to save');
+
+        Swal.fire({
+            toast: true, position: 'top-end', icon: 'success',
+            title: 'Medical history saved!', showConfirmButton: false, timer: 2000
+        });
+
+        // Refresh the read-only view and toggle back
+        await loadMedicalHistory(); // Reload data
+        document.getElementById('medical-view').style.display = 'block';
+        document.getElementById('medical-form').style.display = 'none';
+        document.getElementById('editMedicalBtn').style.display = 'block';
+
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    } finally {
+        button.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
 
         function showTestInfo() {
             Swal.fire({
@@ -1516,6 +1724,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const savedTab = localStorage.getItem('activeTab') || 'tab-profile';
     showTab(savedTab);
     validateStudentSession();
+                    // ★★★ ADD THIS NEW BLOCK ★★★
+    // Check if the user needs to change their password
+    if (sessionStorage.getItem('forcePasswordChange') === 'true') {
+        // 1. Get the modal elements
+        const passwordModalEl = document.getElementById('forcePasswordChangeModal');
+        const setPasswordForm = document.getElementById('setPasswordForm');
+
+        if (passwordModalEl && setPasswordForm) {
+            // 2. Show the modal (and prevent it from being closed)
+            const passwordModal = new bootstrap.Modal(passwordModalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            passwordModal.show();
+            
+            // 3. Attach our new submit handler
+            // (We add it here to ensure it's only attached once)
+            if (!setPasswordForm.dataset.listenerAttached) {
+                setPasswordForm.addEventListener('submit', handleSetNewPassword);
+                setPasswordForm.dataset.listenerAttached = 'true';
+            }
+        }
+    }
 });
         //-------------------------------------------------------------------------------------------------
         function clearFitnessResults() {
@@ -1592,5 +1823,28 @@ function toggleDarkMode() {
 }
 
     </script>
+    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Your New Password</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Welcome! For your security, you must create a new password for your account. Your old ITS number will no longer work for login.</p>
+                    <form id="setPasswordForm">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

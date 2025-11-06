@@ -22,7 +22,7 @@
           <input type="text" id="username" required>
         </div>
         <div class="form-group">
-          <label for="password">ITS Number</label>
+          <label for="password">ITS Number or Password</label>
           <input type="password" id="password" required>
         </div>
         <button type="submit" class="login-btn">Begin Test</button>
@@ -39,9 +39,9 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     e.preventDefault();
 
     const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
+    // ★★★ REMOVED .trim() from password ★★★
+    const password = document.getElementById('password').value;
 
-    // ✅ Show a quick Toast immediately
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
@@ -65,14 +65,17 @@ document.getElementById('loginForm').addEventListener('submit', async function (
 
         const data = await res.json();
 
-        if (res.ok) {
-            // Optional: Show success toast (or just redirect)
+        // ★★★ UPDATED SUCCESS LOGIC ★★★
+        if (data.success) {
+            // 1. Store the new flag from the API
+            sessionStorage.setItem('forcePasswordChange', data.forcePasswordChange);
+
             Toast.fire({
                 icon: 'success',
                 title: '✅ Session started'
             });
 
-            // Delay slightly so user sees the success message
+            // 2. Redirect to the dashboard
             setTimeout(() => {
                 window.location.href = '../student/fitness-test.html';
             }, 700);
@@ -80,6 +83,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
         } else {
             Swal.fire('Login Failed', data.message || 'Invalid TR or password.', 'error');
         }
+        // ★★★ END OF UPDATE ★★★
 
     } catch (err) {
         Swal.fire('Error', 'Something went wrong.', 'error');
@@ -88,7 +92,6 @@ document.getElementById('loginForm').addEventListener('submit', async function (
 });
 
 </script>
-
 
 </body>
 </html>
