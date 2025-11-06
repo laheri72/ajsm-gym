@@ -198,6 +198,49 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+
+    // ★★★ ADD THIS NEW EVENT LISTENER ★★★
+    // Reset TestMaster Password Form
+    document.getElementById('resetTestPasswordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const trInput = document.getElementById('studentTrTestReset'); // Get new input ID
+        const tr = trInput.value;
+
+        if (!tr) {
+            return Swal.fire('Error', 'Please enter a student TR number.', 'error');
+        }
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `This will reset the FITNESS TEST password for student TR ${tr}. They will be forced to use their ITS number to log in again.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            confirmButtonText: 'Yes, Reset It!',
+            cancelButtonColor: '#6c757d',
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    // Call the new API route
+                    const res = await fetch(`/api/admin/reset-testmaster-password/${tr}`, {
+                        method: 'PUT',
+                        credentials: 'include' // Include session cookie
+                    });
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        Swal.fire('Success!', data.message, 'success');
+                        trInput.value = ''; // Clear the input field
+                    } else {
+                        throw new Error(data.message);
+                    }
+                } catch (err) {
+                    Swal.fire('Operation Failed', err.message, 'error');
+                }
+            }
+        });
+    });
+
     // Change Admin Password Form
     document.getElementById('changeMyPasswordForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -456,6 +499,148 @@ document.addEventListener("DOMContentLoaded", () => {
     // We add this call to the end of the existing DOMContentLoaded listener
     loadBatchManagementData();
 
+
+    const categoryTableBody = document.getElementById('categoryTableBody');
+    const addCategoryForm = document.getElementById('addCategoryForm');
+
+    /**
+     * Fetches and renders the comment categories table
+     */
+    async function loadCategories() {
+        try {
+            const res = await fetch('/api/admin/comment-categories', { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to fetch categories');
+            const { data } = await res.json();
+            
+            categoryTableBody.innerHTML = '';
+            if (data.length === 0) {
+                categoryTableBody.innerHTML = '<tr><td colspan="3">No categories created yet.</td></tr>';
+                return;
+            }
+
+            data.forEach(cat => {
+                const row = categoryTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${cat.CategoryName}</td>
+                    <td>${cat.Description || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary edit-category-btn" 
+                                data-id="${cat.CategoryID}" 
+                                data-name="${cat.CategoryName}" 
+                                data-desc="${cat.Description || ''}">
+                            Edit
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-category-btn" 
+                                data-id="${cat.CategoryID}" 
+                                data-name="${cat.CategoryName}">
+                            Delete
+                        </button>
+                    </td>
+                `;
+            });
+        } catch (err) {
+            console.error('Error loading categories:', err);
+            categoryTableBody.innerHTML = '<tr><td colspan="3" class="text-danger">Failed to load categories.</td></tr>';
+        }
+    }
+
+    // --- Event Listeners for Category Management ---
+
+    // Add new category
+    addCategoryForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newCategoryName').value;
+        const desc = document.getElementById('newCategoryDesc').value;
+
+        try {
+            const res = await fetch('/api/admin/comment-categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                body: JSON.stringify({ CategoryName: name, Description: desc })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            Swal.fire('Success!', 'Category added.', 'success');
+            addCategoryForm.reset();
+            loadCategories(); // Refresh table
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
+
+    // Delegated listener for Edit and Delete buttons
+    $('#categoryTableBody').on('click', '.edit-category-btn', async function() {
+        const id = $(this).data('id');
+        const oldName = $(this).data('name');
+        const oldDesc = $(this).data('desc');
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Edit Category',
+            html:
+                `<input id="swal-name" class="swal2-input" value="${oldName}">` +
+                `<textarea id="swal-desc" class="swal2-textarea" placeholder="Description">${oldDesc}</textarea>`,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Save Changes',
+            preConfirm: () => {
+                return {
+                    CategoryName: document.getElementById('swal-name').value,
+                    Description: document.getElementById('swal-desc').value
+                };
+            }
+        });
+
+        if (formValues) {
+            try {
+                const res = await fetch(`/api/admin/comment-categories/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                    body: JSON.stringify(formValues)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+
+                Swal.fire('Success!', 'Category updated.', 'success');
+                loadCategories(); // Refresh table
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        }
+    });
+    
+    $('#categoryTableBody').on('click', '.delete-category-btn', function() {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+
+        Swal.fire({
+            title: `Delete "${name}"?`,
+            text: "This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: 'var(--danger)',
+            confirmButtonText: 'Yes, delete it!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`/api/admin/comment-categories/${id}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message);
+                    
+                    Swal.fire('Deleted!', 'Category has been deleted.', 'success');
+                    loadCategories(); // Refresh table
+                } catch (err) {
+                    Swal.fire('Error', err.message, 'error');
+                }
+            }
+        });
+    });
+
+
+    loadCategories(); // ★★★ ADD THIS LINE ★★★
 
     // --- INACTIVE STUDENT MANAGEMENT LOGIC ---
 

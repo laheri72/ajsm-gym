@@ -93,6 +93,47 @@ body {
     font-weight: 600;
     transition: all 0.4s ease;
 }
+.delete-my-comment-btn {
+    color: var(--danger);
+    background: transparent;
+    border: 1px solid rgba(244, 67, 54, 0.12);
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.35rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.08s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.delete-my-comment-btn:hover {
+    background-color: rgba(244, 67, 54, 0.08);
+    color: var(--danger);
+    transform: translateY(-1px);
+}
+
+.delete-my-comment-btn:active {
+    transform: translateY(0);
+}
+
+.delete-my-comment-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.12);
+}
+
+.delete-my-comment-btn[disabled],
+.delete-my-comment-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Optional icon sizing inside the button */
+.delete-my-comment-btn .icon {
+    font-size: 1rem;
+    line-height: 1;
+}
 .btn:hover {
     background: var(--secondary);
 }
@@ -863,4 +904,150 @@ and will be perfectly visible.
 #openExportModalBtn:hover {
     background-color: var(--primary);
     color: white;
+}
+/* --- ADD THIS TO THE END OF evaluation.css --- */
+
+/* ★★★ NEW: Styles for New Comment Form ★★★ */
+#commentEntryForm .form-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+#commentEntryForm .form-select,
+#commentEntryForm .form-control {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+/* ★★★ NEW: Styles for Existing Comment List ★★★ */
+#existing-comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.comment-card {
+    background: var(--light);
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.comment-category {
+    font-weight: 600;
+    color: var(--primary);
+    background-color: rgba(76, 175, 80, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+}
+.comment-body {
+    font-size: 0.95rem;
+    white-space: pre-wrap; /* Preserves line breaks */
+    margin-bottom: 0;
+}
+/* --- ADD THIS TO THE END OF evaluation.css --- */
+
+/* ★★★ NEW: "My Comments" Log Styles ★★★ */
+.comment-truncate {
+    cursor: help; /* Show a help cursor on truncated text */
+    font-style: italic;
+    color: var(--gray);
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap; /* Prevent buttons from wrapping */
+}
+
+/* --- ADD THIS TO THE END OF evaluation.css --- */
+
+/* ★★★ NEW: Student Comment History (Accordion) ★★★ */
+#student-comment-history h5 {
+    font-weight: 600;
+    color: var(--dark);
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 0.5rem;
+}
+
+#studentHistoryAccordion .accordion-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem !important;
+    margin-bottom: 0.5rem;
+}
+#studentHistoryAccordion .accordion-item:first-of-type,
+#studentHistoryAccordion .accordion-item:last-of-type {
+    border-radius: 0.5rem !important;
+}
+#studentHistoryAccordion .accordion-header {
+    border-radius: 0.5rem;
+}
+#studentHistoryAccordion .accordion-button {
+    font-weight: 600;
+    color: var(--dark);
+    background-color: #fcfcfc;
+}
+#studentHistoryAccordion .accordion-button:not(.collapsed) {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: none;
+}
+#studentHistoryAccordion .accordion-button:focus {
+    box-shadow: none;
+}
+#studentHistoryAccordion .accordion-body {
+    border-top: 1px solid #e0e0e0;
+    background-color: #fdfdfd;
+}
+
+/* ★★★ NEW: Comment Card (Inside History) ★★★ */
+.comment-card-history {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.comment-card-history:last-child {
+    margin-bottom: 0;
+}
+.comment-card-history .comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.comment-card-history .comment-category {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+.comment-card-history .comment-meta-data {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--gray);
+}
+.comment-card-history .comment-body {
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    margin-bottom: 0;
+    color: var(--dark);
+}
+
+#editProfileBtn {
+    color: var(--primary); /* Use primary green color */
+    font-weight: 500;      /* Use the font-weight you specified */
+    font-size: 0.9rem;       /* Use the font-size you specified */
+}
+
+#editProfileBtn:hover {
+    background-color: rgba(76, 175, 80, 0.1); /* Light green hover */
 }

@@ -60,7 +60,7 @@
 
             if (data.success && data.user) {
                 // --- THIS IS THE KEY CHANGE ---
-// --- ★★★ THIS IS THE UPDATED LOGIC ★★★ ---
+            // --- ★★★ THIS IS THE UPDATED LOGIC ★★★ ---
 
                 // 1. Store the user object
                 const user = data.user;
@@ -70,6 +70,7 @@
                 
                 // 3. Save the password flag to sessionStorage
                 sessionStorage.setItem('isDefaultPassword', data.isDefaultPassword);
+                sessionStorage.setItem('isProfileComplete', data.isProfileComplete);
 
                 Toast.fire({ icon: 'success', title: '✅ Login successful' });
                 

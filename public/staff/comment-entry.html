@@ -79,7 +79,7 @@
                         </div>
                     </div>
                 </section>
-
+                
                 <section id="medical-history-card" class="card mb-4">
                     <h5 class="mb-3">Medical History</h5>
                     <div id="medical-history-content">
@@ -87,90 +87,41 @@
                     </div>
                 </section>
 
-                <section id="historical-data-container" class="mb-4">
-                    <div class="loader-cell"><div class="loader"></div></div>
-                </section>
-
-                    <section class="card mb-4">
-                    <form id="goalsForm">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="mb-0">Future Goals</h5>
-                            <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveGoalsBtn">
-                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                <span class="button-text">Save Goals</span>
-                            </button>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="goalShortTerm" class="form-label">Short Term Goals</label>
-                                    <textarea class="form-control" id="goalShortTerm" name="GoalShortTerm" rows="4"></textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="goalLongTerm" class="form-label">Long Term Goals</label>
-                                    <textarea class="form-control" id="goalLongTerm" name="GoalLongTerm" rows="4"></textarea>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label for="goalTimeFrame" class="form-label">Target Time Frame</label>
-                                    <select class="form-select" id="goalTimeFrame" name="GoalTimeFrame">
-                                        <option value="">Select a time frame...</option>
-                                        <option value="4 Weeks">4 Weeks</option>
-                                        <option value="8 Weeks">8 Weeks</option>
-                                        <option value="12 Weeks">12 Weeks</option>
-                                        <option value="6 Months">6 Months</option>
-                                        <option value="Ongoing">Ongoing</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </section>
-
                 <section class="card mb-4">
-                    <h5 class="mb-3">Evaluator Comments</h5>
+                    <h5 class="mb-3">Add New Comment</h5>
                     <form id="commentEntryForm">
                         <input type="hidden" id="commentTestLog" name="TestLog">
                         
-                        <div class="form-group mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="commentStrengths" class="form-label h5">Strengths</label>
-                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveStrengthsBtn">
-                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                    <span class="button-text">Save</span>
-                                </button>
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label for="commentCategory" class="form-label">Category</label>
+                                    <select id="commentCategory" class="form-select" required>
+                                        <option value="">Loading categories...</option>
+                                    </select>
+                                </div>
                             </div>
-                            <span class="comment-meta-data" id="metaStrengths"></span>
-                            <textarea class="form-control mt-1" id="commentStrengths" name="Strengths" rows="6" placeholder="Enter student's strengths..."></textarea>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-group w-100">
+                                    <button type="button" class="btn btn-primary w-100" id="saveCommentBtn">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        <span class="button-text">Submit Comment</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-
-                        <div class="form-group mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="commentImprovement" class="form-label h5">Areas of Improvement</label>
-                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveImprovementBtn">
-                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                    <span class="button-text">Save</span>
-                                </button>
-                            </div>
-                            <span class="comment-meta-data" id="metaImprovement"></span>
-                            <textarea class="form-control mt-1" id="commentImprovement" name="AreasOfImprovement" rows="6" placeholder="Enter areas for improvement..."></textarea>
-                        </div>
-
-                        <div class="form-group mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="commentGuidelines" class="form-label h5">Nutritional Guidelines</label>
-                                <button type="button" class="btn btn-primary btn-sm save-comment-btn" id="saveGuidelinesBtn">
-                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                    <span class="button-text">Save</span>
-                                </button>
-                            </div>
-                            <span class="comment-meta-data" id="metaGuidelines"></span>
-                            <textarea class="form-control mt-1" id="commentGuidelines" name="NutritionalGuidelines" rows="6" placeholder="Enter nutritional guidelines..."></textarea>
+                        <div class="form-group">
+                            <label for="commentText" class="form-label">Comment</label>
+                            <textarea class="form-control" id="commentText" name="CommentText" rows="4" required placeholder="Type your comment here..."></textarea>
                         </div>
                     </form>
+                </section>
+                
+                <section id="student-comment-history" class="card mb-4">
+                    <h5 class="mb-3">Submitted Comments</h5>
+                    <div id="existing-comments-list">
+                        <div class="loader-cell"><div class="loader"></div></div>
+                    </div>
                 </section>
 
                 <div class="d-flex justify-content-between align-items-center">

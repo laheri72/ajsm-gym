@@ -182,6 +182,46 @@ router.put('/api/staff/reset-student-password/:tr', async (req, res, next) => {
 });
 
 
+// ★★★ ADD THIS NEW ROUTE ★★★
+// Resets a password in the TestMaster table
+router.put('/api/admin/reset-testmaster-password/:tr', async (req, res, next) => {
+    // 1. Check for Admin role
+    if (!req.session.user || req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
+    }
+    
+    const { tr } = req.params;
+    const { Branch: adminBranch } = req.session.user;
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, tr);
+
+        // 2. Security Check: Verify student is in the admin's branch
+        const studentResult = await request.query('SELECT Branch FROM TestMaster WHERE TR = @TR');
+
+        if (studentResult.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'Student TR not found in TestMaster.' });
+        }
+
+        const studentBranch = studentResult.recordset[0].Branch;
+        if (studentBranch !== adminBranch) {
+            return res.status(403).json({ success: false, message: `Forbidden: You can only reset passwords for students in your own branch (${adminBranch}).` });
+        }
+
+        // 3. Run the reset query as requested
+        await request.query(`
+            UPDATE TestMaster 
+            SET Password = NULL, IsFirstLogin = 1 
+            WHERE TR = @TR
+        `);
+        
+        res.json({ success: true, message: `Fitness Test password for TR ${tr} has been reset. The student can now log in using their ITS number.` });
+    } catch (err) {
+        next(err);
+    }
+});
+
 router.get('/api/students/inactive', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: 'User session missing' });
@@ -466,6 +506,98 @@ router.post('/api/admin/assign-unbatched', isAdmin, async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to assign records.' });
     }
 });
+
+// =================================================================== //
+// --- 👑 ADMIN Comment Category Management API Routes (NEW) ---
+// =================================================================== //
+
+/**
+ * GET: Fetches all comment categories
+ */
+router.get('/api/admin/comment-categories', isAdmin, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .query('SELECT * FROM CommentCategories ORDER BY CategoryName');
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching categories:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch categories.' });
+    }
+});
+
+/**
+ * POST: Creates a new comment category
+ */
+router.post('/api/admin/comment-categories', isAdmin, async (req, res) => {
+    const { CategoryName, Description } = req.body;
+    if (!CategoryName) {
+        return res.status(400).json({ success: false, message: 'Category Name is required.' });
+    }
+
+    try {
+        await pool.request()
+            .input('CategoryName', sql.NVarChar(100), CategoryName)
+            .input('Description', sql.NVarChar(255), Description || null)
+            .query('INSERT INTO CommentCategories (CategoryName, Description) VALUES (@CategoryName, @Description)');
+        
+        res.status(201).json({ success: true, message: 'Category created successfully.' });
+    } catch (err) {
+        console.error('Error creating category:', err);
+        res.status(500).json({ success: false, message: 'Failed to create category.' });
+    }
+});
+
+/**
+ * PUT: Updates an existing comment category
+ */
+router.put('/api/admin/comment-categories/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { CategoryName, Description } = req.body;
+    if (!CategoryName) {
+        return res.status(400).json({ success: false, message: 'Category Name is required.' });
+    }
+
+    try {
+        await pool.request()
+            .input('CategoryID', sql.Int, id)
+            .input('CategoryName', sql.NVarChar(100), CategoryName)
+            .input('Description', sql.NVarChar(255), Description || null)
+            .query('UPDATE CommentCategories SET CategoryName = @CategoryName, Description = @Description WHERE CategoryID = @CategoryID');
+        
+        res.json({ success: true, message: 'Category updated successfully.' });
+    } catch (err) {
+        console.error('Error updating category:', err);
+        res.status(500).json({ success: false, message: 'Failed to update category.' });
+    }
+});
+
+/**
+ * DELETE: Deletes a comment category
+ */
+router.delete('/api/admin/comment-categories/:id', isAdmin, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const request = pool.request();
+        request.input('CategoryID', sql.Int, id);
+
+        // First, check if this category is being used
+        const checkResult = await request.query('SELECT 1 FROM Evaluations WHERE CategoryID = @CategoryID');
+        
+        if (checkResult.recordset.length > 0) {
+            return res.status(409).json({ success: false, message: 'Cannot delete: This category is already being used in evaluations.' });
+        }
+
+        // If not used, delete it
+        await request.query('DELETE FROM CommentCategories WHERE CategoryID = @CategoryID');
+        
+        res.json({ success: true, message: 'Category deleted successfully.' });
+    } catch (err) {
+        console.error('Error deleting category:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete category.' });
+    }
+});
+
 
 // --- End of routes ---
 

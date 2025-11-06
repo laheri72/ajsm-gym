@@ -157,28 +157,84 @@ router.post('/api/trainer-login', async (req, res, next) => {
 // REPLACE your old /api/staff-login route
 router.post('/api/staff-login', async (req, res, next) => {
     const { username, password } = req.body;
+    
+    const transaction = new sql.Transaction(pool); // Use a transaction
     try {
-        const result = await pool.request().input('Username', sql.NVarChar(50), username)
-            .query('SELECT * FROM PassBank WHERE Username = @Username');
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+        
+        // 1. Validate credentials in PassBank
+        request.input('Username', sql.NVarChar(50), username);
+        const passBankResult = await request.query('SELECT * FROM PassBank WHERE Username = @Username');
 
-        if (result.recordset.length === 0) {
+        if (passBankResult.recordset.length === 0) {
+            await transaction.rollback();
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        const user = result.recordset[0];
+        const user = passBankResult.recordset[0];
         const match = await bcrypt.compare(password, user.Password);
 
-        if (match) {
-            if (user.Role === 'Trainer') {
-                return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
-            }
-            req.session.user = { Username: user.Username, Branch: user.Branch, Gender: user.Gender, Role: user.Role };
-            // Return the flag
-            return res.json({ success: true, user: req.session.user, isDefaultPassword: user.IsDefaultPassword });
-        } else {
+        if (!match) {
+            await transaction.rollback();
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-    } catch (err) { next(err); }
+
+        if (user.Role === 'Trainer') {
+            await transaction.rollback();
+            return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
+        }
+        
+        // 4. Set session user
+        req.session.user = { 
+            UserID: user.UserID, // ★★★ SENDING THE NEW UserID
+            Username: user.Username, 
+            Branch: user.Branch, 
+            Gender: user.Gender, 
+            Role: user.Role 
+        };
+        
+        let isProfileComplete = true; // Assume true for Staff/Admin
+
+        // 5. ★★★ NEW LOGIC FOR EVALUATORS ★★★
+        if (user.Role === 'Evaluator') {
+            const evalRequest = new sql.Request(transaction);
+            evalRequest.input('UserID', sql.Int, user.UserID);
+            
+            // Check if an evaluator profile exists
+            const evalResult = await evalRequest.query('SELECT Name, Profession FROM Evaluators WHERE UserID = @UserID');
+            
+            if (evalResult.recordset.length === 0) {
+                // No profile exists. Create a blank one.
+                evalRequest.input('Username', sql.NVarChar(50), user.Username);
+                await evalRequest.query(`
+                    INSERT INTO Evaluators (UserID) 
+                    VALUES (@UserID)
+                `);
+                isProfileComplete = false; // Profile is blank
+            } else {
+                // Profile exists, check if it's filled out
+                const profile = evalResult.recordset[0];
+                if (!profile.Name || !profile.Profession) {
+                    isProfileComplete = false;
+                }
+            }
+        }
+
+        await transaction.commit();
+        
+        // 6. Send all flags to the frontend
+        res.json({ 
+            success: true, 
+            user: req.session.user, 
+            isDefaultPassword: user.IsDefaultPassword,
+            isProfileComplete: isProfileComplete // ★★★ NEW FLAG
+        });
+
+    } catch (err) {
+        if (transaction.active) await transaction.rollback();
+        next(err);
+    }
 });
 
 // For the first-time password change modal

@@ -2,18 +2,20 @@
  * This script handles session validation, logout, and the forced password change workflow.
  */
 
-// --- PASSWORD CHANGE LOGIC --- (Unchanged)
+// --- PASSWORD CHANGE LOGIC ---
 function handleInitialPasswordSet() {
-    // ... (your existing function is perfect) ...
     const form = document.getElementById('setPasswordForm');
     if (form.dataset.listenerAttached) return;
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const newPassword = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
+
         if (newPassword !== confirmPassword) {
             return Swal.fire('Error', 'Passwords do not match.', 'error');
         }
+
         try {
             const res = await fetch('/api/staff/set-initial-password', {
                 method: 'PUT',
@@ -23,11 +25,17 @@ function handleInitialPasswordSet() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
+            
             await Swal.fire('Success!', 'Your new password has been set.', 'success');
+            
             const modalEl = document.getElementById('forcePasswordChangeModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             modal.hide();
-            sessionStorage.removeItem('isDefaultPassword');
+            sessionStorage.removeItem('isDefaultPassword'); // Flag is cleared
+
+            // ★★★ NEW: Now check if profile is complete ★★★
+            checkProfileCompletion();
+
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
         }
@@ -35,24 +43,26 @@ function handleInitialPasswordSet() {
     form.dataset.listenerAttached = 'true';
 }
 
-// --- Background Security Check --- (Unchanged)
+// --- Background Security Check ---
 async function validateSessionInBackground() {
-    // ... (your existing function is perfect) ...
     try {
         const res = await fetch('/api/session-user', { method: 'GET', credentials: 'include' });
         const data = await res.json();
+
         if (!data.success || !data.user) {
             localStorage.removeItem('staffUser');
             window.location.href = '../Forbidden.html';
             return;
         }
+
         const userRole = data.user.Role;
         const currentPage = window.location.pathname.split('/').pop();
+
         if (userRole === 'Evaluator') {
             const allowedPages = ['evaluation.html', 'comment-entry.html'];
             if (!allowedPages.includes(currentPage)) {
                 window.location.href = 'evaluation.html';
-                return; 
+                return;
             }
         } 
         else if (userRole === 'Trainer') {
@@ -67,7 +77,10 @@ async function validateSessionInBackground() {
                 return;
             }
         }
+
+        // Store the user object from the session
         localStorage.setItem('staffUser', JSON.stringify(data.user));
+
     } catch (err) {
         console.error('Session validation failed:', err);
         localStorage.removeItem('staffUser');
@@ -75,9 +88,8 @@ async function validateSessionInBackground() {
     }
 }
 
-// --- Set Active Navbar Link --- (Unchanged)
+// --- Set Active Navbar Link ---
 function setActiveNavbarLink() {
-    // ... (your existing function is perfect) ...
     const currentPage = window.location.pathname.split('/').pop();
     document.querySelectorAll('.navbar a, .navbar .dropdown-toggle').forEach(link => {
         link.classList.remove('active');
@@ -98,7 +110,7 @@ function setActiveNavbarLink() {
     }
 }
 
-// --- ★★★ UPDATED: Populate Username (Fix #1) ★★★ ---
+// --- Populate Username & Popover ---
 function populateUsername() {
     try {
         const userString = localStorage.getItem('staffUser');
@@ -108,37 +120,28 @@ function populateUsername() {
             // Find both mobile and desktop display elements
             const mobileDisplay = document.getElementById('staff-username-display');
             const desktopDisplay = document.getElementById('staff-username-display-desktop');
+            const evaluatorDisplay = document.getElementById('evaluator-username-display');
             
             if (user.Username) {
-                // Build the popover content
                 const popoverTitle = `<strong>${user.Username}</strong> (${user.Role})`;
                 const popoverContent = `
                     <strong>Branch:</strong> ${user.Branch}<br/>
                     <strong>Gender:</strong> ${user.Gender}
                 `;
                 
-                // Set for Mobile
+                // For main staff pages
                 if (mobileDisplay) {
-                    mobileDisplay.innerHTML = `👤 ${user.Username}`; // Add emoji back for mobile sidebar
-                    // Initialize popover
-                    new bootstrap.Popover(mobileDisplay, {
-                        title: popoverTitle,
-                        content: popoverContent,
-                        html: true,
-                        customClass: 'staff-popover'
-                    });
+                    mobileDisplay.innerHTML = `👤 ${user.Username}`;
+                    new bootstrap.Popover(mobileDisplay, { title: popoverTitle, content: popoverContent, html: true, customClass: 'staff-popover' });
+                }
+                if (desktopDisplay) {
+                    desktopDisplay.innerHTML = user.Username;
+                    new bootstrap.Popover(desktopDisplay, { title: popoverTitle, content: popoverContent, html: true, customClass: 'staff-popover' });
                 }
                 
-                // Set for Desktop
-                if (desktopDisplay) {
-                    desktopDisplay.innerHTML = user.Username; // No emoji on desktop
-                    // Initialize popover
-                    new bootstrap.Popover(desktopDisplay, {
-                        title: popoverTitle,
-                        content: popoverContent,
-                        html: true,
-                        customClass: 'staff-popover'
-                    });
+                // For simple evaluator pages
+                if (evaluatorDisplay) {
+                    evaluatorDisplay.textContent = `👤 ${user.Username}`;
                 }
             }
         }
@@ -147,21 +150,62 @@ function populateUsername() {
     }
 }
 
-// --- Main Execution Block (Updated for Fix #2) ---
+// --- ★★★ NEW: Function to check for profile completion ★★★ ---
+function checkProfileCompletion() {
+    // This flag is set by the login API
+    const isProfileComplete = sessionStorage.getItem('isProfileComplete');
+    
+    // Only run this on the evaluation page
+    if (document.getElementById('completeProfileModal')) {
+        if (isProfileComplete === 'false') {
+            // Show the profile modal
+            const profileModalEl = document.getElementById('completeProfileModal');
+            const profileModal = new bootstrap.Modal(profileModalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            profileModal.show();
+        }
+    }
+}
+
+// --- Main Execution Block ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Run validation first
     validateSessionInBackground().then(() => {
-        // Now that localStorage is set, populate the name
         populateUsername();
-        
-        // ★★★ FIX #2: Show the body only AFTER auth is complete ★★★
         document.body.style.visibility = 'visible';
+
+        // --- ★★★ NEW MODAL LOGIC ★★★ ---
+        // This logic runs *after* the page is visible.
+        // It prioritizes: Password first, THEN profile.
+        
+        const isDefaultPassword = sessionStorage.getItem('isDefaultPassword');
+        
+        if (isDefaultPassword === 'true') {
+            // 1. Show Password Modal
+            const passwordModalEl = document.getElementById('forcePasswordChangeModal');
+            if (passwordModalEl) {
+                const passwordModal = new bootstrap.Modal(passwordModalEl, {
+                    backdrop: 'static',
+                    keyboard: false
+                });
+                passwordModal.show();
+                handleInitialPasswordSet(); // Attaches listener
+            }
+        } else {
+            // 2. If password is OK, check profile (only on evaluator pages)
+            checkProfileCompletion();
+        }
+        /// ★★★ ADD THIS LINE ★★★
+        // Broadcast that authentication is finished
+        document.dispatchEvent(new Event('auth:finished'));
     });
     
+    // This is for the main staff navbar, harmless on evaluator pages
     setActiveNavbarLink();
 
-    // --- Logout Listeners (Unchanged) ---
+    // --- Logout Listeners ---
     const logoutLinks = document.querySelectorAll('#logoutLink, #logoutLinkMobile, #logoutLinkDesktop');
     logoutLinks.forEach(link => {
         if(link) { 
@@ -170,20 +214,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch('/api/logout', { method: 'POST', credentials: 'include' })
                     .then(() => {
                         localStorage.removeItem('staffUser');
-                        sessionStorage.removeItem('isDefaultPassword');
+                        sessionStorage.clear(); // Clear all session storage
                         window.location.href = '../homepage.html';
                     }).catch(err => console.error('Logout failed:', err));
             });
         }
     });
 
-    // --- Password Change Modal (Unchanged) ---
-    if (sessionStorage.getItem('isDefaultPassword') === 'true') {
-        const passwordModalEl = document.getElementById('forcePasswordChangeModal');
-        if (passwordModalEl) {
-            const passwordModal = new bootstrap.Modal(passwordModalEl);
-            passwordModal.show();
-            handleInitialPasswordSet();
-        }
+    // This is for the evaluator pages, harmless on staff pages
+    if (document.getElementById('saveProfileBtn')) {
+        document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+            const payload = {
+                Name: document.getElementById('evaluatorName').value,
+                Profession: document.getElementById('evaluatorProfession').value,
+                Email: document.getElementById('evaluatorEmail').value,
+                Contact: document.getElementById('evaluatorContact').value,
+            };
+
+            if (!payload.Name || !payload.Profession) {
+                return Swal.fire('Missing Fields', 'Full Name and Profession are required.', 'warning');
+            }
+
+            try {
+                const res = await fetch('/api/evaluator/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message);
+
+                await Swal.fire('Success!', 'Your profile has been updated.', 'success');
+                
+                // Clear the flag and hide the modal
+                sessionStorage.setItem('isProfileComplete', 'true');
+                const modalEl = document.getElementById('completeProfileModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        });
     }
 });

@@ -230,7 +230,47 @@
                             </div>
                         </div>
                     </section>
-                                                <section class="card mt-4 p-3">
+
+                    <section class="card mt-4 p-3">
+                        <h2 class="h4">💬 Evaluation Category Management</h2>
+                        <p class="text-muted">
+                            Add, edit, or remove the comment categories that evaluators can choose from.
+                        </p>
+                        
+                        <h5 class="mt-2">Add New Category</h5>
+                        <form id="addCategoryForm" class="row g-3">
+                            <div class="col-md-5">
+                                <label for="newCategoryName" class="form-label">Category Name</label>
+                                <input type="text" id="newCategoryName" class="form-control" placeholder="e.g., Future Goals" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label for="newCategoryDesc" class="form-label">Description (Optional)</label>
+                                <input type="text" id="newCategoryDesc" class="form-control" placeholder="A short description">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Add</button>
+                            </div>
+                        </form>
+
+                        <h5 class="mt-4">Existing Categories</h5>
+                        <div style="overflow-x: auto;">
+                            <table class="table table-striped table-bordered" id="categoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Category Name</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categoryTableBody">
+                                    <tr><td colspan="3" class="loader-cell"><div class="loader"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+
+                    <section class="card mt-4 p-3">
                                 <h2>🔑 Reset Student Password</h2>
                                 <p class="text-muted">This will reset the student's password back to their TR number. They will be forced to create a new password on their next login.</p>
                                 <form id="resetPasswordForm">
@@ -245,6 +285,20 @@
                                     </div>
                                 </form>
                             </section>
+
+                            <section class="card mt-4 p-3">
+                        <h2>Reset Fitness Test Password</h2>
+                        <p class="text-muted">This will reset the student's **TestMaster** password back to `NULL`. They will be forced to log in with their ITS number and create a new password on their next login.</p>
+                        <form id="resetTestPasswordForm"> <div class="row">
+                                <div class="col-md-4">
+                                    <label for="studentTrTestReset" class="form-label">Student TR Number</label>
+                                    <input type="number" class="form-control" id="studentTrTestReset" placeholder="Enter TR..." required /> </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-warning w-100">Reset Test Password</button>
+                                </div>
+                            </div>
+                        </form>
+                    </section>
 
                             <section class="card mt-4 p-3">
                                 <h2>🔒 Change Your Admin Password</h2>
