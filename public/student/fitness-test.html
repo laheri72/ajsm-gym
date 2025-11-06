@@ -340,6 +340,89 @@
         #medical-view .text-muted {
             font-style: italic;
         }
+        /* ★★★ ADD THESE STYLES TO fitness-test.html <head> <style> block ★★★ */
+
+.loader-cell {
+    text-align: center;
+    padding: 3rem;
+}
+.loader {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Accordion Styles */
+.accordion-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem !important;
+    margin-bottom: 0.5rem;
+}
+.accordion-item:first-of-type,
+.accordion-item:last-of-type {
+    border-radius: 0.5rem !important;
+}
+.accordion-header {
+    border-radius: 0.5rem;
+}
+.accordion-button {
+    font-weight: 600;
+    color: var(--dark);
+    background-color: #fcfcfc;
+}
+.accordion-button:not(.collapsed) {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: none;
+}
+.accordion-button:focus {
+    box-shadow: none;
+}
+.accordion-body {
+    border-top: 1px solid #e0e0e0;
+    background-color: #fdfdfd;
+}
+
+/* Comment Card (Inside History) */
+.comment-card-history {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.comment-card-history:last-child {
+    margin-bottom: 0;
+}
+.comment-card-history .comment-header {
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.comment-card-history .comment-category {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+.comment-card-history .comment-meta-data {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--gray);
+}
+.comment-card-history .comment-body {
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    margin-bottom: 0;
+    color: var(--dark);
+}
     </style>
 </head>
 <body>
@@ -351,7 +434,7 @@
             </div>
             <a href="#" class="active" id="tab-profile"><i class="fas fa-user"></i> <span>Profile</span></a>
             <a href="#" id="tab-fit"><i class="fas fa-dumbbell"></i> <span>Fitness Test</span></a>
-            <a href="#" id="tab-swim"><i class="fas fa-swimmer"></i> <span>Swimming Test</span></a>
+            <a href="#" id="tab-evaluations"><i class="fas fa-user-check"></i> <span>My Evaluations</span></a>
             <a href="#" id="tab-goals"><i class="fas fa-bullseye"></i> <span>Goals & Progress</span></a>
             <a href="#" id="tab-history"><i class="fas fa-history"></i> <span>Test History</span></a>
             <a href="#" id="tab-achievements"><i class="fas fa-trophy"></i> <span>Achievements</span></a>
@@ -369,13 +452,14 @@
             <!-- Profile Overview Section -->
             <section id="profile-overview" class="content-section animate__animated animate__fadeIn">
                 <h2><i class="fas fa-user-circle"></i> Your Fitness Profile</h2>
+                
                 <div class="row">
                     <div class="col-md-4">
                         <div class="card text-center">
                             <img src="/images/fitness test.jpg" alt="Profile Picture" class="rounded-circle mx-auto mt-3" style="width: 150px; height: 150px;">
                             <div class="card-body">
+                                <h3>ملف اللياقة البدنية</h3>
                                 <h5 id="studentName">Loading...</h5>
-                                <p class="text-muted">Fitness Enthusiast</p>
                             </div>
                         </div>
                     </div>
@@ -399,6 +483,17 @@
                     </tbody>
                 </table>
                         </div>
+
+                <section id="latest-test-card" class="content-section mt-4" style="display: none;">
+                <h5 class="mb-3"><i class="fas fa-camera"></i> Latest Fitness Snapshot</h5>
+                <p class="text-muted" id="latest-test-date">Loading test data...</p>
+
+                <div class="row g-3" id="latest-test-grid">
+                    <div class="loader-cell"><div class="loader"></div></div>
+                </div>
+            </section>
+
+
 
                         <div id="medical-history-card" class="content-section mt-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -436,10 +531,9 @@
                                 </div>
                             </form>
                         </div>
-
-
                     </div>
                 </div>
+
             </section>
 
             <!-- Fitness Test Section -->
@@ -453,8 +547,8 @@
                         <h5><i class="fas fa-pen"></i> Enter Fitness Test Data:</h5>
                         <div class="col-md-3">
                             <label>Gender</label>
-                            <select name="Gender" class="form-select" required>
-                                <option value="">Select...</option>
+                            <select name="Gender" class="form-control" required readonly style="background-color: #e9ecef;">
+                                <option value="">Loading...</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                             </select>
@@ -525,10 +619,13 @@
                 </div>
             </section>
 
-            <!-- Swimming Test Section -->
-            <section id="student-swim" class="content-section" style="display: none;">
-                <h2><i class="fas fa-swimmer"></i> Swimming Test</h2>
-                <p>Coming Soon – Track your swimming performance and set aquatic goals!</p>
+            <section id="student-evaluations" class="content-section" style="display: none;">
+                <h2><i class="fas fa-user-check"></i> My Evaluations</h2>
+                <p class="text-muted">View comments and feedback from doctors, nutritionists, and trainers on your submitted fitness tests.</p>
+
+                <div id="evaluation-accordion-container" class="mt-4">
+                    <div class="loader-cell"><div class="loader" style="border-top-color: var(--primary);"></div></div>
+                </div>
             </section>
 
             <!-- Goals & Progress Section -->
@@ -540,7 +637,13 @@
                     <!-- add a tooltip for score : which is the Score from the test record , and can find it in Test history tab -->
                     <small class="text-muted">Your Score is calculated based on your performance in various fitness metrics. Aim higher to improve your overall health!</small>     
                     <br>
-                    <p> Your current score is: <b id="currentScore">0</b></p>
+                    <p> Your current score is: <b id="currentScore" class="fs-4 text-primary">0%</b>
+                        <a tabindex="0" class="btn btn-sm btn-outline-secondary rounded-circle" 
+                        role="button" data-bs-toggle="popover" data-bs-trigger="focus" 
+                        title="Grading Scale" data-bs-content="80-100% = A+ | 70-79% = A | 60-69% = B | 50-59% = C | <50% = D">
+                        <i class="fas fa-info"></i>
+                        </a>
+                    </p>
                     <!-- Goal Input -->
                     <div class="input-group mb-3">
                         <input type="number" id="goalInput" class="form-control" placeholder="Enter your goal score..." />
@@ -629,6 +732,8 @@
         // All original functions remain intact
         let studentData = null;
         let calculated = null;
+        let historyDataTable = null;
+        let historyData = [];
 
 async function validateStudentSession() {
     try {
@@ -710,6 +815,12 @@ async function validateStudentSession() {
                 studentData.calculatedAge = age; // Store calculated age
                 
                 if (ageDisplay) ageDisplay.innerText = age;
+                // ★★★ PRE-FILL GENDER ★★★
+                const genderSelect = document.querySelector('#testForm [name="Gender"]');
+                if (genderSelect && student.Gender) {
+                    genderSelect.value = student.Gender.toLowerCase();
+                }
+                // ★★★ END PRE-FILL ★★★
                 if (dobDisplay) dobDisplay.innerText = birthDate.toLocaleDateString(); // Show formatted DOB
                 if (dobInputGroup) dobInputGroup.style.display = 'none'; // Hide input
                 if (dobHelp) dobHelp.style.display = 'none';
@@ -738,6 +849,7 @@ async function validateStudentSession() {
 
             await loadTestHistory(tr);
             await loadMedicalHistory();
+            await loadMyEvaluations();
 
         } catch (err) {
             console.warn("TestMaster missing, trying TestRecords…");
@@ -935,6 +1047,158 @@ async function loadMedicalHistory() {
         console.error('Error loading medical history:', err);
         viewDiv.innerHTML = '<p class="text-danger">Failed to load medical history.</p>';
     }
+}
+// ... (after loadMedicalHistory() function)
+
+/**
+ * ★★★ NEW: Helper to format evaluator metadata
+ */
+function formatMetaData(evaluator, profession, timestamp) {
+    if (!evaluator) return '';
+    const date = new Date(timestamp).toLocaleDateString();
+    // e.g., "by Dr. John (Doctor) on 11/6/2025"
+    return `by <strong>${evaluator}</strong> (${profession || 'Evaluator'}) on ${date}`;
+}
+
+/**
+ * ★★★ NEW: Fetches and renders all evaluations
+ */
+async function loadMyEvaluations() {
+    const container = document.getElementById('evaluation-accordion-container');
+    try {
+        const res = await fetch('/api/evaluations/me', { credentials: 'include' });
+        if (!res.ok) throw new Error('Could not load evaluations');
+
+        const { data } = await res.json();
+        renderMyEvaluations(data); // Call the render function
+
+    } catch (err) {
+        console.error('Error loading evaluations:', err);
+        container.innerHTML = '<p class="text-danger">Failed to load evaluations.</p>';
+    }
+}
+
+/**
+ * ★★★ NEW: Renders the evaluation data into an accordion
+ */
+function renderMyEvaluations(data) {
+    const container = document.getElementById('evaluation-accordion-container');
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p class="text-muted">You do not have any evaluations from trainers or doctors yet.</p>';
+        return;
+    }
+
+    let accordionHtml = `<div class="accordion" id="studentEvaluationAccordion">`;
+    const c = (val) => val ? val.replace(/\n/g, '<br>') : '<i class="text-muted">No comment.</i>';
+
+    // data is an array of TestLogs, each with a .comments array
+    data.forEach((log, index) => {
+        const testDate = new Date(log.CreatedAt).toLocaleDateString();
+        const hasComments = log.comments.length > 0;
+
+        // Group comments by Category
+        const commentsByCategory = log.comments.reduce((acc, comment) => {
+            const category = comment.CategoryName;
+            if (!acc[category]) acc[category] = [];
+            acc[category].push(comment);
+            return acc;
+        }, {});
+
+        accordionHtml += `
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-${index}">
+                <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}">
+                    <strong>${log.BatchName}</strong>
+                    <span class="ms-2 me-auto text-muted">(Test Date: ${testDate} | Grade: ${log.Grade})</span>
+                    ${hasComments 
+                        ? `<span class="badge bg-primary me-2">${log.comments.length} Comment(s)</span>` 
+                        : `<span class="badge bg-secondary me-2">Pending</span>`
+                    }
+                </button>
+            </h2>
+            <div id="collapse-${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" data-bs-parent="#studentEvaluationAccordion">
+                <div class="accordion-body">
+        `;
+
+        if (!hasComments) {
+            accordionHtml += '<p class="text-muted">This test has not been evaluated yet.</p>';
+        } else {
+            // Loop through each category (e.g., "Strengths", "Nutritional Guidelines")
+            for (const categoryName in commentsByCategory) {
+                accordionHtml += `<h5 class="comment-category">${categoryName}</h5>`;
+
+                // Loop through comments within that category
+                commentsByCategory[categoryName].forEach(comment => {
+                    accordionHtml += `
+                    <div class="comment-card-history">
+                        <div class="comment-header">
+                            <span class="comment-meta-data">
+                                ${formatMetaData(comment.EvaluatorName, comment.Profession, comment.DateEvaluated)}
+                            </span>
+                        </div>
+                        <p class="comment-body">${c(comment.CommentText)}</p>
+                    </div>
+                    `;
+                });
+            }
+        }
+
+        accordionHtml += `
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    accordionHtml += `</div>`; // Close accordion
+    container.innerHTML = accordionHtml;
+}
+
+/**
+ * ★★★ NEW: Populates the "Latest Fitness Snapshot" card
+ */
+function populateLatestTestCard(latestRecord) {
+    const card = document.getElementById('latest-test-card');
+    const grid = document.getElementById('latest-test-grid');
+    const dateEl = document.getElementById('latest-test-date');
+
+    if (!card) return;
+    card.style.display = 'block'; // Show the card
+
+    if (!latestRecord) {
+        dateEl.textContent = 'No test data found. Please complete your first fitness test.';
+        grid.innerHTML = '<p class="text-muted">Your results will appear here.</p>';
+        return;
+    }
+
+    const testDate = new Date(latestRecord.CreatedAt).toLocaleDateString();
+    dateEl.textContent = `From your test on ${testDate}`;
+
+    // Helper to create a stat card
+    const createStat = (label, value, grade) => `
+        <div class="col-md-3 col-6">
+            <div class="card h-100 text-center py-3">
+                <h6 class="text-muted small text-uppercase mb-0">${label}</h6>
+                <div class="fs-3 fw-bold ${grade || ''}">${value}</div>
+            </div>
+        </div>
+    `;
+
+    // Map grades to CSS classes
+    const gradeClassMap = {
+        'A+': 'text-success', 'A': 'text-success',
+        'B': 'text-primary', 'C': 'text-warning',
+        'D': 'text-danger'
+    };
+    
+    const gradeClass = gradeClassMap[latestRecord.Grade] || 'text-dark';
+
+    grid.innerHTML = `
+        ${createStat('Grade', latestRecord.Grade, gradeClass)}
+        ${createStat('Score', latestRecord.Total.toFixed(1) + '%', gradeClass)}
+        ${createStat('BMI', latestRecord.BMI.toFixed(1))}
+        ${createStat('Body Fat', latestRecord.BodyFat.toFixed(1) + '%')}
+    `;
 }
 
 // --- Add Event Listeners for the new buttons ---
@@ -1233,7 +1497,8 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
             else calculated.Grade = "D";
 
             // Store globally for saveRecord()
-            window.calculated = calculated;
+            const saveBtn = document.getElementById("saveBtn");
+            saveBtn.dataset.reportData = JSON.stringify(calculated);
 
             // Evaluation rules
             const avgMetrics = {
@@ -1302,7 +1567,10 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
             const saveBtn = document.getElementById("saveBtn");
             saveBtn.disabled = true;
 
-            if (!studentData || !calculated) {
+            // ★★★ Read data from the button's dataset
+            const reportDataString = saveBtn.dataset.reportData;
+            if (!studentData || !reportDataString) {
+                const calculated = JSON.parse(reportDataString);
                 Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
                 return;
             }
@@ -1328,7 +1596,7 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
                     Swal.fire('Invalid VO2Max', 'Please provide a valid pulse rate to calculate VO2 Max.', 'error');
                     return;
                 }
-                if (field.value === null || field.value === undefined || field.value === '') {
+                if (field.value === null || field.value === undefined) {
                     Swal.fire('Missing Field', `Please fill the field: ${field.name}`, 'error');
                     return;
                 }
@@ -1557,19 +1825,21 @@ function renderProgressBar(records) {
     }
 }
 
-
         async function loadTestHistory() {
-            // Swal.showLoading();
             try {
                 const response = await fetch(`/api/testrecords/me`, {
                     method: 'GET',
                     credentials: 'include'
                 });
-                const records = await response.json();
+                
+                historyData = await response.json(); // STORE DATA GLOBALLY
+                const records = historyData; // Use the global data for the functions below
+
                 const saveBtn = document.getElementById('saveBtn');
                 const saveWarning = document.getElementById('saveWarning');
                 const tbody = document.getElementById('historyBody');
-                tbody.innerHTML = ''; // Clear existing content
+                
+                if(tbody) tbody.innerHTML = ''; 
 
                 // Handle save button visibility based on submission timing
                 if (records.length > 0) {
@@ -1592,38 +1862,24 @@ function renderProgressBar(records) {
                     saveWarning.style.color = 'red';
                 }
 
-                // Initialize or reinitialize DataTables
-                if ($.fn.DataTable.isDataTable('#historyTable')) {
-                    $('#historyTable').DataTable().destroy(); // Destroy existing instance to avoid conflicts
-                }
-
-                const table = $('#historyTable').DataTable({
-                    paging: true,
-                    searching: true,
-                    ordering: true,
-                    responsive: true, // Add this
-                    data: records, // Pass records directly to DataTables
-                    columns: [
-                        { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
-                        { data: 'BMI', render: (data) => parseFloat(data).toFixed(2) },
-                        { data: 'BodyFat', render: (data) => parseFloat(data).toFixed(2) },
-                        { data: 'BMR', render: (data) => parseFloat(data).toFixed(1) },
-                        { data: 'VO2Max', render: (data) => (data ? parseFloat(data).toFixed(1) : 'N/A') },
-                        { data: 'Total', render: (data) => parseFloat(data).toFixed(1) },
-                        { data: 'Grade', render: (data) => `<strong>${data}</strong>` }
-                    ],
-                    language: {
-                        emptyTable: "No test records available. Please submit a fitness test."
-                    }
-                });
-
                 renderProgressBar(records);
+                populateLatestTestCard(records[0]); // This is your new card from before
+
                 // currentScore update which is 'Total' in latest record
                 if (records.length > 0) {
                     const currentScoreEl = document.getElementById('currentScore');
-                    currentScoreEl.textContent = `${parseFloat(records[0].Total).toFixed(1)}`;
+                    currentScoreEl.textContent = `${parseFloat(records[0].Total).toFixed(1)}%`;
                 }   
-                Swal.close();
+
+                // ★★★ THIS IS THE FIX ★★★
+                // After all data is loaded and processed, check if the table
+                // was already initialized (by a "fast click")
+                if (historyDataTable) {
+                    // The table exists, but it was built with empty data.
+                    // Now, we clear it, add the real data, and redraw.
+                    historyDataTable.clear().rows.add(historyData).draw();
+                }
+                // ★★★ END OF FIX ★★★
 
             } catch (err) {
                 console.error("Error loading test history", err);
@@ -1633,6 +1889,47 @@ function renderProgressBar(records) {
                     text: 'Failed to load test history. Please try again later.'
                 });
             }
+        }
+
+        /**
+         * ★★★ NEW FUNCTION ★★★
+         * Initializes the history DataTable *after* its container is visible.
+         */
+        function initializeHistoryTable() {
+            // Check if table is already built
+            if (historyDataTable) {
+                return; 
+            }
+
+            // Initialize DataTables
+            historyDataTable = $('#historyTable').DataTable({
+                paging: true,
+                searching: true,
+                ordering: true,
+                order: [], // This respects the API's TestLog order
+                responsive: true, 
+                data: historyData, // Use the globally fetched data
+                columns: [
+                    { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
+                    { data: 'BMI', render: (data) => parseFloat(data).toFixed(2) },
+                    { data: 'BodyFat', render: (data) => parseFloat(data).toFixed(2) },
+                    { data: 'BMR', render: (data) => parseFloat(data).toFixed(1) },
+                    { data: 'VO2Max', render: (data) => (data ? parseFloat(data).toFixed(1) : 'N/A') },
+                    { data: 'Total', render: (data) => parseFloat(data).toFixed(1) },
+                    { data: 'Grade', render: (data) => `<strong>${data}</strong>` }
+                ],
+                language: {
+                    emptyTable: "No test records available. Please submit a fitness test."
+                }
+            });
+            
+            // Force the table to recalculate its layout now that it's visible
+            // We use a tiny delay to ensure the browser has rendered the container
+            setTimeout(() => {
+                if (historyDataTable) {
+                    historyDataTable.columns.adjust();
+                }
+            }, 10);
         }
 
 
@@ -1682,12 +1979,13 @@ const navLinks = document.querySelectorAll('.sidebar a');
 const sections = {
     'tab-profile': 'profile-overview',
     'tab-fit': 'student-fit',
-    'tab-swim': 'student-swim',
+    'tab-evaluations': 'student-evaluations',
     'tab-goals': 'goals-progress',
     'tab-history': 'test-history',
     'tab-achievements': 'achievements'
 };
 
+// Function to show a specific tab
 // Function to show a specific tab
 function showTab(tabId) {
     // Remove 'active' class from all nav links
@@ -1706,6 +2004,13 @@ function showTab(tabId) {
         link.classList.add('active');
         const section = document.getElementById(sectionId);
         if (section) section.style.display = 'block';
+
+        // ★★★ THIS IS THE NEW FIX ★★★
+        // If we just revealed the history tab, initialize the table (if not already done).
+        if (tabId === 'tab-history') {
+            initializeHistoryTable();
+        }
+        // ★★★ END OF FIX ★★★
     }
 }
 
@@ -1725,6 +2030,11 @@ document.addEventListener("DOMContentLoaded", () => {
     showTab(savedTab);
     validateStudentSession();
                     // ★★★ ADD THIS NEW BLOCK ★★★
+
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+popoverTriggerList.map(function (popoverTriggerEl) {
+    return new bootstrap.Popover(popoverTriggerEl);
+});
     // Check if the user needs to change their password
     if (sessionStorage.getItem('forcePasswordChange') === 'true') {
         // 1. Get the modal elements

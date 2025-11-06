@@ -1251,5 +1251,33 @@ body.nav-open .nav-overlay {
     line-height: 1.6;
 }
 
+/* --- ADD THIS TO THE END OF dashboard.css --- */
 
+/* ★★★ NEW: Admin Sub-Tab Styles ★★★ */
+.admin-tabs {
+    border-bottom-color: #dee2e6;
+}
+
+.admin-tabs .nav-link {
+    font-weight: 600;
+    color: var(--gray);
+    border: none;
+    border-bottom: 3px solid transparent;
+}
+
+.admin-tabs .nav-link:hover {
+    color: var(--dark);
+    border-bottom-color: #dee2e6;
+}
+
+.admin-tabs .nav-link.active {
+    color: var(--primary);
+    background-color: transparent;
+    border-bottom: 3px solid var(--primary);
+}
+
+.tab-content {
+    background-color: transparent;
+    padding: 0;
+}
 

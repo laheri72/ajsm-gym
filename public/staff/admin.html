@@ -100,7 +100,24 @@
         <main class="main-content">
             <div class="content">
                 <section id="Admin-base" style="padding: 20px;">
-                    <section class="card mt-4 p-3">
+
+    <nav class="nav nav-tabs admin-tabs" id="adminTab" role="tablist">
+        <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#tab-pane-users" type="button" role="tab">
+            <i class="fas fa-users-cog"></i> User Management
+        </button>
+        <button class="nav-link" id="eval-tab" data-bs-toggle="tab" data-bs-target="#tab-pane-eval" type="button" role="tab">
+            <i class="fas fa-clipboard-check"></i> Evaluation System
+        </button>
+        <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#tab-pane-security" type="button" role="tab">
+            <i class="fas fa-shield-alt"></i> Security & Passwords
+        </button>
+    </nav>
+
+    <div class="tab-content" id="adminTabContent">
+
+        <div class="tab-pane fade show active" id="tab-pane-users" role="tabpanel">
+            
+            <section class="card mt-4 p-3">
                         <h2>👑 Role Management Panel</h2>
                         <p id="adminBranchInfo">
                             Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch.
@@ -140,7 +157,31 @@
                             </p>
                     </section>
 
-                    <section class="card mt-4 p-3">
+            <section id="inactive-student-record" class="card mt-4 p-3">
+                            <h2>Inactive Students (Admin View)</h2>
+                            <div style="overflow-x: auto;">
+                                <table id="inactiveStudentTable" class="table table-striped table-bordered" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Tr No</th>
+                                            <th>Name</th>
+                                            <th>Darajah</th>
+                                            <th>Preferred Goal</th>
+                                            <th>Slot</th>
+                                            <th>Activate</th>
+                                            <th style="color: var(--danger);">Permanently Delete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </section>
+
+        </div>
+
+        <div class="tab-pane fade" id="tab-pane-eval" role="tabpanel">
+
+            <section class="card mt-4 p-3">
                         <h2 class="h4">🩺 Evaluation Batch Management</h2>
                         <p class="text-muted">
                             Manage evaluation batches for your branch. Only one batch per gender can be "Active" at a time.
@@ -195,8 +236,8 @@
                             </div>
                         </div>
                     </section>
-                    
-                    <section class="card mt-4 p-3">
+
+            <section class="card mt-4 p-3">
                         <h2 class="h4">📦 Unbatched Records Management</h2>
                         <p class="text-muted">
                             These are records submitted by trainers while no batch was "Active." You must assign them to a **locked** batch to be evaluated.
@@ -231,7 +272,7 @@
                         </div>
                     </section>
 
-                    <section class="card mt-4 p-3">
+            <section class="card mt-4 p-3">
                         <h2 class="h4">💬 Evaluation Category Management</h2>
                         <p class="text-muted">
                             Add, edit, or remove the comment categories that evaluators can choose from.
@@ -268,9 +309,12 @@
                             </table>
                         </div>
                     </section>
+            
+        </div>
 
+        <div class="tab-pane fade" id="tab-pane-security" role="tabpanel">
 
-                    <section class="card mt-4 p-3">
+            <section class="card mt-4 p-3">
                                 <h2>🔑 Reset Student Password</h2>
                                 <p class="text-muted">This will reset the student's password back to their TR number. They will be forced to create a new password on their next login.</p>
                                 <form id="resetPasswordForm">
@@ -286,7 +330,7 @@
                                 </form>
                             </section>
 
-                            <section class="card mt-4 p-3">
+            <section class="card mt-4 p-3">
                         <h2>Reset Fitness Test Password</h2>
                         <p class="text-muted">This will reset the student's **TestMaster** password back to `NULL`. They will be forced to log in with their ITS number and create a new password on their next login.</p>
                         <form id="resetTestPasswordForm"> <div class="row">
@@ -300,7 +344,7 @@
                         </form>
                     </section>
 
-                            <section class="card mt-4 p-3">
+            <section class="card mt-4 p-3">
                                 <h2>🔒 Change Your Admin Password</h2>
                                 <form id="changeMyPasswordForm">
                                     <div class="form-group">
@@ -318,28 +362,10 @@
                                     <button type="submit" class="btn btn-primary">Update My Password</button>
                                 </form>
                             </section>
-
-                            
-                        <section id="inactive-student-record" class="card mt-4 p-3">
-                            <h2>Inactive Students (Admin View)</h2>
-                            <div style="overflow-x: auto;">
-                                <table id="inactiveStudentTable" class="table table-striped table-bordered" style="width:100%">
-                                    <thead>
-                                        <tr>
-                                            <th>Tr No</th>
-                                            <th>Name</th>
-                                            <th>Darajah</th>
-                                            <th>Preferred Goal</th>
-                                            <th>Slot</th>
-                                            <th>Activate</th>
-                                            <th style="color: var(--danger);">Permanently Delete</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                        </section>
-                </section>
+            
+        </div>
+    </div>
+</section>
                 </div>
         </main>
     </div>

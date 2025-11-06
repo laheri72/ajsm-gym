@@ -644,6 +644,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- INACTIVE STUDENT MANAGEMENT LOGIC ---
 
+    const usersTab = document.querySelector('#users-tab');
+    
+    if (usersTab) {
+        usersTab.addEventListener('shown.bs.tab', function () {
+            // Check if the inactiveStudentDataTable has been initialized
+            if (inactiveStudentDataTable) {
+                // Adjust columns to fix width
+                inactiveStudentDataTable.columns.adjust().draw();
+            }
+        });
+    }
+
     async function loadInactiveStudents() {
         // Check if DataTable is already initialized
         if (inactiveStudentDataTable) {

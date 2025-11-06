@@ -359,6 +359,85 @@ router.get('/api/testrecords/me', async (req, res) => {
     }
 });
 
+/**
+ * ★★★ NEW: GETS ALL EVALUATIONS FOR THE LOGGED-IN STUDENT ★★★
+ */
+router.get('/api/evaluations/me', async (req, res) => {
+    // 1. Get TR from session
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    const TR = req.session.user.TR;
+
+    try {
+        const request = new sql.Request(pool);
+        request.input('TR', sql.Int, TR);
+
+        // 2. Get all Trainer-submitted Test Logs for this student
+        const historyLogs = await request.query(`
+            SELECT 
+                tr.TestLog, 
+                tr.BatchID,
+                ISNULL(eb.BatchName, 'Unbatched') AS BatchName,
+                tr.CreatedAt, 
+                tr.Grade,
+                tr.Total
+            FROM TestRecords tr
+            LEFT JOIN EvaluationBatches eb ON tr.BatchID = eb.BatchID
+            WHERE tr.TR = @TR AND tr.SubmittedBy = 'Trainer'
+            ORDER BY tr.CreatedAt DESC;
+        `);
+
+        if (historyLogs.recordset.length === 0) {
+            // This is not an error, the student just has no evaluations yet
+            return res.json({ success: true, data: [] });
+        }
+
+        // 3. Get all comments for all those logs in one query
+        const logIDs = historyLogs.recordset.map(r => r.TestLog);
+        
+        // Create a new request for the IN clause
+        const commentRequest = new sql.Request(pool);
+        const logParams = logIDs.map((id, i) => `@LogID${i}`);
+        logIDs.forEach((id, i) => commentRequest.input(`LogID${i}`, sql.Int, id));
+
+        const commentsResult = await commentRequest.query(`
+            SELECT 
+                E.LogID, 
+                E.CommentText, 
+                E.DateEvaluated, 
+                C.CategoryName,
+                EV.Name AS EvaluatorName, 
+                EV.Profession
+            FROM Evaluations E
+            JOIN Evaluators EV ON E.EvaluatorID = EV.EvaluatorID
+            JOIN CommentCategories C ON E.CategoryID = C.CategoryID
+            WHERE E.LogID IN (${logParams.join(',')})
+            ORDER BY C.CategoryName, E.DateEvaluated DESC;
+        `);
+
+        // 4. Group the comments by LogID for easy mapping
+        const commentsMap = new Map();
+        for (const comment of commentsResult.recordset) {
+            if (!commentsMap.has(comment.LogID)) {
+                commentsMap.set(comment.LogID, []);
+            }
+            commentsMap.get(comment.LogID).push(comment);
+        }
+
+        // 5. Combine the data: Attach comments to their matching TestLog
+        const finalData = historyLogs.recordset.map(log => {
+            const comments = commentsMap.get(log.TestLog) || [];
+            return { ...log, comments: comments };
+        });
+
+        res.json({ success: true, data: finalData });
+
+    } catch (err) {
+        console.error('Error fetching student evaluations:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch evaluations.' });
+    }
+});
 
 //===================================================================
 //================= 🧪 Staff Fitness Test Routes ==============
