@@ -518,7 +518,7 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
     
     // Create parameters for ITS
     const itsParams = incomingITS.map((its, i) => `@ITS${i}`);
-    incomingITS.forEach((its, i) => request.input(`ITS${i}`, sql.BigInt, its));
+    incomingITS.forEach((its, i) => request.input(`ITS${i}`, sql.Int, its));
 
     // Query for existing TRs OR ITS numbers in ONE query
     const dbCheckResult = await request.query(`
@@ -558,6 +558,7 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
 });
 
 
+// REPLACE your old /api/fitness-test/bulk-commit route with this one
 router.post('/api/fitness-test/bulk-commit', async (req, res) => {
   const { Branch, Gender } = req.session.user || {};
   if (!Branch || !Gender) {
@@ -574,47 +575,61 @@ router.post('/api/fitness-test/bulk-commit', async (req, res) => {
     await transaction.begin();
 
     try {
-      // 1. Define the query string *once* outside the loop
+      // 1. Create ONE request object for the entire transaction
+      const request = new sql.Request(transaction);
+      const valuesClauses = [];
+
+      // 2. Loop through students to build parameters and value strings
+      //    (This loop does not hit the database)
+      students.forEach((student, index) => {
+        // Create unique parameter names for each student's data
+        const trParam = `TR${index}`;
+        const itsParam = `ITS${index}`;
+        const nameParam = `Name${index}`;
+        const darajahParam = `Darajah${index}`;
+
+        // Add all parameters to the *single* request object
+        request.input(trParam, sql.Int, student.TR);
+        request.input(itsParam, sql.Int, student.ITS);
+        request.input(nameParam, sql.NVarChar(100), student.Name);
+        request.input(darajahParam, sql.NVarChar(50), student.Darajah);
+
+        // Add a new VALUES clause to our array
+        valuesClauses.push(
+          `(@${trParam}, @${itsParam}, @${nameParam}, @${darajahParam}, @Branch, @Gender)`
+        );
+      });
+      
+      // 3. Add the session Branch and Gender parameters *once*
+      //    (Using NVarChar is still fine, SQL server will convert the value)
+      request.input('Branch', sql.NVarChar(50), Branch);
+      request.input('Gender', sql.NVarChar(10), Gender);
+      
+      // 4. Construct the single, massive INSERT query
       const query = `
         INSERT INTO TestMaster 
           (TR, ITS, Name, Darajah, Branch, Gender)
         VALUES 
-          (@TR, @ITS, @Name, @Darajah, @Branch, @Gender);
+          ${valuesClauses.join(', ')};
       `;
 
-      // 2. Loop through each student
-      for (const student of students) {
-        
-        // *** THE FIX IS HERE ***
-        // Create a *new* request object for *each* loop.
-        // This request is part of the same transaction.
-        const request = new sql.Request(transaction);
-
-        // 3. Add all parameters for this *one* student
-        request.input('TR', sql.Int, student.TR);
-        request.input('ITS', sql.BigInt, student.ITS);
-        request.input('Name', sql.NVarChar(100), student.Name);
-        request.input('Darajah', sql.NVarChar(50), student.Darajah);
-        request.input('Branch', sql.NVarChar(50), Branch);
-        request.input('Gender', sql.NVarChar(10), Gender);
-        
-        // 4. Execute the query just for this student
-        await request.query(query);
-      }
-
-      // 5. If all loops succeeded, commit the transaction
+      // 5. Execute the query *once*
+      await request.query(query);
+      
+      // 6. If all loops succeeded, commit the transaction
       await transaction.commit();
 
       res.json({ success: true, count: students.length });
 
     } catch (err) {
-      // If any single insert fails, roll back the *entire* batch
+      // If the single insert fails, roll back the *entire* batch
       await transaction.rollback();
       throw err; // Re-throw to be caught by the outer catch
     }
   } catch (err) {
     console.error('Bulk commit error:', err);
     
+    // The existing error handling is perfect
     if (err.number === 2627 || err.number === 2601) { 
       res.status(409).json({ success: false, message: 'Conflict: A student with one of these TR or ITS numbers already exists.' });
     } else {
