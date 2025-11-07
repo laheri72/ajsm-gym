@@ -544,6 +544,46 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // admin.js
+
+// admin.js
+
+/**
+ * Fetches and renders the evaluators table (as a simple HTML table)
+ */
+async function loadEvaluators() {
+    const tableBody = document.getElementById('evaluatorsTableBody');
+    tableBody.innerHTML = `<tr><td colspan="5" class="loader-cell"><div class="loader"></div></td></tr>`;
+
+    try {
+        const res = await fetch('/api/admin/evaluators', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch evaluators');
+
+        const { data } = await res.json();
+        
+        tableBody.innerHTML = ''; // Clear loader
+        if (data.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5">No evaluators found for this branch.</td></tr>';
+            return;
+        }
+
+        data.forEach(evaluator => {
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td>${evaluator.Name}</td>
+                <td>${evaluator.Profession}</td>
+                <td>${evaluator.Username}</td>
+                <td>${evaluator.Contact || '-'}</td>
+                <td>${evaluator.Email || '-'}</td>
+            `;
+        });
+
+    } catch (err) {
+        console.error('Error loading evaluators:', err);
+        tableBody.innerHTML = '<tr><td colspan="5" class="text-danger">Failed to load evaluators.</td></tr>';
+    }
+}
+
     // --- Event Listeners for Category Management ---
 
     // Add new category
@@ -640,7 +680,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
 
-    loadCategories(); // ★★★ ADD THIS LINE ★★★
+    loadCategories();
+    loadEvaluators();
 
     // --- INACTIVE STUDENT MANAGEMENT LOGIC ---
 

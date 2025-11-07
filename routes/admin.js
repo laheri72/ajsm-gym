@@ -127,21 +127,38 @@ router.post('/api/admin/add-user', async (req, res, next) => {
 });
 
 
-router.delete('/api/admin/delete-user/:username', async (req, res) => {
-        // --- NEW: Security Check ---
+// routes/admin.js
+
+router.delete('/api/admin/delete-user/:username', async (req, res, next) => {
     if (!req.session.user || req.session.user.Role !== 'Admin') {
-        return res.status(403).json({ error: 'Forbidden: Admin access required.' });
+        return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
     }
-    // --- End Security Check ---
 
     const username = req.params.username;
+
     try {
-        await pool.request()
-            .input('username', sql.NVarChar(50), username)
-            .query(`DELETE FROM PassBank WHERE Username = @username`);
-        res.json({ success: true });
+        const request = pool.request();
+        request.input('username', sql.NVarChar(50), username);
+
+        // 1. Just delete the user from PassBank.
+        // The "ON DELETE SET NULL" rule we added will automatically
+        // set their UserID in the Evaluators table to NULL.
+        const result = await request.query(`DELETE FROM PassBank WHERE Username = @username`);
+
+        if (result.rowsAffected[0] === 0) {
+             return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // 2. The login is gone, but all comments remain.
+        res.json({ success: true, message: 'User has been deleted.' });
+
     } catch (err) {
-        res.status(500).json({ error: 'Delete failed' });
+        console.error('Failed to delete user:', err);
+        // This will catch any *other* constraints you might have
+        if (err.number === 547) {
+            return res.status(409).json({ success: false, message: 'Cannot delete this user. They are still referenced by other parts of the system.' });
+        }
+        next(err);
     }
 });
 
@@ -311,6 +328,35 @@ const isAdmin = (req, res, next) => {
     req.Username = req.session.user.Username;
     next();
 };
+
+// routes/admin.js
+
+/**
+ * GET: Fetches all evaluators for the Admin's branch.
+ */
+router.get('/api/admin/evaluators', isAdmin, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), req.Branch)
+            .query(`
+                SELECT 
+                    E.Name, 
+                    E.Profession, 
+                    E.Contact, 
+                    E.Email,
+                    P.Username
+                FROM Evaluators E
+                JOIN PassBank P ON E.UserID = P.UserID
+                WHERE P.Branch = @Branch AND P.Role = 'Evaluator'
+                ORDER BY E.Name
+            `);
+
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching admin evaluators:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch evaluators.' });
+    }
+});
 
 /**
  * GET: Fetches all batches for the Admin's branch.
