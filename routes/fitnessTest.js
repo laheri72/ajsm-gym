@@ -360,7 +360,7 @@ router.get('/api/testrecords/me', async (req, res) => {
 });
 
 /**
- * ★★★ NEW: GETS ALL EVALUATIONS FOR THE LOGGED-IN STUDENT ★★★
+ * ★★★ UPDATED: GETS ALL EVALUATIONS AND A LIST OF EVALUATORS ★★★
  */
 router.get('/api/evaluations/me', async (req, res) => {
     // 1. Get TR from session
@@ -389,14 +389,13 @@ router.get('/api/evaluations/me', async (req, res) => {
         `);
 
         if (historyLogs.recordset.length === 0) {
-            // This is not an error, the student just has no evaluations yet
-            return res.json({ success: true, data: [] });
+            // No evaluations yet. Send back empty arrays.
+            return res.json({ success: true, data: [], evaluators: [] });
         }
 
         // 3. Get all comments for all those logs in one query
         const logIDs = historyLogs.recordset.map(r => r.TestLog);
         
-        // Create a new request for the IN clause
         const commentRequest = new sql.Request(pool);
         const logParams = logIDs.map((id, i) => `@LogID${i}`);
         logIDs.forEach((id, i) => commentRequest.input(`LogID${i}`, sql.Int, id));
@@ -431,7 +430,28 @@ router.get('/api/evaluations/me', async (req, res) => {
             return { ...log, comments: comments };
         });
 
-        res.json({ success: true, data: finalData });
+        // --- ★★★ NEW SECTION ★★★ ---
+        // 6. Get a UNIQUE list of all evaluators who commented on these logs
+        //    (We can reuse the commentRequest and its logParams)
+        const uniqueEvaluatorsResult = await commentRequest.query(`
+            SELECT DISTINCT
+                EV.EvaluatorID,
+                EV.Name,
+                EV.Profession,
+                EV.Contact,
+                EV.Email
+            FROM Evaluations E
+            JOIN Evaluators EV ON E.EvaluatorID = EV.EvaluatorID
+            WHERE E.LogID IN (${logParams.join(',')});
+        `);
+        // --- ★★★ END NEW SECTION ★★★ ---
+
+        // 7. Send the combined response
+        res.json({ 
+            success: true, 
+            data: finalData, 
+            evaluators: uniqueEvaluatorsResult.recordset // <-- ADDED NEW KEY
+        });
 
     } catch (err) {
         console.error('Error fetching student evaluations:', err);
