@@ -111,35 +111,52 @@ export async function getStudentSession() {
 // --- (rest of auth.js file) ---
 
 export function handleInitialPasswordSet() {
-    const form = document.getElementById('setPasswordForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
+     const form = document.getElementById('setPasswordForm');
+     form.addEventListener('submit', async (e) => {
+         e.preventDefault();
 
-        if (newPassword !== confirmPassword) {
-            return Swal.fire('Error', 'Passwords do not match.', 'error');
+        // 1. Get button elements
+        const submitBtn = document.getElementById('setPasswordBtn');
+        const buttonText = submitBtn.querySelector('.button-text');
+        const spinner = submitBtn.querySelector('.spinner-border');
+
+         const newPassword = document.getElementById('newPassword').value;
+         const confirmPassword = document.getElementById('confirmPassword').value;
+
+         if (newPassword !== confirmPassword) {
+             return Swal.fire('Error', 'Passwords do not match.', 'error');
+         }
+
+        // 2. Start loader and disable button
+        submitBtn.disabled = true;
+        buttonText.classList.add('d-none');
+        spinner.classList.remove('d-none');
+
+         try {
+             const res = await fetch('/api/student/set-initial-password', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 credentials: 'include',
+                 body: JSON.stringify({ newPassword })
+             });
+             const data = await res.json();
+             if (!res.ok) throw new Error(data.message);
+             
+             Swal.fire('Success!', 'Your new password has been set.', 'success');
+             const modal = bootstrap.Modal.getInstance(document.getElementById('forcePasswordChangeModal'));
+             modal.hide();
+
+         } catch (err) {
+             Swal.fire('Error', err.message, 'error');
+         } finally {
+            // 3. Stop loader and re-enable button (this always runs)
+            submitBtn.disabled = false;
+            buttonText.classList.remove('d-none');
+            spinner.classList.add('d-none');
         }
-
-        try {
-            const res = await fetch('/api/student/set-initial-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ newPassword })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-            
-            Swal.fire('Success!', 'Your new password has been set.', 'success');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('forcePasswordChangeModal'));
-            modal.hide();
-
-        } catch (err) {
-            Swal.fire('Error', err.message, 'error');
-        }
-    });
+     });
 }
+
 
 export async function logout(e) {
     e.preventDefault();

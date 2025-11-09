@@ -232,41 +232,58 @@ async function saveDOB() {
     }
 }
 
-
 // ★★★ ADD THIS NEW FUNCTION ★★★
 async function handleSetNewPassword(e) {
-    e.preventDefault();
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+     e.preventDefault();
 
-    if (newPassword !== confirmPassword) {
-        return Swal.fire('Error', 'Passwords do not match.', 'error');
-    }
+    // 1. Get button elements
+    const submitBtn = document.getElementById('setPasswordBtn'); // Make sure your button has this ID
+    const buttonText = submitBtn.querySelector('.button-text');
+    const spinner = submitBtn.querySelector('.spinner-border');
 
-    try {
-        const res = await fetch('/api/test/set-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // Ensures session cookie is sent
-            body: JSON.stringify({ newPassword })
-        });
+     const newPassword = document.getElementById('newPassword').value;
+     const confirmPassword = document.getElementById('confirmPassword').value;
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
+     if (newPassword !== confirmPassword) {
+         return Swal.fire('Error', 'Passwords do not match.', 'error');
+     }
 
-        // Success!
-        sessionStorage.removeItem('forcePasswordChange');
-        await Swal.fire('Success!', 'Your new password has been set.', 'success');
-        
-        // Hide the modal
-        const modalEl = document.getElementById('forcePasswordChangeModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal.hide();
+    // 2. Start loader and disable button
+    submitBtn.disabled = true;
+    buttonText.classList.add('d-none');
+    spinner.classList.remove('d-none');
 
-    } catch (err) {
-        Swal.fire('Error', err.message, 'error');
+     try {
+         const res = await fetch('/api/test/set-password', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             credentials: 'include', // Ensures session cookie is sent
+             body: JSON.stringify({ newPassword })
+         });
+
+         const data = await res.json();
+         if (!res.ok) throw new Error(data.message);
+
+         // Success!
+         sessionStorage.removeItem('forcePasswordChange');
+         await Swal.fire('Success!', 'Your new password has been set.', 'success');
+         
+         // Hide the modal
+         const modalEl = document.getElementById('forcePasswordChangeModal');
+         const modal = bootstrap.Modal.getInstance(modalEl);
+         modal.hide();
+
+     } catch (err) {
+         Swal.fire('Error', err.message, 'error');
+     } finally {
+        // 3. Stop loader and re-enable button (this runs even if there's an error)
+        submitBtn.disabled = false;
+        buttonText.classList.remove('d-none');
+        spinner.classList.add('d-none');
     }
 }
+
+
 
 
 // ★★★ ADD THESE NEW FUNCTIONS (MEDICAL HISTORY) ★★★
