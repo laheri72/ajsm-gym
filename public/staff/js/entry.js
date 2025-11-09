@@ -41,23 +41,35 @@ document.addEventListener("DOMContentLoaded", () => {
         waitingListDataTable = $('#waitingListTable').DataTable({
             ajax: { url: '/api/waiting-list', dataSrc: '' },
             columns: [
-                { data: 'WaitingID' }, { data: 'TR' }, { data: 'Name' }, { data: 'Darajah' },
-                // { data: 'Goal' }, // <-- MODIFICATION: Removed Goal column
+                { data: 'WaitingID' },
+                { data: 'TR' },
+                { data: 'Name' },
+                { data: 'Darajah' },
                 { data: 'RequestedAt', render: (data) => new Date(data).toLocaleString() },
                 { 
-                    data: 'WaitingID', orderable: false,
-                    render: function(data) {
+                    data: 'WaitingID', 
+                    orderable: false,
+                    // --- 1. MODIFIED RENDER FUNCTION ---
+                    render: function(data, type, row) { // Added 'row' to get student name
                         let slotOptions = availableSlots.map(slot => 
                             `<option value="${slot.SlotID}" ${slot.AvailableSeats <= 0 ? 'disabled' : ''}>
                                 ${slot.SlotName} (${slot.AvailableSeats} seats)
                             </option>`
                         ).join('');
+                        
+                        // NEW: Added a wrapper div and the delete button
                         return `
-                            <select class="assign-slot-dropdown form-control" style="width: auto; display: inline-block; margin-right: 5px;">
-                                <option value="" disabled selected>Select Slot</option>
-                                ${slotOptions}
-                            </select>
-                            <button class="btn assign-btn" data-id="${data}">Assign</button>
+                            <div class="action-buttons-wrapper">
+                                <select class="assign-slot-dropdown form-control" style="width: auto; display: inline-block;">
+                                    <option value="" disabled selected>Select Slot</option>
+                                    ${slotOptions}
+                                </select>
+                                <button class="btn assign-btn" data-id="${data}">Assign</button>
+                                
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${data}" data-name="${row.Name}" title="Remove from list" style="background-color: red">
+                                    <i class="bi bi-trash">Delete</i>
+                                </button>
+                            </div>
                         `;
                     }
                 }
@@ -250,6 +262,49 @@ document.addEventListener("DOMContentLoaded", () => {
             assignBtn.prop('disabled', false);
             assignBtn.html(originalBtnText);
         }
+    });
+
+    // --- 2. NEW EVENT LISTENER FOR DELETE BUTTON ---
+    $('#waitingListTable tbody').on('click', '.delete-btn', function () {
+        const waitingID = $(this).data('id');
+        const studentName = $(this).data('name'); // Get name for the alert
+
+        Swal.fire({
+            title: 'Are you sure?',
+            html: `This will permanently remove <strong>${studentName}</strong> from the waiting list.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`/api/waiting-list/${waitingID}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Student deleted.',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        waitingListDataTable.ajax.reload(); // Refresh the table
+                    } else {
+                        Swal.fire('Error!', data.message || 'Could not delete student.', 'error');
+                    }
+                } catch (err) {
+                    console.error('Delete student fetch error:', err);
+                    Swal.fire('Error!', 'A network error occurred. Please try again.', 'error');
+                }
+            }
+        });
     });
 
     // ... (createSlotForm submit listener is unchanged) ...

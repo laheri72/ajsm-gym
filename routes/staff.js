@@ -1191,6 +1191,48 @@ router.post('/api/assign-student-slot', async (req, res) => {
   }
 });
 
+// routes/staff.js
+
+// ... (after your /api/assign-student-slot route) ...
+
+// ❌ NEW: Delete a student from the Waiting List
+router.delete('/api/waiting-list/:id', async (req, res) => {
+    // 1. Check for user session
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    
+    const { id } = req.params; // This is the WaitingID
+    const { Branch, Gender } = req.session.user; // Get staff's scope
+
+    try {
+        const request = pool.request();
+        request.input('WaitingID', sql.Int, id);
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+        
+        // 2. Execute delete, scoped to the staff's branch/gender
+        const result = await request.query(`
+            DELETE FROM WaitingList 
+            WHERE WaitingID = @WaitingID 
+            AND Branch = @Branch 
+            AND Gender = @Gender
+        `);
+
+        // 3. Check if a row was actually deleted
+        if (result.rowsAffected[0] > 0) {
+            res.json({ success: true, message: 'Student removed from waiting list.' });
+        } else {
+            // This means no row was found (already deleted, or wrong branch)
+            res.status(404).json({ success: false, message: 'Student not found or not in your assigned branch.' });
+        }
+    } catch (err) {
+        console.error('Delete waiting list error:', err);
+        res.status(500).json({ success: false, message: 'Server error while deleting student.' });
+    }
+});
+
+// ... (rest of your staff.js file) ...
 // MODIFIED VALIDATION ENDPOINT
 router.post('/api/bulk-validate-students', async (req, res) => {
     try {

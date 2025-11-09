@@ -1280,4 +1280,27 @@ body.nav-open .nav-overlay {
     background-color: transparent;
     padding: 0;
 }
+/* Add this at the end of dashboard.css */
+
+/* Styles for the Waiting List action buttons */
+.action-buttons-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Adds space between items */
+    flex-wrap: nowrap; /* Prevents wrapping on small screens */
+}
+
+.action-buttons-wrapper .assign-slot-dropdown {
+    width: 150px; /* Give the dropdown a consistent width */
+    flex-shrink: 0;
+}
+
+.action-buttons-wrapper .btn {
+    flex-shrink: 0; /* Prevent buttons from shrinking */
+}
+
+/* Ensure Bootstrap icons are aligned correctly inside buttons */
+.btn .bi {
+    vertical-align: -0.125em;
+}
 
