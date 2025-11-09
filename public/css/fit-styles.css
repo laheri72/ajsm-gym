@@ -678,3 +678,44 @@ body.dark-mode .swal2-icon {
     border-color: var(--secondary) !important;
     color: var(--secondary) !important;
 }
+/* ========================================== */
+/* DARK MODE FIX (Using correct .dark-mode selector)
+/* ========================================== */
+
+/* Fixes the inner stat cards (Slot, Goal, etc.) */
+body.dark-mode .stat-card {
+    background: var(--bg-color);     /* Makes background #0f172a */
+    border: 1px solid var(--border-color); /* Uses dark mode border #334155 */
+}
+body.dark-mode .stat-card h5 {
+    color: var(--text-muted); /* Uses light muted text #94a3b8 */
+}
+body.dark-mode .stat-card p {
+    color: var(--text-color); /* Uses main light text #e2e8f0 */
+}
+
+
+/* Fixes the top Profile table ('Age', 'Gender', etc.) */
+body.dark-mode #studentInfo .table-bordered th {
+    background-color: #334155;     /* Dark background */
+    color: var(--text-muted);      /* Light, muted text */
+    border-color: var(--border-color);
+}
+
+body.dark-mode #studentInfo .table-bordered,
+body.dark-mode #studentInfo .table-bordered td {
+    border-color: var(--border-color);
+}
+
+
+/* Fixes the bottom History table */
+body.dark-mode #testHistoryTable thead th {
+    background-color: #334155;     /* Dark background */
+    color: var(--text-color);      /* Light text */
+    border-color: var(--border-color);
+}
+
+body.dark-mode #testHistoryTable td,
+body.dark-mode #testHistoryTable {
+    border-color: var(--border-color);
+}
