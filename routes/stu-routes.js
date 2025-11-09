@@ -1039,7 +1039,15 @@ router.post('/api/student/leaves', async (req, res) => {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
     }
     
-    const { TR } = req.session.user;
+    const { TR, Status } = req.session.user;
+
+    if (Status !== 'Active') {
+        return res.status(403).json({ 
+            success: false, 
+            message: 'Only active members can request leaves. Please contact admin if you believe this is a mistake.' 
+        });
+    }
+    
     const { leaveStartDate, leaveEndDate, reason } = req.body;
 
     // --- 🕒 Time-based Validation Logic ---

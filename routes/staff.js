@@ -1057,6 +1057,10 @@ router.get('/api/all-test-records', async (req, res) => {
 // ----------- ➕ Student Entry & Waiting List Routes
 //======================================================
 
+//======================================================
+// ----------- ➕ Student Entry & Waiting List Routes
+//======================================================
+
 router.get('/api/waiting-list', async (req, res) => {
   try {
     // Ensure user is logged in
@@ -1071,11 +1075,12 @@ router.get('/api/waiting-list', async (req, res) => {
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
       .query(`
-        SELECT WL.WaitingID, WL.TR, WL.Name, WL.Darajah, WL.Goal, WL.RequestedAt
+        SELECT WL.WaitingID, WL.TR, WL.Name, WL.Darajah, WL.RequestedAt
         FROM WaitingList WL
         WHERE WL.Branch = @Branch AND WL.Gender = @Gender
         ORDER BY WL.RequestedAt ASC
       `);
+    // MODIFICATION: Removed WL.Goal from SELECT
 
     res.json(result.recordset);
   } catch (err) {
@@ -1091,7 +1096,8 @@ router.post('/api/add-student', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
         }
         
-        const { TR, Name, Darajah, Goal } = req.body;
+        // MODIFICATION: Removed Goal from destructuring
+        const { TR, Name, Darajah } = req.body;
         const { Branch, Gender } = req.session.user;
 
         // --- ✅ START: NEW CHECK ---
@@ -1117,13 +1123,14 @@ router.post('/api/add-student', async (req, res) => {
             .input('TR', sql.Int, TR)
             .input('Name', sql.NVarChar(100), Name)
             .input('Darajah', sql.NVarChar(50), Darajah)
-            .input('Goal', sql.NVarChar(100), Goal)
+            // .input('Goal', sql.NVarChar(100), Goal) // <-- MODIFICATION: Removed
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
-                INSERT INTO WaitingList (TR, Name, Darajah, Goal, Branch, Gender)
-                VALUES (@TR, @Name, @Darajah, @Goal, @Branch, @Gender)
+                INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender)
+                VALUES (@TR, @Name, @Darajah, @Branch, @Gender)
             `);
+        // MODIFICATION: Removed Goal from INSERT statement
 
         res.json({ success: true, message: 'Student added to Waiting List.' });
 
@@ -1137,23 +1144,22 @@ router.post('/api/add-student', async (req, res) => {
 
 // ➕ Assign WaitingList Student to a Slot
 router.post('/api/assign-student-slot', async (req, res) => {
-
-
   try {
-            if (!req.session.user) {
-            // If there's no session, stop right here and send an error.
-            return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
-        }
+    if (!req.session.user) {
+      // If there's no session, stop right here and send an error.
+      return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
 
-            const { WaitingID, SlotID } = req.body;
-           const { Branch, Gender } = req.session.user;
+    const { WaitingID, SlotID } = req.body;
+    const { Branch, Gender } = req.session.user;
 
 
     // 1️⃣ Fetch student from WaitingList
     const studentRes = await pool.request()
       .input('WaitingID', sql.Int, WaitingID)
-      .query(`SELECT * FROM WaitingList WHERE WaitingID=@WaitingID`);
-    
+      .query(`SELECT TR, Name, Darajah FROM WaitingList WHERE WaitingID=@WaitingID`);
+    // MODIFICATION: Explicitly selected columns, removed Goal
+
     if (!studentRes.recordset.length)
       return res.status(404).json({ success: false, message: "Student not found" });
     
@@ -1164,13 +1170,12 @@ router.post('/api/assign-student-slot', async (req, res) => {
       .input('TR', sql.Int, stu.TR)
       .input('Name', sql.NVarChar(100), stu.Name)
       .input('Darajah', sql.NVarChar(50), stu.Darajah)
-      .input('Goal', sql.NVarChar(100), stu.Goal)
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
       .input('SlotID', sql.Int, SlotID)
       .query(`
-        INSERT INTO Master (TR, Name, Darajah, Goal, Branch, Gender, SlotID, Status)
-        VALUES (@TR, @Name, @Darajah, @Goal, @Branch, @Gender, @SlotID, 'Active')
+        INSERT INTO Master (TR, Name, Darajah, Branch, Gender, SlotID, Status)
+        VALUES (@TR, @Name, @Darajah, @Branch, @Gender, @SlotID, 'Active')
       `);
 
     // 3️⃣ Remove from WaitingList
@@ -1202,13 +1207,12 @@ router.post('/api/bulk-validate-students', async (req, res) => {
 
         // 1. First pass: Check for missing data in each row
         students.forEach((student, index) => {
-            const { TR, Name, Darajah, Goal } = student;
-            if (!TR || !Name || !Darajah || !Goal) {
+            const { TR, Name, Darajah } = student;
+            if (!TR || !Name || !Darajah) {
                 let reason = "Missing required fields.";
                 if (!TR) reason = "Missing TR.";
                 else if (!Name) reason = "Missing Name.";
                 else if (!Darajah) reason = "Missing Darajah.";
-                else if (!Goal) reason = "Missing Goal.";
                 
                 invalidRows.push({ 
                     rowData: { TR: TR || 'N/A', Name: Name || 'N/A' }, 
@@ -1269,14 +1273,13 @@ router.post('/api/bulk-commit-students', async (req, res) => {
             // Constructing a single bulk INSERT statement is most efficient
             let valuesClauses = [];
             students.forEach((student, index) => {
-                const trParam = `TR${index}`, nameParam = `Name${index}`, darajahParam = `Darajah${index}`, goalParam = `Goal${index}`;
+                const trParam = `TR${index}`, nameParam = `Name${index}`, darajahParam = `Darajah${index}`;
                 
                 request.input(trParam, sql.Int, student.TR);
                 request.input(nameParam, sql.NVarChar(100), student.Name);
                 request.input(darajahParam, sql.NVarChar(50), student.Darajah);
-                request.input(goalParam, sql.NVarChar(100), student.Goal);
 
-                valuesClauses.push(`(@${trParam}, @${nameParam}, @${darajahParam}, @${goalParam}, @Branch, @Gender)`);
+                valuesClauses.push(`(@${trParam}, @${nameParam}, @${darajahParam}, @Branch, @Gender)`);
             });
             
             // Add Branch and Gender once, as they are the same for the whole batch
@@ -1284,7 +1287,7 @@ router.post('/api/bulk-commit-students', async (req, res) => {
             request.input('Gender', sql.NVarChar(10), Gender);
             
             const query = `
-                INSERT INTO WaitingList (TR, Name, Darajah, Goal, Branch, Gender)
+                INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender)
                 VALUES ${valuesClauses.join(', ')}
             `;
 
@@ -1302,8 +1305,6 @@ router.post('/api/bulk-commit-students', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to add students to the waiting list.' });
     }
 });
-
-
 
 //=============================================================
 //==============🕒 Slot Management Routes ====================

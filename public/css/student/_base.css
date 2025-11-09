@@ -523,3 +523,16 @@ td iframe {
     /* Use 'infinite' to keep glowing until saved */
     animation: glowing 2000ms infinite;
 }
+
+/* =================================================================== */
+/* INACTIVE STUDENT BANNER
+/* Add this to the end of _base.css
+/* =================================================================== */
+
+/* Dark theme override for the Bootstrap alert */
+[data-theme="dark"] #inactive-status-banner {
+    background-color: #2b210a; /* A dark, warm yellow */
+    color: #ffeca7;           /* Light yellow text */
+    border-color: #594700;   /* A darker gold border */
+}
+

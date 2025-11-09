@@ -7,7 +7,10 @@ const bcrypt = require('bcrypt'); // All login routes need this
 
 // --- Paste all the routes from the list below here ---
 
-// 🧑‍🎓 Student Login Routes
+// routes/auth.js
+
+// ... (other code) ...
+
 router.post('/api/student-login', async (req, res, next) => {
     const { tr, password } = req.body;
     try {
@@ -20,14 +23,19 @@ router.post('/api/student-login', async (req, res, next) => {
         }
 
         const student = result.recordset[0];
+        
+        // --- MODIFICATION: REMOVE THIS BLOCK ---
+        /*
         if (student.Status !== 'Active') {
             return res.status(403).json({ success: false, message: 'Your account is inactive. Please contact admin.' });
         }
+        */
 
         let forcePasswordChange = false;
         let isLoginSuccessful = false;
 
         // Check for first-time login (Password field is NULL in DB)
+        // ... (rest of your password check logic) ...
         if (student.Password === null) {
             if (password === student.TR.toString()) {
                 isLoginSuccessful = true;
@@ -41,8 +49,16 @@ router.post('/api/student-login', async (req, res, next) => {
             }
         }
 
+
         if (isLoginSuccessful) {
-            req.session.user = { TR: student.TR, Name: student.Name, Branch: student.Branch, Gender: student.Gender };
+            // --- MODIFICATION: ADD Status TO THE SESSION ---
+            req.session.user = { 
+                TR: student.TR, 
+                Name: student.Name, 
+                Branch: student.Branch, 
+                Gender: student.Gender, 
+                Status: student.Status // <-- ADD THIS
+            };
             return res.json({ success: true, forcePasswordChange });
         } else {
             return res.status(401).json({ success: false, message: 'Invalid TR or password' });
@@ -51,6 +67,8 @@ router.post('/api/student-login', async (req, res, next) => {
         next(err);
     }
 });
+
+// ... (rest of auth.js) ...
 
 
 router.post('/api/student/set-initial-password', async (req, res, next) => {
@@ -77,6 +95,10 @@ router.post('/api/student/set-initial-password', async (req, res, next) => {
     }
 });
 
+// routes/student.js (stu-routes.js)
+
+// ... (other code) ...
+
 // ✅ REPLACED /api/student-session route (now merged)
 router.get('/api/student-session', async (req, res) => {
   if (req.session.user && req.session.user.TR) {
@@ -95,6 +117,7 @@ router.get('/api/student-session', async (req, res) => {
             M.Darajah, 
             M.Goal, 
             M.Height,
+            M.Status,   -- <-- ADD THIS LINE
             S.SlotName
           FROM Master M
           LEFT JOIN Slots S ON M.SlotID = S.SlotID
@@ -122,6 +145,7 @@ router.get('/api/student-session', async (req, res) => {
   }
 });
 
+// ... (rest of stu-routes.js) ...
 
 //---------👨‍💼 Staff & Trainer Login Routes
 

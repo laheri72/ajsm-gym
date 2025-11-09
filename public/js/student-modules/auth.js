@@ -40,6 +40,18 @@ export async function getStudentSession() {
     setStudentGoal(stu.Goal);
     // --- End State Set ---
 
+    // --- (NEW) INACTIVE STUDENT CHECK ---
+    // This is the new logic you need to add.
+    if (stu.Status === 'Inactive') {
+        const banner = document.getElementById('inactive-status-banner');
+        if (banner) {
+            banner.style.display = 'block'; // Show the banner
+        }
+        // Add a class to the body to disable features
+        document.body.classList.add('is-inactive');
+    }
+    // --- (END NEW) ---
+
     // --- XP & Level ---
     document.getElementById('xpBarText').textContent = 'Loading...';
     const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
@@ -50,7 +62,7 @@ export async function getStudentSession() {
 
     // --- THIS IS THE FIX for WELCOME TEXT ---
     // 1. Set the visible student name
-document.getElementById('studentName').innerText = stu.Name || 'Student';
+    document.getElementById('studentName').innerText = stu.Name || 'Student';
     
     const title =
       stu.Gender?.toLowerCase() === 'male' ? 'Talabat'

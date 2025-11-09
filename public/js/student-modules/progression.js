@@ -167,7 +167,7 @@ export async function loadCurrentWeightStat() {
         } else {
             weightEl.textContent = '--';
             dateEl.textContent = 'Log your weight to start!';
-            motivationLink.textContent = 'Log your weight frequently to see your progress.';
+            motivationLink.textContent = 'Click here to log Your weight';
         }
 
         // Handle BMI display
