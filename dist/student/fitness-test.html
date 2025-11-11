@@ -5,334 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Fitness Profile Dashboard</title>
     <link rel="icon" href="/assets/favicon-DxDcT4vJ.png" type="image/png">
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <!-- DataTables Bootstrap Integration -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <!-- SweetAlert2 -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <!-- Bootstrap 5 -->
+    <!-- DataTables Bootstrap Integration -->
+    <!-- SweetAlert2 -->
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="/assets/js/chart.min.js"></script>
+    <!-- Font Awesome for Icons -->
     <!-- Google Fonts: Poppins for Modern Typography -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-    <!-- Animate.css for Animations -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-
-    <style>
-        :root {
-            --primary: #4CAF50; /* Green for fitness theme */
-            --secondary: #2196F3; /* Blue accent */
-            --accent: #FF9800; /* Orange for energy */
-            --success: #4CAF50;
-            --danger: #f44336;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --gray: #6c757d;
-            --background: linear-gradient(135deg, #e0f7fa, #f1f8e9); /* Light fitness gradient */
-        }
-
-        body {
-            margin: 0;
-            background: var(--background);
-            font-family: 'Poppins', sans-serif;
-            color: var(--dark);
-            overflow-x: hidden; /* Prevent horizontal scroll */
-        }
-
-        .dashboard {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar Navigation */
-/* Sidebar Navigation */
-.sidebar {
-    width: 250px;
-    background: white;
-    padding: 2rem 1rem;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-    position: fixed;
-    height: 100%;
-    overflow-y: auto;
-    transition: width 0.3s ease;
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar.collapsed {
-    width: 80px;
-}
-
-.sidebar a {
-    display: flex;
-    align-items: center;
-    color: var(--gray);
-    text-decoration: none;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 0.5rem;
-    transition: all 0.3s;
-    justify-content: space-between;
-}
-
-.sidebar a i {
-    margin-right: 1rem;
-    font-size: 1.2rem;
-    transition: margin 0.3s;
-}
-
-.sidebar a span {
-    white-space: nowrap;
-    transition: opacity 0.3s, width 0.3s;
-}
-
-.sidebar.collapsed a span {
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-    margin-right: 0;
-}
-
-.sidebar.collapsed a i {
-    margin-right: 0;
-    text-align: center;
-    width: 100%;
-}
-
-/* Dark Mode Button */
-.sidebar .mt-auto {
-    margin-top: auto;
-    padding: 0.5rem; /* Reduced padding for better fit */
-}
-
-.sidebar .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    transition: all 0.3s;
-}
-
-.sidebar .btn i {
-    margin-right: 0.5rem;
-    font-size: 1.2rem;
-    transition: margin 0.3s;
-}
-
-.sidebar .btn span {
-    white-space: nowrap;
-    transition: opacity 0.3s, width 0.3s;
-}
-
-.sidebar.collapsed .btn span {
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-    margin-right: 0;
-}
-
-.sidebar.collapsed .btn i {
-    margin-right: 0;
-    text-align: center;
-    width: 100%;
-}
-
-/* Main Content */
-.main-content {
-    flex: 1;
-    margin-left: 250px;
-    padding: 2rem;
-    transition: margin-left 0.3s ease;
-}
-
-.main-content.expanded {
-    margin-left: 80px;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 80px;
-    }
-    .main-content {
-        margin-left: 80px;
-    }
-    .sidebar a span {
-        display: none;
-    }
-    .sidebar .btn span {
-        display: none; /* Hide text on mobile by default */
-    }
-    .sidebar.collapsed {
-        width: 80px;
-    }
-    .main-content.expanded {
-        margin-left: 80px;
-    }
-}
-
-        .content-section {
-            background: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            margin-bottom: 2rem;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h2, h3, h4, h5, h6 {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .form-control {
-            border-radius: 0.5rem;
-            border: 1px solid #dee2e6;
-            transition: border-color 0.3s;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 0.25rem rgba(76, 175, 80, 0.25);
-        }
-
-        .btn {
-            border-radius: 0.5rem;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        /* Card Enhancements */
-        .card {
-            border: none;
-            border-radius: 1rem;
-            overflow: hidden;
-        }
-
-        /* Progress Bar Modern */
-        .progress {
-            height: 1.5rem;
-            border-radius: 1rem;
-            overflow: hidden;
-            background: #e9ecef;
-        }
-
-        .progress-bar {
-            transition: width 0.6s ease;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-        }
-
-        /* Table Modern */
-        table.dataTable {
-            border-collapse: separate;
-            border-spacing: 0 0.5rem;
-        }
-
-        table.dataTable thead th {
-            background: var(--primary);
-            color: white;
-            border: none;
-        }
-
-        table.dataTable tbody tr {
-            background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            border-radius: 0.5rem;
-        }
-
-        table.dataTable tbody td {
-            border: none;
-        }
-
-        /* Student Info Card */
-        #studentInfo {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        /* History Card */
-        #historycard {
-            overflow-x: auto;
-        }
-
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 80px;
-            }
-            .main-content {
-                margin-left: 80px;
-            }
-            .sidebar a span {
-                display: none;
-            }
-        }
-
-        /* Dark Mode Toggle (Optional Modern Feature) */
-        .dark-mode {
-            --background: linear-gradient(135deg, #2c3e50, #34495e);
-            --light: #343a40;
-            --dark: #f8f9fa;
-            --gray: #adb5bd;
-        }
-
-        body.dark-mode {
-            background: var(--background);
-            color: var(--dark);
-        }
-
-        body.dark-mode .content-section,
-        body.dark-mode .sidebar,
-        body.dark-mode table.dataTable tbody tr {
-            background: var(--light);
-            color: var(--dark);
-        }
-
-        body.dark-mode table.dataTable thead th {
-            background: var(--secondary);
-        }
-
-        body.dark-mode #studentInfo {
-            background: linear-gradient(135deg, var(--secondary), var(--accent));
-        }
-    </style>
+    <!-- Animate.css for Animations -->
+
+  <script type="module" crossorigin src="/assets/studentFitnessTest-3IBpYSTQ.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="stylesheet" crossorigin href="/assets/studentFitnessTest-BOgIMFQ2.css">
+  <link rel="stylesheet" crossorigin href="/assets/bootstrap-C11chwFa.css">
+  <link rel="stylesheet" crossorigin href="/assets/dataTables.bootstrap5-DzNqpKLP.css">
+  <link rel="stylesheet" crossorigin href="/assets/all-DSoua6fG.css">
 </head>
 <body>
     <div class="dashboard">
         <!-- Sidebar Navigation -->
-        <nav class="sidebar">
+        <nav class="sidebar collapsed">
             <div class="sidebar-toggle" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </div>
             <a href="#" class="active" id="tab-profile"><i class="fas fa-user"></i> <span>Profile</span></a>
             <a href="#" id="tab-fit"><i class="fas fa-dumbbell"></i> <span>Fitness Test</span></a>
-            <a href="#" id="tab-swim"><i class="fas fa-swimmer"></i> <span>Swimming Test</span></a>
+            <a href="#" id="tab-evaluations"><i class="fas fa-user-check"></i> <span>My Evaluations</span></a>
             <a href="#" id="tab-goals"><i class="fas fa-bullseye"></i> <span>Goals & Progress</span></a>
             <a href="#" id="tab-history"><i class="fas fa-history"></i> <span>Test History</span></a>
             <a href="#" id="tab-achievements"><i class="fas fa-trophy"></i> <span>Achievements</span></a>
-            <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+            <button id="darkModeBtn" class="btn btn-outline-secondary w-100" onclick="toggleDarkMode()">
+                    <i class="fas fa-moon"></i> <span>Dark Mode</span>
+            </button>
             <!-- Dark Mode Toggle -->
             <div class="mt-auto p-2">
-                <button class="btn btn-outline-secondary w-100" onclick="toggleDarkMode()">
-                    <i class="fas fa-moon"></i> <span>Dark Mode</span>
-                </button>
+                <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
             </div>
         </nav>
 
@@ -341,13 +49,14 @@
             <!-- Profile Overview Section -->
             <section id="profile-overview" class="content-section animate__animated animate__fadeIn">
                 <h2><i class="fas fa-user-circle"></i> Your Fitness Profile</h2>
+                
                 <div class="row">
                     <div class="col-md-4">
                         <div class="card text-center">
                             <img src="/assets/fitness%20test-d6twbZOx.jpg" alt="Profile Picture" class="rounded-circle mx-auto mt-3" style="width: 150px; height: 150px;">
                             <div class="card-body">
+                                <h3>ملف اللياقة البدنية</h3>
                                 <h5 id="studentName">Loading...</h5>
-                                <p class="text-muted">Fitness Enthusiast</p>
                             </div>
                         </div>
                     </div>
@@ -371,8 +80,57 @@
                     </tbody>
                 </table>
                         </div>
+
+                <section id="latest-test-card" class="content-section mt-4" style="display: none;">
+                <h5 class="mb-3"><i class="fas fa-camera"></i> Latest Fitness Snapshot</h5>
+                <p class="text-muted" id="latest-test-date">Loading test data...</p>
+
+                <div class="row g-3" id="latest-test-grid">
+                    <div class="loader-cell"><div class="loader"></div></div>
+                </div>
+            </section>
+
+
+
+                        <div id="medical-history-card" class="content-section mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5><i class="fas fa-file-medical"></i> Medical History</h5>
+                                <button class="btn btn-sm btn-outline-secondary" id="editMedicalBtn">Edit</button>
+                            </div>
+                            
+                            <div id="medical-view">
+                                <div class="loader-cell"><div class="loader"></div></div>
+                                </div>
+
+                            <form id="medical-form" style="display: none;">
+                                <div class="form-group mb-3">
+                                    <label for="medAllergies" class="form-label">Known Allergies</label>
+                                    <textarea id="medAllergies" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="medMedications" class="form-label">Current Medications</label>
+                                    <textarea id="medMedications" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="medFamilyHistory" class="form-label">Family History of Illness</label>
+                                    <textarea id="medFamilyHistory" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="medPreviousInjuries" class="form-label">Previous Injuries & Surgeries</label>
+                                    <textarea id="medPreviousInjuries" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-secondary" id="cancelMedicalBtn">Cancel</button>
+                                    <button type="button" class="btn btn-primary" id="saveMedicalBtn">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        Save History
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
+
             </section>
 
             <!-- Fitness Test Section -->
@@ -386,19 +144,19 @@
                         <h5><i class="fas fa-pen"></i> Enter Fitness Test Data:</h5>
                         <div class="col-md-3">
                             <label>Gender</label>
-                            <select name="Gender" class="form-select" required>
-                                <option value="">Select...</option>
+                            <select id="Gender" name="Gender" class="form-control" required readonly style="background-color: #e9ecef;">
+                                <option value="">Loading...</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label>Weight (kg)</label>
-                            <input type="number" class="form-control" name="Weight" required>
+                            <input id="Weight" type="number" class="form-control" name="Weight" required>
                         </div>
                         <div class="col-md-3">
                             <label>Height (cm)</label>
-                            <input type="number" class="form-control" name="Height" required>
+                            <input id="Height"  type="number" class="form-control" name="Height" required>
                         </div>
                         <div class="col-md-3">
                             <label>Waist (cm)</label>
@@ -458,10 +216,39 @@
                 </div>
             </section>
 
-            <!-- Swimming Test Section -->
-            <section id="student-swim" class="content-section" style="display: none;">
-                <h2><i class="fas fa-swimmer"></i> Swimming Test</h2>
-                <p>Coming Soon – Track your swimming performance and set aquatic goals!</p>
+            <section id="student-evaluations" class="content-section" style="display: none;">
+                <h2><i class="fas fa-user-check"></i> My Evaluations</h2>
+                <p class="text-muted">View comments and feedback from doctors, nutritionists, and trainers on your submitted fitness tests.</p>
+
+                <div id="evaluation-accordion-container" class="mt-4">
+                    <div class="loader-cell"><div class="loader" style="border-top-color: var(--primary);"></div></div>
+                </div>
+                <div class="container mt-5 px-md-5">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h4 mb-0"><i class="fas fa-user-md me-2"></i> Know Your Evaluators</h3>
+                    </div>
+                    <div class="card bg-dark-2 shadow-lg">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-borderless table-striped mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" class="py-3 px-4">Name</th>
+                                            <th scope="col" class="py-3 px-4">Profession</th>
+                                            <th scope="col" class="py-3 px-4">Contact Info</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="evaluatorTableBody">
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4">Loading evaluator info...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </section>
 
             <!-- Goals & Progress Section -->
@@ -473,7 +260,13 @@
                     <!-- add a tooltip for score : which is the Score from the test record , and can find it in Test history tab -->
                     <small class="text-muted">Your Score is calculated based on your performance in various fitness metrics. Aim higher to improve your overall health!</small>     
                     <br>
-                    <p> Your current score is: <b id="currentScore">0</b></p>
+                    <p> Your current score is: <b id="currentScore" class="fs-4 text-primary">0%</b>
+                        <a tabindex="0" class="btn btn-sm btn-outline-secondary rounded-circle" 
+                        role="button" data-bs-toggle="popover" data-bs-trigger="focus" 
+                        title="Grading Scale" data-bs-content="80-100% = A+ | 70-79% = A | 60-69% = B | 50-59% = C | <50% = D">
+                        <i class="fas fa-info"></i>
+                        </a>
+                    </p>
                     <!-- Goal Input -->
                     <div class="input-group mb-3">
                         <input type="number" id="goalInput" class="form-control" placeholder="Enter your goal score..." />
@@ -552,932 +345,38 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script>
-        // All original functions remain intact
-        let studentData = null;
-        let calculated = null;
-
-async function validateStudentSession() {
-    try {
-        const res = await fetch('/api/current-tr', {
-            method: 'GET',
-            credentials: 'include'
-        });
-
-        const data = await res.json();
-
-        if (!data.tr) {
-            window.location.href = '../Forbidden.html';
-            return;
-        }
-
-        const tr = data.tr;
-        localStorage.setItem('currentTR', tr);
-
-        // Reset all UI with null checks
-        clearFitnessResults();
-
-        const saveWarning = document.getElementById("saveWarning");
-        const saveBtn = document.getElementById("saveBtn");
-        const studentInfo = document.getElementById("studentInfo");
-        const fitnessForm = document.getElementById("fitnessForm");
-        const reportSection = document.getElementById("reportSection");
-        const dobDisplay = document.getElementById('studentDOBDisplay');
-        const dobInputGroup = document.getElementById('dobInputGroup');
-        const dobHelp = document.getElementById('dobHelp');
-        const ageDisplay = document.getElementById('studentAge');
-
-        if (saveWarning) {
-            saveWarning.textContent = 'ℹ️ Please submit accurate details. One record allowed per week.';
-            saveWarning.style.color = 'blue';
-        }
-        if (saveBtn) {
-            saveBtn.style.display = 'inline-block';
-            saveBtn.disabled = false;
-        }
-        if (studentInfo) studentInfo.classList.add("hidden");
-        if (fitnessForm) fitnessForm.classList.add("hidden");
-        if (reportSection) reportSection.classList.add("hidden");
-        if (dobDisplay) dobDisplay.textContent = 'Loading...';
-        if (dobInputGroup) dobInputGroup.style.display = 'none';
-        if (dobHelp) dobHelp.style.display = 'none';
-        if (ageDisplay) ageDisplay.textContent = 'Loading...';
-
-        const testForm = document.getElementById("testForm");
-        const reportTableBody = document.getElementById("reportTableBody");
-        if (testForm) testForm.reset();
-        if (reportTableBody) reportTableBody.innerHTML = "";
-
-        // Fetch student info from TestMaster
-        try {
-            const res = await fetch(`/api/testmaster/me`, {
-                method: 'GET',
-                credentials: 'include'
-            });
-            const student = await res.json();
-
-            if (!student || !student.Name) throw new Error("Student not found in TestMaster");
-
-            studentData = student;
-
-            // Populate static fields
-            document.getElementById("studentName").innerText = student.Name || 'N/A';
-            document.getElementById("studentITS").innerText = student.ITS || 'N/A';
-            document.getElementById("studentDarajah").innerText = student.Darajah || 'N/A';
-
-            // --- Handle DOB and Age ---
-            if (student.DOB) {
-                const birthDate = new Date(student.DOB);
-                const today = new Date();
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                    age--;
-                }
-                studentData.calculatedAge = age; // Store calculated age
-                
-                if (ageDisplay) ageDisplay.innerText = age;
-                if (dobDisplay) dobDisplay.innerText = birthDate.toLocaleDateString(); // Show formatted DOB
-                if (dobInputGroup) dobInputGroup.style.display = 'none'; // Hide input
-                if (dobHelp) dobHelp.style.display = 'none';
-
-            } else {
-                studentData.calculatedAge = 18; // Use default age
-                if (ageDisplay) ageDisplay.innerText = 'N/A (Enter DOB)';
-                if (dobDisplay) dobDisplay.innerText = ''; // Clear display span
-                if (dobInputGroup) dobInputGroup.style.display = 'flex'; // Show input group
-                if (dobHelp) dobHelp.style.display = 'block'; // Show help text
-            }
-
-            if (studentInfo) studentInfo.classList.remove("hidden");
-            if (fitnessForm) fitnessForm.classList.remove("hidden");
-            const historyCard = document.getElementById("historycard");
-            if (historyCard) historyCard.style.display = "block";
-
-            // Apply house theme
-            if (studentInfo && student.House) {
-                const house = student.House.toLowerCase();
-                studentInfo.classList.remove("red-theme", "blue-theme", "green-theme", "yellow-theme");
-                if (["red", "blue", "green", "yellow"].includes(house)) {
-                    studentInfo.classList.add(`${house}-theme`);
-                }
-            }
-
-            Swal.fire({
-                icon: 'success',
-                position: 'top-end',
-                title: `Welcome ${student.Name}!`,
-                text: `TR ${tr} loaded successfully.`,
-                timer: 2000,
-                showConfirmButton: false,
-            });
-
-            await loadTestHistory(tr);
-
-        } catch (err) {
-            console.warn("TestMaster missing, trying TestRecords…");
-
-            try {
-                const res2 = await fetch(`/api/testrecords/${tr}`);
-                const records = await res2.json();
-
-                if (records.length === 0) throw new Error("No records");
-
-                if (studentInfo) studentInfo.classList.remove("hidden");
-                if (historyCard) historyCard.style.display = "block";
-                if (saveBtn) saveBtn.style.display = 'inline-block';
-                if (saveBtn) saveBtn.disabled = false;
-                if (saveWarning) {
-                    saveWarning.textContent = 'ℹ️ Records found. You may add a new one if 7 days have passed.';
-                    saveWarning.style.color = 'blue';
-                }
-
-                await loadTestHistory(tr);
-
-                Swal.fire({
-                    icon: 'info',
-                    title: `TR ${tr} found in history`,
-                    text: `Student not in active list but has a saved record.`,
-                    timer: 2500,
-                    showConfirmButton: false,
-                });
-
-            } catch (finalErr) {
-                console.error("No record found", finalErr);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'No Record Found',
-                    text: `No active or saved record found for TR ${tr}.`,
-                });
-            }
-        }
-    } catch (err) {
-        console.error('Session validation failed:', err);
-        window.location.href = '../Forbidden.html';
-    }
-}
-
-
-// --- NEW FUNCTION: Save Date of Birth ---
-async function saveDOB() {
-    const dobInput = document.getElementById('dobInput');
-    const dobValue = dobInput.value; // Format should be 'YYYY-MM-DD'
-
-    if (!dobValue) {
-        Swal.fire('Missing Date', 'Please select your Date of Birth.', 'warning');
-        return;
-    }
-
-    // Optional: Add more robust date validation if needed
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dobValue)) {
-         Swal.fire('Invalid Format', 'Please use the YYYY-MM-DD format for Date of Birth.', 'error');
-         return;
-    }
-
-
-    try {
-        const res = await fetch('/api/testmaster/me/dob', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ DOB: dobValue })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            throw new Error(data.error || 'Failed to save DOB.');
-        }
-
-        Swal.fire('Success!', 'Date of Birth saved successfully.', 'success');
-
-        // --- Update UI immediately ---
-        const dobDisplay = document.getElementById('studentDOBDisplay');
-        const dobInputGroup = document.getElementById('dobInputGroup');
-        const dobHelp = document.getElementById('dobHelp');
-        const ageDisplay = document.getElementById('studentAge');
-
-        const birthDate = new Date(dobValue);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-        }
-        
-        // Update global studentData as well
-        if (studentData) {
-             studentData.DOB = dobValue; 
-             studentData.calculatedAge = age;
-        }
-
-        if (ageDisplay) ageDisplay.innerText = age;
-        if (dobDisplay) dobDisplay.innerText = birthDate.toLocaleDateString();
-        if (dobInputGroup) dobInputGroup.style.display = 'none';
-        if (dobHelp) dobHelp.style.display = 'none';
-        // --- End UI Update ---
-
-    } catch (err) {
-        console.error("Save DOB failed", err);
-        Swal.fire('Save Failed', `There was an error saving your Date of Birth: ${err.message}`, 'error');
-    }
-}
-
-        function showTestInfo() {
-            Swal.fire({
-                title: "Fitness Test Overview",
-                html: `
-                    <h6>🧪 What This Test Measures:</h6>
-                    <ul style="text-align: left;">
-                        <li>🧍‍♂️ <b>BMI</b>: Body Mass Index - weight-to-height ratio</li>
-                        <li>💪 <b>Body Fat %</b>: Estimated fat levels using body measurements</li>
-                        <li>🔥 <b>BMR</b>: Basal Metabolic Rate - daily calorie burn</li>
-                        <li>🫁 <b>VO2 Max</b>: Cardiovascular endurance from pulse rate</li>
-                        <li>🏋️ <b>Strength & Flexibility</b>: Push-ups, Sit-ups, Squats, and Sit & Reach</li>
-                    </ul>
-                    <h6>🎯 Performance Scale:</h6>
-                    <ul style="text-align: left;">
-                        <li><b>Excellent</b>: Well above average fitness</li>
-                        <li><b>Good</b>: Above average, keep going!</li>
-                        <li><b>Average</b>: You're on track</li>
-                        <li><b>Below Average</b>: Needs more training</li>
-                        <li><b>Poor</b>: Improvement required urgently</li>
-                    </ul>
-                    <hr>
-                    <p>📌  This gives you a holistic view of your current health and fitness condition.</p>
-                `,
-                icon: "info",
-                confirmButtonText: "Got It!",
-                confirmButtonColor: "#3498db",
-                width: 600
-            });
-        }
-
-
-
-
-          //--------------------------------------------------------------------------------------------------------
-        function generateReport() {
-            const form = document.getElementById('testForm');
-                if (!form.checkValidity()) {
-                form.reportValidity(); // Shows native error messages (like tooltip)
-                return;
-            }
-
-            const Weight = parseFloat(form.querySelector('[name="Weight"]').value);
-            const Height = parseFloat(form.querySelector('[name="Height"]').value);
-            const Waist = parseFloat(form.querySelector('[name="Waist"]').value);
-            const Hips = parseFloat(form.querySelector('[name="Hips"]').value);
-            const Neck = parseFloat(form.querySelector('[name="Neck"]').value);
-            const PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
-            const Gender = form.querySelector('[name="Gender"]').value;
-
-            const Age = studentData?.calculatedAge || 18; // Use fetched/calculated age or default to 18
-
-            const PushUps = parseInt(form.querySelector('[name="PushUps"]').value) || 0;
-            const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
-            const Squats = parseInt(form.querySelector('[name="Squats"]').value) || 0;
-            const SitReach = parseFloat(form.querySelector('[name="SitReach"]').value) || 0;
-
-                 calculated = {
-                Weight,
-                Height,
-                Waist,
-                Hips,
-                Neck,
-                PulseRate,
-                Gender,
-                Age
-            };
-
-            // BMI + Status
-            if (Weight && Height) {
-                const heightInM = Height / 100;
-                const bmi = (Weight / (heightInM * heightInM)).toFixed(1);
-                calculated.BMI = bmi;
-
-                if (bmi < 18.5) calculated.BMIStatus = "Underweight";
-                else if (bmi < 24.9) calculated.BMIStatus = "Normal weight";
-                else if (bmi < 29.9) calculated.BMIStatus = "Overweight";
-                else calculated.BMIStatus = "Obese";
-            }
-
-            // Body Fat % → different formula for male/female
-            if (Waist && Neck && Height) {
-                if (Gender === "male") {
-                    calculated.BodyFat = (
-                        495 / (1.0324 - 0.19077 * Math.log10(Waist - Neck) + 0.15456 * Math.log10(Height)) - 450
-                    ).toFixed(1);
-                } else if (Gender === "female" && Hips) {
-                    calculated.BodyFat = (
-                        495 / (1.29579 - 0.35004 * Math.log10(Waist + Hips - Neck) + 0.22100 * Math.log10(Height)) - 450
-                    ).toFixed(1);
-                }
-            }
-
-            // BMR (Mifflin-St Jeor)
-            if (Weight && Height) {
-                if (Gender === "male") {
-                    calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age + 5);
-                } else {
-                    calculated.BMR = Math.round(10 * Weight + 6.25 * Height - 5 * Age - 161);
-                }
-                calculated.CalorieIntake = Math.round(calculated.BMR * 1.55);
-            }
-            // VO2 Max (use actual Age instead of hardcoded 18)
-            if (PulseRate) {
-                calculated.VO2Max = Math.round(15 * (220 - Age) / PulseRate);
-            } else {
-                calculated.VO2Max = "N/A";
-            }
-
-            // Fitness Score
-            const pushupScore = PushUps / 2;
-            const situpScore = SitUps / 2;
-            const squatScore = Squats / 2;
-            const sitReachScore = SitReach;
-
-            const totalScore = Math.round(
-                pushupScore + situpScore + squatScore + sitReachScore + (calculated.VO2Max !== "N/A" ? calculated.VO2Max / 2 : 0)
-            );
-            calculated.Total = totalScore;
-
-            // Grade
-            if (totalScore >= 80) calculated.Grade = "A+";
-            else if (totalScore >= 70) calculated.Grade = "A";
-            else if (totalScore >= 60) calculated.Grade = "B";
-            else if (totalScore >= 50) calculated.Grade = "C";
-            else calculated.Grade = "D";
-
-            // Store globally for saveRecord()
-            window.calculated = calculated;
-
-            // Evaluation rules
-            const avgMetrics = {
-                BMI: 22.5,
-                VO2Max: 45,
-                BodyFat: 20,
-                BMR: 1500,
-                CalorieIntake: 2100,
-                Total: 60,
-            };
-
-            function getEvaluation(metric, value) {
-                if (value === "N/A" || value === undefined) return "N/A";
-                value = parseFloat(value);
-                const avg = avgMetrics[metric];
-                const diff = value - avg;
-
-                if (metric === "BodyFat" || metric === "BMI") {
-                    if (value < 16) return "Underweight - Needs Improvement";
-                    if (value > 30) return "High - At Risk";
-                    if (Math.abs(diff) <= 2) return "Healthy Range";
-                    return diff < 0 ? "Low - Acceptable" : "High - Needs Work";
-                }
-
-                if (Math.abs(diff) < 5) return "Average - Needs Practice";
-                if (diff > 10) return "Excellent";
-                if (diff > 5) return "Good";
-                if (diff < -10) return "Poor";
-                return "Below Average";
-            }
-
-            // Report rendering
-            const reportHTML = `
-                <tr><th>BMI</th><td>${calculated.BMI ?? 'N/A'}</td><td>${getEvaluation('BMI', calculated.BMI)}</td></tr>
-                <tr><th>BMI Status</th><td>${calculated.BMIStatus ?? 'N/A'}</td><td>-</td></tr>
-                <tr><th>Body Fat %</th><td>${calculated.BodyFat ?? 'N/A'}</td><td>${getEvaluation('BodyFat', calculated.BodyFat)}</td></tr>
-                <tr><th>BMR</th><td>${calculated.BMR ?? 'N/A'}</td><td>${getEvaluation('BMR', calculated.BMR)}</td></tr>
-                <tr><th>Calorie Intake</th><td>${calculated.CalorieIntake ?? 'N/A'}</td><td>${getEvaluation('CalorieIntake', calculated.CalorieIntake)}</td></tr>
-                <tr><th>VO2 Max</th><td>${calculated.VO2Max}</td><td>${getEvaluation('VO2Max', calculated.VO2Max)}</td></tr>
-                <tr><th>Total Score</th><td>${calculated.Total}</td><td>${getEvaluation('Total', calculated.Total)}</td></tr>
-                <tr><th>Grade</th><td>${calculated.Grade}</td><td>-</td></tr>
-            `;
-
-            document.getElementById("reportTableBody").innerHTML = reportHTML;
-            document.getElementById("reportSection").classList.remove("hidden");
-        }
-
-
-        //----------------------------------------------------------------------------------------------------
-
-
-
-
-        async function saveRecord() {
-            const currentTR = localStorage.getItem('currentTR');
-            if (!currentTR) {
-                Swal.fire('Session Expired', 'Please log in again to save your record.', 'error');
-                window.location.href = '../Forbidden.html';
-                return;
-            }
-
-            const saveBtn = document.getElementById("saveBtn");
-            saveBtn.disabled = true;
-
-            if (!studentData || !calculated) {
-                Swal.fire('Missing data', 'Please generate the report before saving.', 'error');
-                return;
-            }
-
-            const requiredChecks = [    
-                { name: 'Weight', value: calculated.Weight },
-                { name: 'Height', value: calculated.Height },
-                { name: 'Waist', value: calculated.Waist },
-                { name: 'Hips', value: calculated.Hips },
-                { name: 'Neck', value: calculated.Neck },
-                { name: 'BMI', value: calculated.BMI },
-                { name: 'BMIStatus', value: calculated.BMIStatus },
-                { name: 'BodyFat', value: calculated.BodyFat },
-                { name: 'BMR', value: calculated.BMR },
-                { name: 'CalorieIntake', value: calculated.CalorieIntake },
-                { name: 'VO2Max', value: calculated.VO2Max },
-                { name: 'Total', value: calculated.Total },
-                { name: 'Grade', value: calculated.Grade },
-            ];
-
-            for (const field of requiredChecks) {
-                if (field.name === 'VO2Max' && (field.value === "N/A" || field.value === null || field.value === undefined || field.value === '')) {
-                    Swal.fire('Invalid VO2Max', 'Please provide a valid pulse rate to calculate VO2 Max.', 'error');
-                    return;
-                }
-                if (field.value === null || field.value === undefined || field.value === '') {
-                    Swal.fire('Missing Field', `Please fill the field: ${field.name}`, 'error');
-                    return;
-                }
-            }
-
-                const body = {
-                        // TR is taken from session on backend
-                        Weight: calculated.Weight,
-                        Height: calculated.Height,
-                        Waist: calculated.Waist,
-                        Hips: calculated.Hips,
-                        Neck: calculated.Neck,
-                        BMI: parseFloat(calculated.BMI),
-                        BMIStatus: calculated.BMIStatus,
-                        BodyFat: parseFloat(calculated.BodyFat),
-                        BMR: parseFloat(calculated.BMR),
-                        CalorieIntake: parseFloat(calculated.CalorieIntake),
-                        VO2Max: calculated.VO2Max === "N/A" ? null : parseFloat(calculated.VO2Max), // Handle "N/A"
-                        Total: parseFloat(calculated.Total),
-                        Grade: calculated.Grade
-                        // Branch and Gender will be added by the backend API
-                    };
-
-            // 🔹 Confirmation SweetAlert before actual save
-        Swal.fire({
-            title: 'Confirm Submission',
-            html: `
-                <p>Please confirm your details before submitting:</p>
-                <ul style="text-align:left">
-                    <li><b>Age Used:</b> ${calculated.Age} years</li>
-                    <li><b>Gender:</b> ${calculated.Gender || 'Not specified'}</li>
-                    <li><b>Weight:</b> ${body.Weight} kg</li>
-                    <li><b>Height:</b> ${body.Height} cm</li>
-                    <li><b>BMI:</b> ${body.BMI.toFixed(2)} (${body.BMIStatus})</li>
-                    <li><b>Body Fat %:</b> ${body.BodyFat.toFixed(2)}</li>
-                    <li><b>BMR:</b> ${body.BMR.toFixed(1)}</li>
-                    <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
-                    <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
-                    <li><b>Grade:</b> ${body.Grade}</li>
-                </ul>
-                <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
-            `,
-
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, Submit',
-                cancelButtonText: 'Review Again',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('/api/testrecords', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.error) {
-                            Swal.fire('Save Failed', data.error, 'error');
-                        } else {
-                            // 🔹 Calculate next allowed submission date
-                            const nextDate = new Date();
-                            nextDate.setDate(nextDate.getDate() + 7);
-
-                            Swal.fire({
-                                title: '🎉 Fitness Test Saved!',
-                                html: `Your result has been saved successfully.<br>
-                                       <b>Next submission allowed on:</b> ${nextDate.toLocaleDateString()}`,
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                location.reload(); // Reload to reflect changes
-                            });
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Save failed", err);
-                        Swal.fire('Save Failed', 'There was an error saving your test record.', 'error');
-                    });
-                } else {
-                    saveBtn.disabled = false; // re-enable if cancelled
-                }
-            });
-        }
-
-
-
-        //---------------------------------------------------------------------------------------------------------------
-
-
-function renderProgressBar(records) {
-    const goal = parseFloat(localStorage.getItem("fitnessGoal"));
-    const progressSection = document.getElementById("progressSection");
-    const progressWrapper = document.getElementById("progressWrapper");
-
-    if (!progressSection || !progressWrapper) return;
-
-    if (!goal || !records || records.length === 0) {
-        progressSection.classList.remove("hidden");
-        progressWrapper.classList.add("hidden");
-        return;
-    }
-
-    const firstTotal = parseFloat(records[records.length - 1].Total); // oldest
-    const latestTotal = parseFloat(records[0].Total); // newest
-
-    // --- Primary Progress (Total score, higher = better) ---
-    let progress = ((latestTotal - firstTotal) / (goal - firstTotal)) * 100;
-    let regression = false;
-    if (progress < 0) {
-        regression = true;
-        progress = Math.abs(progress);
-    }
-    progress = Math.min(progress, 100);
-
-    progressSection.classList.remove("hidden");
-    progressWrapper.classList.remove("hidden");
-
-    const bar = document.getElementById("progressBar");
-    if (bar) {
-        bar.className = "progress-bar";
-        bar.style.width = progress + "%";
-        bar.textContent = regression ? `-${progress.toFixed(1)}%` : `${progress.toFixed(1)}%`;
-
-        if (regression) {
-            bar.classList.add("bg-danger");
-        } else if (progress < 30) {
-            bar.classList.add("bg-danger");
-        } else if (progress < 70) {
-            bar.classList.add("bg-warning");
-        } else {
-            bar.classList.add("bg-success");
-        }
-    }
-
-    const text = `Start: ${firstTotal} → Current: ${latestTotal} → Goal: ${goal}`;
-    const progressText = document.getElementById("progressText");
-    if (progressText) {
-        progressText.textContent = regression ? text + " | ⚠️ Regression observed" : text;
-    }
-
-    // --- Secondary Progress (BMI toward WHO range) ---
-    if (records[0].BMI) {
-        const latestBMI = parseFloat(records[0].BMI);
-        const minHealthy = 18.5, maxHealthy = 24.9;
-
-        let bmiProgress = 0, bmiDirection = "";
-        if (latestBMI < minHealthy) {
-            bmiProgress = ((latestBMI - 15) / (18.5 - 15)) * 100;
-            bmiDirection = "Underweight → gain needed";
-        } else if (latestBMI > maxHealthy) {
-            bmiProgress = ((30 - latestBMI) / (30 - 24.9)) * 100;
-            bmiDirection = "Overweight → loss needed";
-        } else {
-            bmiProgress = 100;
-            bmiDirection = "Within healthy BMI ✅";
-        }
-
-        bmiProgress = Math.max(0, Math.min(bmiProgress, 100));
-
-        const bmiWrapper = document.getElementById("bmiProgressWrapper");
-        if (bmiWrapper) {
-            bmiWrapper.classList.remove("hidden");
-            const bmiBar = document.getElementById("bmiProgressBar");
-            if (bmiBar) {
-                bmiBar.className = "progress-bar";
-                bmiBar.style.width = bmiProgress + "%";
-                bmiBar.textContent = bmiProgress.toFixed(1) + "%";
-
-                if (bmiProgress < 30) bmiBar.classList.add("bg-danger");
-                else if (bmiProgress < 70) bmiBar.classList.add("bg-warning");
-                else bmiBar.classList.add("bg-success");
-            }
-
-            const bmiProgressText = document.getElementById("bmiProgressText");
-            if (bmiProgressText) {
-                bmiProgressText.textContent = `BMI: ${latestBMI.toFixed(1)} (${bmiDirection})`;
-            }
-        }
-    }
-
-    // ---- Chart.js Trend Line ----
-    const ctx = document.getElementById('progressChart')?.getContext('2d');
-    if (ctx) {
-        if (window.progressChart && typeof window.progressChart.destroy === "function") {
-            window.progressChart.destroy();
-        }
-
-        const labels = records.map(r => new Date(r.CreatedAt).toLocaleDateString()).reverse();
-        const dataPoints = records.map(r => parseFloat(r.Total)).reverse();
-
-        window.progressChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Fitness Score',
-                        data: dataPoints,
-                        borderColor: '#4facfe',
-                        backgroundColor: 'rgba(79,172,254,0.2)',
-                        borderWidth: 3,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#00f2fe',
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Goal',
-                        data: Array(dataPoints.length).fill(goal),
-                        borderColor: '#ff6a00',
-                        borderDash: [5, 5],
-                        borderWidth: 2,
-                        pointRadius: 0
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: { mode: 'index', intersect: false }
-                },
-                scales: { y: { beginAtZero: false } }
-            }
-        });
-    }
-}
-
-
-        async function loadTestHistory() {
-            // Swal.showLoading();
-            try {
-                const response = await fetch(`/api/testrecords/me`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                const records = await response.json();
-                const saveBtn = document.getElementById('saveBtn');
-                const saveWarning = document.getElementById('saveWarning');
-                const tbody = document.getElementById('historyBody');
-                tbody.innerHTML = ''; // Clear existing content
-
-                // Handle save button visibility based on submission timing
-                if (records.length > 0) {
-                    const latest = new Date(records[0].CreatedAt);
-                    const now = new Date();
-                    const diffDays = Math.floor((now - latest) / (1000 * 60 * 60 * 24));
-
-                    if (diffDays < 7) {
-                        saveBtn.style.display = "none";
-                        saveWarning.textContent = `⚠️ You already submitted ${diffDays} days ago. Next available after ${7 - diffDays} days.`;
-                        saveWarning.style.color = 'orange';
-                    } else {
-                        saveBtn.style.display = "inline-block";
-                        saveWarning.textContent = '✅ You can save a new record now.';
-                        saveWarning.style.color = 'green';
-                    }
-                } else {
-                    saveBtn.style.display = "inline-block";
-                    saveWarning.textContent = '⚠️ First attempt. Please submit carefully.';
-                    saveWarning.style.color = 'red';
-                }
-
-                // Initialize or reinitialize DataTables
-                if ($.fn.DataTable.isDataTable('#historyTable')) {
-                    $('#historyTable').DataTable().destroy(); // Destroy existing instance to avoid conflicts
-                }
-
-                const table = $('#historyTable').DataTable({
-                    paging: true,
-                    searching: true,
-                    ordering: true,
-                    responsive: true, // Add this
-                    data: records, // Pass records directly to DataTables
-                    columns: [
-                        { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
-                        { data: 'BMI', render: (data) => parseFloat(data).toFixed(2) },
-                        { data: 'BodyFat', render: (data) => parseFloat(data).toFixed(2) },
-                        { data: 'BMR', render: (data) => parseFloat(data).toFixed(1) },
-                        { data: 'VO2Max', render: (data) => (data ? parseFloat(data).toFixed(1) : 'N/A') },
-                        { data: 'Total', render: (data) => parseFloat(data).toFixed(1) },
-                        { data: 'Grade', render: (data) => `<strong>${data}</strong>` }
-                    ],
-                    language: {
-                        emptyTable: "No test records available. Please submit a fitness test."
-                    }
-                });
-
-                renderProgressBar(records);
-                // currentScore update which is 'Total' in latest record
-                if (records.length > 0) {
-                    const currentScoreEl = document.getElementById('currentScore');
-                    currentScoreEl.textContent = `${parseFloat(records[0].Total).toFixed(1)}`;
-                }   
-                Swal.close();
-
-            } catch (err) {
-                console.error("Error loading test history", err);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error Loading History',
-                    text: 'Failed to load test history. Please try again later.'
-                });
-            }
-        }
-
-
-
-
-        // On page load, set input value if goal exists
-        document.addEventListener("DOMContentLoaded", () => {
-            const savedGoal = localStorage.getItem("fitnessGoal");
-            if (savedGoal) {
-                document.getElementById("goalInput").value = savedGoal;
-            }
-        });
-
-        // Save goal
-        document.getElementById("saveGoalBtn").addEventListener("click", async (e) => {
-            e.preventDefault();
-
-            const goal = parseFloat(document.getElementById("goalInput").value);
-            if (!goal || goal <= 0) {
-                Swal.fire('Invalid Goal', 'Please enter a valid number greater than 0.', 'error');
-                return;
-            }
-
-            localStorage.setItem("fitnessGoal", goal);
-            Swal.fire('Goal Saved ✅', `Your goal is set to ${goal}`, 'success');
-
-            // Update progress bar and chart without reloading
-            try {
-                const response = await fetch(`/api/testrecords/me`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                const records = await response.json();
-                renderProgressBar(records); // Update UI dynamically
-            } catch (err) {
-                console.error("Error updating progress after goal save", err);
-                Swal.fire('Error', 'Failed to update progress. Please refresh.', 'error');
-            }
-        });
-
-
-
-          //----------------------------------------------------------------------------------------------------------------
-                
-// Get all the navigation links
-const navLinks = document.querySelectorAll('.sidebar a');
-const sections = {
-    'tab-profile': 'profile-overview',
-    'tab-fit': 'student-fit',
-    'tab-swim': 'student-swim',
-    'tab-goals': 'goals-progress',
-    'tab-history': 'test-history',
-    'tab-achievements': 'achievements'
-};
-
-// Function to show a specific tab
-function showTab(tabId) {
-    // Remove 'active' class from all nav links
-    navLinks.forEach(nav => nav.classList.remove('active'));
-    
-    // Hide all sections
-    Object.values(sections).forEach(id => {
-        const section = document.getElementById(id);
-        if (section) section.style.display = 'none';
-    });
-
-    // Activate the selected tab and section
-    const link = document.getElementById(tabId);
-    const sectionId = sections[tabId];
-    if (link && sectionId) {
-        link.classList.add('active');
-        const section = document.getElementById(sectionId);
-        if (section) section.style.display = 'block';
-    }
-}
-
-// Add click listener to each link
-navLinks.forEach(link => {
-    link.addEventListener('click', function(event) {
-        event.preventDefault();
-        const tabId = this.id;
-        showTab(tabId);
-        localStorage.setItem('activeTab', tabId); // Save active tab
-    });
-});
-
-// On page load, restore the last active tab or default to profile
-document.addEventListener("DOMContentLoaded", () => {
-    const savedTab = localStorage.getItem('activeTab') || 'tab-profile';
-    showTab(savedTab);
-    validateStudentSession();
-});
-        //-------------------------------------------------------------------------------------------------
-        function clearFitnessResults() {
-            const fields = ["Weight", "Height", "Waist", "Hips", "Neck", "PushUps", "SitUps", "Squats", "SitReach", "PulseRate"];
-            fields.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = "";
-            });
-
-            document.getElementById("reportTableBody").innerHTML = "";
-            document.getElementById("reportSection").classList.add("hidden");
-        }
-
-
-          function showConverter() {
-            Swal.fire({
-              title: '📏 Inches to Centimeters',
-              html: `
-                <input id="inchesInput" type="number" step="any" placeholder="Enter inches" class="swal2-input" />
-                <div id="result" style="margin-top: 10px; font-weight: bold;"></div>
-              `,
-              showCancelButton: true,
-              confirmButtonText: 'Convert',
-              cancelButtonText: 'Close',
-              preConfirm: () => {
-                const inches = parseFloat(document.getElementById('inchesInput').value);
-                if (isNaN(inches)) {
-                  Swal.showValidationMessage('Please enter a valid number!');
-                } else {
-                  const cm = (inches * 2.54).toFixed(2);
-                  document.getElementById('result').innerText = `${inches} inches = ${cm} cm`;
-                  return false; // Prevents closing
-                }
-              }
-            });
-          }
-
-        document.getElementById('logoutLink').addEventListener('click', function (e) {
-            e.preventDefault();
-
-            fetch('/api/logout', {
-                method: 'POST',
-                credentials: 'include'
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.clear(); // Clear any client-side data
-                    window.location.href = '../homepage.html'; // Redirect to login/home
-                } else {
-                    alert('Logout failed.');
-                }
-            })
-            .catch(err => {
-                console.error('Logout error:', err);
-            });
-        });
-
-        // New Functions for Modern UI
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    const main = document.querySelector('.main-content');
-    sidebar.classList.toggle('collapsed');
-    main.classList.toggle('expanded');
-    // Force reflow to ensure smooth transition
-    sidebar.style.display = 'none';
-    setTimeout(() => {
-        sidebar.style.display = '';
-    }, 0);
-}
-
-function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-}
-
-    </script>
+    <script src="/assets/js/jquery.min.js"></script>
+    <script src="/assets/js/jquery.dataTables.min.js"></script>
+    <script src="/assets/js/dataTables.bootstrap5.min.js"></script>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/sweetalert2.all.min.js"></script>
+
+
+    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Your New Password</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Welcome! For your security, you must create a new password for your account. Your old ITS number will no longer work for login.</p>
+                    <form id="setPasswordForm">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                    <button type="submit" class="btn btn-primary w-100" id="setPasswordBtn">
+                        <span class="button-text">Set Password</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
