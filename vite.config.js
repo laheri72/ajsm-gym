@@ -18,6 +18,7 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    cssCodeSplit: false, 
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'public/index.html'),
