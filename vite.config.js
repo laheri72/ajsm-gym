@@ -11,7 +11,8 @@ export default defineConfig({
       targets: [
         { src: 'images', dest: '' },
         { src: 'gifs', dest: '' },
-        { src: 'assets', dest: '' } 
+        { src: 'assets', dest: '' },
+        { src: 'css/student', dest: 'css/student' } 
       ]
     })
   ],
@@ -19,6 +20,13 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
     rollupOptions: {
+            external: [
+        '/assets/js/jquery.min.js',
+        '/assets/js/bootstrap.bundle.min.js',
+        '/assets/js/sweetalert2.all.min.js',
+        '/assets/js/chart.min.js',
+        '/assets/js/dataTables.min.js',
+      ],
       input: {
         main: resolve(__dirname, 'public/index.html'),
         homepage: resolve(__dirname, 'public/homepage.html'),
@@ -42,7 +50,7 @@ export default defineConfig({
         staffProfile: resolve(__dirname, 'public/staff/profile.html'),
         staffEvaluation: resolve(__dirname, 'public/staff/evaluation.html'),
         staffCommentEntry: resolve(__dirname, 'public/staff/comment-entry.html'),
-        staffCommentEntry: resolve(__dirname, 'public/staff/evaluation-log.html'),
+        staffeveluationlogs: resolve(__dirname, 'public/staff/evaluation-log.html'),
       },
     },
   },
