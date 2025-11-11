@@ -6,12 +6,12 @@
 
 @import url('./student/_variables.css');
 @import url('./student/_base.css');
-@import url('./student/themes.css');
 @import url('./student/planner.css');
 @import url('./student/analysis.css');
 @import url('./student/attendance.css');
 @import url('./student/leaves.css');
 @import url('./student/tips.css');
 @import url('./student/hall-of-fame.css');
-@import url('./student/responsive.css'); /* responsive before header */
 @import url('./student/new-header.css'); /* header always last */
+@import url('./student/themes.css');
+@import url('./student/responsive.css'); 
