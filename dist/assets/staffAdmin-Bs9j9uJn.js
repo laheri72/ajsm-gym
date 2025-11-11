@@ -1,4 +1,4 @@
-import"./modulepreload-polyfill-B5Qt9EMX.js";/* empty css                  */import"./auth-DPU65CiM.js";document.addEventListener("DOMContentLoaded",()=>{let d=null;const c=JSON.parse(localStorage.getItem("staffUser"));if(!c||c.Role!=="Admin"){window.location.href="overview.html";return}if(c&&c.Branch){const e=document.getElementById("branch-name");e&&(e.innerText=c.Branch)}f(),x();const i=document.createElement("style");i.innerHTML=`
+import"./modulepreload-polyfill-B5Qt9EMX.js";/* empty css                      *//* empty css                                  *//* empty css                  */import"./auth-DPU65CiM.js";document.addEventListener("DOMContentLoaded",()=>{let d=null;const c=JSON.parse(localStorage.getItem("staffUser"));if(!c||c.Role!=="Admin"){window.location.href="overview.html";return}if(c&&c.Branch){const e=document.getElementById("branch-name");e&&(e.innerText=c.Branch)}f(),x();const i=document.createElement("style");i.innerHTML=`
         .status-badge {
             display: inline-block; padding: 0.25em 0.6em; font-size: 0.8rem;
             font-weight: 600; line-height: 1; border-radius: 0.375rem;
