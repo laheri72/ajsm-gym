@@ -19,14 +19,14 @@ Note: Sections 2-3 contain base (non-theme-specific) styles. All theme-specific 
 
 /* --- 1. Main Layout --- */
 body {
-    padding-top: 130px; /* 80px + 50px */
+    padding-top: 130px !important; /* 80px + 50px */
 }
 
 /* BAR 1: Main Header (Nav, Brand, Actions) */
 .app-header-main {
     height: 80px;
     padding: 0 1rem;
-    position: fixed;
+    position: fixed !important;
     top: 0;
     left: 0;
     width: 100%;
@@ -41,7 +41,7 @@ body {
 .app-header-info {
     height: 50px;
     padding: 0 1.5rem;
-    position: fixed;
+    position: fixed !important;
     top: 80px;
     left: 0;
     width: 100%;
