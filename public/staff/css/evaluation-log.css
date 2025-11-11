@@ -1,0 +1,99 @@
+/*
+ * ==========================================
+ * CSS for Admin Evaluation Log Page
+ * (Standalone Version)
+ * ==========================================
+ */
+
+/*
+ * 1. Tab Styles
+ * (Makes the tabs look more integrated)
+ */
+#genderTab {
+    /* Sits just above the filter card */
+    margin-bottom: -1px;
+    border-bottom: none;
+    position: relative;
+    z-index: 1; /* Sits over the card's top border */
+}
+
+#genderTab .nav-link {
+    /* Uses your theme's dark color for unselected tabs */
+    color: var(--dark); 
+    background-color: var(--light-gray);
+    border-color: var(--bs-border-color);
+    border-bottom: none;
+    font-weight: 500;
+}
+
+#genderTab .nav-link.active {
+    /* Uses your theme's primary color */
+    background-color: var(--bs-white);
+    color: var(--primary);
+    border-color: var(--bs-border-color);
+    border-bottom: 1px solid var(--bs-white); /* Hides the card border under it */
+}
+
+
+/*
+ * 2. Filter Row (THE FIX)
+ * (This is the new card that holds the filters)
+ */
+.filter-row-card {
+    /* Rounds only the top corners to match the tabs */
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    
+    /* Make it less intrusive */
+    background-color: var(--bs-white);
+    margin-bottom: 1rem;
+}
+
+.filter-row-card .card-body {
+    padding: 1rem; /* A bit tighter than a normal card */
+}
+
+/* * This targets the dropdowns that your JS adds.
+ * By placing them in a `col-md-4`, they will
+ * stack on mobile but be horizontal on desktop.
+ */
+#male-filters .form-select-wrapper,
+#female-filters .form-select-wrapper {
+    /* This wrapper will be a Bootstrap column */
+}
+
+#male-filters .form-select,
+#female-filters .form-select {
+    font-size: 0.875rem;
+}
+
+
+/*
+ * 3. DataTables Wrapper Adjustments
+ */
+.dataTables_wrapper .dt-buttons .btn {
+    /* Makes DataTables buttons look like your theme's buttons */
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+}
+
+/*
+ * 4. Loader Cell
+ */
+.dataTables_wrapper .loader-cell {
+    height: 250px;
+    position: relative;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.dataTables_wrapper .loader-cell .loader {
+    /* This uses the .loader animation already
+     * defined in your main dashboard.css 
+     */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}

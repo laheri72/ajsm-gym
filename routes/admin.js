@@ -644,6 +644,59 @@ router.delete('/api/admin/comment-categories/:id', isAdmin, async (req, res) => 
     }
 });
 
+/**
+ * GET: Fetches a complete audit log of all evaluation comments
+ * for the admin's branch, filterable by gender.
+ */
+router.get('/api/admin/evaluation-logs', isAdmin, async (req, res) => {
+    const { gender } = req.query; // Expecting ?gender=Male or ?gender=Female
+
+    if (!gender) {
+        return res.status(400).json({ success: false, message: 'Gender query parameter is required.' });
+    }
+
+    try {
+        const request = pool.request();
+        // Use the Admin's branch from their session (via isAdmin middleware)
+        request.input('Branch', sql.NVarChar(50), req.Branch);
+        request.input('Gender', sql.NVarChar(10), gender);
+
+        // This query joins all 6 tables you need
+        const result = await request.query(`
+            SELECT 
+                E.EvaluationID,
+                EV.Name AS EvaluatorName,
+                CC.CategoryName,
+                TR.TR,
+                TM.Name AS StudentName,
+                E.CommentText AS Remark,
+                ISNULL(EB.BatchName, 'Unbatched') AS BatchName
+            FROM 
+                Evaluations E
+            JOIN 
+                Evaluators EV ON E.EvaluatorID = EV.EvaluatorID
+            JOIN 
+                CommentCategories CC ON E.CategoryID = CC.CategoryID
+            JOIN 
+                TestRecords TR ON E.LogID = TR.TestLog
+            JOIN 
+                TestMaster TM ON TR.TR = TM.TR
+            LEFT JOIN 
+                EvaluationBatches EB ON TR.BatchID = EB.BatchID
+            WHERE
+                TR.Branch = @Branch
+                AND TR.Gender = @Gender
+            ORDER BY
+                E.DateEvaluated DESC;
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching evaluation audit log:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch evaluation log.' });
+    }
+});
 
 // --- End of routes ---
 

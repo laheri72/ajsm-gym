@@ -42,6 +42,7 @@ export default defineConfig({
         staffProfile: resolve(__dirname, 'public/staff/profile.html'),
         staffEvaluation: resolve(__dirname, 'public/staff/evaluation.html'),
         staffCommentEntry: resolve(__dirname, 'public/staff/comment-entry.html'),
+        staffCommentEntry: resolve(__dirname, 'public/staff/evaluation-log.html'),
       },
     },
   },
