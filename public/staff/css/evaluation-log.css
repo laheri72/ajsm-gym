@@ -54,15 +54,10 @@
     padding: 1rem; /* A bit tighter than a normal card */
 }
 
-/* * This targets the dropdowns that your JS adds.
+/* This targets the dropdowns that your JS adds.
  * By placing them in a `col-md-4`, they will
  * stack on mobile but be horizontal on desktop.
  */
-#male-filters .form-select-wrapper,
-#female-filters .form-select-wrapper {
-    /* This wrapper will be a Bootstrap column */
-}
-
 #male-filters .form-select,
 #female-filters .form-select {
     font-size: 0.875rem;
