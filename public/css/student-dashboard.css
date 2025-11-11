@@ -4,23 +4,14 @@
 /* Do not add styles directly here. Edit the imported files.
 /* =================================================================== */
 
-/* 1. Core variables and base styles */
 @import url('./student/_variables.css');
 @import url('./student/_base.css');
-
-/* 2. Main layout components */
-@import url('./student/new-header.css');
-
-/* 3. Theming */
 @import url('./student/themes.css');
-
-/* 4. Page-specific sections */
 @import url('./student/planner.css');
 @import url('./student/analysis.css');
 @import url('./student/attendance.css');
 @import url('./student/leaves.css');
 @import url('./student/tips.css');
 @import url('./student/hall-of-fame.css');
-
-/* 5. Responsive styles (must be last) */
-@import url('./student/responsive.css');
+@import url('./student/responsive.css'); /* responsive before header */
+@import url('./student/new-header.css'); /* header always last */
