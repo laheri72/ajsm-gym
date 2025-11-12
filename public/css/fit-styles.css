@@ -719,3 +719,28 @@ body.dark-mode #testHistoryTable td,
 body.dark-mode #testHistoryTable {
     border-color: var(--border-color);
 }
+
+/* --- Activity Log Table Styling --- */
+#activity-card {
+  background: var(--light);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+#activity-card table th, 
+#activity-card table td {
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+body.dark-mode #activity-card {
+  background: var(--light);
+  color: var(--dark);
+  box-shadow: 0 4px 12px rgba(255,255,255,0.05);
+}
+
+body.dark-mode #activity-card table thead {
+  background: var(--secondary);
+}

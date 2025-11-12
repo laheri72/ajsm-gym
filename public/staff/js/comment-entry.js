@@ -135,6 +135,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setStat('stat-BodyFat', f(record.BodyFat), '%');
         setStat('stat-BMR', f(record.BMR, 0), 'kcal');
         setStat('stat-VO2Max', f(record.VO2Max, 0), 'ml/kg');
+        // --- New Activity Metrics ---
+        setStat('stat-PushUps', f(record.PushUps, 0));
+        setStat('stat-SitUps', f(record.SitUps, 0));
+        setStat('stat-Squats', f(record.Squats, 0));
+        setStat('stat-SitAndReach', f(record.SitAndReach, 0), 'cm');
+        setStat('stat-StepUpPulseRate', f(record.StepUpPulseRate, 0), 'bpm');
+
     }
     function populateMedicalHistory(history) {
         if (!history) {

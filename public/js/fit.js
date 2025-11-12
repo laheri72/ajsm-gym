@@ -120,6 +120,8 @@ async function validateStudentSession() {
             await loadTestHistory(tr);
             await loadMedicalHistory();
             await loadMyEvaluations();
+            await loadActivityTable();
+
 
         } catch (err) {
             console.warn("TestMaster missing, trying TestRecords…");
@@ -739,7 +741,11 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
                 Neck,
                 PulseRate,
                 Gender,
-                Age
+                Age,
+                PushUps,
+                SitUps,
+                Squats,
+                SitReach
             };
 
             // BMI + Status
@@ -887,6 +893,60 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
         }
 
 
+
+        // --- NEW: Load Activity Data and Render Below History ---
+async function loadActivityTable() {
+    const container = document.getElementById('activity-card');
+    container.innerHTML = '<div class="loader-cell"><div class="loader"></div></div>';
+    
+    try {
+        const res = await fetch('/api/testactivity/me', { credentials: 'include' });
+        const result = await res.json();
+        if (!result.success || !result.data.length) {
+            container.innerHTML = '<p class="text-muted">No activity data found yet.</p>';
+            return;
+        }
+
+        let html = `
+            <h5 class="mb-3"><i class="fas fa-running"></i> Activity Performance Logs</h5>
+            <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Push-Ups (30s)</th>
+                        <th>Sit-Ups (30s)</th>
+                        <th>Squats (30s)</th>
+                        <th>Sit & Reach</th>
+                        <th>Step-Up Pulse Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        result.data.forEach(row => {
+            const date = row.CreatedAt ? new Date(row.CreatedAt).toLocaleDateString() : 'N/A';
+            html += `
+                <tr>
+                    <td>${date}</td>
+                    <td>${row.PushUps ?? '-'}</td>
+                    <td>${row.SitUps ?? '-'}</td>
+                    <td>${row.Squats ?? '-'}</td>
+                    <td>${row.SitAndReach ?? '-'}</td>
+                    <td>${row.StepUpPulseRate ?? '-'}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error('Error loading activity table:', err);
+        container.innerHTML = '<p class="text-danger">Failed to load activity records.</p>';
+    }
+}
+
         //----------------------------------------------------------------------------------------------------
 
 
@@ -951,22 +1011,30 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
                         }
                     }
 
-                    // build request body from calculatedLocal
-                    const body = {
-                        Weight: calculatedLocal.Weight,
-                        Height: calculatedLocal.Height,
-                        Waist: calculatedLocal.Waist,
-                        Hips: calculatedLocal.Hips,
-                        Neck: calculatedLocal.Neck,
-                        BMI: parseFloat(calculatedLocal.BMI),
-                        BMIStatus: calculatedLocal.BMIStatus,
-                        BodyFat: parseFloat(calculatedLocal.BodyFat),
-                        BMR: parseFloat(calculatedLocal.BMR),
-                        CalorieIntake: parseFloat(calculatedLocal.CalorieIntake),
-                        VO2Max: calculatedLocal.VO2Max === "N/A" ? null : parseFloat(calculatedLocal.VO2Max),
-                        Total: parseFloat(calculatedLocal.Total),
-                        Grade: calculatedLocal.Grade
-                    };
+                                // build request body from calculatedLocal
+            const body = {
+                Weight: calculatedLocal.Weight,
+                Height: calculatedLocal.Height,
+                Waist: calculatedLocal.Waist,
+                Hips: calculatedLocal.Hips,
+                Neck: calculatedLocal.Neck,
+                BMI: parseFloat(calculatedLocal.BMI),
+                BMIStatus: calculatedLocal.BMIStatus,
+                BodyFat: parseFloat(calculatedLocal.BodyFat),
+                BMR: parseFloat(calculatedLocal.BMR),
+                CalorieIntake: parseFloat(calculatedLocal.CalorieIntake),
+                VO2Max: calculatedLocal.VO2Max === "N/A" ? null : parseFloat(calculatedLocal.VO2Max),
+                Total: parseFloat(calculatedLocal.Total),
+                Grade: calculatedLocal.Grade,
+
+                // 🆕 ADD THESE LINES
+                PushUps: parseInt(calculatedLocal.PushUps) || null,
+                SitUps: parseInt(calculatedLocal.SitUps) || null,
+                Squats: parseInt(calculatedLocal.Squats) || null,
+                SitReach: parseFloat(calculatedLocal.SitReach) || null,
+                PulseRate: parseFloat(calculatedLocal.PulseRate) || null
+            };
+
 
 
             // 🔹 Confirmation SweetAlert before actual save
@@ -985,6 +1053,12 @@ document.getElementById('saveMedicalBtn').addEventListener('click', async () => 
                     <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
                     <li><b>Total Score:</b> ${body.Total.toFixed(1)}</li>
                     <li><b>Grade:</b> ${body.Grade}</li>
+                    <li><b>VO₂ Max:</b> ${isNaN(body.VO2Max) ? 'N/A' : body.VO2Max.toFixed(1)}</li>
+                    <li><b>Push-Ups (30s):</b> ${body.PushUps}</li>
+                    <li><b>Sit-Ups (30s):</b> ${body.SitUps}</li>
+                    <li><b>Squats (30s):</b> ${body.Squats}</li>
+                    <li><b>Sit & Reach:</b> ${body.SitReach}</li>
+                    <li><b>Step-Up Pulse Rate:</b> ${body.PulseRate}</li>
                 </ul>
                 <p style="color:red;font-size:0.9em">⚠️ You can only submit once per week.</p>
             `,

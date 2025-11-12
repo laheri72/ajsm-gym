@@ -1051,3 +1051,38 @@ and will be perfectly visible.
 #editProfileBtn:hover {
     background-color: rgba(76, 175, 80, 0.1); /* Light green hover */
 }
+/* --- Performance Activity Metrics Section --- */
+#activity-metrics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  background-color: var(--light);
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+#activity-metrics-grid .test-result-item {
+  text-align: center;
+  background: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  padding: 0.75rem;
+  transition: transform 0.2s ease;
+}
+#activity-metrics-grid .test-result-item:hover {
+  transform: translateY(-3px);
+}
+
+#activity-metrics-grid .test-result-item-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--gray);
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+#activity-metrics-grid .test-result-item-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--dark);
+}

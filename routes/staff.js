@@ -652,7 +652,7 @@ router.get('/api/testmaster/:tr', async (req, res) => {
 });
 
 
-// UPDATED: Saves multiple test records submitted by a trainer (NOW WITH BATCH LOGIC)
+// UPDATED: Saves multiple test records submitted by a trainer (NOW WITH BATCH LOGIC + ACTIVITY LOG)
 router.post('/api/trainer-test-records', async (req, res) => {
     // Check role and session
     if (req.session.user?.Role !== 'Trainer') {
@@ -672,10 +672,8 @@ router.post('/api/trainer-test-records', async (req, res) => {
     try {
         await transaction.begin();
 
-        // --- ★★★ NEW: 1. Find the Active Batch ID ★★★ ---
-        // We do this once for the entire transaction.
-        let activeBatchID = null; // Default to NULL (unbatched)
-        
+        // --- 1. Find the Active Batch ID (No changes here) ---
+        let activeBatchID = null;
         const batchRequest = new sql.Request(transaction);
         batchRequest.input('Branch', sql.NVarChar(50), trainerBranch);
         batchRequest.input('Gender', sql.NVarChar(10), trainerGender);
@@ -688,8 +686,6 @@ router.post('/api/trainer-test-records', async (req, res) => {
         if (batchResult.recordset.length > 0) {
             activeBatchID = batchResult.recordset[0].BatchID;
         }
-        // --- ★★★ END NEW STEP ★★★ ---
-
 
         // --- 2. Validation Step (No changes here) ---
         const studentTRs = records.map(r => r.TR);
@@ -697,7 +693,6 @@ router.post('/api/trainer-test-records', async (req, res) => {
         validationRequest.input('TrainerBranch', sql.NVarChar(50), trainerBranch);
         validationRequest.input('TrainerGender', sql.NVarChar(10), trainerGender);
         
-        // Prepare parameters for IN clause
         const trParams = studentTRs.map((tr, i) => `@TR${i}`);
         studentTRs.forEach((tr, i) => validationRequest.input(`TR${i}`, sql.Int, tr));
 
@@ -707,43 +702,41 @@ router.post('/api/trainer-test-records', async (req, res) => {
             WHERE TR IN (${trParams.join(',')})
         `);
         
-        // Create a map for easy lookup
         const studentDetailsMap = new Map();
         validationResult.recordset.forEach(s => studentDetailsMap.set(s.TR, { Branch: s.Branch, Gender: s.Gender }));
 
-        // Check if all students belong to the trainer's section
         for (const record of records) {
             const details = studentDetailsMap.get(parseInt(record.TR));
             if (!details || details.Branch !== trainerBranch || details.Gender !== trainerGender) {
-                 await transaction.rollback(); // Abort early
+                 await transaction.rollback(); 
                  return res.status(403).json({ error: `Student TR ${record.TR} does not belong to your section or was not found.` });
             }
-            // Store fetched Branch/Gender in the record for insertion
             record.Branch = details.Branch;
             record.Gender = details.Gender;
         }
-        // --- End Validation ---
-
 
         // --- 3. Insertion Step (Modified) ---
         
-        // ★★★ Added BatchID to the query ★★★
+        // ★★★ MODIFICATION 1: Added "OUTPUT INSERTED.TestLog" ★★★
+        // This query now returns the ID of the new record
         const insertQuery = `
             INSERT INTO TestRecords 
             (TR, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, 
              BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, 
-             Branch, Gender, SubmittedBy, BatchID) -- Added BatchID
+             Branch, Gender, SubmittedBy, BatchID)
+            OUTPUT INSERTED.TestLog -- <-- THIS LINE IS NEW
             VALUES 
             (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, 
              @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade,
-             @Branch, @Gender, @SubmittedBy, @BatchID) -- Added @BatchID
+             @Branch, @Gender, @SubmittedBy, @BatchID)
         `;
 
         for (const record of records) {
-            // Create a new request for each insert within the transaction
+            // 'record' is the object from your calculateFitnessRecord function
+            
+            // --- First Insert (TestRecords) ---
             const request = new sql.Request(transaction); 
             
-            // Input parameters (no Age/DOB, yes Branch/Gender)
             request.input('TR', sql.Int, record.TR);
             request.input('Weight', sql.Float, record.Weight);
             request.input('Height', sql.Float, record.Height);
@@ -758,16 +751,41 @@ router.post('/api/trainer-test-records', async (req, res) => {
             request.input('VO2Max', sql.Float, record.VO2Max === "N/A" ? null : record.VO2Max);
             request.input('Total', sql.Float, record.Total);
             request.input('Grade', sql.NVarChar(2), record.Grade);
-            request.input('Branch', sql.NVarChar(50), record.Branch); // Use fetched Branch
-            request.input('Gender', sql.NVarChar(10), record.Gender); // Use fetched Gender
-            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer'); // Explicitly set
-            
-            // ★★★ Pass the activeBatchID (which is either the ID or NULL) ★★★
+            request.input('Branch', sql.NVarChar(50), record.Branch); 
+            request.input('Gender', sql.NVarChar(10), record.Gender); 
+            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer'); 
             request.input('BatchID', sql.Int, activeBatchID);
 
-            await request.query(insertQuery);
+            // ★★★ MODIFICATION 2: Execute first insert & get the new ID ★★★
+            const insertResult = await request.query(insertQuery);
+            const newTestLogID = insertResult.recordset[0].TestLog;
 
-            // Award XP for each student
+            // --- Second Insert (TestActivityLog) ---
+            
+            // ★★★ MODIFICATION 3: Create a new request for the activity log ★★★
+            const activityRequest = new sql.Request(transaction);
+
+            // Add the new TestLog ID as the foreign key
+            activityRequest.input('TestLog', sql.Int, newTestLogID);
+            
+            // Add the 5 activity values, mapping JS names to DB column names
+            activityRequest.input('PushUps', sql.SmallInt, record.PushUps);
+            activityRequest.input('SitUps', sql.SmallInt, record.SitUps);
+            activityRequest.input('Squats', sql.SmallInt, record.Squats);
+            activityRequest.input('SitAndReach', sql.SmallInt, record.SitReach); // From JS 'SitReach'
+            activityRequest.input('StepUpPulseRate', sql.SmallInt, record.PulseRate); // From JS 'PulseRate'
+
+            // Execute the second insert
+            await activityRequest.query(`
+                INSERT INTO TestActivityLog 
+                (TestLog, PushUps, SitUps, Squats, SitAndReach, StepUpPulseRate)
+                VALUES 
+                (@TestLog, @PushUps, @SitUps, @Squats, @SitAndReach, @StepUpPulseRate)
+            `);
+            
+            // --- End of new code ---
+
+            // Award XP for each student (no change)
              await awardXP(record.TR, 750, transaction); 
         }
 
@@ -1014,36 +1032,43 @@ router.get('/api/all-test-records', async (req, res) => {
     request.input('Gender', sql.NVarChar(10), Gender);
 
     // 4. Update the SQL query to filter and calculate Age
-    const result = await request.query(`
-      SELECT 
-        TRS.CreatedAt AS CreatedAt,
-        TRS.TR,
-        TMS.Name,
-        
-        /* Age is calculated dynamically based on test date and DOB */
-        DATEDIFF(year, TMS.DOB, TRS.CreatedAt) AS Age, 
-        
-        TRS.Weight,
-        TRS.Height,
-        TRS.Waist,
-        TRS.Hips,
-        TRS.Neck,
-        TRS.BMI,
-        TRS.BMIStatus,
-        TRS.BodyFat,
-        TRS.BMR,
-        TRS.CalorieIntake,
-        TRS.VO2Max,
-        TRS.Total,
-        TRS.Grade,
-        TRS.SubmittedBy
-      FROM TestRecords TRS
-      JOIN TestMaster TMS ON TRS.TR = TMS.TR
-      
-      /* Securely filters by the staff's Branch and Gender */
-      WHERE TRS.Branch = @Branch AND TRS.Gender = @Gender
-      ORDER BY TRS.CreatedAt DESC
-    `);
+const result = await request.query(`
+  SELECT 
+    TRS.CreatedAt AS CreatedAt,
+    TRS.TR,
+    TMS.Name,
+    DATEDIFF(year, TMS.DOB, TRS.CreatedAt) AS Age, 
+    
+    TRS.Weight,
+    TRS.Height,
+    TRS.Waist,
+    TRS.Hips,
+    TRS.Neck,
+    TRS.BMI,
+    TRS.BMIStatus,
+    TRS.BodyFat,
+    TRS.BMR,
+    TRS.CalorieIntake,
+    TRS.VO2Max,
+    TRS.Total,
+    TRS.Grade,
+    TRS.SubmittedBy,
+
+    -- 🆕 New fields from TestActivityLog
+    TAL.PushUps,
+    TAL.SitUps,
+    TAL.Squats,
+    TAL.SitAndReach,
+    TAL.StepUpPulseRate
+
+  FROM TestRecords TRS
+  JOIN TestMaster TMS ON TRS.TR = TMS.TR
+  LEFT JOIN TestActivityLog TAL ON TRS.TestLog = TAL.TestLog
+
+  WHERE TRS.Branch = @Branch AND TRS.Gender = @Gender
+  ORDER BY TRS.CreatedAt DESC
+`);
+
 
     res.json({ success: true, data: result.recordset });
   } catch (err) {
@@ -2695,12 +2720,22 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
                 tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
                 tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,
                 tr.CreatedAt, tr.BatchID,
-                ISNULL(eb.BatchName, 'Unbatched') AS BatchName
+                ISNULL(eb.BatchName, 'Unbatched') AS BatchName,
+
+                -- 🆕 Activity fields
+                tal.PushUps,
+                tal.SitUps,
+                tal.Squats,
+                tal.SitAndReach,
+                tal.StepUpPulseRate
+
             FROM TestRecords tr
             JOIN TestMaster tm ON tr.TR = tm.TR
             LEFT JOIN EvaluationBatches eb ON tr.BatchID = eb.BatchID
+            LEFT JOIN TestActivityLog tal ON tr.TestLog = tal.TestLog
             WHERE tr.TestLog = @TestLog;
         `);
+
 
         if (currentRecordResult.recordset.length === 0) {
             return res.status(404).json({ success: false, message: 'Test Record not found.' });

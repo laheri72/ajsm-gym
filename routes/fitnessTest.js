@@ -315,6 +315,30 @@ router.post('/api/testrecords', async (req, res) => {
              @Branch, @Gender) -- Added Branch, Gender
         `);
         // --- End INSERT ---
+          // --- 3b. Get the newly created TestLog ID ---
+            const testLogResult = await request.query(`
+                SELECT TOP 1 TestLog FROM TestRecords WHERE TR = @TR ORDER BY TestLog DESC
+            `);
+            const newTestLogID = testLogResult.recordset[0]?.TestLog;
+
+            // --- 3c. Insert into TestActivityLog ---
+            const {
+                PushUps, SitUps, Squats, SitReach, PulseRate
+            } = req.body;
+
+            const activityRequest = new sql.Request(transaction);
+            activityRequest.input('TestLog', sql.Int, newTestLogID);
+            activityRequest.input('PushUps', sql.SmallInt, PushUps || null);
+            activityRequest.input('SitUps', sql.SmallInt, SitUps || null);
+            activityRequest.input('Squats', sql.SmallInt, Squats || null);
+            activityRequest.input('SitAndReach', sql.SmallInt, SitReach || null);
+            activityRequest.input('StepUpPulseRate', sql.SmallInt, PulseRate || null);
+
+            await activityRequest.query(`
+                INSERT INTO TestActivityLog 
+                (TestLog, PushUps, SitUps, Squats, SitAndReach, StepUpPulseRate)
+                VALUES (@TestLog, @PushUps, @SitUps, @Squats, @SitAndReach, @StepUpPulseRate);
+            `);
 
         // --- 4. Award XP (remains the same) ---
         const levelUpInfo = await awardXP(TR, 500, transaction ); // Pass the new request
@@ -336,6 +360,38 @@ router.post('/api/testrecords', async (req, res) => {
         } else {
              res.status(500).json({ error: "Server error saving test record. " + err.message });
         }
+    }
+});
+
+// --- NEW: Fetches the student’s TestActivityLog joined with TestRecords ---
+router.get('/api/testactivity/me', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+
+    const TR = req.session.user.TR;
+
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT 
+                    r.TestLog, 
+                    r.CreatedAt,
+                    a.PushUps, 
+                    a.SitUps, 
+                    a.Squats, 
+                    a.SitAndReach, 
+                    a.StepUpPulseRate
+                FROM TestRecords r
+                LEFT JOIN TestActivityLog a ON r.TestLog = a.TestLog
+                WHERE r.TR = @TR
+                ORDER BY r.TestLog DESC;
+            `);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('Error fetching activity logs:', err);
+        res.status(500).json({ error: 'Failed to load activity data.' });
     }
 });
 

@@ -190,26 +190,35 @@ const formatNumber = (num, decimals) => (num != null ? num.toFixed(decimals) : '
                 return data;
             }
         },
-        columns: [
+            columns: [
             { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
             { data: 'TR' },
             { data: 'Name' },
-            { data: 'Age', render: d => formatNumber(d, 2) },
-            { data: 'Weight', render: d => formatNumber(d, 2) },
+            { data: 'Age', render: d => formatNumber(d, 0) },
+            { data: 'Weight', render: d => formatNumber(d, 1) },
             { data: 'Height', render: d => formatNumber(d, 1) },
             { data: 'Waist', render: d => formatNumber(d, 1) },
             { data: 'Hips', render: d => formatNumber(d, 1) },
             { data: 'Neck', render: d => formatNumber(d, 1) },
             { data: 'BMI', render: d => formatNumber(d, 2) },
-            { data: 'BMIStatus' }, // Column index 10
+            { data: 'BMIStatus' },
             { data: 'BodyFat', render: d => formatNumber(d, 2) },
             { data: 'BMR', render: d => formatNumber(d, 1) },
             { data: 'CalorieIntake', render: d => formatNumber(d, 1) },
             { data: 'VO2Max', render: d => formatNumber(d, 1) },
+
+            // 🆕 New Activity Columns
+            { data: 'PushUps', render: d => d ?? 'N/A' },
+            { data: 'SitUps', render: d => d ?? 'N/A' },
+            { data: 'Squats', render: d => d ?? 'N/A' },
+            { data: 'SitAndReach', render: d => d ?? 'N/A' },
+            { data: 'StepUpPulseRate', render: d => d ?? 'N/A' },
+
             { data: 'Total', render: d => formatNumber(d, 1) },
-            { data: 'Grade' }, // Column index 16
+            { data: 'Grade' },
             { data: 'SubmittedBy' }
-        ],
+            ],
+
         order: [[0, 'desc']], // Show newest records first
         pageLength: 25,
         responsive: true,
@@ -217,38 +226,7 @@ const formatNumber = (num, decimals) => (num != null ? num.toFixed(decimals) : '
             emptyTable: "No fitness test records have been submitted yet."
         },
         
-        /**
-         * NEW: initComplete (for Column Filters)
-         * This runs once after the table is initialized.
-         */
-        initComplete: function () {
-            const api = this.api();
 
-            // Target specific columns for filtering (10: BMIStatus, 16: Grade)
-            api.columns([10, 16]).every(function () {
-                const col = this;
-                const colIdx = col.index();
-                
-                // Find the <th> in the filter row
-                const cell = $(`#filter-row th`).eq(colIdx);
-                
-                // Create the select element
-                const select = $('<select class="form-select"><option value="">All</option></select>')
-                    .appendTo(cell)
-                    .on('change', function () {
-                        // On change, filter the table
-                        const val = $.fn.dataTable.util.escapeRegex($(this).val());
-                        col.search(val ? '^' + val + '$' : '', true, false).draw();
-                    });
-
-                // Add an option for each unique value in the column
-                col.data().unique().sort().each(function (d, j) {
-                    if(d) { // Only add if data is not null/empty
-                        select.append('<option value="' + d + '">' + d + '</option>');
-                    }
-                });
-            });
-        },
 
         /**
          * NEW: createdRow (for Row Highlighting)
