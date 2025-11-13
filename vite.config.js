@@ -12,7 +12,7 @@ export default defineConfig({
         { src: 'images', dest: '' },
         { src: 'gifs', dest: '' },
         { src: 'assets', dest: '' },
-        { src: 'css/student', dest: 'css/student' } 
+        { src: 'css/student', dest: 'css/student' }
       ]
     })
   ],
@@ -26,7 +26,6 @@ export default defineConfig({
         '/assets/js/sweetalert2.all.min.js',
         '/assets/js/chart.min.js',
         '/assets/js/dataTables.min.js',
-        /\/css\/raw\//,
       ],
       input: {
         main: resolve(__dirname, 'public/index.html'),
