@@ -6,18 +6,11 @@
     <title>Trainer Dashboard - FitTracker</title>
     <link rel="icon" href="../images/favicon.png" type="image/png">
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/assets/css/choices.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
     <link rel="stylesheet" href="/assets/css/all.min.css">
 
 </head>
 <body>
-    <script>
-    // This MUST be the very first thing in the <body>
-    // This blocking script runs before the page renders, fixing the dark mode race condition.
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark-mode');
-    }
-</script>
 <main class="content" id="main-content">
     <!-- Dynamic content will be rendered here -->
 </main>
@@ -91,7 +84,7 @@
 </div>
 
     <script src="/assets/js/sweetalert2.all.min.js"></script>
-    <script src="/assets/js/choices.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script src="/assets/js/moment.min.js"></script>
     <script src="/assets/js/moment-timezone-with-data.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
@@ -1166,6 +1159,9 @@ function initHomeListeners() {
     document.addEventListener('DOMContentLoaded', async () => {
         const user = await validateTrainerSession();
         if (user) {
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
             renderHomePage();
             initProfileModalListeners();
             if (sessionStorage.getItem('isDefaultPassword') === 'true') {
