@@ -19,6 +19,7 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    cssMinify: false,
     rollupOptions: {
             external: [
         '/assets/js/jquery.min.js',
