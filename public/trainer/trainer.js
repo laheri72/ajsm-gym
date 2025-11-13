@@ -1,4 +1,5 @@
 
+    import './trainer-dashboard.css';
     // --- Global Elements & State ---
     const elements = {
         mainContent: document.getElementById('main-content'),
