@@ -11,8 +11,7 @@ export default defineConfig({
       targets: [
         { src: 'images', dest: '' },
         { src: 'gifs', dest: '' },
-        { src: 'assets', dest: '' },
-        { src: 'css/student', dest: 'css/student' }
+        { src: 'assets', dest: '' }
       ]
     })
   ],
