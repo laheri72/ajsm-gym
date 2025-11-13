@@ -11,6 +11,13 @@
 
 </head>
 <body>
+    <script>
+    // This MUST be the very first thing in the <body>
+    // This blocking script runs before the page renders, fixing the dark mode race condition.
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+</script>
 <main class="content" id="main-content">
     <!-- Dynamic content will be rendered here -->
 </main>
@@ -1159,9 +1166,6 @@ function initHomeListeners() {
     document.addEventListener('DOMContentLoaded', async () => {
         const user = await validateTrainerSession();
         if (user) {
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.body.classList.add('dark-mode');
-            }
             renderHomePage();
             initProfileModalListeners();
             if (sessionStorage.getItem('isDefaultPassword') === 'true') {
