@@ -92,3 +92,154 @@
     left: 50%;
     transform: translate(-50%, -50%);
 }
+
+
+/*
+ * ==========================================
+ * 5. Batch Card Styles (for Admin)
+ * ==========================================
+ */
+
+.batch-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.batch-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px var(--card-shadow);
+    /* Non-clickable admin cards */
+    cursor: default;
+}
+
+/* Disable hover effect for admin cards */
+.batch-card.non-clickable:hover {
+    transform: none;
+    box-shadow: 0 4px 10px var(--card-shadow);
+    border-color: #e0e0e0;
+}
+
+.batch-card-number {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.batch-card-count {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.batch-card-label {
+    font-size: 0.9rem;
+    color: var(--gray);
+}
+
+.batch-card-status {
+    margin-top: 0.5rem;
+}
+
+.batch-card-stats {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.stat-pending {
+    color: var(--warning);
+    margin-right: 1rem;
+}
+
+.stat-partial {
+    color: #0d6efd; /* Bootstrap Blue */
+    margin-right: 1rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 0.375rem;
+    color: #fff;
+    text-transform: uppercase;
+}
+.status-active { 
+    background-color: var(--primary); 
+    color: white;
+}
+.status-inactive { 
+    background-color: var(--gray); 
+    color: white;
+}
+
+/*
+ * ==========================================
+ * 6. Admin Batch Accordion Styles
+ * ==========================================
+ */
+
+/* This grid holds the top 2 batches */
+.recent-batches-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* This grid is INSIDE the accordion */
+.older-batches-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Make the accordion header look professional */
+.admin-batch-accordion .accordion-item {
+    border-radius: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.admin-batch-accordion .accordion-header {
+    border-radius: 0.5rem;
+}
+
+.admin-batch-accordion .accordion-button {
+    font-weight: 500;
+    color: var(--dark);
+    background-color: var(--light-gray);
+    border-radius: 0.5rem;
+}
+
+.admin-batch-accordion .accordion-button:not(.collapsed) {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: none;
+}
+.admin-batch-accordion .accordion-button:not(.collapsed)::after {
+    /* Make the arrow icon white */
+    filter: brightness(0) invert(1);
+}
+
+.admin-batch-accordion .accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(76, 175, 80, 0.3); /* primary-shadow-light */
+}
+
+.admin-batch-accordion .accordion-body {
+    background-color: var(--bs-light); /* Light background for contrast */
+    padding: 1rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+/* Tweak batch cards inside the accordion to have less margin */
+.older-batches-grid .batch-card {
+    padding: 1rem;
+    gap: 1rem;
+}

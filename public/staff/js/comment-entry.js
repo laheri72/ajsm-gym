@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Check if there are any comments
         if (!comments || comments.length === 0) {
-            container.innerHTML = '<h5 class="mb-3">Student Comment History</h5><p class="text-muted">No comments have been submitted for this student yet.</p>';
+            container.innerHTML = '<h5 class="mb-3">Student Evaluation History</h5><p class="text-muted">No comments have been submitted for this student yet.</p>';
             return;
         }
 

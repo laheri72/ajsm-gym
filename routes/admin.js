@@ -698,6 +698,66 @@ router.get('/api/admin/evaluation-logs', isAdmin, async (req, res) => {
     }
 });
 
+
+
+/**
+ * GET: Fetches evaluation batch overview stats for the Admin's entire branch (both genders).
+ * This is for the admin-level "evaluation-log" page.
+ */
+router.get('/api/admin/evaluation-batches-overview', isAdmin, async (req, res) => {
+    try {
+        const request = pool.request();
+        // Get Branch from the isAdmin middleware
+        request.input('Branch', sql.NVarChar(50), req.Branch);
+
+        // This query is based on the evaluator's /api/evaluation/batches route,
+        // but modified to remove the gender filter and group by gender.
+        const result = await request.query(`
+            -- 1. Get all Trainer-submitted records for the ADMIN'S BRANCH
+            WITH TrainerRecords AS (
+                SELECT TestLog, BatchID, Gender
+                FROM TestRecords
+                WHERE SubmittedBy = 'Trainer'
+                  AND Branch = @Branch
+                  -- No Gender filter here --
+            ),
+            -- 2. Check their evaluation status
+            RecordStatus AS (
+                SELECT 
+                    tr.BatchID,
+                    tr.Gender,
+                    CASE
+                        WHEN EXISTS (SELECT 1 FROM Evaluations e WHERE e.LogID = tr.TestLog) THEN 'In Progress'
+                        ELSE 'Pending'
+                    END AS Status
+                FROM TrainerRecords tr
+            )
+            -- 3. Group by BatchID AND Gender, and count
+            SELECT 
+                rs.BatchID,
+                rs.Gender,
+                ISNULL(eb.BatchName, 'Unbatched Records') AS BatchName,
+                eb.IsActive,
+                COUNT(*) AS TotalCount,
+                COUNT(CASE WHEN Status = 'In Progress' THEN 1 END) AS PartialCount,
+                COUNT(CASE WHEN Status = 'Pending' THEN 1 END) AS PendingCount
+            FROM RecordStatus rs
+            LEFT JOIN EvaluationBatches eb ON rs.BatchID = eb.BatchID
+            GROUP BY rs.BatchID, rs.Gender, eb.BatchName, eb.IsActive
+            ORDER BY rs.Gender, eb.IsActive DESC, rs.BatchID DESC;;
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching admin evaluation batches overview:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch evaluation batch overview.' });
+    }
+});
+
+
+
+
 // --- End of routes ---
 
 module.exports = router; // Export the router

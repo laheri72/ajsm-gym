@@ -32,6 +32,64 @@
             A complete, filterable log of all comments submitted by all evaluators in your branch.
         </p>
 
+<div class="row">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <h4 class="h5 mb-3"><i class="bi bi-gender-male"></i> Talabat Batches Overview</h4>
+                        
+                        <div id="male-batch-cards-container" class="batch-cards-grid recent-batches-grid">
+                            <div class="loader-cell"><div class="loader"></div></div>
+                        </div>
+
+                        <div class="accordion admin-batch-accordion mt-3" id="male-older-batches-accordion" style="display: none;">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-male-older" aria-expanded="false">
+                                        View Older Batches (<span id="male-older-batch-count">0</span>)
+                                    </button>
+                                </h2>
+                                <div id="collapse-male-older" class="accordion-collapse collapse" data-bs-parent="#male-older-batches-accordion">
+                                    <div class="accordion-body">
+                                        <div id="male-older-batch-cards-container" class="batch-cards-grid older-batches-grid">
+                                            </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <h4 class="h5 mb-3"><i class="bi bi-gender-female"></i> Talebaat Batches Overview</h4>
+                        
+                        <div id="female-batch-cards-container" class="batch-cards-grid recent-batches-grid">
+                            <div class="loader-cell"><div class="loader"></div></div>
+                        </div>
+
+                        <div class="accordion admin-batch-accordion mt-3" id="female-older-batches-accordion" style="display: none;">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-female-older" aria-expanded="false">
+                                        View Older Batches (<span id="female-older-batch-count">0</span>)
+                                    </button>
+                                </h2>
+                                <div id="collapse-female-older" class="accordion-collapse collapse" data-bs-parent="#female-older-batches-accordion">
+                                    <div class="accordion-body">
+                                        <div id="female-older-batch-cards-container" class="batch-cards-grid older-batches-grid">
+                                            </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
         <ul class="nav nav-tabs" id="genderTab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="male-tab" data-bs-toggle="tab"

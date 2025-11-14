@@ -784,6 +784,7 @@ and will be perfectly visible.
     .anchor-grid-container {
         grid-template-columns: 2fr 1fr 2fr;
     }
+    
 }
 @media (min-width: 768px) and (max-width: 991px) {
     .anchor-grid-container {
@@ -1086,3 +1087,118 @@ and will be perfectly visible.
   font-weight: 700;
   color: var(--dark);
 }
+/* =========================================================
+   PROFESSIONAL CARD + GRID FIXES FOR COMMENT-ENTRY PAGE
+   ========================================================= */
+
+/* --- GLOBAL CARD POLISH --- */
+.card {
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.06) !important;
+}
+
+/* --- ANCHOR HEADER BOXES --- */
+.anchor-grade {
+    border: 1px solid rgba(255,255,255,0.25);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+
+/* --- GRID GROUP WRAPPER IMPROVEMENT --- */
+.anchor-grid-group {
+    background: #fff !important;
+    border: 1px solid #e5e5e5 !important;
+    padding: 1.25rem;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* --- GRID ITEM (BODY STATS, BMI, PERFORMANCE) --- */
+.anchor-grid-group .test-result-item {
+    background: #fafafa !important;
+    border: 1px solid #e0e0e0 !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: 0.5rem !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.anchor-grid-group .test-result-item:hover {
+    background: #f0f8f0 !important;
+    border-color: var(--primary);
+}
+
+/* --- LABEL + VALUE ALIGNMENT --- */
+.anchor-grid-group .test-result-item-label {
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    text-transform: none !important;
+}
+
+.anchor-grid-group .test-result-item-value {
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: var(--dark);
+}
+
+/* --- PERFORMANCE BOXES (Pushups etc.) --- */
+#activity-metrics-grid .test-result-item {
+    border: 1px solid #e0e0e0 !important;
+    background: white !important;
+    padding: 1rem !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+}
+
+#activity-metrics-grid .test-result-item:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+}
+
+/* --- COMMENT LIST CARD FIX --- */
+.comment-card {
+    border: 1px solid #dcdcdc !important;
+    background: #fff !important;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* --- COMMENT HISTORY CARDS --- */
+.comment-card-history {
+    background: #fff !important;
+    border: 1px solid #e4e4e4 !important;
+    border-radius: 0.5rem !important;
+    padding: 1rem !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+
+/* --- ACCORDION BUTTON IMPROVEMENT --- */
+.accordion-button {
+    border: 1px solid #e0e0e0 !important;
+}
+
+.accordion-button:not(.collapsed) {
+    background: var(--primary) !important;
+    color: #fff;
+}
+
+/* --- RESPONSIVE FIXES --- */
+@media (max-width: 768px) {
+
+    .anchor-grid-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    .anchor-grid-group {
+        padding: 1rem !important;
+    }
+
+    .test-result-item {
+        flex-direction: row !important;
+    }
+
+    #activity-metrics-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
