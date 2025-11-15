@@ -1,17 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Staff Login - FitTracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style1.css">
-  <link rel="icon" href="../images/favicon.png" type="image/png">
+
+  <!-- Preload Optimized Background -->
+  <link rel="preload" as="image" href="/images/optimized/staff_final.webp" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Main Login Styles -->
+  <link rel="stylesheet" href="../css/style1.css" />
+  <link rel="icon" href="../images/favicon.png" type="image/png" />
+
+  <style>
+    /* Override inline background layout to use <picture>-based image */
+    .login-bg-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: -1;
+    }
+    .login-bg-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
 </head>
 
 <body>
-  <div class="login-container" style="background-image: url('/images/staff final.jpeg');">
 
+  <!-- Picture Background (Optimized) -->
+  <div class="login-bg-wrapper">
+    <picture>
+      <source srcset="/images/optimized/staff_final.webp" type="image/webp" />
+      <img src="/images/staff_final.jpeg" alt="Background Image" loading="eager" />
+    </picture>
+  </div>
+
+  <!-- LOGIN CONTAINER -->
+  <div class="login-container">
     <div class="login-form">
       <h1>Staff Login</h1>
       <p>Please enter your staff credentials</p>
@@ -19,89 +54,67 @@
       <form id="loginForm">
         <div class="form-group">
           <label for="username">Username</label>
-          <input type="text" id="username" required>
+          <input type="text" id="username" required />
         </div>
+
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" required>
+          <input type="password" id="password" required />
         </div>
+
         <button type="submit" class="login-btn">Login</button>
       </form>
 
-      <a href="../homepage.html" class="return-link">Return to Main Page</a>
+      <a href="./homepage.html" class="return-link">Return to Main Page</a>
     </div>
-
   </div>
 
-<script src="/assets/js/sweetalert2.all.min.js"></script>
-<script type="module">
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
+  <script src="/assets/js/sweetalert2.all.min.js"></script>
+  <script type="module">
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
 
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value; // Don't trim password
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
 
-        const Toast = Swal.mixin({
-            toast: true, position: 'top-end', showConfirmButton: false,
-            timer: 2000, timerProgressBar: true
+      const Toast = Swal.mixin({ toast: true, position: "top-end", showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Toast.fire({ icon: "info", title: "👤 Authenticating." });
+
+      try {
+        const response = await fetch("/api/staff-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ username, password })
         });
 
-        Toast.fire({ icon: 'info', title: '👤 Authenticating...' });
+        const data = await response.json();
 
-        try {
-            const response = await fetch('/api/staff-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ username, password })
-            });
+        if (data.success && data.user) {
+          const user = data.user;
 
-            const data = await response.json();
+          localStorage.setItem("staffUser", JSON.stringify(user));
+          sessionStorage.setItem("isDefaultPassword", data.isDefaultPassword);
+          sessionStorage.setItem("isProfileComplete", data.isProfileComplete);
 
-            if (data.success && data.user) {
-                // --- THIS IS THE KEY CHANGE ---
-            // --- ★★★ THIS IS THE UPDATED LOGIC ★★★ ---
+          Toast.fire({ icon: "success", title: "✅ Login successful" });
 
-                // 1. Store the user object
-                const user = data.user;
-                
-                // 2. Save user to localStorage
-                localStorage.setItem('staffUser', JSON.stringify(user));
-                
-                // 3. Save the password flag to sessionStorage
-                sessionStorage.setItem('isDefaultPassword', data.isDefaultPassword);
-                sessionStorage.setItem('isProfileComplete', data.isProfileComplete);
+          let redirectUrl = "";
+          if (user.Role === "Evaluator") {
+            redirectUrl = "../staff/evaluation.html";
+          } else {
+            redirectUrl = "../staff/overview.html";
+          }
 
-                Toast.fire({ icon: 'success', title: '✅ Login successful' });
-                
-                // 4. Determine the correct redirect URL based on role
-                let redirectUrl = "";
-                if (user.Role === 'Evaluator') {
-                    redirectUrl = "../staff/evaluation.html";
-                } else {
-                    // For 'Admin' and 'Staff'
-                    redirectUrl = "../staff/overview.html";
-                }
-                
-                // 5. Redirect to the correct page
-                setTimeout(() => {
-                    window.location.href = redirectUrl;
-                }, 700);
-
-                // --- ★★★ END OF UPDATED LOGIC ★★★ ---
-
-            } else {
-                Swal.fire('Login Failed', data.message || 'Invalid credentials.', 'error');
-            }
-        } catch (error) {
-            console.error('Error during login:', error);
-            Swal.fire('Error', 'Server error. Please try again later.', 'error');
+          setTimeout(() => (window.location.href = redirectUrl), 700);
+        } else {
+          Swal.fire("Login Failed", data.message || "Invalid credentials.", "error");
         }
+      } catch (error) {
+        console.error("Error during login:", error);
+        Swal.fire("Error", "Server error. Please try again later.", "error");
+      }
     });
-</script>
-
-
-
-    
+  </script>
 </body>
 </html>

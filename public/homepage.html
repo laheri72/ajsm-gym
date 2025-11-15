@@ -4,60 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitTracker - Home</title>
+
+    <!-- Preload hero background for faster LCP -->
+    <link rel="preload" as="image" href="/images/optimized/background_home.webp">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="/css/new-styles.css">
     <link rel="icon" href="images/favicon.png" type="image/png">
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="background-image: linear-gradient(rgba(12,10,26,0.7), rgba(12,10,26,0.85)), url('/images/optimized/background_home.webp');">
         <div class="content-wrapper">
 
             <div class="info-section">
                 <h1 class="main-title">Fit-Tracker</h1>
                 <h2 class="subtitle">Track Your Fitness Journey</h2>
                 <hr class="title-divider">
-                    <div class="slideshow-container">
-                        <div class="quote-slide fade">
-                            <q>The only bad workout is the one that didn't happen.</q>
-                        </div>
-                        <div class="quote-slide fade">
-                            <q>Discipline is choosing between what you want now and what you want most.</q>
-                        </div>
-                        <div class="quote-slide fade">
-                            <q>Success starts with self-discipline.</q>
-                        </div>
-                    </div>
+
+                <div class="slideshow-container">
+                    <div class="quote-slide fade"><q>The only bad workout is the one that didn't happen.</q></div>
+                    <div class="quote-slide fade"><q>Discipline is choosing between what you want now and what you want most.</q></div>
+                    <div class="quote-slide fade"><q>Success starts with self-discipline.</q></div>
+                </div>
             </div>
 
             <div class="login-section">
-<div class="login-buttons">
-    <button class="login-btn live-test" data-href="/logins/test-login.html">
-        <span class="login-btn-label">Fitness Test</span>
-        <img src="/images/fitness test.jpg" class="login-btn-icon" alt="Fitness Test">
-    </button>
-    <button class="login-btn" data-href="/logins/talabat-login.html">
-        <span class="login-btn-label">Student Login</span>
-        <img src="/images/young-man-strong-at-gym-flat-illustration-vector.jpg" class="login-btn-icon" alt="Student">
-    </button>
-    <button class="login-btn" data-href="/logins/trainer-login.html">
-        <span class="login-btn-label">Trainer Login</span>
-        <img src="/images/OIP.jpeg" class="login-btn-icon" alt="Trainer">
-    </button>
-    <button class="login-btn" data-href="/logins/staff-login.html">
-        <span class="login-btn-label">Staff Login</span>
-        <img src="/images/staff-logo.jpeg" class="login-btn-icon" alt="Staff">
-    </button>
-    <button class="login-btn" data-href="blog.html">
-        <span class="login-btn-label">Blog</span>
-        <img src="/images/blogs.jpeg" class="login-btn-icon" alt="Blog">
-    </button>
-</div>
-                 <p class="university-name">Al Jamea Tus Saifiyah (Marol) Gymnasium</p>
+                <div class="login-buttons">
+
+                    <!-- Fitness Test -->
+                    <button class="login-btn live-test" data-href="/logins/test-login.html">
+                        <span class="login-btn-label">Fitness Test</span>
+                        <picture>
+                            <source srcset="/images/optimized/fitness.webp" type="image/webp">
+                            <img src="/images/fitness test.jpg" width="160" height="160" class="login-btn-icon" loading="lazy" alt="Fitness Test">
+                        </picture>
+                    </button>
+
+                    <!-- Student Login -->
+                    <button class="login-btn" data-href="/logins/talabat-login.html">
+                        <span class="login-btn-label">Student Login</span>
+                        <picture>
+                            <source srcset="/images/optimized/student.webp" type="image/webp">
+                            <img src="/images/young-man-strong-at-gym-flat-illustration-vector.jpg" width="160" height="160" class="login-btn-icon" loading="lazy" alt="Student">
+                        </picture>
+                    </button>
+
+                    <!-- Trainer Login -->
+                    <button class="login-btn" data-href="/logins/trainer-login.html">
+                        <span class="login-btn-label">Trainer Login</span>
+                        <picture>
+                            <source srcset="/images/optimized/trainer.webp" type="image/webp">
+                            <img src="/images/OIP.jpeg" width="160" height="160" class="login-btn-icon" loading="lazy" alt="Trainer">
+                        </picture>
+                    </button>
+
+                    <!-- Staff Login -->
+                    <button class="login-btn" data-href="/logins/staff-login.html">
+                        <span class="login-btn-label">Staff Login</span>
+                        <picture>
+                            <source srcset="/images/optimized/staff.webp" type="image/webp">
+                            <img src="/images/staff-logo.jpeg" width="160" height="160" class="login-btn-icon" loading="lazy" alt="Staff">
+                        </picture>
+                    </button>
+
+                    <!-- Blog -->
+                    <button class="login-btn" data-href="blog.html">
+                        <span class="login-btn-label">Blog</span>
+                        <picture>
+                            <source srcset="/images/optimized/blogs.webp" type="image/webp">
+                            <img src="/images/blogs.jpeg" width="160" height="160" class="login-btn-icon" loading="lazy" alt="Blog">
+                        </picture>
+                    </button>
+                </div>
+
+                <p class="university-name">Al Jamea Tus Saifiyah (Marol) Gymnasium</p>
             </div>
         </div>
     </div>
+
     <script type="module" src="/js/new-site.js"></script>
 </body>
 </html>

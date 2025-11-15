@@ -1,85 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <title>Trainer Login - FitTracker</title> <link rel="stylesheet" href="../css/style1.css"> <link rel="icon" href="../images/favicon.png" type="image/png">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trainer Login - FitTracker</title>
+
+  <!-- Preload optimized background for faster LCP -->
+  <link rel="preload" as="image" href="/images/optimized/trainer_login.webp" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Main Styles -->
+  <link rel="stylesheet" href="../css/style1.css" />
+  <link rel="icon" href="../images/favicon.png" type="image/png" />
+
+  <style>
+    .login-bg-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: -1;
+    }
+    .login-bg-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
 </head>
 
 <body>
-  <div class="login-container" style="background-image: url('/images/trainer.jpeg');"> <div class="login-form">
-      <h1>Trainer Login</h1> <p>Access the Trainer Dashboard</p> <form id="loginForm">
+
+  <!-- Picture Background -->
+  <div class="login-bg-wrapper">
+    <picture>
+      <source srcset="/images/optimized/trainer_login.webp" type="image/webp" />
+      <img src="/images/trainer.jpeg" alt="Trainer Background" loading="eager" />
+    </picture>
+  </div>
+
+  <!-- LOGIN CONTAINER -->
+  <div class="login-container">
+    <div class="login-form">
+      <h1>Trainer Login</h1>
+      <p>Access the Trainer Dashboard</p>
+
+      <form id="loginForm">
         <div class="form-group">
           <label for="username">Username</label>
-          <input type="text" id="username" required>
+          <input type="text" id="username" required />
         </div>
+
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" required>
+          <input type="password" id="password" required />
         </div>
+
         <button type="submit" class="login-btn">Login</button>
       </form>
 
       <a href="../homepage.html" class="return-link">Return to Main Page</a>
     </div>
-
   </div>
 
-<script src="/assets/js/sweetalert2.all.min.js"></script>
-<script type="module">
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+  <script src="/assets/js/sweetalert2.all.min.js"></script>
+  <script type="module">
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
 
-    const Toast = Swal.mixin({
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      const Toast = Swal.mixin({
         toast: true,
-        position: 'top-end',
+        position: "top-end",
         showConfirmButton: false,
         timer: 2000,
-        timerProgressBar: true
-    });
-    Toast.fire({
-        icon: 'info',
-        title: '🧑‍🏫 Authenticating...'
-    });
+        timerProgressBar: true,
+      });
 
-    try {
-        const response = await fetch('/api/trainer-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ username, password })
+      Toast.fire({ icon: "info", title: "🧑‍🏫 Authenticating..." });
+
+      try {
+        const response = await fetch("/api/trainer-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ username, password }),
         });
 
         const data = await response.json();
+
         if (data.success && data.user) {
-            
-            // --- THIS IS THE FIX ---
-            // We now save the full user object, just like the staff login does.
-            localStorage.setItem('staffUser', JSON.stringify(data.user));
-            sessionStorage.setItem('isDefaultPassword', data.isDefaultPassword);
-            // --- END OF FIX ---
+          localStorage.setItem("staffUser", JSON.stringify(data.user));
+          sessionStorage.setItem("isDefaultPassword", data.isDefaultPassword);
 
-            Toast.fire({
-                icon: 'success',
-                title: '✅ Login successful'
-            });
-            setTimeout(() => {
-                window.location.href = '../trainer/trainer-dashboard.html';
-            }, 700);
+          Toast.fire({ icon: "success", title: "✅ Login successful" });
+
+          setTimeout(() => {
+            window.location.href = "../trainer/trainer-dashboard.html";
+          }, 700);
         } else {
-            Swal.fire('Login Failed', data.message || 'Invalid credentials.', 'error');
+          Swal.fire("Login Failed", data.message || "Invalid credentials.", "error");
         }
-    } catch (error) {
-        console.error('Login error:', error);
-        Swal.fire('Error', 'Server error. Please try again later.', 'error');
-    }
-});
-</script>
-
-
-        
+      } catch (error) {
+        console.error("Login error:", error);
+        Swal.fire("Error", "Server error. Please try again later.", "error");
+      }
+    });
+  </script>
 </body>
 </html>

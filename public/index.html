@@ -5,32 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="images/favicon.png" type="image/png">
   <title>Marol-Jamea Gym Website</title>
+
+  <!-- Preload optimized background for faster LCP -->
+  <link rel="preload" as="image" href="/images/optimized/background_intro.webp">
+
   <style>
-    /* RESET */
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
-      overflow: hidden; /* Changed from overflow-x for full-screen lock */
-      font-family: "Oswald", sans-serif; /* Make sure to import this font if it's custom */
+      overflow: hidden;
+      font-family: "Oswald", sans-serif;
       scroll-behavior: smooth;
     }
 
-    /* BACKGROUND IMAGE */
+    /* BACKGROUND */
     .background-container {
       width: 100%;
       height: 100vh;
-      background-image: url('images/img back.jpeg');
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-size: cover;
       position: fixed;
-      top: 0;
-      left: 0;
+      inset: 0;
       z-index: -1;
+      background-image: url('/images/optimized/background_intro.webp');
+      background-size: cover;
+      background-position: center;
     }
 
-    /* TITLE + TAGLINE OVERLAY */
     .text-overlay {
       position: absolute;
       top: 50px;
@@ -38,8 +38,8 @@
       transform: translateX(-50%);
       text-align: center;
       z-index: 20;
+      width: 90%;
       transition: opacity 1s ease, transform 1s ease;
-      width: 90%; /* Added for better mobile view */
     }
 
     .title h1 {
@@ -47,29 +47,26 @@
       font-weight: bold;
       color: white;
       margin: 0;
-      text-shadow: 2px 2px 8px rgba(0,0,0,0.7); /* Added shadow for readability */
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
     }
 
     .tagline {
-      margin-top: 10px; /* Adjusted margin */
+      margin-top: 10px;
       font-size: 1.5rem;
       color: #eee;
-      opacity: 0; /* Initially hidden for animation */
-      animation: fadeInTagline 1.5s ease 1s forwards; /* Creative: Fades in after title */
+      opacity: 0;
+      animation: fadeInTagline 1.5s ease 1s forwards;
     }
 
-    /* GYM SPLASH */
     .gym-splash {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
+      inset: 0;
       background: rgba(0,0,0,0.5);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 10;
       flex-direction: column;
+      z-index: 10;
       transition: opacity 1s ease;
       opacity: 1;
     }
@@ -79,7 +76,6 @@
       pointer-events: none;
     }
 
-    /* IMAGE CONTAINER */
     .image-container {
       display: flex;
       align-items: center;
@@ -87,102 +83,71 @@
       transition: transform 1s ease, opacity 1s ease;
     }
 
-    /* CENTER IMAGE */
     .logo-image {
       width: 150px;
       opacity: 0;
       animation: logo-animation 1.5s ease forwards;
     }
 
-    /* FANCY EXIT EFFECT */
     .fade-elements {
       opacity: 0;
       transform: scale(1.2);
     }
 
-    /* SKIP BUTTON */
     .skip-button {
       position: absolute;
       bottom: 30px;
       right: 30px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255,255,255,0.1);
       border: 2px solid #fff;
-      color: white;
+      color: #fff;
       padding: 10px 20px;
-      font-size: 1rem;
       cursor: pointer;
       border-radius: 30px;
       backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px); /* For Safari */
       transition: background 0.3s ease;
-      z-index: 100; /* Ensure it's clickable */
+      z-index: 100;
     }
 
     .skip-button:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: rgba(255,255,255,0.3);
     }
 
-    /* ANIMATION KEYFRAMES */
     @keyframes logo-animation {
-      from {
-        opacity: 0;
-        transform: scale(0.5);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
     }
-
-    @keyframes fadeInTagline {
-      to {
-        opacity: 1;
-      }
-    }
+    @keyframes fadeInTagline { to { opacity: 1; } }
   </style>
 </head>
-
 <body>
 
 <div class="background-container"></div>
 
 <div class="text-overlay" id="textOverlay">
-  <div class="title">
-    <h1>Welcome to FitTracker</h1>
-  </div>
+  <div class="title"><h1>Welcome to FitTracker</h1></div>
   <div class="tagline">Strength • Discipline • Power</div>
 </div>
 
 <div class="gym-splash" id="splash">
   <div class="image-container" id="imageContainer">
-    <img src="images/Unted.png" alt="University Logo" class="logo-image" id="utedImage">
+    <picture>
+      <source srcset="/images/optimized/logo.webp" type="image/webp">
+      <img src="images/Unted.png" alt="University Logo" class="logo-image" id="utedImage" loading="lazy">
+    </picture>
   </div>
   <button class="skip-button" onclick="skipIntro()">Skip Intro</button>
 </div>
 
 <script>
-  // Automatically start transition after 4 seconds
   const autoRedirect = setTimeout(startTransition, 4000);
-
-  function skipIntro() {
-    clearTimeout(autoRedirect); // Stop the automatic redirect if skip is clicked
-    startTransition();
-  }
+  function skipIntro() { clearTimeout(autoRedirect); startTransition(); }
 
   function startTransition() {
-    const splash = document.getElementById('splash');
-    const imageContainer = document.getElementById('imageContainer');
-    const textOverlay = document.getElementById('textOverlay');
-
-    // Add fade effects
-    splash.classList.add('fade-out');
-    imageContainer.classList.add('fade-elements');
-    textOverlay.classList.add('fade-elements');
-
-    // Wait for the animation to finish before redirecting
-    setTimeout(() => {
-      window.location.href = "homepage.html";
-    }, 1000); // 1s = same as CSS transition time
+    document.getElementById('splash').classList.add('fade-out');
+    document.getElementById('imageContainer').classList.add('fade-elements');
+    document.getElementById('textOverlay').classList.add('fade-elements');
+    setTimeout(() => { window.location.href = "homepage.html"; }, 1000);
   }
 </script>
 
