@@ -2,6 +2,7 @@ import { loadHallOfFameData } from './hallOfFame.js';
 import { loadLeaveData } from './leaves.js';
 import { loadOverviewAnalytics, loadWorkoutConsistency } from './analysis.js'; 
 import { loadTipsSection } from './tips.js';
+import { loadWeightLogHistory, loadFitnessProgress } from './progression.js';
 
 /**
  * Programmatically switches the dashboard view to a specific section.
@@ -39,6 +40,8 @@ export function navigateToSection(targetSectionId) {
     if (targetSectionId === 'logs-low') {
         loadOverviewAnalytics();
         loadWorkoutConsistency();
+        loadWeightLogHistory();     // ⬅️ Always reload from cache or fresh
+        loadFitnessProgress(); 
     }
 if (targetSectionId === 'tips-low') {
     // initialize tips UI, tabs and loaders
@@ -83,4 +86,14 @@ export function routeFromHash() {
             tabLink.click();
         }
     }
+
+    // 🔥 When user opens the progression tab, always reload weight logs fresh
+    if (subTab === 'progression') {
+        import('./progression.js').then(mod => {
+            mod.loadWeightLogHistory(true);
+            mod.loadFitnessProgress();
+            mod.loadCurrentWeightStat(true);
+        });
+    }
+
 }

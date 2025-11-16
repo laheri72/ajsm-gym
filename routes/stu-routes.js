@@ -42,6 +42,80 @@ const getOrCreateWeekIdByDate = async (date, transactionOrPool) => {
 };
 
 
+async function computeStudentLeaveSummary(TR) {
+    const now = moment.tz("Asia/Kolkata");
+    const startOfMonth = now.clone().startOf('month');
+    const endOfMonth = now.clone().endOf('month');
+
+    const result = await pool.request()
+        .input('TR', sql.Int, TR)
+        .query(`
+            SELECT LeaveID, Reason,
+                   LeaveStartDate, LeaveEndDate,
+                   Status, Remarks,
+                   RequestedAt
+            FROM LeaveRequests
+            WHERE TR = @TR
+            ORDER BY RequestedAt DESC
+        `);
+
+    let approvedLeaveDaysThisMonth = 0;
+    const currentMonthRequests = [];
+    const historyRequests = [];
+
+    result.recordset.forEach(request => {
+        const leaveStart = moment.tz(request.LeaveStartDate, "Asia/Kolkata");
+        const leaveEnd = moment.tz(request.LeaveEndDate, "Asia/Kolkata");
+
+        // Split into current month + history
+        if (leaveStart.isBetween(startOfMonth, endOfMonth, null, '[]')) {
+            currentMonthRequests.push(request);
+        } else {
+            historyRequests.push(request);
+        }
+
+        // Count approved days (same logic as your GET)
+        if (request.Status === 'Approved') {
+            let current = leaveStart.clone();
+            while (current.isSameOrBefore(leaveEnd, 'day')) {
+                if (current.isBetween(startOfMonth, endOfMonth, null, '[]')) {
+                    approvedLeaveDaysThisMonth++;
+                }
+                current.add(1, 'day');
+            }
+        }
+    });
+
+    return {
+        success: true,
+        leavesTaken: approvedLeaveDaysThisMonth,
+        leavesRemaining: 4 - approvedLeaveDaysThisMonth,
+        currentMonthRequests,
+        historyRequests
+    };
+}
+
+
+async function computeWeightHistory(TR) {
+    const result = await pool.request()
+        .input('TR', sql.Int, TR)
+        .query(`
+            SELECT 
+                LogID,
+                Weight,
+                FORMAT(CreatedAt, 'ddd, dd MMM yyyy') AS FormattedDate,
+                CreatedAt
+            FROM WeightTracking
+            WHERE TR = @TR
+            ORDER BY CreatedAt DESC
+        `);
+
+    return {
+        success: true,
+        data: result.recordset
+    };
+}
+
 
 // =================================================================== //
 // --- 🏆 ACHIEVEMENT PROGRESS (THE "GAME MODE" ENGINE) ---
@@ -355,15 +429,14 @@ router.get(
 
 //---🏋️ Weight & Height Logging (Progression Tab)
 
-// Logs a new weight entry for the current student
 router.post('/api/student/log-weight', async (req, res) => {
-    if (!req.session.user || !req.session.user.TR) {
+    if (!req.session.user?.TR)
         return res.status(401).json({ success: false, message: 'Unauthorized' });
-    }
+
     const { TR } = req.session.user;
     const { weight } = req.body;
 
-    if (!weight || isNaN(parseFloat(weight)) || weight <= 0) {
+    if (!weight || isNaN(weight) || weight <= 0) {
         return res.status(400).json({ success: false, message: 'Invalid weight value.' });
     }
 
@@ -372,10 +445,16 @@ router.post('/api/student/log-weight', async (req, res) => {
             .input('TR', sql.Int, TR)
             .input('Weight', sql.Decimal(5, 2), parseFloat(weight))
             .query(`INSERT INTO WeightTracking (TR, Weight) VALUES (@TR, @Weight)`);
+
+        // Invalidate old cache
         cache.del(`wh_${TR}`);
         cache.del(`fit_history_${TR}`);
 
-        res.json({ success: true, message: 'Weight logged successfully' });
+        // Recompute summary and set new cache
+        const summary = await computeWeightHistory(TR);
+        cache.set(`wh_${TR}`, summary, 120);
+
+        res.json({ success: true });
     } catch (err) {
         console.error('Error logging weight:', err);
         res.status(500).json({ success: false, message: 'Database error' });
@@ -383,33 +462,23 @@ router.post('/api/student/log-weight', async (req, res) => {
 });
 
 
+
 // Gets all ad-hoc weight logs for the current student
 router.get(
   '/api/student/weight-history',
   (req, res, next) => {
-    res.set('Cache-Control', 'no-store'); // 🔥 prevent browser caching
+    res.set('Cache-Control', 'no-store'); 
     next();
   },
   cacheMiddleware(req => `wh_${req.session.user?.TR}`, 120),
   async (req, res) => {
 
-    if (!req.session.user || !req.session.user.TR) {
+    if (!req.session.user?.TR)
         return res.status(401).json({ success: false, message: 'Unauthorized' });
-    }
-    const { TR } = req.session.user;
 
     try {
-        const result = await pool.request()
-            .input('TR', sql.Int, TR)
-            .query(`
-                SELECT LogID, Weight, 
-                       FORMAT(CreatedAt, 'ddd, dd MMM yyyy') AS FormattedDate
-                FROM WeightTracking 
-                WHERE TR = @TR 
-                ORDER BY CreatedAt DESC
-            `);
-        
-        res.json({ success: true, data: result.recordset });
+        const summary = await computeWeightHistory(req.session.user.TR);
+        res.json(summary);
     } catch (err) {
         console.error('Error fetching weight history:', err);
         res.status(500).json({ success: false, message: 'Database error' });
@@ -417,35 +486,43 @@ router.get(
 });
 
 
-// Deletes a specific weight log entry, ensuring it belongs to the logged-in student
+
 router.delete('/api/student/log-weight/:id', async (req, res) => {
-    if (!req.session.user || !req.session.user.TR) {
+    if (!req.session.user?.TR)
         return res.status(401).json({ success: false, message: 'Unauthorized' });
-    }
+
     const { TR } = req.session.user;
     const { id } = req.params;
 
     try {
         const result = await pool.request()
-            .input('TR', sql.Int, TR)
             .input('LogID', sql.Int, id)
+            .input('TR', sql.Int, TR)
             .query(`
                 DELETE FROM WeightTracking 
                 WHERE LogID = @LogID AND TR = @TR
             `);
-        
-        if (result.rowsAffected[0] > 0) {
-            cache.del(`wh_${TR}`);
-            cache.del(`fit_history_${TR}`);
-            res.json({ success: true, message: 'Log deleted' });
-        } else {
-            res.status(404).json({ success: false, message: 'Log not found or you do not have permission to delete it' });
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: 'Log not found or unauthorized.' });
         }
+
+        // Invalidate cache
+        cache.del(`wh_${TR}`);
+        cache.del(`fit_history_${TR}`);
+
+        // Recompute and update cache
+        const summary = await computeWeightHistory(TR);
+        cache.set(`wh_${TR}`, summary, 120);
+
+        res.json({ success: true });
+
     } catch (err) {
         console.error('Error deleting weight log:', err);
         res.status(500).json({ success: false, message: 'Database error' });
     }
 });
+
 
 // Saves/updates the student's height
 router.post('/api/student/set-height', async (req, res) => {
@@ -1026,63 +1103,23 @@ router.get(
 
 //--- 🍃 Leave Management (Leaves Tab)
 
-// ✅ GET: Fetch a student's leave history, current month status, and remaining leaves
 router.get(
   '/api/student/leaves',
   cacheMiddleware(req => `leaves_${req.session.user?.TR}`, 60),
   async (req, res) => {
-    if (!req.session.user || !req.session.user.TR) {
-        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
-    }
-    const { TR } = req.session.user;
+
+    if (!req.session.user?.TR)
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     try {
-        const result = await pool.request()
-            .input('TR', sql.Int, TR)
-            .query('SELECT * FROM LeaveRequests WHERE TR = @TR ORDER BY RequestedAt DESC');
-        
-        const now = moment.tz("Asia/Kolkata");
-        const startOfMonth = now.clone().startOf('month');
-        const endOfMonth = now.clone().endOf('month');
-        
-        let approvedLeaveDaysThisMonth = 0;
-        const currentMonthRequests = [];
-        const historyRequests = [];
-
-        result.recordset.forEach(request => {
-            const leaveStart = moment(request.LeaveStartDate);
-            // Categorize requests into current month vs history
-            if (leaveStart.isBetween(startOfMonth, endOfMonth, null, '[]')) {
-                currentMonthRequests.push(request);
-            } else {
-                historyRequests.push(request);
-            }
-
-            // Calculate approved days for the monthly limit
-            if (request.Status === 'Approved') {
-                let current = leaveStart.clone();
-                while (current.isSameOrBefore(request.LeaveEndDate)) {
-                    if (current.isBetween(startOfMonth, endOfMonth, null, '[]')) {
-                        approvedLeaveDaysThisMonth++;
-                    }
-                    current.add(1, 'day');
-                }
-            }
-        });
-
-        res.json({
-            success: true,
-            leavesTaken: approvedLeaveDaysThisMonth,
-            leavesRemaining: 4 - approvedLeaveDaysThisMonth,
-            currentMonthRequests,
-            historyRequests
-        });
-
+        const summary = await computeStudentLeaveSummary(req.session.user.TR);
+        res.json(summary);
     } catch (err) {
         console.error('Error fetching student leaves:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch leave data.' });
     }
 });
+
 
 
 // ✅ POST: Submit a new leave request
@@ -1162,8 +1199,17 @@ router.post('/api/student/leaves', async (req, res) => {
                 INSERT INTO LeaveRequests (TR, LeaveStartDate, LeaveEndDate, Reason)
                 VALUES (@TR, @LeaveStartDate, @LeaveEndDate, @Reason)
             `);
-        
-        res.json({ success: true, message: 'Leave request submitted successfully.' });
+            // After inserting:
+        cache.del(`leaves_${TR}`);
+
+        // Compute fresh structure using SAME logic as GET
+        const summary = await computeStudentLeaveSummary(TR);
+
+        // Save fresh to cache
+        cache.set(`leaves_${TR}`, summary, 60);
+
+        return res.json({ success: true, message: 'Leave request submitted successfully.' });
+
 
     } catch (err) {
         console.error('Error submitting leave request:', err);
@@ -1190,7 +1236,15 @@ router.delete('/api/student/leaves/:id', async (req, res) => {
             `);
         
         if (result.rowsAffected[0] > 0) {
-            res.json({ success: true, message: 'Leave request cancelled.' });
+            // invalidate old cache
+        cache.del(`leaves_${TR}`);
+
+        const summary = await computeStudentLeaveSummary(TR);
+
+        cache.set(`leaves_${TR}`, summary, 60);
+
+        return res.json({ success: true, message: 'Leave request cancelled.' });
+
         } else {
             res.status(404).json({ success: false, message: 'Request not found or cannot be cancelled.' });
         }

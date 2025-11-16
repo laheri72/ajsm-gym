@@ -182,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Load data on tab click
         if (tabId === 'logs') { loadStudentPlans(); loadTrainingAnalytics(); }
         if (tabId === 'history') { loadHistoryAnalytics(); }
-        if (tabId === 'progression') { loadFitnessProgress(); loadWeightLogHistory(); }
         if (tabId === 'overview') { loadOverviewAnalytics(); loadWorkoutConsistency(); }
     });
 

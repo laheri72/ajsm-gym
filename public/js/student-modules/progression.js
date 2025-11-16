@@ -1,6 +1,7 @@
-import { 
+import {
     studentHeight, fitnessProgressChart,
-    setStudentHeight, setFitnessProgressChart 
+    setStudentHeight, setFitnessProgressChart,
+    cachedWeightHistory, setCachedWeightHistory
 } from './state.js';
 
 /**
@@ -10,12 +11,12 @@ export async function handleWeightLogSubmit(e) {
     e.preventDefault();
     const weightInput = document.getElementById('weightInput');
     const weight = weightInput.value;
-    
+
     if (!weight) {
         Swal.fire('Error', 'Please enter a weight.', 'error');
         return;
     }
-    
+
     const logButton = document.getElementById('logWeightBtn');
     const buttonText = logButton.querySelector('.button-text');
     const spinner = logButton.querySelector('.spinner-border');
@@ -33,7 +34,7 @@ export async function handleWeightLogSubmit(e) {
             body: JSON.stringify({ weight: parseFloat(weight) })
         });
         const result = await res.json();
-        
+
         if (!res.ok) throw new Error(result.message);
 
         Swal.fire({
@@ -44,15 +45,13 @@ export async function handleWeightLogSubmit(e) {
             showConfirmButton: false,
             timer: 2000
         });
-        
-        weightInput.value = '';
-        
-    setTimeout(() => {
-        loadWeightLogHistory(true);
-        loadFitnessProgress();
-        loadCurrentWeightStat();
-    }, 120);
 
+        weightInput.value = '';
+
+        // Force fresh load after POST
+        await loadWeightLogHistory(true);
+        await loadFitnessProgress();
+        await loadCurrentWeightStat(true);
 
     } catch (err) {
         Swal.fire('Error', err.message, 'error');
@@ -65,62 +64,76 @@ export async function handleWeightLogSubmit(e) {
 }
 
 /**
- * Fetches and renders the ad-hoc weight log history table.
+ * Fetch + render the ad-hoc weight log table.
+ * Uses memoized cache unless refresh=true.
  */
 export async function loadWeightLogHistory(refresh = false) {
     const tbody = document.getElementById('weightHistoryBody');
     tbody.innerHTML = '<tr><td colspan="3" class="text-center">Loading...</td></tr>';
 
-    // CACHE-BUST ONLY WHEN refresh=true
-    const url = refresh 
+    // If NOT refresh and we already have cached data, use it
+    if (!refresh && cachedWeightHistory) {
+        renderweightTable(cachedWeightHistory);
+        return;
+    }
+
+    const url = refresh
         ? `/api/student/weight-history?fresh=${Date.now()}`
         : `/api/student/weight-history`;
 
     try {
-        const weightRes = await fetch(url, { 
+        const weightRes = await fetch(url, {
             credentials: 'include',
-            cache: refresh ? 'no-store' : 'default'
+            cache: refresh ? 'no-store' : 'no-cache'
         });
 
         const result = await weightRes.json();
-        
         if (!result.success) throw new Error(result.message);
-        
-        if (result.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center">No weight logged yet.</td></tr>';
-            return;
-        }
 
-        tbody.innerHTML = '';
-        result.data.forEach(log => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${log.FormattedDate}</td>
-                <td>${log.Weight.toFixed(2)} kg</td>
-                <td>
-                    <button class="btn-delete-log" data-id="${log.LogID}" title="Delete this log">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        setCachedWeightHistory(result.data);
+        renderweightTable(result.data);
 
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Error: ${err.message}</td></tr>`;
     }
 }
 
+/**
+ * Table renderer (kept separate so we can reuse cached data)
+ */
+function renderweightTable(data) {
+    const tbody = document.getElementById('weightHistoryBody');
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center">No weight logged yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    data.forEach(log => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${log.FormattedDate}</td>
+            <td>${log.Weight.toFixed(2)} kg</td>
+            <td>
+                <button class="btn-delete-log" data-id="${log.LogID}" title="Delete this log">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
 /**
- * Handles the click event for deleting a weight log.
+ * DELETE weight log
  */
 export function handleWeightLogDelete(e) {
     const deleteButton = e.target.closest('.btn-delete-log');
     if (!deleteButton) return;
 
     const logId = deleteButton.dataset.id;
-    
+
     Swal.fire({
         title: 'Delete this log?',
         text: "This will remove the weight entry. This action cannot be undone.",
@@ -137,17 +150,17 @@ export function handleWeightLogDelete(e) {
                 credentials: 'include'
             });
             const data = await res.json();
-            
+
             if (!res.ok) throw new Error(data.message);
 
             Swal.fire('Deleted!', 'The weight log has been removed.', 'success');
-            
-        setTimeout(() => {
-            loadWeightLogHistory(true);
-            loadFitnessProgress();
-            loadCurrentWeightStat();
-        }, 120);
 
+            // Clear client cache after delete
+            setCachedWeightHistory(null);
+
+            await loadWeightLogHistory(true);
+            await loadFitnessProgress();
+            await loadCurrentWeightStat(true);
 
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
@@ -155,6 +168,10 @@ export function handleWeightLogDelete(e) {
     });
 }
 
+/**
+ * Fetch and render the "current weight" card
+ * Reuses memoized history — only fetches fresh when refresh=true
+ */
 export async function loadCurrentWeightStat(refresh = false) {
     const weightEl = document.getElementById('stat-current-weight');
     const dateEl = document.getElementById('stat-weight-date');
@@ -163,36 +180,45 @@ export async function loadCurrentWeightStat(refresh = false) {
 
     bmiArea.innerHTML = '<span class="bmi-value-loading">...</span>';
 
+    let history = cachedWeightHistory;
+
     try {
-        // Cache-bust only when refresh=true (after add/delete)
-        const url = refresh
-            ? `/api/student/weight-history?fresh=${Date.now()}`
-            : `/api/student/weight-history`;
+        // If refresh=true OR no cache → Fetch fresh
+        if (refresh || !history) {
+            const url = refresh
+                ? `/api/student/weight-history?fresh=${Date.now()}`
+                : `/api/student/weight-history`;
 
-        const weightRes = await fetch(url, { 
-            credentials: 'include',
-            cache: refresh ? 'no-store' : 'default'
-        });
+            const weightRes = await fetch(url, {
+                credentials: 'include',
+                cache: refresh ? 'no-store' : 'no-cache'
+            });
 
-        const weightResult = await weightRes.json();
-        
+            const weightResult = await weightRes.json();
+            if (weightResult.success) {
+                history = weightResult.data;
+                setCachedWeightHistory(history);
+            } else {
+                history = [];
+            }
+        }
+
+        // Determine current weight
         let currentWeight = null;
-        
-        if (weightResult.success && weightResult.data.length > 0) {
-            const recentLog = weightResult.data[0];
+        if (history && history.length > 0) {
+            const recentLog = history[0];
             currentWeight = recentLog.Weight;
-            
+
             weightEl.textContent = currentWeight.toFixed(1);
             dateEl.textContent = `Logged: ${recentLog.FormattedDate}`;
             motivationLink.textContent = "Great job! Keep logging to see your trend.";
-            
         } else {
             weightEl.textContent = '--';
             dateEl.textContent = 'Log your weight to start!';
-            motivationLink.textContent = 'Click here to log Your weight';
+            motivationLink.textContent = 'Click here to log weight';
         }
 
-        // BMI LOGIC (unchanged)
+        // BMI LOGIC
         if (studentHeight) {
             if (currentWeight) {
                 const bmi = currentWeight / (studentHeight * studentHeight);
@@ -202,7 +228,7 @@ export async function loadCurrentWeightStat(refresh = false) {
                 if (bmi < 18.5) { category = 'Underweight'; categoryClass = 'bmi-underweight'; }
                 else if (bmi >= 25 && bmi < 30) { category = 'Overweight'; categoryClass = 'bmi-overweight'; }
                 else if (bmi >= 30) { category = 'Obese'; categoryClass = 'bmi-obese'; }
-                
+
                 bmiArea.innerHTML = `
                     <div class="bmi-value-wrapper">
                         <span class="bmi-value ${categoryClass}" id="stat-bmi-value">${bmi.toFixed(1)}</span>
@@ -226,13 +252,12 @@ export async function loadCurrentWeightStat(refresh = false) {
         weightEl.textContent = 'Error';
         dateEl.textContent = 'Could not load data';
         bmiArea.innerHTML = '<span class="bmi-value-loading">Error</span>';
-        motivationLink.textContent = 'Click here to log weight'; 
+        motivationLink.textContent = 'Click here to log weight';
     }
 }
 
-
 /**
- * Shows a popup to ask for and save the student's height.
+ * Popup to set height
  */
 export async function handleSetHeight() {
     const { value: heightCm } = await Swal.fire({
@@ -244,8 +269,8 @@ export async function handleSetHeight() {
         showCancelButton: true,
         confirmButtonText: 'Save',
         inputValidator: (value) => {
-            if (!value) return 'You need to enter a value!'
-            if (value < 100 || value > 300) return 'Please enter a realistic height (100-300 cm)'
+            if (!value) return 'You need to enter a value!';
+            if (value < 100 || value > 300) return 'Please enter a realistic height (100-300 cm)';
         }
     });
 
@@ -262,8 +287,8 @@ export async function handleSetHeight() {
             if (!res.ok) throw new Error(result.message);
 
             Swal.fire('Saved!', 'Your height has been saved.', 'success');
-            setStudentHeight(result.newHeight); // Update global state
-            loadCurrentWeightStat(); 
+            setStudentHeight(result.newHeight);
+            loadCurrentWeightStat(true);
 
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
@@ -272,85 +297,85 @@ export async function handleSetHeight() {
 }
 
 /**
- * Fetches and renders the main fitness progression line chart.
+ * Load progression chart
  */
 export async function loadFitnessProgress() {
-  try {
-    const res = await fetch('/api/student/fitness-test-history', { credentials: 'include' }); 
-    const result = await res.json(); 
-    
-    const chartWrapper = document.getElementById('fitnessChartWrapper');
-    const canvasElement = document.getElementById('fitnessProgressChart');
-    if (!chartWrapper || !canvasElement) return;
+    try {
+        const res = await fetch('/api/student/fitness-test-history', { credentials: 'include' });
+        const result = await res.json();
 
-    let messageElement = chartWrapper.querySelector('p');
-    if (!messageElement) {
-        messageElement = document.createElement('p');
-        chartWrapper.appendChild(messageElement);
-    }
+        const chartWrapper = document.getElementById('fitnessChartWrapper');
+        const canvasElement = document.getElementById('fitnessProgressChart');
+        if (!chartWrapper || !canvasElement) return;
 
-    if (result.success && result.data.length > 1) {
-        canvasElement.style.display = 'block';
-        messageElement.style.display = 'none';
-
-        const labels = result.data.map(d => d.TestDate); 
-        const weightData = result.data.map(d => d.Weight); 
-        const bodyFatData = result.data.map(d => d.BodyFat); 
-
-        const ctx = canvasElement.getContext('2d'); 
-        if (fitnessProgressChart) fitnessProgressChart.destroy(); 
-        
-        const newChart = new Chart(ctx, { 
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    { 
-                        label: 'Weight (kg)', data: weightData, 
-                        borderColor: 'rgba(54, 162, 235, 1)', 
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)', 
-                        fill: true, tension: 0.1 
-                    },
-                    { 
-                        label: 'Body Fat (%)', data: bodyFatData, 
-                        borderColor: 'rgba(255, 99, 132, 1)', 
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)', 
-                        fill: true, tension: 0.1, spanGaps: true 
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: { title: { display: true, text: 'Weight & Body Fat Over Time' } }
-            }
-        });
-        setFitnessProgressChart(newChart); // Save instance to global state
-
-    } else {
-        canvasElement.style.display = 'none';
-        messageElement.style.display = 'block';
-        if (fitnessProgressChart) fitnessProgressChart.destroy(); 
-
-        if (result.success && result.data.length === 1) {
-            messageElement.textContent = 'You\'ve logged your weight once. Log it again to see your progression chart!';
-        } else {
-            messageElement.textContent = 'Log your weight or take a fitness test to start tracking your progression.';
-        }
-    }
-  } catch (err) { 
-    console.error('Failed to load fitness progress:', err); 
-    const chartWrapper = document.getElementById('fitnessChartWrapper');
-    const canvasElement = document.getElementById('fitnessProgressChart');
-    if (canvasElement) canvasElement.style.display = 'none';
-    
-    if (chartWrapper) {
         let messageElement = chartWrapper.querySelector('p');
         if (!messageElement) {
             messageElement = document.createElement('p');
             chartWrapper.appendChild(messageElement);
         }
-        messageElement.style.display = 'block';
-        messageElement.textContent = 'Could not load progression data.'; 
+
+        if (result.success && result.data.length > 1) {
+            canvasElement.style.display = 'block';
+            messageElement.style.display = 'none';
+
+            const labels = result.data.map(d => d.TestDate);
+            const weightData = result.data.map(d => d.Weight);
+            const bodyFatData = result.data.map(d => d.BodyFat);
+
+            const ctx = canvasElement.getContext('2d');
+            if (fitnessProgressChart) fitnessProgressChart.destroy();
+
+            const newChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Weight (kg)', data: weightData,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            fill: true, tension: 0.1
+                        },
+                        {
+                            label: 'Body Fat (%)', data: bodyFatData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true, tension: 0.1, spanGaps: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { title: { display: true, text: 'Weight & Body Fat Over Time' } }
+                }
+            });
+            setFitnessProgressChart(newChart);
+
+        } else {
+            canvasElement.style.display = 'none';
+            messageElement.style.display = 'block';
+            if (fitnessProgressChart) fitnessProgressChart.destroy();
+
+            if (result.success && result.data.length === 1) {
+                messageElement.textContent = 'You\'ve logged your weight once. Log it again to see your progression chart!';
+            } else {
+                messageElement.textContent = 'Log your weight or take a fitness test to start tracking your progression.';
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load fitness progress:', err);
+        const chartWrapper = document.getElementById('fitnessChartWrapper');
+        const canvasElement = document.getElementById('fitnessProgressChart');
+        if (canvasElement) canvasElement.style.display = 'none';
+
+        if (chartWrapper) {
+            let messageElement = chartWrapper.querySelector('p');
+            if (!messageElement) {
+                messageElement = document.createElement('p');
+                chartWrapper.appendChild(messageElement);
+            }
+            messageElement.style.display = 'block';
+            messageElement.textContent = 'Could not load progression data.';
+        }
     }
-  }
 }

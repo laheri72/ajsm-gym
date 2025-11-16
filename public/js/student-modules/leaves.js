@@ -6,15 +6,28 @@ import {
 /**
  * Main function to fetch all leave data for the student.
  */
-export async function loadLeaveData() {
+export async function loadLeaveData(refresh = false) {
     try {
-        const res = await fetch('/api/student/leaves', { credentials: 'include' });
+        const url = refresh 
+            ? `/api/student/leaves?fresh=${Date.now()}`
+            : `/api/student/leaves`;
+
+        const res = await fetch(url, { 
+            credentials: 'include',
+            cache: refresh ? 'no-store' : 'default'
+        });
+
         const data = await res.json();
+
         if (data.success) {
             const allRequests = data.currentMonthRequests.concat(data.historyRequests);
-            setAllLeaveRequests(allRequests); // Save to state
+            
+            setAllLeaveRequests(allRequests); // Save to global state
+
             document.getElementById('leavesTakenCount').textContent = data.leavesTaken;
-            renderLeaveTable(allRequests);
+
+            renderLeaveTable(allRequests);  // <-- always render
+            
         } else {
             Swal.fire('Error', 'Could not load your leave data.', 'error');
         }
@@ -22,6 +35,7 @@ export async function loadLeaveData() {
         console.error('Error fetching leave data:', err);
     }
 }
+
 
 /**
  * Renders the provided leave requests into the status table using DataTables.
@@ -39,6 +53,7 @@ function renderLeaveTable(leaves) {
                     render: (data, type, row) => {
                         const start = moment(row.LeaveStartDate).format('MMM D');
                         const end = moment(row.LeaveEndDate).format('MMM D');
+
                         return start === end ? start : `${start} to ${end}`;
                     }
                 },
@@ -107,7 +122,7 @@ export async function handleLeaveSubmit(e) {
 
         Swal.fire('Success', 'Your leave request has been submitted.', 'success');
         e.target.reset();
-        loadLeaveData(); // Refresh the data
+        loadLeaveData(true); // Refresh the data
 
     } catch (err) {
         Swal.fire('Submission Failed', err.message, 'error');
@@ -144,7 +159,7 @@ export function handleLeaveCancel(e) {
                 if (!res.ok) throw new Error(data.message);
                 
                 Swal.fire('Cancelled!', 'Your leave request has been cancelled.', 'success');
-                loadLeaveData(); // Refresh the list
+                loadLeaveData(true); // Refresh the list
             } catch (err) {
                 Swal.fire('Error', `Could not cancel request: ${err.message}`, 'error');
             }
