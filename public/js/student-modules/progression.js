@@ -47,9 +47,12 @@ export async function handleWeightLogSubmit(e) {
         
         weightInput.value = '';
         
-        loadWeightLogHistory();
+    setTimeout(() => {
+        loadWeightLogHistory(true);
         loadFitnessProgress();
         loadCurrentWeightStat();
+    }, 120);
+
 
     } catch (err) {
         Swal.fire('Error', err.message, 'error');
@@ -64,13 +67,22 @@ export async function handleWeightLogSubmit(e) {
 /**
  * Fetches and renders the ad-hoc weight log history table.
  */
-export async function loadWeightLogHistory() {
+export async function loadWeightLogHistory(refresh = false) {
     const tbody = document.getElementById('weightHistoryBody');
     tbody.innerHTML = '<tr><td colspan="3" class="text-center">Loading...</td></tr>';
-    
+
+    // CACHE-BUST ONLY WHEN refresh=true
+    const url = refresh 
+        ? `/api/student/weight-history?fresh=${Date.now()}`
+        : `/api/student/weight-history`;
+
     try {
-        const res = await fetch('/api/student/weight-history', { credentials: 'include' });
-        const result = await res.json();
+        const weightRes = await fetch(url, { 
+            credentials: 'include',
+            cache: refresh ? 'no-store' : 'default'
+        });
+
+        const result = await weightRes.json();
         
         if (!result.success) throw new Error(result.message);
         
@@ -98,6 +110,7 @@ export async function loadWeightLogHistory() {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Error: ${err.message}</td></tr>`;
     }
 }
+
 
 /**
  * Handles the click event for deleting a weight log.
@@ -129,9 +142,12 @@ export function handleWeightLogDelete(e) {
 
             Swal.fire('Deleted!', 'The weight log has been removed.', 'success');
             
-            loadWeightLogHistory();
+        setTimeout(() => {
+            loadWeightLogHistory(true);
             loadFitnessProgress();
             loadCurrentWeightStat();
+        }, 120);
+
 
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
@@ -139,10 +155,7 @@ export function handleWeightLogDelete(e) {
     });
 }
 
-/**
- * Fetches and displays the most recent weight log AND BMI on the dashboard stat card.
- */
-export async function loadCurrentWeightStat() {
+export async function loadCurrentWeightStat(refresh = false) {
     const weightEl = document.getElementById('stat-current-weight');
     const dateEl = document.getElementById('stat-weight-date');
     const motivationLink = document.getElementById('log-weight-shortcut');
@@ -151,7 +164,16 @@ export async function loadCurrentWeightStat() {
     bmiArea.innerHTML = '<span class="bmi-value-loading">...</span>';
 
     try {
-        const weightRes = await fetch('/api/student/weight-history', { credentials: 'include' });
+        // Cache-bust only when refresh=true (after add/delete)
+        const url = refresh
+            ? `/api/student/weight-history?fresh=${Date.now()}`
+            : `/api/student/weight-history`;
+
+        const weightRes = await fetch(url, { 
+            credentials: 'include',
+            cache: refresh ? 'no-store' : 'default'
+        });
+
         const weightResult = await weightRes.json();
         
         let currentWeight = null;
@@ -170,7 +192,7 @@ export async function loadCurrentWeightStat() {
             motivationLink.textContent = 'Click here to log Your weight';
         }
 
-        // Handle BMI display
+        // BMI LOGIC (unchanged)
         if (studentHeight) {
             if (currentWeight) {
                 const bmi = currentWeight / (studentHeight * studentHeight);
@@ -207,6 +229,7 @@ export async function loadCurrentWeightStat() {
         motivationLink.textContent = 'Click here to log weight'; 
     }
 }
+
 
 /**
  * Shows a popup to ask for and save the student's height.

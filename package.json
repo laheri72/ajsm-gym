@@ -43,6 +43,7 @@
     "moment-timezone": "^0.6.0",
     "mssql": "^9.0.0",
     "multer": "^2.0.0",
+    "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "sweetalert2": "^11.26.3",
     "xlsx": "^0.18.5"

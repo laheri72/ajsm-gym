@@ -19,6 +19,8 @@ const fitnessTestRoutes = require('./routes/fitnessTest.js');
 const studentRoutes = require('./routes/stu-routes.js');
 const staffRoutes = require('./routes/staff.js');
 const gamificationRoutes = require('./routes/gamification.js');
+const { cache } = require('./utils/cache.js');
+
 
 
 // Set up the port
@@ -45,6 +47,13 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 2 // 2 hours
   }
 }));
+
+app.use((req, res, next) => {
+  // Default: No caching for security (login, sensitive APIs)
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
 
 app.use(adminRoutes);
 app.use(authRoutes);

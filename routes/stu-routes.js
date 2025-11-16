@@ -4,6 +4,9 @@ const router = express.Router();
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const moment = require('moment-timezone'); // This file needs moment
+const { cacheMiddleware, cache } = require('../utils/cache.js');
+
+
 
 // Helper functions from server.js will go here
 // (HELPER FUNCTION) to find or create a week for a given date
@@ -41,10 +44,10 @@ const getOrCreateWeekIdByDate = async (date, transactionOrPool) => {
 
 
 // =================================================================== //
-// --- 🏆 ACHIEVEMENT PROGRESS API (THE "GAME MODE" ENGINE) ---
+// --- 🏆 ACHIEVEMENT PROGRESS (THE "GAME MODE" ENGINE) ---
 // =================================================================== //
 
-// This single API calculates and returns the student's live progress for all achievements.
+// This single  calculates and returns the student's live progress for all achievements.
 
 
 /**
@@ -193,7 +196,7 @@ async function getSocialButterflyProgress(tr) {
                  ISNULL((SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) FROM TrainingPlan WHERE TR = @TR AND CreatedAt BETWEEN @WeekStart AND @Today), 0)) AS TotalScore;
         `);
     
-    // The API now returns a simple score out of a target of 8.
+    // now returns a simple score out of a target of 8.
     return { current: scoreRes.recordset[0]?.TotalScore || 0, target: 8 };
 }
 
@@ -248,7 +251,7 @@ async function getIronDedicationProgress(tr) {
 // ---- 📈 Main Dashboard & Stats (XP, Level, Tips)
 
 
-router.get('/api/student/achievements/progress', async (req, res) => {
+router.get('/api/student/achievements/progress', cacheMiddleware(req => `ach_${req.session.user?.TR}`, 60), async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
@@ -282,7 +285,13 @@ router.get('/api/student/achievements/progress', async (req, res) => {
 
 // ---leaderboards 
 
-router.get('/api/leaderboard', async (req, res, next) => {
+router.get(
+  '/api/leaderboard',
+  cacheMiddleware(req =>
+    `leaderboard_${req.session.user?.Branch}_${req.session.user?.Gender}`,
+    300
+  ),
+  async (req, res, next) => {
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
@@ -363,7 +372,9 @@ router.post('/api/student/log-weight', async (req, res) => {
             .input('TR', sql.Int, TR)
             .input('Weight', sql.Decimal(5, 2), parseFloat(weight))
             .query(`INSERT INTO WeightTracking (TR, Weight) VALUES (@TR, @Weight)`);
-        
+        cache.del(`wh_${TR}`);
+        cache.del(`fit_history_${TR}`);
+
         res.json({ success: true, message: 'Weight logged successfully' });
     } catch (err) {
         console.error('Error logging weight:', err);
@@ -373,7 +384,15 @@ router.post('/api/student/log-weight', async (req, res) => {
 
 
 // Gets all ad-hoc weight logs for the current student
-router.get('/api/student/weight-history', async (req, res) => {
+router.get(
+  '/api/student/weight-history',
+  (req, res, next) => {
+    res.set('Cache-Control', 'no-store'); // 🔥 prevent browser caching
+    next();
+  },
+  cacheMiddleware(req => `wh_${req.session.user?.TR}`, 120),
+  async (req, res) => {
+
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
@@ -416,6 +435,8 @@ router.delete('/api/student/log-weight/:id', async (req, res) => {
             `);
         
         if (result.rowsAffected[0] > 0) {
+            cache.del(`wh_${TR}`);
+            cache.del(`fit_history_${TR}`);
             res.json({ success: true, message: 'Log deleted' });
         } else {
             res.status(404).json({ success: false, message: 'Log not found or you do not have permission to delete it' });
@@ -454,7 +475,10 @@ router.post('/api/student/set-height', async (req, res) => {
 });
 
 // Now combines data from TestRecords AND WeightTracking for a complete chart
-router.get('/api/student/fitness-test-history', async (req, res) => {
+router.get(
+  '/api/student/fitness-test-history',
+  cacheMiddleware(req => `fit_history_${req.session.user?.TR}`, 300),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
@@ -559,7 +583,10 @@ router.post('/api/save-workout-plan', async (req, res) => {
 });
 
 
-router.get('/api/student/workout-plan', async (req, res) => {
+router.get(
+  '/api/student/workout-plan',
+  cacheMiddleware(req => `workout_${req.session.user?.TR}`, 60),
+  async (req, res) => {
   try {
     // ✅ ADD THIS CHECK FIRST
     // This ensures a user is logged in before we try to access their details.
@@ -704,7 +731,10 @@ router.post('/api/student/apply-last-week', async (req, res) => {
 
 // --------- 📊 Workout Logs (Logs Tab)
 
-router.get('/api/student/training-plans', async (req, res) => {
+router.get(
+  '/api/student/training-plans',
+  cacheMiddleware(req => `train_plans_${req.session.user?.TR}`, 120),
+  async (req, res) => {
     // Session check remains the same
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
@@ -738,7 +768,10 @@ router.get('/api/student/training-plans', async (req, res) => {
     }
 });
 
-router.get('/api/student/training-analytics', async (req, res) => {
+router.get(
+  '/api/student/training-analytics',
+  cacheMiddleware(req => `train_analytics_${req.session.user?.TR}`, 300),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });       
     }   
@@ -762,8 +795,11 @@ router.get('/api/student/training-analytics', async (req, res) => {
 });
 
 
-// API for the Workout Consistency Heatmap
-router.get('/api/student/workout-calendar', async (req, res) => {
+// for the Workout Consistency Heatmap
+router.get(
+  '/api/student/workout-calendar',
+  cacheMiddleware(req => `workout_calendar_${req.session.user?.TR}`, 21600),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) return res.status(401).json({ success: false });
     const { TR } = req.session.user;
     try {
@@ -780,7 +816,10 @@ router.get('/api/student/workout-calendar', async (req, res) => {
 
 
 // NEW: Fetches ONLY data for the "Overview" tab
-router.get('/api/student/analytics/overview', async (req, res) => {
+router.get(
+  '/api/student/analytics/overview',
+  cacheMiddleware(req => `analytics_overview_${req.session.user?.TR}`, 300),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized.' });
     }
@@ -830,7 +869,10 @@ router.get('/api/student/analytics/overview', async (req, res) => {
 });
 
 // NEW: Fetches ONLY data for the "Session History" tab
-router.get('/api/student/analytics/history', async (req, res) => {
+router.get(
+  '/api/student/analytics/history',
+  cacheMiddleware(req => `analytics_history_${req.session.user?.TR}`, 180),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized.' });
     }
@@ -864,9 +906,12 @@ router.get('/api/student/analytics/history', async (req, res) => {
 // --- 📋 Attendance (Attendance Tab)
 
 
-// REPLACE your old /api/student-attendance/:weekId/me route
 
-router.get('/api/student-attendance/:weekId/me', async (req, res, next) => {
+
+router.get(
+  '/api/student-attendance/:weekId/me',
+  cacheMiddleware(req => `attendance_${req.session.user?.TR}_${req.params.weekId}`, 120),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
     }
@@ -934,7 +979,11 @@ router.get('/api/student-attendance/:weekId/me', async (req, res, next) => {
 });
 
 
-router.get('/api/student/eligible-weeks', async (req, res, next) => {
+router.get(
+  '/api/student/eligible-weeks',
+  cacheMiddleware(req => `eligible_weeks_${req.session.user?.TR}`, 43200),
+  async (req, res) => {
+      // your code…
     // 1. Ensure a student is logged in by checking the session
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
@@ -978,7 +1027,10 @@ router.get('/api/student/eligible-weeks', async (req, res, next) => {
 //--- 🍃 Leave Management (Leaves Tab)
 
 // ✅ GET: Fetch a student's leave history, current month status, and remaining leaves
-router.get('/api/student/leaves', async (req, res) => {
+router.get(
+  '/api/student/leaves',
+  cacheMiddleware(req => `leaves_${req.session.user?.TR}`, 60),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
     }
@@ -1155,7 +1207,13 @@ router.delete('/api/student/leaves/:id', async (req, res) => {
  * HALL OF FAME LEADERBOARD
  * Ranks students by the number of achievements earned, filtered by branch/gender.
  */
-router.get('/api/achievements/leaderboard', async (req, res) => {
+router.get(
+  '/api/achievements/leaderboard',
+  cacheMiddleware(req =>
+    `achieve_leaderboard_${req.session.user?.Branch}_${req.session.user?.Gender}`,
+    300
+  ),
+  async (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
@@ -1182,7 +1240,10 @@ router.get('/api/achievements/leaderboard', async (req, res) => {
     }
 });
 
-router.get('/api/student/achievements', async (req, res) => {
+router.get(
+  '/api/student/achievements',
+  cacheMiddleware(req => `student_achievements_${req.session.user?.TR}`, 120),
+  async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
