@@ -1,34 +1,87 @@
 // js/evaluation-log.js
+// =======================================================
+// ROLE + SESSION DETECTION
+// =======================================================
+const user = JSON.parse(localStorage.getItem("staffUser") || "{}");
+const role = user.Role;
+const myGender = user.Gender;
+const isAdmin = (role === "Admin");
 
+// Base endpoint switching
+const endpointBase = isAdmin ? "/api/admin" : "/api/staff";
+
+// =======================================================
+// UI RESTRICTIONS FOR STAFF (NO HTML CHANGES REQUIRED)
+// =======================================================
+// =======================================================
+// STAFF TAB AUTO-ACTIVATION FIX (Bootstrap-compatible)
+// =======================================================
+
+// =======================================================
+// PAGE INIT
+// =======================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize both tables
+    // Load BOTH tables (only one visible in staff mode)
+if (isAdmin) {
     initializeLogTable('Male');
     initializeLogTable('Female');
+} else {
+    initializeLogTable(myGender);
+}
 
-    // Load the new batch overview
+
+    // Load batch overviews
     loadAdminBatchOverview();
+
+
+    if (!isAdmin) {
+    const onlyTab = myGender === "Male" ? "male" : "female";
+
+    // button element (Bootstrap)
+    const tabBtn = document.getElementById(`${onlyTab}-tab`);
+    // tab content pane
+    const tabPane = document.getElementById(`${onlyTab}-log`);
+
+    if (tabBtn && tabPane) {
+
+        // ADD Bootstrap classes
+        tabBtn.classList.add("active");
+
+        tabPane.classList.add("active", "show");
+        tabPane.style.display = "block";
+
+        // Remove active from other tab
+        const otherTab = onlyTab === "male" ? "female" : "male";
+        document.getElementById(`${otherTab}-tab`)?.classList.remove("active");
+        const otherPane = document.getElementById(`${otherTab}-log`);
+        if (otherPane) {
+            otherPane.classList.remove("active", "show");
+            otherPane.style.display = "none";
+        }
+    }
+}
+
 });
 
 
-/**
- * Fetches batch overview data for the admin and sorts it into
- * the Male and Female card containers.
- */
+// =======================================================
+// BATCH OVERVIEW (Admin + Staff Mode)
+// =======================================================
 async function loadAdminBatchOverview() {
     try {
-        const res = await fetch('/api/admin/evaluation-batches-overview', { credentials: 'include' });
+        const res = await fetch(`${endpointBase}/evaluation-batches-overview`, { credentials: 'include' });
         if (!res.ok) {
             const errData = await res.json();
             throw new Error(errData.message || 'Failed to load batch overview.');
         }
-        
+
         const { data } = await res.json();
-        
-        // Filter the data by gender
+
+        // ADMIN returns both genders.
+        // STAFF endpoint returns ONLY their gender.
         const maleBatches = data.filter(b => b.Gender === 'Male');
         const femaleBatches = data.filter(b => b.Gender === 'Female');
 
-        // ★★★ CALL THE NEW, SMARTER RENDER FUNCTION ★★★
         renderBatchCards(maleBatches, 'male');
         renderBatchCards(femaleBatches, 'female');
 
@@ -39,12 +92,10 @@ async function loadAdminBatchOverview() {
     }
 }
 
-/**
- * ★★★ REBUILT FUNCTION ★★★
- * Renders batch cards, splitting them into "Recent" and "Older" groups.
- * @param {Array} batches - The array of batch data (pre-sorted by API).
- * @param {string} prefix - The gender prefix ('male' or 'female').
- */
+
+// =======================================================
+// RENDER BATCH CARDS
+// =======================================================
 function renderBatchCards(batches, prefix) {
     const recentContainer = document.getElementById(`${prefix}-batch-cards-container`);
     const olderContainer = document.getElementById(`${prefix}-older-batch-cards-container`);
@@ -52,57 +103,46 @@ function renderBatchCards(batches, prefix) {
     const olderCountSpan = document.getElementById(`${prefix}-older-batch-count`);
 
     if (!recentContainer || !olderContainer || !accordionWrapper || !olderCountSpan) {
-        console.error(`Could not find all containers for prefix: ${prefix}`);
         return;
     }
 
-    // Clear loaders
     recentContainer.innerHTML = '';
     olderContainer.innerHTML = '';
 
-    // Handle empty state
     if (batches.length === 0) {
         recentContainer.innerHTML = '<p>No test records found to evaluate for this section.</p>';
-        accordionWrapper.style.display = 'none'; // Hide accordion
+        accordionWrapper.style.display = 'none';
         return;
     }
 
-    // 1. Split the batches (API already sorted them)
+    // API already ordered them newest → oldest
     const recentBatches = batches.slice(0, 2);
     const olderBatches = batches.slice(2);
 
-    // 2. Render the recent batches
     recentBatches.forEach(batch => {
         recentContainer.appendChild(createBatchCardElement(batch));
     });
 
-    // 3. Handle the older batches
     if (olderBatches.length > 0) {
-        // Show the accordion
         accordionWrapper.style.display = 'block';
         olderCountSpan.textContent = olderBatches.length;
 
-        // Render the older batches into the accordion's grid
         olderBatches.forEach(batch => {
             olderContainer.appendChild(createBatchCardElement(batch));
         });
     } else {
-        // No older batches, so hide the accordion
         accordionWrapper.style.display = 'none';
     }
 }
 
-/**
- * ★★★ NEW HELPER FUNCTION ★★★
- * Creates a single batch card DOM element.
- * @param {object} batch - The batch data object.
- * @returns {HTMLElement} A DOM element representing the card.
- */
+
+// =======================================================
+// CARD CREATOR
+// =======================================================
 function createBatchCardElement(batch) {
     const card = document.createElement('div');
-    // Add "non-clickable" class to disable hover effects
-    card.className = 'batch-card non-clickable'; 
-    
+    card.className = 'batch-card non-clickable';
+
     let statusText = '';
     if (batch.BatchID === null) {
         statusText = 'Unassigned';
@@ -111,7 +151,7 @@ function createBatchCardElement(batch) {
     } else {
         statusText = '<span class="status-badge status-inactive">Locked</span>';
     }
-    
+
     card.innerHTML = `
         <div class="batch-card-number">${batch.BatchName}</div>
         <div class="batch-card-count">${batch.TotalCount}</div>
@@ -122,22 +162,20 @@ function createBatchCardElement(batch) {
             <span class="stat-partial">In Progress: ${batch.PartialCount}</span>
         </div>
     `;
+
     return card;
 }
 
 
-/**
- * Creates a filterable DataTable for the specified gender.
- * @param {string} gender - 'Male' or 'Female'
- */
+// =======================================================
+// DATATABLE — Evaluation Logs Table
+// =======================================================
 async function initializeLogTable(gender) {
-    // ... (rest of your existing function, no changes needed here) ...
     const tableId = (gender === 'Male') ? '#maleLogTable' : '#femaleLogTable';
-    
-    // Show a loader
+
+    // Loader table
     const table = $(tableId).DataTable({
         "language": {
-            // Using "processing" to show a "Loading..." message
             "processing": `
                 <div class="loader-cell">
                     <div class="loader"></div>
@@ -149,22 +187,25 @@ async function initializeLogTable(gender) {
     });
 
     try {
-        // 1. Fetch the data from our new API
-        const res = await fetch(`/api/admin/evaluation-logs?gender=${gender}`, { credentials: 'include' });
-        if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.message || 'Failed to load data.');
+        // ------- SECURE GENDER FOR STAFF -------
+        if (!isAdmin && gender !== myGender) {
+            return; // Staff will not load opposite gender
         }
-        
+
+        const res = await fetch(`${endpointBase}/evaluation-logs?gender=${gender}`, { credentials: 'include' });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to load logs.');
+        }
+
         const { data } = await res.json();
 
-        // 2. Destroy the loader-table and re-create it with data
         table.destroy();
 
-        const dataTable = $(tableId).DataTable({
+        $(tableId).DataTable({
             data: data,
             columns: [
-                // 'data' property must match the keys from our SQL query
                 { data: 'EvaluatorName' },
                 { data: 'CategoryName' },
                 { data: 'TR' },
@@ -173,40 +214,30 @@ async function initializeLogTable(gender) {
                 { data: 'Remark' }
             ],
             responsive: true,
-            pageLength: 25, // Show 25 entries per page
-            lengthMenu: [10, 25, 50, 100], // Page length options
-            dom: 'lBfrtip', // Adds Length, Buttons, Filter, info, pagination
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print' // Adds export buttons
-            ],
-            // This 'initComplete' function adds the dropdown filters
+            pageLength: 25,
+            lengthMenu: [10, 25, 50, 100],
+            dom: 'lBfrtip',
+            buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+
             initComplete: function () {
-                // Select columns 0 (Evaluator), 1 (Category), and 4 (Batch)
+                const filterRowId = (gender === 'Male') ? '#male-filters' : '#female-filters';
+
                 this.api().columns([0, 1, 4]).every(function () {
                     var column = this;
-                    var filterRowId = (gender === 'Male') ? '#male-filters' : '#female-filters';
                     var title = $(column.header()).text();
-                    
-                    // Create a wrapper div for Bootstrap grid
+
                     var wrapper = $('<div class="col-md-4 col-sm-6 col-12 form-select-wrapper"></div>')
-                        .appendTo( $(filterRowId) );
-                    
-                    // Create the Select input
-                    var select = $('<select class="form-select"><option value="">Filter by ' + title + '</option></select>')
-                        .appendTo( wrapper ) // Append to the wrapper, not the row
+                        .appendTo($(filterRowId));
+
+                    var select = $(`<select class="form-select"><option value="">Filter by ${title}</option></select>`)
+                        .appendTo(wrapper)
                         .on('change', function () {
-                            var val = $.fn.dataTable.util.escapeRegex(
-                                $(this).val()
-                            );
-                            // Apply the filter
-                            column
-                                .search(val ? '^' + val + '$' : '', true, false)
-                                .draw();
+                            var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                            column.search(val ? '^' + val + '$' : '', true, false).draw();
                         });
 
-                    // Add options to the select list
-                    column.data().unique().sort().each(function (d, j) {
-                        select.append('<option value="' + d + '">' + d + '</option>')
+                    column.data().unique().sort().each(function (d) {
+                        select.append(`<option value="${d}">${d}</option>`);
                     });
                 });
             }
@@ -215,7 +246,8 @@ async function initializeLogTable(gender) {
     } catch (err) {
         console.error(err);
         table.clear().draw();
-        table.processing(false); // Hide the loader
+        table.processing(false);
+
         $(tableId).find('tbody').html(`
             <tr>
                 <td colspan="6" class="text-danger text-center">

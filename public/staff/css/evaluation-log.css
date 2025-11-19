@@ -243,3 +243,21 @@
     padding: 1rem;
     gap: 1rem;
 }
+
+/* =========================================================
+   STAFF MODE — Hide empty sections when gender is restricted
+   ========================================================= */
+html:not(.is-admin) #male-tab[style*="display: none"],
+html:not(.is-admin) #female-tab[style*="display: none"] {
+    display: none !important;
+}
+
+html:not(.is-admin) #male-log[style*="display: none"],
+html:not(.is-admin) #female-log[style*="display: none"] {
+    display: none !important;
+}
+
+html:not(.is-admin) .older-batches-grid:empty,
+html:not(.is-admin) .batch-cards-grid:empty {
+    display: none;
+}

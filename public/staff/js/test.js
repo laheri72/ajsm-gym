@@ -525,5 +525,16 @@ const data = await res.json();
     // Call the new function on page load
     populateAdminWarning();
 
+    // -----------------------------
+// OPEN EVALUATION LOGS (STAFF)
+// -----------------------------
+const evalCard = document.getElementById("open-evaluation-logs-card");
+if (evalCard) {
+    evalCard.addEventListener("click", () => {
+        window.location.href = "evaluation-log.html";
+    });
+}
+
+
 }); 
 

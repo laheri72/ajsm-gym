@@ -4,7 +4,6 @@ const router = express.Router();
 const { pool } = require('../utils/db.js'); // Get the DB pool
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); // This file needs bcrypt
-const { cacheMiddleware, cache } = require('../utils/cache.js');
 
 
 // --- All your admin routes will go here ---
@@ -74,10 +73,7 @@ router.put('/api/admin/change-my-password', async (req, res, next) => {
 });
 
 // 1. SECURED: Get all users
-router.get(
-  '/api/admin/users/:branch',
-  cacheMiddleware(req => `admin_users_${req.params.branch}`, 60),
-  async (req, res, next) => {
+router.get('/api/admin/users/:branch', async (req, res, next) => {
     // --- NEW: Security Check ---
     if (!req.session.user || req.session.user.Role !== 'Admin') {
         return res.status(403).json({ error: 'Forbidden: Admin access required.' });

@@ -3182,4 +3182,114 @@ router.get('/api/evaluation/my-comments', isEvaluator, async (req, res) => {
     }
 });
 
+
+// -----------------------------------------------
+// STAFF: Get Evaluation Logs (Branch + Gender Only)
+// -----------------------------------------------
+router.get('/api/staff/evaluation-logs', async (req, res) => {
+    if (!req.session.user || req.session.user.Role !== 'Staff') {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const sessionGender = req.session.user.Gender;
+    const gender = req.query.gender;
+
+    // ❗ HARD SECURITY → Prevent misuse
+    if (!gender || gender !== sessionGender) {
+        return res.status(403).json({ success: false, message: 'Forbidden gender access' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), req.session.user.Branch);
+        request.input('Gender', sql.NVarChar(10), sessionGender);
+
+        const result = await request.query(`
+                SELECT 
+                E.EvaluationID,
+                EV.Name AS EvaluatorName,
+                CC.CategoryName,
+                TR.TR,
+                TM.Name AS StudentName,
+                E.CommentText AS Remark,
+                ISNULL(EB.BatchName, 'Unbatched') AS BatchName,
+                TR.Gender,
+                TR.CreatedAt,
+                E.DateEvaluated
+            FROM Evaluations E
+            JOIN Evaluators EV ON E.EvaluatorID = EV.EvaluatorID
+            JOIN CommentCategories CC ON E.CategoryID = CC.CategoryID
+            JOIN TestRecords TR ON E.LogID = TR.TestLog
+            JOIN TestMaster TM ON TR.TR = TM.TR
+            LEFT JOIN EvaluationBatches EB ON TR.BatchID = EB.BatchID
+            WHERE TR.Branch = @Branch AND TR.Gender = @Gender
+            ORDER BY E.DateEvaluated DESC;
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('❌ Staff Evaluation Logs Error:', err);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+
+// ----------------------------------------------------------
+// STAFF: Get Batch Overview (Only Their Branch + Gender)
+// ----------------------------------------------------------
+router.get('/api/staff/evaluation-batches-overview', async (req, res) => {
+    if (!req.session.user || req.session.user.Role !== 'Staff') {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const sessionGender = req.session.user.Gender;
+
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), req.session.user.Branch);
+        request.input('Gender', sql.NVarChar(10), sessionGender);
+
+        const result = await request.query(`
+            WITH TrainerRecords AS (
+                SELECT TestLog, BatchID
+                FROM TestRecords
+                WHERE SubmittedBy = 'Trainer'
+                  AND Branch = @Branch
+                  AND Gender = @Gender
+            ),
+            RecordStatus AS (
+                SELECT 
+                    tr.BatchID,
+                    CASE 
+                        WHEN EXISTS (
+                            SELECT 1 FROM Evaluations e WHERE e.LogID = tr.TestLog
+                        ) THEN 'In Progress'
+                        ELSE 'Pending'
+                    END AS Status
+                FROM TrainerRecords tr
+            )
+            SELECT
+            rs.BatchID,
+            @Gender AS Gender,
+            ISNULL(eb.BatchName, 'Unbatched Records') AS BatchName,
+            eb.IsActive,
+            COUNT(*) AS TotalCount,
+            COUNT(CASE WHEN Status = 'In Progress' THEN 1 END) AS PartialCount,
+            COUNT(CASE WHEN Status = 'Pending' THEN 1 END) AS PendingCount
+            FROM RecordStatus rs
+            LEFT JOIN EvaluationBatches eb ON rs.BatchID = eb.BatchID
+            GROUP BY rs.BatchID, eb.BatchName, eb.IsActive
+            ORDER BY eb.IsActive DESC, rs.BatchID DESC;
+        `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('❌ Staff Batch Overview Error:', err);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+
 module.exports = router; // Export the router

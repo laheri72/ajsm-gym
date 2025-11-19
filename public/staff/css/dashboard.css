@@ -1304,3 +1304,17 @@ body.nav-open .nav-overlay {
     vertical-align: -0.125em;
 }
 
+/* =========================================================
+   TEST PAGE — Evaluation Logs Card Style (Fully Safe)
+   ========================================================= */
+#open-evaluation-logs-card {
+    transition: 0.25s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+#open-evaluation-logs-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+#open-evaluation-logs-card img {
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));
+}
