@@ -198,6 +198,299 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // --- TRAINER LOGS DRAWER LOGIC ---
+
+    function openTrainerLogsDrawer(trainerId, trainerName) {
+    const overlay = document.getElementById('trainerLogsOverlay');
+    const drawer = document.getElementById('trainerLogsDrawer');
+    const title = document.getElementById('trainerLogsTitle');
+    const sub = document.getElementById('trainerLogsSub');
+    const body = document.getElementById('trainerLogsBody');
+
+    title.textContent = trainerName || 'Trainer Logs';
+    sub.textContent = `Trainer ID: ${trainerId}`;
+
+    body.innerHTML = `
+        <div style="text-align:center; padding:20px;">
+            <div class="spinner-border text-light" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+
+    overlay.classList.add('visible');
+    drawer.classList.add('open');
+
+    loadTrainerLogsForAdmin(trainerId);
+}
+
+function closeTrainerLogsDrawer() {
+    document.getElementById('trainerLogsOverlay').classList.remove('visible');
+    document.getElementById('trainerLogsDrawer').classList.remove('open');
+}
+
+// Fetch and render trainer logs for admin
+
+async function loadTrainerLogsForAdmin(trainerId) {
+    try {
+        const res = await fetch(`/api/admin/trainer/${trainerId}/logs`);
+        const data = await res.json();
+
+        const body = document.getElementById('trainerLogsBody');
+
+        if (!data.success) {
+            body.innerHTML = `<p class="text-danger">Failed to load logs.</p>`;
+            return;
+        }
+
+        if (!data.data || data.data.length === 0) {
+            body.innerHTML = `<p class="text-muted">No logs found for this trainer.</p>`;
+            return;
+        }
+
+        const logs = data.data;
+
+        // Group by BatchName
+        const grouped = logs.reduce((acc, log) => {
+            const batch = log.BatchName || 'No Batch / Unassigned';
+            if (!acc[batch]) acc[batch] = [];
+            acc[batch].push(log);
+            return acc;
+        }, {});
+
+        body.innerHTML = '';
+
+        Object.keys(grouped).forEach(batchName => {
+            const records = grouped[batchName];
+
+            const card = document.createElement('div');
+            card.className = 'trainer-batch-card';
+
+            card.innerHTML = `
+                <div class="trainer-batch-header">
+                    <div>
+                        <h6>${batchName}</h6>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="trainer-batch-count">${records.length}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+                <div class="trainer-batch-body">
+                    <div class="trainer-logs-table-wrapper">
+                        <table class="table table-sm trainer-logs-table">
+                            <thead>
+                                <tr>
+                                    <th>TR</th>
+                                    <th>Name</th>
+                                    <th>Total</th>
+                                    <th>Grade</th>
+                                    <th>Log ID</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            const tbody = card.querySelector('tbody');
+
+            records.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r.TR}</td>
+                    <td>${r.StudentName || '-'}</td>
+                    <td>${r.Total}</td>
+                    <td>${r.Grade}</td>
+                    <td>${r.TestLog}</td>
+                    <td>
+                    <div class="trainer-logs-actions">
+                        <button class="btn btn-sm btn-info admin-view-log-btn" data-log="${r.TestLog}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger admin-delete-log-btn" data-log="${r.TestLog}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    </td>
+
+                `;
+                tbody.appendChild(tr);
+            });
+
+            body.appendChild(card);
+        });
+
+        // Expand/collapse
+        body.querySelectorAll('.trainer-batch-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const bodyEl = header.parentElement.querySelector('.trainer-batch-body');
+                const icon = header.querySelector('i.fas');
+
+                const isOpen = bodyEl.classList.contains('open');
+                if (isOpen) {
+                    bodyEl.classList.remove('open');
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                } else {
+                    bodyEl.classList.add('open');
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                }
+            });
+        });
+
+        // View Details (Admin)
+        body.querySelectorAll('.admin-view-log-btn').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                e.stopPropagation();
+                const logId = btn.dataset.log;
+                showAdminLogDetails(logId);
+            });
+        });
+
+
+        // Delete buttons
+        body.querySelectorAll('.admin-delete-log-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const logId = btn.dataset.log;
+
+                const confirm = await Swal.fire({
+                    title: `Delete TestLog #${logId}?`,
+                    text: "This action is permanent.",
+                    icon: "warning",
+                    showCancelButton: true
+                });
+
+                if (!confirm.isConfirmed) return;
+
+                const resp = await fetch(`/api/admin/delete-test-record/${logId}`, {
+                    method: 'DELETE'
+                });
+                const json = await resp.json();
+
+                if (json.success) {
+                    Swal.fire('Deleted', 'Test record was deleted.', 'success');
+                    loadTrainerLogsForAdmin(trainerId); // reload drawer
+                } else {
+                    Swal.fire('Error', json.message || 'Failed to delete record.', 'error');
+                }
+            });
+        });
+
+    } catch (err) {
+        console.error('Error loading trainer logs for admin:', err);
+        document.getElementById('trainerLogsBody').innerHTML =
+            `<p class="text-danger">Unexpected error while loading logs.</p>`;
+    }
+}
+
+
+
+    // --- Event Listeners for Trainer Logs Drawer ---
+
+    const overlay = document.getElementById('trainerLogsOverlay');
+    const closeBtn = document.getElementById('closeTrainerLogsBtn');
+
+    if (overlay) {
+        overlay.addEventListener('click', closeTrainerLogsDrawer);
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeTrainerLogsDrawer);
+    }
+
+
+    document.getElementById('trainerTable')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-trainer-logs-btn');
+    if (!btn) return;
+
+    const trainerId = btn.dataset.id;
+    const trainerName = btn.dataset.name;
+    openTrainerLogsDrawer(trainerId, trainerName);
+});
+
+
+
+async function showAdminLogDetails(testLog) {
+    try {
+        const res = await fetch(`/api/admin/log-details/${testLog}`);
+        const json = await res.json();
+
+        if (!json.success) {
+            Swal.fire("Error", json.message || "Could not load details", "error");
+            return;
+        }
+
+        const r = json.data;
+
+        Swal.fire({
+            width: "600px",
+            background: "rgba(15, 23, 42, 0.95)",
+            color: "#fff",
+            showConfirmButton: false,
+            html: buildLogDetailsHTML(r),
+        });
+
+    } catch (err) {
+        console.error(err);
+        Swal.fire("Error", "Unexpected error loading details", "error");
+    }
+}
+
+
+function buildLogDetailsHTML(r) {
+    return `
+    <style>
+    ${/* same compact CSS used earlier for trainer modal */""}
+    .log-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:6px; }
+    .log-item { background:rgba(255,255,255,0.10); padding:6px; border-radius:10px; text-align:center; }
+    .log-label { font-size:10px; opacity:.7; }
+    .log-value { font-size:13px; font-weight:600; }
+    .modal-title {text-align:center;font-size:16px;margin-bottom:5px;}
+    </style>
+
+    <div class="modal-body-scroll">
+        <h3 class="modal-title">${r.BatchName || "Test Log"}</h3>
+        <p style="text-align:center;opacity:.7;font-size:12px;">${r.Name} • TR ${r.TR}</p>
+
+        <div class="section-title">Body Metrics</div>
+        <div class="log-grid">
+            <div class="log-item"><div class="log-label">Weight</div><div class="log-value">${r.Weight}</div></div>
+            <div class="log-item"><div class="log-label">Height</div><div class="log-value">${r.Height}</div></div>
+            <div class="log-item"><div class="log-label">Waist</div><div class="log-value">${r.Waist}</div></div>
+            <div class="log-item"><div class="log-label">Hips</div><div class="log-value">${r.Hips}</div></div>
+            <div class="log-item"><div class="log-label">Neck</div><div class="log-value">${r.Neck}</div></div>
+            <div class="log-item"><div class="log-label">BMI</div><div class="log-value">${r.BMI} (${r.BMIStatus})</div></div>
+            <div class="log-item"><div class="log-label">Fat</div><div class="log-value">${r.BodyFat}</div></div>
+            <div class="log-item"><div class="log-label">BMR</div><div class="log-value">${r.BMR}</div></div>
+            <div class="log-item"><div class="log-label">Calories</div><div class="log-value">${r.CalorieIntake}</div></div>
+            <div class="log-item"><div class="log-label">VO2Max</div><div class="log-value">${r.VO2Max}</div></div>
+        </div>
+
+        <div class="section-title">Performance</div>
+        <div class="log-grid">
+            <div class="log-item"><div class="log-label">PushUps</div><div class="log-value">${r.PushUps}</div></div>
+            <div class="log-item"><div class="log-label">SitUps</div><div class="log-value">${r.SitUps}</div></div>
+            <div class="log-item"><div class="log-label">Squats</div><div class="log-value">${r.Squats}</div></div>
+            <div class="log-item"><div class="log-label">Sit & Reach</div><div class="log-value">${r.SitAndReach}</div></div>
+            <div class="log-item"><div class="log-label">Pulse</div><div class="log-value">${r.StepUpPulseRate}</div></div>
+            <div class="log-item"><div class="log-label">Total</div><div class="log-value">${r.Total}</div></div>
+            <div class="log-item"><div class="log-label">Grade</div><div class="log-value">${r.Grade}</div></div>
+        </div>
+
+        <p style="text-align:center;margin-top:6px;opacity:.6;font-size:11px;">
+            ${moment(r.CreatedAt).format("DD MMM YYYY • hh:mm A")}
+        </p>
+    </div>
+    `;
+}
+
+
+    //---------------------------------------------------
+    // --- PASSWORD MANAGEMENT LOGIC -------------------
 
     // ★★★ ADD THIS NEW EVENT LISTENER ★★★
     // Reset TestMaster Password Form
@@ -831,4 +1124,75 @@ async function loadEvaluators() {
             }
         });
     });
+
+
+    // ===============================
+// TRAINER MANAGEMENT
+// ===============================
+async function loadTrainers() {
+    const tbody = document.querySelector('#trainerTable tbody');
+    tbody.innerHTML = `<tr><td colspan="6" class="loader-cell"><div class="loader"></div></td></tr>`;
+
+    try {
+        const res = await fetch('/api/admin/trainers');
+        const result = await res.json();
+        
+        if (!result.success || result.data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6">No trainers found.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        result.data.forEach(t => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${t.Name || 'N/A'}</td>
+                <td>${t.Username}</td>
+                <td>${t.Profession || '-'}</td>
+                <td>${t.Contact || '-'}</td>
+                <td>${t.Email || '-'}</td>
+                <td>
+                    <button 
+                        class="btn btn-sm btn-primary view-trainer-logs-btn" 
+                        data-id="${t.TrainerID}"
+                        data-name="${t.Name || t.Username}"
+                    >
+                        <i class="fas fa-list"></i> Logs
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error('Error loading trainers:', err);
+        tbody.innerHTML = `<tr><td colspan="6" class="text-danger">Error loading trainers.</td></tr>`;
+    }
+}
+
+// delete test record
+document.getElementById('deleteTestRecordBtn').addEventListener('click', async () => {
+    const id = document.getElementById('deleteTestLogInput').value.trim();
+    if (!id) return Swal.fire("Error", "Enter a TestLog ID first!", "error");
+
+    const confirm = await Swal.fire({
+        title: `Delete Log #${id}?`,
+        text: "This action is permanent.",
+        icon: "warning",
+        showCancelButton: true
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    const res = await fetch(`/api/admin/delete-test-record/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (data.success) Swal.fire("Done!", "Test record removed.", "success");
+    else Swal.fire("Failed", data.message, "error");
+});
+
+// Load when tab is clicked
+document.getElementById('trainer-tab').addEventListener('click', loadTrainers);
+
 });

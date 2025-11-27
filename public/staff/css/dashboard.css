@@ -1318,3 +1318,233 @@ body.nav-open .nav-overlay {
 #open-evaluation-logs-card img {
     filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));
 }
+
+/* ===============================
+   ADMIN TRAINER MANAGEMENT 
+   =============================== */
+
+#trainerLogsOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+    z-index: 2000;
+}
+
+#trainerLogsOverlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#trainerLogsDrawer {
+    position: fixed;
+    top: 0;
+    right: -420px;
+    width: min(420px, 100%);
+    height: 100%;
+    background: #111827; /* slate-900 solid */
+    color: #f1f5f9;       /* slate-100 text */
+    box-shadow: -4px 0 24px rgba(0,0,0,.35);
+    transition: right .3s cubic-bezier(.4,0,.2,1);
+    z-index: 2001;
+    display: flex;
+    flex-direction: column;
+}
+
+#trainerLogsDrawer.open {
+    right: 0;
+}
+
+/* ---------- Header ---------- */
+.trainer-logs-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.trainer-logs-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.trainer-logs-sub {
+    font-size: 12px;
+    opacity: .65;
+}
+
+/* ---------- Body ---------- */
+#trainerLogsBody {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+/* Batch Cards */
+.trainer-batch-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+/* Batch header row */
+.trainer-batch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.trainer-batch-header h6 {
+    margin: 0;
+    font-size: 14px;
+    color: #f1f5f9;
+}
+
+.trainer-batch-count {
+    background: #10b981; /* Emerald */
+    color: white;
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+/* Table inside accordion */
+.trainer-logs-table-wrapper {
+    overflow-x: auto;
+}
+
+.trainer-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.trainer-logs-table th,
+.trainer-logs-table td {
+    padding: 6px 8px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.trainer-logs-table th {
+    background: rgba(255,255,255,0.08);
+    font-size: 12px;
+}
+
+.trainer-logs-table td {
+    font-size: 12px;
+}
+
+/* ---------- Action Buttons ---------- */
+.trainer-logs-actions {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.trainer-logs-actions .btn {
+    background-color: rgba(255,255,255,0.15) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.25);
+    width: 34px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.trainer-logs-actions .btn:hover {
+    background-color: rgba(255,255,255,0.25) !important;
+    transform: translateY(-1px);
+}
+
+.trainer-logs-actions i {
+    font-size: 12px;
+    color: #fff;
+}
+
+/* expand body */
+.trainer-batch-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+}
+
+.trainer-batch-body.open {
+    max-height: 600px;
+}
+
+#trainerLogsDrawer .trainer-logs-table td,
+#trainerLogsDrawer .trainer-logs-table th {
+    background: transparent !important;
+    color: #fff !important;
+}
+/* Remove Bootstrap stripe effect */
+#trainerLogsDrawer .trainer-logs-table tr {
+    background: transparent !important;
+}
+
+.swal2-container {
+    z-index: 3000 !important;
+}
+
+#trainerLogsDrawer .trainer-logs-actions .btn {
+    background-color: rgba(255,255,255,0.18) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.3);
+    width: 30px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 6px;
+}
+
+#trainerLogsDrawer .trainer-logs-actions .btn i {
+    font-size: 13px !important;
+    color: #fff !important;
+}
+
+/* Fix visible action buttons inside drawer */
+#trainerLogsDrawer .admin-view-log-btn,
+#trainerLogsDrawer .admin-delete-log-btn {
+    background-color: rgba(255,255,255,0.2) !important;
+    border: 1px solid rgba(255,255,255,0.35) !important;
+    color: #fff !important;
+}
+
+#trainerLogsDrawer .admin-view-log-btn:hover {
+    background-color: rgba(16,185,129,0.5) !important; /* emerald tint */
+}
+
+#trainerLogsDrawer .admin-delete-log-btn:hover {
+    background-color: rgba(239,68,68,0.5) !important; /* red tint */
+}
+
+#trainerLogsDrawer .admin-view-log-btn i,
+#trainerLogsDrawer .admin-delete-log-btn i {
+    color: #fff !important;
+    opacity: 1 !important;
+    font-size: 14px !important;
+}
+
+#trainerLogsDrawer #trainerLogsSub {
+    color: rgba(255,255,255,0.65) !important;
+}
+
+#trainerLogsDrawer .trainer-logs-header h5 {
+    margin-bottom: 2px;
+}
+#trainerLogsDrawer small {
+    margin-top: -4px;
+    display: block;
+}

@@ -28,6 +28,7 @@
     
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="/assets/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/dashboard.css">
@@ -111,6 +112,10 @@
         <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#tab-pane-security" type="button" role="tab">
             <i class="fas fa-shield-alt"></i> Security & Passwords
         </button>
+        <button class="nav-link" id="trainer-tab" data-bs-toggle="tab" data-bs-target="#tab-pane-trainers" type="button" role="tab">
+            <i class="fas fa-user-tie"></i> Trainer Management
+        </button>
+
     </nav>
 
     <div class="tab-content" id="adminTabContent">
@@ -404,6 +409,38 @@
                             </section>
             
         </div>
+
+                <div class="tab-pane fade" id="tab-pane-trainers" role="tabpanel" tabindex="0">
+
+            <h3 class="mb-4">Trainer Management</h3>
+
+            <div class="table-container card p-3">
+                <table class="table table-striped" id="trainerTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Profession</th>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <hr />
+
+            <h4 class="mt-4">Delete Test Records</h4>
+            <p class="text-muted small">Enter <strong>TestLogID</strong> to delete an incorrect submission.</p>
+            <div class="input-group mb-3">
+                <input type="number" id="deleteTestLogInput" class="form-control" placeholder="Enter TestLog ID">
+                <button id="deleteTestRecordBtn" class="btn btn-danger">Delete Test Record</button>
+            </div>
+
+        </div>
+
     </div>
 </section>
                 </div>
@@ -418,6 +455,8 @@
     <script src="/assets/js/xlsx.full.min.js"></script>
     <script src="/assets/js/sweetalert2.all.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/moment.min.js"></script>
+    <script src="/assets/js/moment-timezone-with-data.min.js"></script>
 
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/admin.js"></script> 
@@ -440,6 +479,24 @@
 
         });
     </script>
+    <!-- Trainer Logs Drawer Overlay -->
+<div id="trainerLogsOverlay" class="trainer-logs-overlay"></div>
+
+<!-- Trainer Logs Drawer Panel -->
+<div id="trainerLogsDrawer" class="trainer-logs-drawer">
+  <div class="trainer-logs-header">
+    <div>
+      <h5 id="trainerLogsTitle" class="mb-0">Trainer Logs</h5>
+      <small id="trainerLogsSub" class="text-muted"></small>
+    </div>
+    <button type="button" class="btn-close btn-close-white" id="closeTrainerLogsBtn"></button>
+  </div>
+
+  <div class="trainer-logs-body" id="trainerLogsBody">
+      <!-- content filled by admin.js -->
+  </div>
+</div>
+
 </body>
     <script type="module" src="js/auth.js"></script>  <script type="module" src="js/admin.js"></script> </body>
 </html>

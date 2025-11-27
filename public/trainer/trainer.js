@@ -19,6 +19,7 @@
     let dailyAttendanceCache = [];
     let currentStudent = null;
     let studentChoices = null;
+    let cachedStudents = null;
     let searchChoices = null;
 
     // --- Utility Functions ---
@@ -47,7 +48,10 @@
                 return null;
             }
             currentUser = data.user;
+            // Store the user so EditProfile has something to load
+            localStorage.setItem("staffUser", JSON.stringify(data.user));
             return data.user;
+    
         } catch (err) {
             console.error('Session validation failed:', err);
             window.location.href = '../Forbidden.html';
@@ -214,7 +218,10 @@ function renderQuickStats(presentCount, totalAttendance, active) {
             <div class="card fade-in">
                 <h3>Menu</h3>
                 <div class="list-group">
-                    <button type="button" class="list-group-item list-group-item-action">View Profile</button>
+                    <div class="menu-item" id="editProfileBtn">
+                    <i class="fas fa-user-edit"></i>
+                    <span>Edit Profile</span>
+                </div>
                     <button type="button" id="darkModeToggle" class="list-group-item list-group-item-action">
                         <i class="fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}"></i> 
                         Switch to ${isDarkMode ? 'Light' : 'Dark'} Mode
@@ -228,6 +235,370 @@ function renderQuickStats(presentCount, totalAttendance, active) {
         `;
         initMenuListeners();
     }
+
+
+//----------------------------------------------------------------------------------
+//------------------ Trainer Dashboard Logs ------------- --------------------------
+
+function renderLogsPage() {
+    elements.mainContent.innerHTML = `
+        <div class="card fade-in">
+            <h3>📋 My Test Logs</h3>
+
+            <input type="text" id="logSearchInput" class="glass-input" placeholder="Search by TR / Grade / Total" style="margin-bottom:10px;">
+
+            <div id="logs-loading" style="text-align:center; padding:20px;">
+                <div class="spinner"></div>
+            </div>
+
+            <div id="batchLogsContainer"></div>
+        </div>
+    `;
+
+    loadLogsTable();
+}
+
+
+async function loadLogsTable() {
+    try {
+        const res = await fetch('/api/trainer/my-test-records');
+        const result = await res.json();
+
+        const loader = document.getElementById("logs-loading");
+        if (loader) loader.remove();
+
+
+        if (!result.success || result.data.length === 0) {
+            document.getElementById("batchLogsContainer").innerHTML =
+                `<p style="text-align:center;">No logs found.</p>`;
+            return;
+        }
+
+        // ---- Group logs by BatchName ----
+        const grouped = result.data.reduce((acc, log) => {
+            if (!acc[log.BatchName]) acc[log.BatchName] = [];
+            acc[log.BatchName].push(log);
+            return acc;
+        }, {});
+
+        const container = document.getElementById("batchLogsContainer");
+        container.innerHTML = "";
+
+        Object.keys(grouped).forEach(batch => {
+            const card = document.createElement("div");
+            card.className = "card glass-card";
+
+            card.innerHTML = `
+                <div class="batch-header" data-batch="${batch}">
+                <h4>${batch}</h4>
+                <span class="log-count">${grouped[batch].length}</span>
+                <i class="fas fa-chevron-down"></i>
+                </div>
+
+
+                <div class="accordion-body hidden" style="overflow-x: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>TR</th>
+                                <th>Name</th>
+                                <th>Total</th>
+                                <th>Grade</th>
+                                <th style="text-align:center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            `;
+
+            container.appendChild(card);
+
+            const tbody = card.querySelector("tbody");
+
+            grouped[batch].forEach(r => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${r.TR}</td>
+                    <td>${r.Name}</td>
+                    <td>${r.Total}</td>
+                    <td>${r.Grade}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-info view-log" data-id="${r.TestLog}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-log" data-id="${r.TestLog}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+
+                `;
+                tbody.appendChild(row);
+            });
+        });
+
+        // Toggle accordion
+        document.querySelectorAll(".batch-header").forEach(header => {
+            header.addEventListener("click", () => {
+                const body = header.nextElementSibling;
+                body.classList.toggle("hidden");
+                header.querySelector("i").classList.toggle("fa-chevron-up");
+            });
+        });
+
+        // Bind view modal
+        document.querySelectorAll(".view-log").forEach(btn =>
+            btn.addEventListener("click", e =>
+                showLogDetails(e.target.closest("button").dataset.id)
+            )
+        );
+
+                    document.querySelectorAll(".delete-log").forEach(btn => {
+                btn.addEventListener("click", e => {
+                    const id = e.currentTarget.dataset.id;
+                    deleteLog(id);   // ✅ your existing delete function
+                });
+            });
+        
+    } catch (err) {
+        Swal.fire("Error", "Failed to load logs", "error");
+        console.error(err);
+    }
+}
+
+
+async function showLogDetails(logId) {
+    const res = await fetch(`/api/trainer/log-details/${logId}`);
+    const json = await res.json();
+    if (!json.success) return Swal.fire("Error", json.message, "error");
+
+    const r = json.data;
+
+    Swal.fire({
+        title: `${r.BatchName || "Test Log"} - ${r.Name}`,
+        html: `
+<style>
+.log-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
+    gap: 6px;
+    text-align:left;
+}
+
+.log-item {
+    background: rgba(255, 255, 255, 0.10);     /* glass feel */
+    padding: 6px 8px;
+    border-radius: 10px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;                       /* center horizontally */
+    justify-content: center;                   /* center vertically */
+    text-align: center;
+
+    /* subtle antique glass glow */
+    box-shadow: 
+        0 0 6px rgba(255, 215, 0, 0.15),       /* golden soft glow */
+        inset 0 0 6px rgba(255,255,255,0.15);  /* inner shine */
+
+    backdrop-filter: blur(6px);                /* frosted */
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.log-label { 
+    font-size: 10px; 
+    opacity: .6; 
+    text-align:center;
+}
+
+.log-value {
+    font-size: 13px;
+    font-weight: 600;
+    text-align:center;
+}
+
+
+.section-title {
+    margin: 6px 0 4px;
+    font-weight: 600;
+    text-align:center;
+    opacity: .85;
+    font-size: 12px;
+}
+
+.modal-body-scroll {
+    max-height: 65vh;         /* <-- limits height */
+    overflow-y: auto;         /* <-- inside scroll not full page */
+    padding: 4px 2px;
+}
+</style>
+
+<div class="modal-body-scroll">
+
+    <h4 style="text-align:center; font-weight:700; margin-bottom:4px; font-size:15px;">
+        ${r.BatchName || "Test Log"}
+    </h4>
+    <p style="text-align:center; margin-bottom:8px; font-size:12px; opacity:.7;">
+        ${r.Name} • TR ${r.TR}
+    </p>
+
+    <div class="section-title">Body</div>
+    <div class="log-grid">
+        <div class="log-item"><span class="log-label">Weight</span><div class="log-value">${r.Weight}</div></div>
+        <div class="log-item"><span class="log-label">Height</span><div class="log-value">${r.Height}</div></div>
+        <div class="log-item"><span class="log-label">Waist</span><div class="log-value">${r.Waist}</div></div>
+        <div class="log-item"><span class="log-label">Hips</span><div class="log-value">${r.Hips}</div></div>
+        <div class="log-item"><span class="log-label">Neck</span><div class="log-value">${r.Neck}</div></div>
+        <div class="log-item"><span class="log-label">BMI</span><div class="log-value">${r.BMI} (${r.BMIStatus})</div></div>
+        <div class="log-item"><span class="log-label">BodyFat</span><div class="log-value">${r.BodyFat}</div></div>
+        <div class="log-item"><span class="log-label">BMR</span><div class="log-value">${r.BMR}</div></div>
+        <div class="log-item"><span class="log-label">Calories</span><div class="log-value">${r.CalorieIntake}</div></div>
+        <div class="log-item"><span class="log-label">VO₂Max</span><div class="log-value">${r.VO2Max}</div></div>
+    </div>
+
+    <div class="section-title">Performance & Result</div>
+    <div class="log-grid">
+        <div class="log-item"><span class="log-label">PushUps</span><div class="log-value">${r.PushUps}</div></div>
+        <div class="log-item"><span class="log-label">SitUps</span><div class="log-value">${r.SitUps}</div></div>
+        <div class="log-item"><span class="log-label">Squats</span><div class="log-value">${r.Squats}</div></div>
+        <div class="log-item"><span class="log-label">Sit & Reach</span><div class="log-value">${r.SitAndReach}</div></div>
+        <div class="log-item"><span class="log-label">Pulse</span><div class="log-value">${r.StepUpPulseRate}</div></div>
+        <div class="log-item"><span class="log-label">Total</span><div class="log-value">${r.Total}</div></div>
+        <div class="log-item"><span class="log-label">Grade</span><div class="log-value">${r.Grade}</div></div>
+    </div>
+
+    <p style="text-align:center; margin-top:6px; opacity:.6; font-size:11px;">
+        ${moment(r.CreatedAt).format("DD MMM YYYY • hh:mm A")}
+    </p>
+</div>
+`,
+
+        confirmButtonText: "Close",
+        background: "rgba(255,255,255,0.05)",
+        backdrop: `rgba(0,0,0,0.8)`,
+        customClass: {
+            popup: "glass-card text-white"
+        }
+    });
+}
+
+
+
+async function deleteLog(logId) {
+    const confirm = await Swal.fire({
+        title: `Delete Log #${logId}?`,
+        text: "This action is permanent.",
+        icon: "warning",
+        showCancelButton: true
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    const res = await fetch(`/api/trainer/delete-test-record/${logId}`, {
+        method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        Swal.fire("Deleted!", "Test record removed.", "success");
+        await loadLogsTable();
+    } else {
+        Swal.fire("Error", data.message, "error");
+    }
+}
+
+
+
+
+function renderEditProfilePage() {
+    const user = JSON.parse(localStorage.getItem("staffUser"));
+
+    document.getElementById("main-content").innerHTML = `
+        <div class="glass-card fade-in">
+            <h2 class="center-title">Edit Profile</h2>
+            <p class="text-muted center">Update your trainer details</p>
+
+            <form id="editProfileForm" class="form-layout">
+                <label>Name</label>
+                <input type="text" id="editName" class="glass-input" value="${user.Name || ''}" required>
+
+                <label>Profession</label>
+                <input type="text" id="editProfession" class="glass-input" value="${user.Profession || ''}" placeholder="Fitness Trainer / Sports / Yoga / etc." required>
+
+                <label>Contact</label>
+                <input type="text" id="editContact" class="glass-input" value="${user.Contact || ''}" placeholder="+91xxxxxxxxxx">
+
+                <label>Email</label>
+                <input type="email" id="editEmail" class="glass-input" value="${user.Email || ''}" placeholder="example@gmail.com">
+
+                <button type="submit" class="save-btn">
+                    <span>Save Changes</span>
+                </button>
+            </form>
+        </div>
+    `;
+
+    document.getElementById("editProfileForm").addEventListener("submit", updateTrainerProfile);
+}
+
+
+async function updateTrainerProfile(event) {
+    event.preventDefault();
+
+    const payload = {
+        Name: document.getElementById("editName").value.trim(),
+        Profession: document.getElementById("editProfession").value.trim(),
+        Contact: document.getElementById("editContact").value.trim(),
+        Email: document.getElementById("editEmail").value.trim(),
+    };
+
+    // Show loading state
+    Swal.fire({
+        title: "Updating Profile...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    const res = await fetch('/api/trainer/profile', {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        Swal.fire({
+            icon: "success",
+            title: "Profile Updated",
+            toast: true,
+            timer: 2000,
+            position: "top-end",
+            showConfirmButton: false
+        });
+
+        // Update local values immediately
+        let localUser = JSON.parse(localStorage.getItem("staffUser"));
+        localUser.Name = payload.Name;
+        localUser.Profession = payload.Profession;
+        localUser.Contact = payload.Contact;
+        localUser.Email = payload.Email;
+        localStorage.setItem("staffUser", JSON.stringify(localUser));
+
+        // Refresh displayed name on Home page immediately
+        const welcomeName = document.getElementById("welcomeName");
+        if (welcomeName) welcomeName.innerText = payload.Name;
+
+    } else {
+        Swal.fire("Error", data.message || "Profile update failed.", "error");
+    }
+}
+
+
+// ------------------------------------------------------------------------------------------
 
 // --- Component Init & Load Functions ---
 async function loadQuickStats() {
@@ -406,28 +777,46 @@ async function handleCheckout(tr, studentName, checkInTime, row, button) {
     }
 }
 
-    async function initializeSelector(preSelectedTR = null) {
-        try {
-            const res = await fetch('/api/students-list');
-            const students = await res.json();
-            if (!Array.isArray(students)) throw new Error('Invalid student list format');
-            studentChoices = new Choices('#student-selector', {
-                removeItemButton: true,
-                maxItemCount: 5,
-                placeholderValue: 'Search by name or TR...',
-                choices: students.map(student => ({
-                    value: String(student.value),
-                    label: student.label
-                }))
-            });
-            if (preSelectedTR) {
-                studentChoices.setChoiceByValue(String(preSelectedTR));
+async function initializeSelector(preSelectedTR = null) {
+    try {
+        // 🔥 Use cached data if available
+        if (!cachedStudents) {
+            const stored = localStorage.getItem("studentsList");
+            if (stored) cachedStudents = JSON.parse(stored);
+            else {
+                const res = await fetch('/api/students-list');
+                cachedStudents = await res.json();
+                localStorage.setItem("studentsList", JSON.stringify(cachedStudents));
             }
-        } catch (err) {
-            console.error('Failed to initialize student selector:', err);
-            Swal.fire('Error', 'Failed to load student list.', 'error');
         }
+
+
+        // If already initialized, destroy existing instance before rebuilding UI
+        if (studentChoices) {
+            studentChoices.destroy();
+        }
+
+        // Build selector using cached data
+        studentChoices = new Choices('#student-selector', {
+            removeItemButton: true,
+            maxItemCount: 5,
+            placeholderValue: 'Search by name or TR...',
+            choices: cachedStudents.map(s => ({
+                value: String(s.value),
+                label: s.label
+            }))
+        });
+
+        if (preSelectedTR) {
+            studentChoices.setChoiceByValue(String(preSelectedTR));
+        }
+
+    } catch (err) {
+        console.error('Failed to initialize student selector:', err);
+        Swal.fire('Error', 'Failed to load student list.', 'error');
     }
+}
+
 
 // Updated initializeSearchSelector to use passed data
 async function initializeSearchSelector(students) {
@@ -913,6 +1302,11 @@ function initHomeListeners() {
                 toggleButtonSpinner(document.getElementById('logoutBtn'), false);
             }
         });
+
+        document.getElementById("editProfileBtn")?.addEventListener("click", () => {
+    renderEditProfilePage();    
+});
+
     }
 
 // --- Modal Action Buttons ---
@@ -1056,6 +1450,7 @@ function initHomeListeners() {
                 case 'checkout': renderCheckoutPage(); break;
                 case 'test': renderFitnessTestPage(); break;
                 case 'menu': renderMenuPage(); break;
+                case "logs": renderLogsPage(); break;
             }
         });
     });
@@ -1063,6 +1458,7 @@ function initHomeListeners() {
     // --- Initial Load ---
     document.addEventListener('DOMContentLoaded', async () => {
         const user = await validateTrainerSession();
+        document.body.classList.add("dark-mode");
         if (user) {
             if (localStorage.getItem('darkMode') === 'true') {
                 document.body.classList.add('dark-mode');

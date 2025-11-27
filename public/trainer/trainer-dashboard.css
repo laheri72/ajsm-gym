@@ -12,23 +12,42 @@
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             --glass-bg: rgba(255, 255, 255, 0.8);
             --glass-blur: blur(10px);
+            --glass-bg-light: rgba(255,255,255,0.55);
+            --glass-bg-dark: rgba(255,255,255,0.12);
+
+            --glass-input-light: rgba(0,0,0,0.08);
+            --glass-input-dark: rgba(255,255,255,0.08);
+
+            --text-dark: #000;
+            --text-light: #fff;
+
+            --border-light: rgba(0,0,0,0.15);
+            --border-dark: rgba(255,255,255,0.25);
         }
 
         body.dark-mode {
             --secondary-color: #1f2937;
-            --text-color: #e5e7eb;
-            --border-color: #4b5563;
+            --text-color: var(--text-light);
+            --border-color: var(--border-dark);
             --card-bg: #374151;
-            --glass-bg: rgba(55, 65, 81, 0.8);
+            --glass-bg: var(--glass-bg-dark);
             --success-bg: #065f46;
             --success-text: #d1fae5;
             --error-bg: #991b1b;
             --error-text: #fee2e2;
+            --glass-input-bg: var(--glass-input-dark);
         }
 
         body.dark-mode #quick-stats p {
             color: #ffffff;
         }
+
+            body:not(.dark-mode) {
+        --glass-bg: var(--glass-bg-light);
+        --glass-input-bg: var(--glass-input-light);
+        --text-color: var(--text-dark);
+        --border-color: var(--border-light);
+    }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -378,4 +397,153 @@
 .search-group .choices {
     flex-grow: 1;  /* This tells the element to fill the available space */
     width: 1%;     /* This is a flexbox trick to ensure 'flex-grow' works properly */
+}
+
+body.dark-mode label {
+    color: #fff !important;
+    text-shadow: 0 0 3px rgba(255,255,255,0.4);
+}
+
+
+.glass-card {
+    padding: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(18px);
+    border-radius: 16px;
+    margin: 15px;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.form-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-layout label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+ 
+.glass-input {
+    background: var(--glass-input-bg);
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    color: var(--text-color);
+}
+
+.glass-input::placeholder {
+    color: var(--text-color);
+}
+
+
+.glass-input:focus {
+    outline: 2px solid rgba(255,255,255,0.4);
+}
+
+.save-btn {
+    width: 100%;
+    background: rgba(0, 200, 120, 0.85);
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    margin-top: 10px;
+    transition: 0.2s ease;
+}
+
+.save-btn:active {
+    transform: scale(0.97);
+}
+
+.glass-modal {
+    text-align: left;
+    color: var(--text-color);
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.table-wrapper table {
+    width: 100%;
+    min-width: 600px; /* Better mobile scroll behavior */
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+}
+
+.action-buttons button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+}
+
+.batch-header {
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.25s ease;
+}
+
+.batch-header:hover {
+    background: rgba(255,255,255,0.18);
+    transform: scale(1.01);
+}
+
+.batch-header h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.accordion-body {
+    margin-top: 8px;
+    transition: all 0.3s ease;
+}
+
+.hidden {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 !important;
+}
+.log-count {
+    background: rgba(0,200,120,0.7);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: white;
+    font-weight: 600;
+    margin-right: 8px;
+}
+.menu-item {
+    padding: 12px 16px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    margin-bottom: 6px;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    transition: 0.25s ease;
+}
+
+.menu-item:hover {
+    background: rgba(255,255,255,0.16);
+    transform: translateX(2px);
 }

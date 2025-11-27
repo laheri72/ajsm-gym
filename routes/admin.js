@@ -758,6 +758,179 @@ router.get('/api/admin/evaluation-batches-overview', isAdmin, async (req, res) =
 
 
 
+// =================================================================== //
+// --- 🏋️ TRAINER MANAGEMENT API Routes (NEW) ---
+// =================================================================== //
+
+/**
+ * GET: Fetch all Trainers for Admin branch (like Evaluators page)
+ */
+router.get("/api/admin/trainers", isAdmin, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .input("Branch", sql.NVarChar(50), req.Branch)
+            .query(`
+                SELECT 
+                    T.TrainerID,
+                    T.Name,
+                    T.Profession,
+                    T.Contact,
+                    T.Email,
+                    P.Username,
+                    P.Gender,
+                    P.Branch
+                FROM Trainers T
+                JOIN PassBank P ON T.UserID = P.UserID
+                WHERE P.Branch = @Branch AND P.Role = 'Trainer'
+                ORDER BY T.Name ASC
+            `);
+
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error("Error fetching trainers:", err);
+        res.status(500).json({ success: false, message: "Failed to fetch trainers." });
+    }
+});
+
+
+router.delete("/api/admin/delete-test-record/:testLog", isAdmin, async (req, res) => {
+    const { testLog } = req.params;
+    let transaction;
+
+    try {
+        // Branch Safety Check
+        const verify = await pool.request()
+            .input("TestLog", sql.Int, testLog)
+            .input("Branch", sql.NVarChar(50), req.Branch)
+            .query(`
+                SELECT * 
+                FROM TestRecords
+                WHERE TestLog = @TestLog AND Branch = @Branch
+            `);
+
+        if (verify.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Test record not found or does not belong to your branch."
+            });
+        }
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const request = new sql.Request(transaction);
+        request.input("TestLog", sql.Int, testLog);
+
+        await request.query(`DELETE FROM TestActivityLog WHERE TestLog = @TestLog`);
+        await request.query(`DELETE FROM Evaluations WHERE LogID = @TestLog`);
+        
+        const result = await request.query(`DELETE FROM TestRecords WHERE TestLog = @TestLog`);
+
+        if (result.rowsAffected[0] === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: "Test record not found." });
+        }
+
+        await transaction.commit();
+        res.json({ success: true, message: "Test record deleted successfully." });
+
+    } catch (err) {
+        if (transaction) await transaction.rollback();
+        console.error("Error deleting test record:", err);
+        res.status(500).json({ success: false, message: "Failed to delete test record." });
+    }
+});
+
+
+
+// Get all test logs for a trainer (Admin view, grouped client-side)
+router.get("/api/admin/trainer/:trainerId/logs", isAdmin, async (req, res) => {
+    const { trainerId } = req.params;
+
+    try {
+        const result = await pool.request()
+            .input("TrainerID", sql.Int, trainerId)
+            .input("Branch", sql.NVarChar(50), req.Branch)
+            .query(`
+                SELECT 
+                    TR.TestLog,
+                    TR.CreatedAt,
+                    TR.TR,
+                    TM.Name AS StudentName,
+                    TR.Total,
+                    TR.Grade,
+                    TR.BatchID,
+                    EB.BatchName
+                FROM TestRecords TR
+                JOIN Trainers T ON TR.TrainerID = T.TrainerID
+                JOIN TestMaster TM ON TM.TR = TR.TR
+                LEFT JOIN EvaluationBatches EB ON TR.BatchID = EB.BatchID
+                WHERE TR.TrainerID = @TrainerID
+                  AND TR.Branch = @Branch   -- branch safety
+                ORDER BY 
+                    EB.BatchID DESC,
+                    TR.CreatedAt DESC
+            `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error("Error fetching trainer logs (admin):", err);
+        res.status(500).json({ success: false, message: "Failed to load trainer logs." });
+    }
+});
+
+
+// Fetch detailed test log for admin (full modal)
+router.get("/api/admin/log-details/:testLog", isAdmin, async (req, res) => {
+    try {
+        const { testLog } = req.params;
+
+        const result = await pool.request()
+            .input("TestLog", sql.Int, testLog)
+            .query(`
+                SELECT
+                    TR.TestLog,
+                    TR.TR,
+                    TM.Name,
+                    TR.CreatedAt,
+                    TR.Weight,
+                    TR.Height,
+                    TR.Waist,
+                    TR.Hips,
+                    TR.Neck,
+                    TR.BMI,
+                    TR.BMIStatus,
+                    TR.BodyFat,
+                    TR.BMR,
+                    TR.CalorieIntake,
+                    TR.VO2Max,
+                    TR.Total,
+                    TR.Grade,
+                    EB.BatchName,
+                    TAL.PushUps,
+                    TAL.SitUps,
+                    TAL.Squats,
+                    TAL.SitAndReach,
+                    TAL.StepUpPulseRate
+                FROM TestRecords TR
+                JOIN TestMaster TM ON TR.TR = TM.TR
+                LEFT JOIN EvaluationBatches EB ON EB.BatchID = TR.BatchID
+                LEFT JOIN TestActivityLog TAL ON TAL.TestLog = TR.TestLog
+                WHERE TR.TestLog = @TestLog
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: "Log not found" });
+        }
+
+        res.json({ success: true, data: result.recordset[0] });
+
+    } catch (err) {
+        console.error("Error fetching admin log details:", err);
+        res.status(500).json({ success: false, message: "Failed to load details" });
+    }
+});
 
 // --- End of routes ---
 

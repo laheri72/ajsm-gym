@@ -652,91 +652,106 @@ router.get('/api/testmaster/:tr', async (req, res) => {
 });
 
 
-// UPDATED: Saves multiple test records submitted by a trainer (NOW WITH BATCH LOGIC + ACTIVITY LOG)
+// =================================================================== //
+// === UPDATE EXISTING: /api/trainer-test-records WITH TRAINERID ===== //
+// =================================================================== //
+
 router.post('/api/trainer-test-records', async (req, res) => {
     // Check role and session
     if (req.session.user?.Role !== 'Trainer') {
         return res.status(403).json({ error: 'Forbidden. Trainers only.' });
     }
-    const { Branch: trainerBranch, Gender: trainerGender } = req.session.user;
-    if (!trainerBranch || !trainerGender) {
-        return res.status(401).json({ error: 'Unauthorized. Session missing branch or gender.' });
+
+    const { UserID, Branch: trainerBranch, Gender: trainerGender } = req.session.user;
+
+    if (!trainerBranch || !trainerGender || !UserID) {
+        return res.status(401).json({ error: 'Unauthorized. Session missing data.' });
     }
 
-    const records = req.body; // Array of test records from frontend
+    const records = req.body; // Array of test records
     if (!Array.isArray(records) || records.length === 0) {
         return res.status(400).json({ error: 'Request body must be a non-empty array.' });
     }
 
     const transaction = new sql.Transaction(pool);
+
     try {
         await transaction.begin();
 
-        // --- 1. Find the Active Batch ID (No changes here) ---
-        let activeBatchID = null;
+        // ===== 0. GET TrainerID from Trainers table =====
+        const trainerQuery = new sql.Request(transaction);
+        trainerQuery.input('UserID', sql.Int, UserID);
+        const trainerResult = await trainerQuery.query(`
+            SELECT TrainerID FROM Trainers WHERE UserID = @UserID
+        `);
+
+        if (trainerResult.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(400).json({ error: "Trainer profile not found in Trainers table." });
+        }
+
+        const TrainerID = trainerResult.recordset[0].TrainerID;
+
+
+        // ===== 1. FIND ACTIVE BATCH =====
         const batchRequest = new sql.Request(transaction);
         batchRequest.input('Branch', sql.NVarChar(50), trainerBranch);
         batchRequest.input('Gender', sql.NVarChar(10), trainerGender);
-        
+
         const batchResult = await batchRequest.query(`
             SELECT BatchID FROM EvaluationBatches 
             WHERE Branch = @Branch AND Gender = @Gender AND IsActive = 1
         `);
-        
+
+        let activeBatchID = null;
         if (batchResult.recordset.length > 0) {
             activeBatchID = batchResult.recordset[0].BatchID;
         }
 
-        // --- 2. Validation Step (No changes here) ---
+        // ===== 2. VALIDATE EACH TR STUDENT BELONGS TO TRAINER SECTION =====
         const studentTRs = records.map(r => r.TR);
         const validationRequest = new sql.Request(transaction);
+        studentTRs.forEach((tr, i) => validationRequest.input(`TR${i}`, sql.Int, tr));
         validationRequest.input('TrainerBranch', sql.NVarChar(50), trainerBranch);
         validationRequest.input('TrainerGender', sql.NVarChar(10), trainerGender);
-        
-        const trParams = studentTRs.map((tr, i) => `@TR${i}`);
-        studentTRs.forEach((tr, i) => validationRequest.input(`TR${i}`, sql.Int, tr));
+
+        const trParams = studentTRs.map((tr, i) => `@TR${i}`).join(',');
 
         const validationResult = await validationRequest.query(`
-            SELECT TR, Branch, Gender 
-            FROM TestMaster 
-            WHERE TR IN (${trParams.join(',')})
+            SELECT TR, Branch, Gender FROM TestMaster 
+            WHERE TR IN (${trParams})
         `);
-        
-        const studentDetailsMap = new Map();
-        validationResult.recordset.forEach(s => studentDetailsMap.set(s.TR, { Branch: s.Branch, Gender: s.Gender }));
 
-        for (const record of records) {
-            const details = studentDetailsMap.get(parseInt(record.TR));
-            if (!details || details.Branch !== trainerBranch || details.Gender !== trainerGender) {
-                 await transaction.rollback(); 
-                 return res.status(403).json({ error: `Student TR ${record.TR} does not belong to your section or was not found.` });
+        const map = new Map();
+        validationResult.recordset.forEach(s => {
+            map.set(s.TR, { Branch: s.Branch, Gender: s.Gender });
+        });
+
+        for (const r of records) {
+            const d = map.get(parseInt(r.TR));
+            if (!d || d.Branch !== trainerBranch || d.Gender !== trainerGender) {
+                await transaction.rollback();
+                return res.status(403).json({ error: `Student TR ${r.TR} does not belong to your section.` });
             }
-            record.Branch = details.Branch;
-            record.Gender = details.Gender;
+            r.Branch = d.Branch;
+            r.Gender = d.Gender;
         }
 
-        // --- 3. Insertion Step (Modified) ---
-        
-        // ★★★ MODIFICATION 1: Added "OUTPUT INSERTED.TestLog" ★★★
-        // This query now returns the ID of the new record
+
+        // ========== 3. INSERT RECORDS (WITH TRAINERID NOW) ========== //
         const insertQuery = `
             INSERT INTO TestRecords 
-            (TR, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, 
-             BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, 
-             Branch, Gender, SubmittedBy, BatchID)
-            OUTPUT INSERTED.TestLog -- <-- THIS LINE IS NEW
+            (TR, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, BodyFat, BMR, CalorieIntake,
+             VO2Max, Total, Grade, Branch, Gender, SubmittedBy, BatchID, TrainerID)
+            OUTPUT INSERTED.TestLog
             VALUES 
-            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, 
-             @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade,
-             @Branch, @Gender, @SubmittedBy, @BatchID)
+            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, @BodyFat, @BMR, @CalorieIntake,
+             @VO2Max, @Total, @Grade, @Branch, @Gender, 'Trainer', @BatchID, @TrainerID)
         `;
 
         for (const record of records) {
-            // 'record' is the object from your calculateFitnessRecord function
-            
-            // --- First Insert (TestRecords) ---
-            const request = new sql.Request(transaction); 
-            
+            const request = new sql.Request(transaction);
+
             request.input('TR', sql.Int, record.TR);
             request.input('Weight', sql.Float, record.Weight);
             request.input('Height', sql.Float, record.Height);
@@ -751,42 +766,29 @@ router.post('/api/trainer-test-records', async (req, res) => {
             request.input('VO2Max', sql.Float, record.VO2Max === "N/A" ? null : record.VO2Max);
             request.input('Total', sql.Float, record.Total);
             request.input('Grade', sql.NVarChar(2), record.Grade);
-            request.input('Branch', sql.NVarChar(50), record.Branch); 
-            request.input('Gender', sql.NVarChar(10), record.Gender); 
-            request.input('SubmittedBy', sql.NVarChar(50), 'Trainer'); 
-            request.input('BatchID', sql.Int, activeBatchID);
+            request.input('BatchID', sql.Int, activeBatchID ?? null);
+            request.input('Branch', sql.NVarChar(50), record.Branch);
+            request.input('Gender', sql.NVarChar(10), record.Gender);
+            request.input('TrainerID', sql.Int, TrainerID);
 
-            // ★★★ MODIFICATION 2: Execute first insert & get the new ID ★★★
             const insertResult = await request.query(insertQuery);
-            const newTestLogID = insertResult.recordset[0].TestLog;
+            const TestLog = insertResult.recordset[0].TestLog;
 
-            // --- Second Insert (TestActivityLog) ---
-            
-            // ★★★ MODIFICATION 3: Create a new request for the activity log ★★★
             const activityRequest = new sql.Request(transaction);
-
-            // Add the new TestLog ID as the foreign key
-            activityRequest.input('TestLog', sql.Int, newTestLogID);
-            
-            // Add the 5 activity values, mapping JS names to DB column names
+            activityRequest.input('TestLog', sql.Int, TestLog);
             activityRequest.input('PushUps', sql.SmallInt, record.PushUps);
             activityRequest.input('SitUps', sql.SmallInt, record.SitUps);
             activityRequest.input('Squats', sql.SmallInt, record.Squats);
-            activityRequest.input('SitAndReach', sql.SmallInt, record.SitReach); // From JS 'SitReach'
-            activityRequest.input('StepUpPulseRate', sql.SmallInt, record.PulseRate); // From JS 'PulseRate'
+            activityRequest.input('SitAndReach', sql.SmallInt, record.SitReach);
+            activityRequest.input('StepUpPulseRate', sql.SmallInt, record.PulseRate);
 
-            // Execute the second insert
             await activityRequest.query(`
                 INSERT INTO TestActivityLog 
                 (TestLog, PushUps, SitUps, Squats, SitAndReach, StepUpPulseRate)
-                VALUES 
-                (@TestLog, @PushUps, @SitUps, @Squats, @SitAndReach, @StepUpPulseRate)
+                VALUES (@TestLog, @PushUps, @SitUps, @Squats, @SitAndReach, @StepUpPulseRate)
             `);
-            
-            // --- End of new code ---
 
-            // Award XP for each student (no change)
-             await awardXP(record.TR, 750, transaction); 
+            await awardXP(record.TR, 750, transaction);
         }
 
         await transaction.commit();
@@ -794,12 +796,11 @@ router.post('/api/trainer-test-records', async (req, res) => {
 
     } catch (err) {
         console.error("Error saving trainer test records:", err);
-        if (transaction && transaction._aborted === false && transaction._rolledBack === false) {
-             try { await transaction.rollback(); } catch (rbErr) { console.error("Rollback failed:", rbErr); }
-        }
-        res.status(500).json({ error: "Server error during bulk insert. " + err.message });
+        try { await transaction.rollback(); } catch {}
+        res.status(500).json({ error: "Server error during bulk insert." });
     }
 });
+
 
 
 
@@ -3290,6 +3291,167 @@ router.get('/api/staff/evaluation-batches-overview', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
+
+
+const isTrainer = (req, res, next) => {
+    if (!req.session.user || req.session.user.Role !== 'Trainer') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Access restricted to Trainers.' });
+    }
+    req.UserID = req.session.user.UserID;  // For DB operations
+    req.Branch = req.session.user.Branch;
+    next();
+};
+
+
+
+
+router.get('/api/trainer/my-test-records', isTrainer, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .input("UserID", sql.Int, req.UserID)
+            .query(`
+                SELECT 
+                    TR.TestLog,
+                    TR.CreatedAt,
+                    TR.TR,
+                    TM.Name,                
+                    TR.Total,
+                    TR.Grade,
+                    TR.Branch,
+                    TR.Gender,
+                    TR.BatchID,             
+                    EB.BatchName            
+                FROM TestRecords TR
+                JOIN Trainers T ON TR.TrainerID = T.TrainerID
+                JOIN TestMaster TM ON TM.TR = TR.TR
+                LEFT JOIN EvaluationBatches EB ON TR.BatchID = EB.BatchID
+                WHERE T.UserID = @UserID
+                ORDER BY TR.CreatedAt DESC
+            `);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error("Error fetching trainer test logs:", err);
+        res.status(500).json({ success: false, message: "Failed to load records." });
+    }
+});
+
+
+router.delete('/api/trainer/delete-test-record/:logId', isTrainer, async (req, res) => {
+    const { logId } = req.params;
+
+    try {
+        const verify = await pool.request()
+            .input("LogID", sql.Int, logId)
+            .input("UserID", sql.Int, req.UserID)
+            .query(`
+                SELECT TR.TestLog
+                FROM TestRecords TR
+                JOIN Trainers T ON TR.TrainerID = T.TrainerID
+                WHERE TR.TestLog = @LogID AND T.UserID = @UserID
+            `);
+
+        if (verify.recordset.length === 0) {
+            return res.status(403).json({ success: false, message: "Unauthorized delete request." });
+        }
+
+        await pool.request().input("LogID", sql.Int, logId)
+            .query(`DELETE FROM TestRecords WHERE TestLog = @LogID`);
+
+        res.json({ success: true, message: "Record deleted successfully." });
+
+    } catch (err) {
+        console.error("Error deleting trainer test:", err);
+        res.status(500).json({ success: false, message: "Failed to delete record." });
+    }
+});
+
+
+router.put('/api/trainer/profile', isTrainer, async (req, res) => {
+    const { Name, Profession, Contact, Email } = req.body;
+
+    try {
+        await pool.request()
+            .input("UserID", sql.Int, req.UserID)
+            .input("Name", sql.NVarChar, Name)
+            .input("Profession", sql.NVarChar, Profession)
+            .input("Contact", sql.NVarChar, Contact)
+            .input("Email", sql.NVarChar, Email)
+            .query(`
+                UPDATE Trainers 
+                SET Name = @Name, Profession = @Profession, Contact = @Contact, Email = @Email
+                WHERE UserID = @UserID
+            `);
+
+        res.json({ success: true, message: "Profile updated successfully." });
+
+    } catch (err) {
+        console.error("Error updating trainer profile:", err);
+        res.status(500).json({ success: false, message: "Failed to update profile." });
+    }
+});
+
+
+router.get("/api/trainer/log-details/:logId", isTrainer, async (req, res) => {
+    const { logId } = req.params;
+
+    try {
+        const result = await pool.request()
+            .input("LogID", sql.Int, logId)
+            .input("UserID", sql.Int, req.UserID)
+            .query(`
+                SELECT 
+                    TRS.TestLog,
+                    TRS.TR,
+                    TMS.Name,
+                    EB.BatchName,               
+                    TRS.BatchID,                
+
+                    TRS.Weight,
+                    TRS.Height,
+                    TRS.Waist,
+                    TRS.Hips,
+                    TRS.Neck,
+                    TRS.BMI,
+                    TRS.BMIStatus,
+                    TRS.BodyFat,
+                    TRS.BMR,
+                    TRS.CalorieIntake,
+                    TRS.VO2Max,
+                    TRS.Total,
+                    TRS.Grade,
+                    TRS.CreatedAt,
+
+                    TAL.PushUps,
+                    TAL.SitUps,
+                    TAL.Squats,
+                    TAL.SitAndReach,
+                    TAL.StepUpPulseRate
+
+                FROM TestRecords TRS
+                JOIN Trainers T ON TRS.TrainerID = T.TrainerID
+                JOIN TestMaster TMS ON TMS.TR = TRS.TR
+                LEFT JOIN TestActivityLog TAL ON TRS.TestLog = TAL.TestLog
+                LEFT JOIN EvaluationBatches EB ON TRS.BatchID = EB.BatchID
+
+                WHERE TRS.TestLog = @LogID
+                AND T.UserID = @UserID
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.json({ success: false, message: "Log not found or unauthorized." });
+        }
+
+        res.json({ success: true, data: result.recordset[0] });
+
+    } catch (err) {
+        console.error("View log details error:", err);
+        res.status(500).json({ success: false, message: "Error fetching details." });
+    }
+});
+
 
 
 module.exports = router; // Export the router

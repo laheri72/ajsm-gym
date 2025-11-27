@@ -150,11 +150,12 @@ router.get('/api/student-session', async (req, res) => {
 //---------👨‍💼 Staff & Trainer Login Routes
 
 
-// REPLACE your old /api/trainer-login route
 router.post('/api/trainer-login', async (req, res, next) => {
     const { username, password } = req.body;
+
     try {
-        const result = await pool.request().input('Username', sql.NVarChar(50), username)
+        const result = await pool.request()
+            .input('Username', sql.NVarChar(50), username)
             .query('SELECT * FROM PassBank WHERE Username = @Username');
 
         if (result.recordset.length === 0) {
@@ -164,18 +165,34 @@ router.post('/api/trainer-login', async (req, res, next) => {
         const user = result.recordset[0];
         const match = await bcrypt.compare(password, user.Password);
 
-        if (match) {
-            if (user.Role !== 'Trainer') {
-                return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
-            }
-            req.session.user = { Username: user.Username, Branch: user.Branch, Gender: user.Gender, Role: user.Role };
-            // Return the flag
-            return res.json({ success: true, user: req.session.user, isDefaultPassword: user.IsDefaultPassword });
-        } else {
+        if (!match) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-    } catch (err) { next(err); }
+
+        if (user.Role !== 'Trainer') {
+            return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
+        }
+
+        // FIX: Include UserID inside session
+        req.session.user = {
+            UserID: user.UserID,      // <--- REQUIRED
+            Username: user.Username,
+            Branch: user.Branch,
+            Gender: user.Gender,
+            Role: user.Role
+        };
+
+        return res.json({
+            success: true,
+            user: req.session.user,
+            isDefaultPassword: user.IsDefaultPassword
+        });
+
+    } catch (err) {
+        next(err);
+    }
 });
+
 
 
 // REPLACE your old /api/staff-login route
