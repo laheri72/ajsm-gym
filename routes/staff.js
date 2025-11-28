@@ -2675,7 +2675,7 @@ router.get('/api/evaluation/batch-details/:batchID', isEvaluator, async (req, re
 
         let query = `
             SELECT 
-                tr.TestLog, tr.TR, tm.Name, tr.Grade, tr.CreatedAt,
+                tr.TestLog, tr.TR, tm.Darajah, tm.Name, tr.Grade, tr.CreatedAt,
                 -- New 2-Stage Status Logic
                 CASE
                     WHEN EXISTS (SELECT 1 FROM Evaluations e WHERE e.LogID = tr.TestLog) THEN 'In Progress'
@@ -2716,7 +2716,7 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
         // --- 1. Run the FIRST query to get the current record and TR ---
         const currentRecordResult = await request.query(`
             SELECT 
-                tr.TestLog, tr.TR, tm.Name,
+                tr.TestLog, tr.TR, tm.Name, tm.Darajah,
                 tr.Weight, tr.Height, tr.Waist, tr.Hips, tr.Neck,
                 tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
                 tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,

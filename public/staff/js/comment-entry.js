@@ -103,11 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // (Pasting the unchanged functions for completeness)
     function populateAnchor(record) {
         pageTitle.textContent = `${record.Name}`;
-        document.getElementById('anchor-student-details').textContent = `TR: ${record.TR} | Test Date: ${new Date(record.CreatedAt).toLocaleDateString()}`;
+        //darajah in Bold and diff color to separate
+        document.getElementById('anchor-student-details').innerHTML = `TR: ${record.TR}| <strong style="color: #007bff;">Darajah: ${record.Darajah}</strong> | Test Date: ${new Date(record.CreatedAt).toLocaleDateString()}`;
         document.getElementById('anchor-student-name').textContent = record.Name;
         const f = (val, dec = 1) => (val != null ? parseFloat(val).toFixed(dec) : 'N/A');
         const setStat = (id, value, unit = '', cssClass = '') => {
-            const el = document.getElementById(id);
+            const el = document.getElementById(id); 
             if (el) {
                 const valueEl = el.querySelector('.test-result-item-value');
                 valueEl.textContent = value;

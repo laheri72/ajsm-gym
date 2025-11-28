@@ -110,11 +110,11 @@ function formatMetaData(evaluator, profession, timestamp) {
                     if (data === 'In Progress') { statusClass = 'status-partial'; }
                     return `<span class="status-badge ${statusClass}">${data}</span>`;
                 }},
-                { data: 'TR' }, { data: 'Name' }, { data: 'Grade' },
+                { data: 'TR' },  { data: 'Darajah' }, { data: 'Name' }, { data: 'Grade' },
                 { data: 'CreatedAt', render: (data) => new Date(data).toLocaleDateString() },
                 { data: 'TestLog', className: 'd-none' } 
             ],
-            order: [[0, 'asc'], [4, 'desc']], 
+            order: [[0, 'asc'], [5, 'desc']], 
             responsive: true, pageLength: 25,
             createdRow: (row, data) => {
                 if (data.CommentStatus === 'Pending') { $(row).addClass('row-pending'); } 
