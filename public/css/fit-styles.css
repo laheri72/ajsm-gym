@@ -342,6 +342,22 @@
         #medical-view .text-muted {
             font-style: italic;
         }
+
+        body.dark-mode #medical-view .list-group-item {
+            background: var(--light);
+            color: var(--dark);
+        }
+        body.dark-mode #medical-view .list-group-item strong {
+            color: var(--secondary);
+        }
+        body.dark-mode #medical-view .text-muted {
+            color: var(--muted);
+        }
+        body.dark-mode #medical-history-card .loader {
+            border: 5px solid rgba(255,255,255,0.1);
+            border-top: 5px solid var(--secondary);
+        }
+ 
         /* ★★★ ADD THESE STYLES TO fitness-test.html <head> <style> block ★★★ */
 
 .loader-cell {
