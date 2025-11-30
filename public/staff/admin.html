@@ -128,17 +128,45 @@
                             Manage users (staff/trainers) within <span id="branch-name" style="font-weight: bold; text-transform: uppercase; font-size: 1.2rem;"></span> branch.
                         </p>
                         <div style="overflow-x: auto;">
-                            <table id="adminUserTable" border="1" cellspacing="0" cellpadding="5">
+                        <!-- Users in Branch header + filters -->
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div class="fw-semibold">
+                                Users in <span id="branch-name-inline" class="text-uppercase"></span>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2">
+                                <select id="userRoleFilter" class="form-select form-select-sm" style="min-width: 140px;">
+                                    <option value="">All Roles</option>
+                                    <option value="Trainer">Trainer</option>
+                                    <option value="Staff">Staff</option>
+                                    <option value="Evaluator">Evaluator</option>
+                                </select>
+
+                                <select id="userGenderFilter" class="form-select form-select-sm" style="min-width: 120px;">
+                                    <option value="">All Genders</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Responsive DataTable -->
+                        <div class="table-responsive">
+                            <table id="adminUserTable" 
+                                class="table table-striped table-hover table-sm align-middle" 
+                                style="width: 100%;">
                                 <thead>
                                     <tr>
                                         <th>Username</th>
                                         <th>Gender</th>
                                         <th>Role</th>
-                                        <th>Action</th>
+                                        <th class="text-end">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                        </div>
+
                         </div>
                         <h3>Add New User</h3>
                             <form id="adminAddForm" class="form-group">

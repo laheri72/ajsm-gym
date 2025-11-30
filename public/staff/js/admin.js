@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
     // Declare inactiveStudentDataTable at the top to avoid reference errors
     let inactiveStudentDataTable = null;
+    let adminUserDataTable = null;
+
 
     const user = JSON.parse(localStorage.getItem('staffUser'));
     if (!user || user.Role !== 'Admin') {
@@ -20,8 +22,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Load initial data for both tables
-    loadAdminUsers();
+   
     loadInactiveStudents();
+
+
+        // Set branch name inline (for the “Users in <BRANCH>” text)
+    const branchInline = document.getElementById('branch-name-inline');
+    if (branchInline) {
+        branchInline.innerText = user.Branch;
+    }
+
+    // Initialize admin user DataTable
+    initAdminUserTable(user);
+
 
     // ★★★ ADDING STYLES DYNAMICALLY (since they are in dashboard.css) ★★★
     // This ensures the new status badges will look correct.
@@ -39,45 +52,103 @@ document.addEventListener("DOMContentLoaded", () => {
     document.head.appendChild(style);
 
 
-    // --- USER (ROLE) MANAGEMENT LOGIC ---
+ // --- ADMIN USER MANAGEMENT LOGIC ---
 
-    async function loadAdminUsers() {
-        const tableBody = document.querySelector('#adminUserTable tbody');
-        tableBody.innerHTML = `<tr><td colspan="4" class="loader-cell"><div class="loader"></div></td></tr>`;
-        try {
-            const branch = user.Branch;
-            const currentUser = user.Username;
+    // admin users table 
 
-            const res = await fetch(`/api/admin/users/${branch}`);
-            const users = await res.json();
-            
-            const filteredUsers = users.filter(user => user.Username !== currentUser);
-            
-            tableBody.innerHTML = '';
-            if (!filteredUsers || filteredUsers.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4">No other users found for this branch.</td></tr>`;
-                return;
-            }
-
-            filteredUsers.forEach(user => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${user.Username}</td>
-                    <td>${user.Gender}</td>
-                    <td>${user.Role}</td>
-                    <td>
-                        <button class="btn btn-sm btn-danger delete-user-btn" data-username="${user.Username}">
-                            Delete
-                        </button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        } catch (err) {
-            console.error('Failed to load users:', err);
-            tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--danger);">Error loading users.</td></tr>`;
-        }
+    function initAdminUserTable(user) {
+    // If already initialized, just reload
+    if (adminUserDataTable) {
+        adminUserDataTable.ajax.reload(null, false);
+        return;
     }
+
+    const branch = user.Branch;
+    const currentUsername = user.Username;
+
+    adminUserDataTable = $('#adminUserTable').DataTable({
+        ajax: {
+            url: `/api/admin/users/${branch}`,
+            dataSrc: function (json) {
+                // Support both:
+                // 1) [ { Username, Gender, Role, ... }, ... ]
+                // 2) { data: [ ... ] }
+                const rows = Array.isArray(json) ? json : (json.data || []);
+
+                // Don’t show the current admin themself
+                return rows
+                .filter(row => row.Username !== currentUsername)
+                .map(row => ({
+                    ...row,
+                    Gender: row.Gender ? row.Gender.trim().charAt(0).toUpperCase() + row.Gender.trim().slice(1).toLowerCase() : '-'
+                }));
+            }
+        },
+        columns: [
+            { data: 'Username' },
+            {
+                data: 'Gender',
+                render: function (data) {
+                    return data || '-';
+                }
+            },
+            { data: 'Role' },
+            {
+                data: 'Username',
+                orderable: false,
+                className: 'text-end',
+                render: function (username) {
+                    return `
+                        <button 
+                            type="button"
+                            class="btn btn-sm btn-outline-danger admin-delete-user-btn"
+                            data-username="${username}"
+                            title="Delete user"
+                        >
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                }
+            }
+        ],
+        pageLength: 10,
+        lengthMenu: [10, 25, 50, 100],
+        order: [[0, 'asc']],
+        responsive: true,
+        dom:
+            "<'row mb-2'<'col-sm-6'l><'col-sm-6'f>>" +
+            "<'row'<'col-sm-12'tr>>" +
+            "<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>"
+    });
+
+    // Role filter (column index 2)
+    const roleFilter = document.getElementById('userRoleFilter');
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function () {
+            const value = this.value || '';
+            adminUserDataTable
+                .column(2)
+                .search(value, false, false)
+                .draw();
+        });
+    }
+
+
+    // Gender filter (column index 1)
+    const genderFilter = document.getElementById('userGenderFilter');
+    if (genderFilter) {
+        genderFilter.addEventListener('change', function () {
+            const value = this.value;
+            if (!value) {
+                adminUserDataTable.column(1).search('', true, false).draw(); // reset
+            } else {
+                adminUserDataTable.column(1).search(`^${value}$`, true, false).draw(); // exact match
+            }
+        });
+    }
+
+}
+
 
     // Event listener for adding a new user
     document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
@@ -116,8 +187,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     toast: true, position: 'top-end', icon: 'success',
                     title: 'User Added Successfully!', showConfirmButton: false, timer: 3000
                 });
-                loadAdminUsers(); // Refresh the user list
-                e.target.reset(); 
+        if (adminUserDataTable) {
+            adminUserDataTable.ajax.reload(null, false); // stay on same page
+        }
+                e.target.reset(); // Clear the form
             } else {
                 Swal.fire('Error', 'Failed to add user: ' + data.message, 'error'); 
             }
@@ -138,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Delegated event listener for deleting a user
-    $('#adminUserTable').on('click', '.delete-user-btn', function() {
+    $('#adminUserTable').on('click', '.admin-delete-user-btn', function() {
         const username = $(this).data('username');
         Swal.fire({
             title: `Delete ${username}?`,
@@ -151,7 +224,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await res.json();
                 if (data.success) {
                     Swal.fire('Deleted!', `${username} has been removed.`, 'success');
-                    loadAdminUsers(); // Refresh the user list
+        if (adminUserDataTable) {
+            adminUserDataTable.ajax.reload(null, false); // stay on same page
+        }
                 } else {
                     Swal.fire('Error', 'Deletion failed: ' + data.message, 'error');
                 }
