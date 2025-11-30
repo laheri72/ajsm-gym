@@ -144,7 +144,12 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
+ 
+        .action-buttons .btn {
+            width: auto;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
         .btn-text {
             vertical-align: middle;
         }
