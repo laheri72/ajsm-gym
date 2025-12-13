@@ -1,5 +1,6 @@
 // Import required modules
 
+require("dotenv").config();
 const express = require('express');
 const bcrypt = require('bcrypt');
 const sql = require('mssql');
@@ -9,7 +10,9 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
-const session = require('express-session');
+const session = require("express-session");
+const { RedisStore } = require("connect-redis");
+const { createClient } = require("redis");
 const app = express();
 const moment = require('moment-timezone');
 const { pool, connectDB } = require('./utils/db.js');
@@ -27,6 +30,17 @@ const { cache } = require('./utils/cache.js');
 const port = 10000;
 
 
+const redisClient = createClient({
+  url: process.env.REDIS_URL
+});
+
+redisClient.on("error", (err) => {
+  console.error("❌ Redis Client Error", err);
+});
+
+redisClient.connect().then(() => {
+  console.log("✅ Redis connected");
+});
 
 
 
@@ -39,14 +53,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use(session({
-  secret: 'jamea1446@GYM!SecreT2025',  
+  name: "ajsm.sid",
+  store: new RedisStore({
+    client: redisClient,
+    prefix: "ajsm:sess:"
+  }),
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // true if using HTTPS
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: 1000 * 60 * 60 * 2 // 2 hours
   }
 }));
+
 
 app.use((req, res, next) => {
   // Default: No caching for security (login, sensitive APIs)
