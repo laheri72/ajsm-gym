@@ -3065,82 +3065,97 @@ router.get('/api/evaluation/student-history/:tr', isEvaluator, async (req, res) 
     }
 });
 /**
- * 11. GET: Export Batch Data
- * (This is the final route, updated to use the new structure)
+ * 11. GET: Export Batch Data (NORMALIZED, FUTURE-PROOF)
  */
 router.get('/api/evaluation/export/:batchID', isEvaluator, async (req, res) => {
     const { batchID } = req.params;
+
     try {
         const request = new sql.Request(pool);
         request.input('Branch', sql.NVarChar(50), req.Branch);
         request.input('Gender', sql.NVarChar(10), req.Gender);
+
         let batchName = 'Unbatched Records';
-        let query;
+        let whereClause = '';
 
         if (batchID === 'null') {
-            query = `WHERE tr.Branch = @Branch AND tr.Gender = @Gender AND tr.SubmittedBy = 'Trainer' AND tr.BatchID IS NULL`;
+            whereClause = `
+                WHERE tr.Branch = @Branch
+                  AND tr.Gender = @Gender
+                  AND tr.SubmittedBy = 'Trainer'
+                  AND tr.BatchID IS NULL
+            `;
         } else {
             request.input('BatchID', sql.Int, batchID);
-            const batchNameResult = await request.query(`SELECT BatchName FROM EvaluationBatches WHERE BatchID = @BatchID`);
-            if (batchNameResult.recordset.length > 0) { batchName = batchNameResult.recordset[0].BatchName; }
-            query = `WHERE tr.Branch = @Branch AND tr.Gender = @Gender AND tr.SubmittedBy = 'Trainer' AND tr.BatchID = @BatchID`;
+
+            const batchNameResult = await request.query(`
+                SELECT BatchName
+                FROM EvaluationBatches
+                WHERE BatchID = @BatchID
+            `);
+
+            if (batchNameResult.recordset.length > 0) {
+                batchName = batchNameResult.recordset[0].BatchName;
+            }
+
+            whereClause = `
+                WHERE tr.Branch = @Branch
+                  AND tr.Gender = @Gender
+                  AND tr.SubmittedBy = 'Trainer'
+                  AND tr.BatchID = @BatchID
+            `;
         }
-        
-        // ★★★ This query is now more complex. It must PIVOT the data ★★★
-// ★★★ This query is now more complex. It must PIVOT the data ★★★
+
         const dataResult = await request.query(`
-            SELECT 
-                TR,
-                Name,
-                Weight, Height, Waist, Hips, Neck,
-                BMI, BMIStatus, BodyFat, BMR,
-                CalorieIntake, VO2Max, Total, Grade,
-                
-                -- PIVOT to get comments into columns
-                [Strengths],
-                [Areas of Improvement],
-                [Nutritional Guidelines],
-                [Injury/Medical Advice],
-                [General Comment],
-                [Future Goals]
-            FROM (
-                SELECT 
-                    tr.TestLog, tr.TR, tm.Name,
-                    tr.Weight, tr.Height, tr.Waist, tr.Hips, tr.Neck,
-                    tr.BMI, tr.BMIStatus, tr.BodyFat, tr.BMR,
-                    tr.CalorieIntake, tr.VO2Max, tr.Total, tr.Grade,
-                    cc.CategoryName,
-                    e.CommentText
-                FROM TestRecords tr
-                JOIN TestMaster tm ON tr.TR = tm.TR
-                LEFT JOIN Evaluations e ON tr.TestLog = e.LogID
-                LEFT JOIN CommentCategories cc ON e.CategoryID = cc.CategoryID
-                ${query}
-            ) AS SourceTable
-            PIVOT (
-                MAX(CommentText)
-                FOR CategoryName IN (
-                    [Strengths],
-                    [Areas of Improvement],
-                    [Nutritional Guidelines],
-                    [Injury/Medical Advice],
-                    [General Comment],
-                    [Future Goals]
-                )
-            ) AS PivotTable
-            ORDER BY Name ASC;
+            SELECT
+                tr.TR,
+                tm.Name,
+
+                -- Test metrics
+                tr.Weight,
+                tr.Height,
+                tr.Waist,
+                tr.Hips,
+                tr.Neck,
+                tr.BMI,
+                tr.BMIStatus,
+                tr.BodyFat,
+                tr.BMR,
+                tr.CalorieIntake,
+                tr.VO2Max,
+                tr.Total,
+                tr.Grade,
+
+                -- Comment info (NORMALIZED)
+                cc.CategoryID,
+                cc.CategoryName,
+                e.CommentText
+
+            FROM TestRecords tr
+            JOIN TestMaster tm ON tr.TR = tm.TR
+            LEFT JOIN Evaluations e ON tr.TestLog = e.LogID
+            LEFT JOIN CommentCategories cc ON e.CategoryID = cc.CategoryID
+
+            ${whereClause}
+
+            ORDER BY tm.Name ASC, cc.CategoryID ASC;
         `);
 
-        res.json({ 
-            success: true, 
-            batchName: batchName,
-            records: dataResult.recordset 
+        res.json({
+            success: true,
+            batchName,
+            records: dataResult.recordset
         });
+
     } catch (err) {
         console.error('Error exporting batch data:', err);
-        res.status(500).json({ success: false, message: 'Failed to export data.' });
+        res.status(500).json({
+            success: false,
+            message: 'Failed to export data.'
+        });
     }
 });
+
 
 /**
  * 12. GET: Get "My Comments"
