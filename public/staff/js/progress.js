@@ -184,10 +184,14 @@ function renderBodyPartChart(trends) {
         bodyPartChartInstance.destroy(); // Destroy previous chart
     }
 
-    if (!trends || trends.length === 0) {
-        ctx.canvas.parentElement.innerHTML = '<p>No body part data yet.</p>';
-        return;
+if (!trends || trends.length === 0) {
+    const container = document.getElementById('bodyPartChartContainer');
+    if (container) {
+        container.innerHTML = '<p class="text-muted p-5 text-center">No body part data yet.</p>';
     }
+    return;
+}
+
 
     hideLoadingIndicator(containerId, canvasId);
     
@@ -229,10 +233,14 @@ function renderPeakHoursChart(peakHours) {
         peakHoursChartInstance.destroy(); // Destroy previous chart
     }
 
-    if (!peakHours || peakHours.length === 0) {
-        ctx.canvas.parentElement.innerHTML = '<p>No peak hours data available yet.</p>';
-        return;
+if (!peakHours || peakHours.length === 0) {
+    const container = document.getElementById('peakHoursChartContainer');
+    if (container) {
+        container.innerHTML = '<p class="text-muted p-5 text-center">No peak hours data available yet.</p>';
     }
+    return;
+}
+
 
     hideLoadingIndicator(containerId, canvasId); // Add canvas back
 

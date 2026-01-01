@@ -341,6 +341,7 @@ router.get('/api/admin/evaluators', isAdmin, async (req, res) => {
             .input('Branch', sql.NVarChar(50), req.Branch)
             .query(`
                 SELECT 
+                    E.UserID,
                     E.Name, 
                     E.Profession, 
                     E.Contact, 
@@ -358,6 +359,57 @@ router.get('/api/admin/evaluators', isAdmin, async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch evaluators.' });
     }
 });
+
+/**
+ * PUT: Adjust evaluator details (Admin only)
+ * Identity = UserID (correct FK)
+ */
+router.put('/api/admin/evaluators/:userID', isAdmin, async (req, res) => {
+    const userID = parseInt(req.params.userID, 10);
+    const { Name, Profession, Contact, Email } = req.body;
+
+    if (Number.isNaN(userID)) {
+        return res.status(400).json({ success: false, message: 'Invalid UserID' });
+    }
+
+    try {
+        const result = await pool.request()
+            .input('UserID', sql.Int, userID)
+            .input('Branch', sql.NVarChar(50), req.Branch)
+            .input('Name', sql.NVarChar(100), Name || null)
+            .input('Profession', sql.NVarChar(100), Profession || null)
+            .input('Contact', sql.NVarChar(20), Contact || null)
+            .input('Email', sql.NVarChar(100), Email || null)
+            .query(`
+                UPDATE E
+                SET 
+                    E.Name = @Name,
+                    E.Profession = @Profession,
+                    E.Contact = @Contact,
+                    E.Email = @Email
+                FROM Evaluators E
+                JOIN PassBank P ON E.UserID = P.UserID
+                WHERE 
+                    E.UserID = @UserID
+                    AND P.Branch = @Branch
+                    AND P.Role = 'Evaluator'
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Evaluator not found in your branch.'
+            });
+        }
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error('Error adjusting evaluator:', err);
+        res.status(500).json({ success: false, message: 'Failed to update evaluator.' });
+    }
+});
+
 
 /**
  * GET: Fetches all batches for the Admin's branch.

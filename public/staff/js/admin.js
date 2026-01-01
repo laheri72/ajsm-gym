@@ -934,7 +934,7 @@ async function loadEvaluators() {
             tableBody.innerHTML = '<tr><td colspan="5">No evaluators found for this branch.</td></tr>';
             return;
         }
-
+        
         data.forEach(evaluator => {
             const row = tableBody.insertRow();
             row.innerHTML = `
@@ -943,6 +943,17 @@ async function loadEvaluators() {
                 <td>${evaluator.Username}</td>
                 <td>${evaluator.Contact || '-'}</td>
                 <td>${evaluator.Email || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary edit-evaluator-btn" 
+                            data-id="${evaluator.UserID}" 
+                            data-name="${evaluator.Name}"
+                            data-profession="${evaluator.Profession}"
+                            data-username="${evaluator.Username}"
+                            data-contact="${evaluator.Contact || ''}"
+                            data-email="${evaluator.Email || ''}">
+                        Edit
+                    </button>
+                </t d>
             `;
         });
 
@@ -951,6 +962,125 @@ async function loadEvaluators() {
         tableBody.innerHTML = '<tr><td colspan="5" class="text-danger">Failed to load evaluators.</td></tr>';
     }
 }
+
+
+// Handle evaluator edit (Admin only)
+document.getElementById('evaluatorsTableBody')
+    .addEventListener('click', async function (e) {
+
+        const btn = e.target.closest('.edit-evaluator-btn');
+        if (!btn) return;
+
+        const userID = btn.dataset.id;
+
+        const current = {
+            name: btn.dataset.name,
+            profession: btn.dataset.profession,
+            contact: btn.dataset.contact,
+            email: btn.dataset.email
+        };
+
+const { value: formData } = await Swal.fire({
+    title: 'Adjust Evaluator Details',
+    width: 520,
+    confirmButtonText: 'Save Changes',
+    cancelButtonText: 'Cancel',
+    showCancelButton: true,
+    focusConfirm: false,
+    customClass: {
+        popup: 'admin-edit-popup',
+        confirmButton: 'btn btn-primary',
+        cancelButton: 'btn btn-secondary'
+    },
+    html: `
+        <style>
+            .admin-edit-form {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 14px;
+                margin-top: 10px;
+            }
+            .admin-edit-group label {
+                font-size: 12px;
+                font-weight: 600;
+                color: #475569;
+                margin-bottom: 4px;
+                display: block;
+                text-align: left;
+            }
+            .admin-edit-group input {
+                width: 100%;
+                padding: 10px 12px;
+                border-radius: 8px;
+                border: 1px solid #cbd5e1;
+                font-size: 14px;
+            }
+            .admin-edit-note {
+                margin-top: 12px;
+                font-size: 12px;
+                color: #64748b;
+                text-align: center;
+            }
+        </style>
+
+        <div class="admin-edit-form">
+            <div class="admin-edit-group">
+                <label>Name</label>
+                <input id="ev-name" value="${current.name}">
+            </div>
+
+            <div class="admin-edit-group">
+                <label>Profession</label>
+                <input id="ev-profession" value="${current.profession}">
+            </div>
+
+            <div class="admin-edit-group">
+                <label>Contact Number</label>
+                <input id="ev-contact" value="${current.contact}">
+            </div>
+
+            <div class="admin-edit-group">
+                <label>Email Address</label>
+                <input id="ev-email" value="${current.email}">
+            </div>
+        </div>
+
+        <div class="admin-edit-note">
+            Changes here will <strong>not</strong> affect login access or past evaluations.
+        </div>
+    `,
+    preConfirm: () => ({
+        Name: document.getElementById('ev-name').value.trim(),
+        Profession: document.getElementById('ev-profession').value.trim(),
+        Contact: document.getElementById('ev-contact').value.trim(),
+        Email: document.getElementById('ev-email').value.trim()
+    })
+});
+
+
+        if (!formData) return;
+
+        try {
+            const res = await fetch(`/api/admin/evaluators/${userID}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(formData)
+            });
+
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                throw new Error(result.message || 'Update failed');
+            }
+
+            Swal.fire('Updated', 'Evaluator details updated successfully.', 'success');
+            loadEvaluators(); // refresh table
+
+        } catch (err) {
+            console.error('Error updating evaluator:', err);
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
 
     // --- Event Listeners for Category Management ---
 
