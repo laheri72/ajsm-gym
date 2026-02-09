@@ -34,7 +34,6 @@ export default defineConfig({
         forbidden: resolve(__dirname, 'public/Forbidden.html'),
         loginStaff: resolve(__dirname, 'public/logins/staff-login.html'),
         loginStudent: resolve(__dirname, 'public/logins/talabat-login.html'),
-        loginTest: resolve(__dirname, 'public/logins/test-login.html'),
         loginTrainer: resolve(__dirname, 'public/logins/trainer-login.html'),
         studentDashboard: resolve(__dirname, 'public/student/student-dashboard.html'),
         studentFitnessTest: resolve(__dirname, 'public/student/fitness-test.html'),
