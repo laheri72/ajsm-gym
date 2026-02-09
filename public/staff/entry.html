@@ -104,7 +104,7 @@
                     <h2>Student Entry - waiting list</h2>
                         <div class="bulk-import-container mb-4 border-bottom pb-3">
                         <h5>Bulk Import from Excel</h5>
-                        <p class="text-muted small">Import multiple students at once. Use the template below to format your data:</p>
+                        <p class="text-muted small">Import multiple students at once (TR only). Use the template below to format your data.</p>
                             <div class="btn-group" role="group">
                                 <button id="bulkAddBtn" class="btn btn-secondary">
                                     Import Students
@@ -118,37 +118,26 @@
                     </div>
                     <h4 id="welcomeText"></h4>
 
-                    <form id="studentEntryForm">
-                        <h4> Manual Entry</h4>
-                        <div class="form-group">
-                            <label for="trNo">Tr No</label>
-                            <input type="text" id="trNo" class="form-control" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="studentName">Name</label>
-                            <input type="text" id="studentName" class="form-control" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="darajah">Darajah</label>
-                            <select id="darajah" class="form-control" required>
-                                <option value="" disabled selected>Select Darajah</option>
-                                <option value="Class 5 AM">Class 5 AM</option>
-                                <option value="Class 5 BM">Class 5 BM</option>
-                                <option value="Class 6 AM">Class 6 AM</option>
-                                <option value="Class 6 BM">Class 6 BM</option>
-                                <option value="Class 7 AM">Class 7 AM</option>
-                                <option value="Class 7 BM">Class 7 BM</option>
-                                <option value="Class 8 AM">Class 8 AM</option>
-                                <option value="Class 9 AM">Class 9 AM</option>
-                                <option value="Class 10 AM">Class 10 AM</option>
-                                <option value="Class 11 AM">Class 11 AM</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary" id="addStudentBtn">
-                            <span class="button-text">Add Student</span>
-                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        </button>
-                    </form>
+                     <form id="studentEntryForm">
+                         <h4> Manual Entry</h4>
+                         <div class="form-group">
+                             <label for="trNo">Tr No</label>
+                             <input type="text" id="trNo" class="form-control" required />
+                         </div>
+                         <div class="form-group">
+                             <label for="studentName">Name</label>
+                            <input type="text" id="studentName" class="form-control" placeholder="Name will be Auto-fetched..." readonly />
+                         </div>
+                         <div class="form-group">
+                              <label for="darajah">Darajah</label>
+                             <input type="text" id="darajah" class="form-control" placeholder="Darajah will be Auto-fetched..." readonly />
+                             <small class="text-muted">Name and Darajah are auto-fetched.</small>
+                         </div>
+                         <button type="submit" class="btn btn-primary" id="addStudentBtn">
+                             <span class="button-text">Add Student</span>
+                             <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                         </button>
+                     </form>
                 </section>
 
                 <section id="waiting-list" class="card">

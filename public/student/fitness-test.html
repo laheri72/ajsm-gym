@@ -23,6 +23,11 @@
     <link rel="stylesheet" href="../css/fit-styles.css" />
 </head>
 <body>
+    <script>
+        if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+            document.body.classList.add('embedded');
+        }
+    </script>
     <div class="dashboard">
         <!-- Sidebar Navigation -->
         <nav class="sidebar collapsed">

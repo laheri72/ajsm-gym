@@ -113,7 +113,9 @@ document.addEventListener('submit', async function(e) {
 
             Toast.fire({ icon: 'success', title: '✅ Login successful' });
             setTimeout(() => {
-                window.location.href = '../student/student-dashboard.html';
+                const next = new URLSearchParams(window.location.search).get('next');
+                const hash = next ? `#${encodeURIComponent(next)}` : '';
+                window.location.href = `../student/student-dashboard.html${hash}`;
             }, 700);
         } else {
             // --- NEW: Handle Failed Login Attempts ---

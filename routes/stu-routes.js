@@ -181,7 +181,7 @@ async function getConsistencyProgress(tr) {
                 WHERE TR = @TR AND OnLeave = 1;
 
                 -- 3. Get the user's personal best streak
-                SELECT BestStreak FROM Master WHERE TR = @TR;
+                SELECT BestStreak FROM TestMaster WHERE TR = @TR;
             `);
 
         // 1. Process "present" dates.
@@ -293,7 +293,7 @@ async function getMilestoneLiftProgress(tr) {
 // REPLACE the old getIronDedicationProgress helper function
 async function getIronDedicationProgress(tr) {
     const studentRes = await pool.request().input('TR', sql.Int, tr)
-        .query(`SELECT TotalMinutesLogged FROM Master WHERE TR = @TR`);
+        .query(`SELECT TotalMinutesLogged FROM TestMaster WHERE TR = @TR`);
 
     const totalMinutes = studentRes.recordset[0]?.TotalMinutesLogged || 0;
     const currentHours = totalMinutes / 60;
@@ -406,7 +406,7 @@ router.get(
             SELECT TOP 3 
                 M.Name,
                 COALESCE(D.TotalDuration, 0) AS Score -- The main score is now duration
-            FROM Master M
+            FROM TestMaster M
             LEFT JOIN DurationScores D ON M.TR = D.TR
             LEFT JOIN LogScores L ON M.TR = L.TR
             WHERE M.Branch = @Branch 
@@ -542,7 +542,7 @@ router.post('/api/student/set-height', async (req, res) => {
         await pool.request()
             .input('TR', sql.Int, TR)
             .input('Height', sql.Decimal(4, 2), heightInM)
-            .query(`UPDATE Master SET Height = @Height WHERE TR = @TR`);
+            .query(`UPDATE TestMaster SET Height = @Height WHERE TR = @TR`);
 
         res.json({ success: true, message: 'Height updated!', newHeight: heightInM });
     } catch (err) {
@@ -1017,7 +1017,7 @@ router.get(
                     M.Name, M.JoinedAt,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
                     A.IsPresent, A.OnLeave
-                FROM Master M
+                FROM TestMaster M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
                 WHERE M.TR = @TR AND M.JoinedAt <= @WeekEndDate -- <-- THE FIX IS HERE
             `);
@@ -1069,10 +1069,10 @@ router.get(
     const { TR } = req.session.user;
 
     try {
-        // 2. Get the student's official join date from the Master table
+        // 2. Get the student's official join date from the TestMaster table
         const studentResult = await pool.request()
             .input('TR', sql.Int, TR)
-            .query(`SELECT JoinedAt FROM Master WHERE TR = @TR`);
+            .query(`SELECT JoinedAt FROM TestMaster WHERE TR = @TR`);
 
         if (studentResult.recordset.length === 0 || !studentResult.recordset[0].JoinedAt) {
              return res.status(404).json({ success: false, error: 'Student join date not found.' });
@@ -1281,7 +1281,7 @@ router.get(
                 SELECT TOP 10
                     M.Name,
                     COUNT(SA.StudentAchievementID) AS TotalAchievements
-                FROM Master M
+                FROM TestMaster M
                 JOIN StudentAchievements SA ON M.TR = SA.TR
                 WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
                 GROUP BY M.Name

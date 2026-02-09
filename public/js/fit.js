@@ -7,19 +7,19 @@
 
 async function validateStudentSession() {
     try {
-        const res = await fetch('/api/current-tr', {
+        const res = await fetch('/api/student-session', {
             method: 'GET',
             credentials: 'include'
         });
 
         const data = await res.json();
 
-        if (!data.tr) {
+        const tr = data?.user?.TR;
+        if (!data?.success || !tr) {
             window.location.href = '../Forbidden.html';
             return;
         }
 
-        const tr = data.tr;
         localStorage.setItem('currentTR', tr);
 
         // Reset all UI with null checks
@@ -1546,6 +1546,11 @@ function toggleSidebar() {
 
 // ✅ Unified DOMContentLoaded Loader — combines all initialization steps
 window.addEventListener('DOMContentLoaded', () => {
+    const isEmbedded = new URLSearchParams(window.location.search).get('embedded') === '1';
+    if (isEmbedded) {
+        document.body.classList.add('embedded');
+    }
+
     // ----------------------------
     // 1️⃣ Restore Dark Mode
     // ----------------------------
@@ -1567,7 +1572,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // ----------------------------
     // 3️⃣ Restore Last Active Tab
     // ----------------------------
-    const savedTab = localStorage.getItem('activeTab') || 'tab-profile';
+    const savedTab = isEmbedded ? 'tab-profile' : (localStorage.getItem('activeTab') || 'tab-profile');
     showTab(savedTab);
 
     // ----------------------------
@@ -1584,7 +1589,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // ----------------------------
     // 6️⃣ Force Password Change Modal (if required)
     // ----------------------------
-    if (sessionStorage.getItem('forcePasswordChange') === 'true') {
+    if (!isEmbedded && sessionStorage.getItem('forcePasswordChange') === 'true') {
         const passwordModalEl = document.getElementById('forcePasswordChangeModal');
         const setPasswordForm = document.getElementById('setPasswordForm');
 

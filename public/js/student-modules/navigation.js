@@ -43,6 +43,12 @@ export function navigateToSection(targetSectionId) {
         loadWeightLogHistory();     // ⬅️ Always reload from cache or fresh
         loadFitnessProgress(); 
     }
+    if (targetSectionId === 'fitness-low') {
+        const iframe = document.getElementById('fitness-iframe');
+        if (iframe && !iframe.getAttribute('src')) {
+            iframe.setAttribute('src', iframe.getAttribute('data-src') || 'fitness-test.html?embedded=1');
+        }
+    }
 if (targetSectionId === 'tips-low') {
     // initialize tips UI, tabs and loaders
     try {
@@ -71,6 +77,7 @@ export function routeFromHash() {
         planner: 'planner-low',
         logs: 'logs-low',
         attendance: 'attendance-low',
+        fitness: 'fitness-low',
         leaves: 'leaves-low',
         tips: 'tips-low',
         fame: 'fame-low'

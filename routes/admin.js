@@ -21,7 +21,7 @@ router.delete('/api/admin/delete-student/:tr', async (req, res, next) => {
     const request = new sql.Request(transaction);
     request.input('TR', sql.Int, tr);
 
-    const result = await request.query('DELETE FROM Master WHERE TR = @TR');
+    const result = await request.query('DELETE FROM TestMaster WHERE TR = @TR');
     await transaction.commit();
 
     if (result.rowsAffected[0] > 0)
@@ -178,7 +178,7 @@ router.put('/api/staff/reset-student-password/:tr', async (req, res, next) => {
         request.input('TR', sql.Int, tr);
 
         // --- NEW: Verify the student belongs to the admin's branch before resetting ---
-        const studentResult = await request.query('SELECT Branch FROM Master WHERE TR = @TR');
+        const studentResult = await request.query('SELECT Branch FROM TestMaster WHERE TR = @TR');
 
         if (studentResult.recordset.length === 0) {
             return res.status(404).json({ success: false, message: 'Student TR not found.' });
@@ -191,7 +191,7 @@ router.put('/api/staff/reset-student-password/:tr', async (req, res, next) => {
         // --- End of new security check ---
 
         // If authorized, proceed with the reset
-        await request.query('UPDATE Master SET Password = NULL, HasLoggedInBefore = 0 WHERE TR = @TR');
+        await request.query('UPDATE TestMaster SET Password = NULL, HasLoggedInBefore = 0 WHERE TR = @TR');
         
         res.json({ success: true, message: `Password for TR ${tr} has been reset. The student can now log in using their TR as the password.` });
     } catch (err) {
@@ -253,7 +253,7 @@ router.get('/api/students/inactive', async (req, res) => {
 
     let query = `
       SELECT m.*, s.SlotName 
-      FROM Master m
+      FROM TestMaster m
       LEFT JOIN Slots s ON m.SlotID = s.SlotID
       WHERE m.Branch = @Branch AND m.Status = 'Inactive'
     `;
@@ -263,7 +263,7 @@ router.get('/api/students/inactive', async (req, res) => {
       request.input('Gender', sql.NVarChar(10), req.session.user.Gender);
       query = `
         SELECT m.*, s.SlotName 
-        FROM Master m
+        FROM TestMaster m
         LEFT JOIN Slots s ON m.SlotID = s.SlotID
         WHERE m.Branch = @Branch 
           AND m.Gender = @Gender
@@ -299,7 +299,7 @@ router.put('/api/students/status/:TR', async (req, res) => {
         request.input('Status', sql.NVarChar(20), Status);
 
         await request.query(`
-            UPDATE Master
+            UPDATE TestMaster
             SET
                 Status = @Status,
                 SlotID = CASE WHEN @Status = 'Inactive' THEN NULL ELSE SlotID END

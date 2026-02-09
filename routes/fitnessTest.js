@@ -20,7 +20,7 @@ async function awardXP(tr, xpAmount, transaction) {
     request.input('TR', sql.Int, tr);
 
     // 1. Get current level and XP
-    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM Master WHERE TR = @TR');
+    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM TestMaster WHERE TR = @TR');
     if (result.recordset.length === 0) return { levelledUp: false };
 
     let { FitnessLevel, CurrentXP } = result.recordset[0];
@@ -43,20 +43,13 @@ async function awardXP(tr, xpAmount, transaction) {
     updateRequest.input('TR', sql.Int, tr);
     updateRequest.input('NewLevel', sql.Int, FitnessLevel);
     updateRequest.input('NewXP', sql.Int, CurrentXP);
-    await updateRequest.query('UPDATE Master SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
+    await updateRequest.query('UPDATE TestMaster SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
 
     return { levelledUp, newLevel: FitnessLevel, newXP: CurrentXP };
 }
 
 // --- Paste all the routes from the list below here ---
 
-
-router.get('/api/current-tr', (req, res) => {
-    if (!req.session.user || !req.session.user.TR) {
-        return res.status(401).json({ message: 'Not logged in' });
-    }
-    res.json({ tr: req.session.user.TR }); 
-});
 
 // CORRECTED: Fetches current student data from TestMaster
 router.get('/api/testmaster/me', async (req, res) => {
@@ -160,7 +153,8 @@ router.post('/api/test/set-password', async (req, res) => {
         await request.query(`
             UPDATE TestMaster 
             SET 
-                Password = @HashedPassword, 
+                Password = @HashedPassword,
+                HasLoggedInBefore = 1,
                 IsFirstLogin = 0 
             WHERE TR = @TR
         `);
@@ -275,7 +269,7 @@ router.post('/api/testrecords', async (req, res) => {
             .query('SELECT Branch, Gender FROM TestMaster WHERE TR = @TR_Lookup');
 
         if (studentInfo.recordset.length === 0) {
-            throw new Error('Student master record not found.');
+            throw new Error('Student TestMaster record not found.');
         }
         const { Branch, Gender } = studentInfo.recordset[0];
         // --- End Get Branch/Gender ---

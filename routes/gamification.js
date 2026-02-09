@@ -20,7 +20,7 @@ async function awardXP(tr, xpAmount, transaction) {
     request.input('TR', sql.Int, tr);
 
     // 1. Get current level and XP
-    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM Master WHERE TR = @TR');
+    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM TestMaster WHERE TR = @TR');
     if (result.recordset.length === 0) return { levelledUp: false };
 
     let { FitnessLevel, CurrentXP } = result.recordset[0];
@@ -43,7 +43,7 @@ async function awardXP(tr, xpAmount, transaction) {
     updateRequest.input('TR', sql.Int, tr);
     updateRequest.input('NewLevel', sql.Int, FitnessLevel);
     updateRequest.input('NewXP', sql.Int, CurrentXP);
-    await updateRequest.query('UPDATE Master SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
+    await updateRequest.query('UPDATE TestMaster SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
 
     return { levelledUp, newLevel: FitnessLevel, newXP: CurrentXP };
 }
@@ -107,7 +107,7 @@ async function runAchievementEvaluation() {
             .query(`
                 WITH Scores AS (
                     SELECT M.TR, (ISNULL(A.AttendanceCount, 0) + ISNULL(L.WorkoutDays, 0)) AS Score
-                    FROM Master M
+                    FROM TestMaster M
                     LEFT JOIN (SELECT TR, COUNT(*) AS AttendanceCount 
                                FROM Attendance 
                                WHERE CreatedAt BETWEEN @WeekStart AND @WeekEnd AND IsPresent = 1 
@@ -146,7 +146,7 @@ async function runAchievementEvaluation() {
         }
 
         // --- 2. Evaluate Individual Achievements ---
-        const studentsResult = await new sql.Request(transaction).query(`SELECT TR, JoinedAt FROM Master WHERE Status = 'Active'`);
+        const studentsResult = await new sql.Request(transaction).query(`SELECT TR, JoinedAt FROM TestMaster WHERE Status = 'Active'`);
 
         for (const student of studentsResult.recordset) {
             const { TR, JoinedAt } = student;
@@ -211,7 +211,7 @@ async function runAchievementEvaluation() {
                         GROUP BY CAST(CreatedAt AS DATE)
                     ) AS LeaveCounts 
                     ON CAST(A.CreatedAt AS DATE) = LeaveCounts.date 
-                    WHERE LeaveCounts.leaveCount > (SELECT COUNT(*) FROM Master WHERE Status='Active') * 0.5
+                    WHERE LeaveCounts.leaveCount > (SELECT COUNT(*) FROM TestMaster WHERE Status='Active') * 0.5
                 `);
                 const gymHolidays = new Set(gymHolidaysRes.recordset.map(r => moment(r.holidayDate).format('YYYY-MM-DD')));
 
@@ -254,7 +254,7 @@ async function runAchievementEvaluation() {
                 await updateBestStreakRequest
                     .input('TR', TR)
                     .input('LongestStreak', longestStreak)
-                    .query(`UPDATE Master SET BestStreak = @LongestStreak WHERE TR = @TR AND BestStreak < @LongestStreak`);
+                    .query(`UPDATE TestMaster SET BestStreak = @LongestStreak WHERE TR = @TR AND BestStreak < @LongestStreak`);
             }
 
             // --- 2c. Milestone Lift ---

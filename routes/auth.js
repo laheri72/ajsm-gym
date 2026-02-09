@@ -16,7 +16,7 @@ router.post('/api/student-login', async (req, res, next) => {
     try {
         const result = await pool.request()
             .input('TR', sql.Int, tr)
-            .query('SELECT TR, Name, Branch, Gender, Status, Password FROM Master WHERE TR = @TR');
+            .query('SELECT TR, ITS, Name, Branch, Gender, Status, Password FROM TestMaster WHERE TR = @TR');
 
         if (result.recordset.length === 0) {
             return res.status(401).json({ success: false, message: 'Invalid TR or password' });
@@ -35,9 +35,13 @@ router.post('/api/student-login', async (req, res, next) => {
         let isLoginSuccessful = false;
 
         // Check for first-time login (Password field is NULL in DB)
-        // ... (rest of your password check logic) ...
         if (student.Password === null) {
-            if (password === student.TR.toString()) {
+            const pass = (password ?? '').toString();
+            const trString = (student.TR ?? '').toString();
+            const itsString = student.ITS != null ? student.ITS.toString() : null;
+
+            // Backward compatible: allow TR or ITS as the default password
+            if (pass === trString || (itsString && pass === itsString)) {
                 isLoginSuccessful = true;
                 forcePasswordChange = true; // Flag to force change on the frontend
             }
@@ -87,7 +91,7 @@ router.post('/api/student/set-initial-password', async (req, res, next) => {
         await pool.request()
             .input('TR', sql.Int, TR)
             .input('HashedPassword', sql.NVarChar(100), hashedPassword)
-            .query('UPDATE Master SET Password = @HashedPassword, HasLoggedInBefore = 1 WHERE TR = @TR');
+            .query('UPDATE TestMaster SET Password = @HashedPassword, HasLoggedInBefore = 1 WHERE TR = @TR');
         
         res.json({ success: true, message: 'Password updated successfully!' });
     } catch (err) {
@@ -105,7 +109,7 @@ router.get('/api/student-session', async (req, res) => {
     try {
       const { TR } = req.session.user;
 
-      // New query that joins Master and Slots to get ALL data
+      // New query that joins TestMaster and Slots to get ALL data
       const result = await pool.request()
         .input('TR', sql.Int, TR)
         .query(`
@@ -119,7 +123,7 @@ router.get('/api/student-session', async (req, res) => {
             M.Height,
             M.Status,   -- <-- ADD THIS LINE
             S.SlotName
-          FROM Master M
+          FROM TestMaster M
           LEFT JOIN Slots S ON M.SlotID = S.SlotID
           WHERE M.TR = @TR
         `);
@@ -313,71 +317,6 @@ router.get('/api/session-user', (req, res) => {
     success: true,
     user: req.session.user
   });
-});
-
-
-//---------🏋️ Fitness Test Login Route
-
-
-// REPLACE your old /api/test-login route with this:
-router.post('/api/test-login', async (req, res) => {
-    const { username, password } = req.body; // username is TR, password is ITS or new pass
-
-    try {
-        const request = pool.request();
-        // Use NVarChar for TR as it comes from a text box
-        request.input('TR_Input', sql.NVarChar(50), username);
-        
-        // Fetch the student from TestMaster
-        const result = await request.query(`
-            SELECT TR, ITS, Password, IsFirstLogin 
-            FROM TestMaster 
-            WHERE TR = @TR_Input
-        `);
-
-        if (result.recordset.length === 0) {
-            return res.status(401).json({ success: false, message: 'Invalid TR or password.' });
-        }
-
-        const student = result.recordset[0];
-        let isLoginSuccessful = false;
-        let forcePasswordChange = false;
-
-        // Check if the student has a new password set
-        if (student.Password) {
-            // --- SCENARIO 1: Standard Login ---
-            // User has a password, compare it
-            const match = await bcrypt.compare(password, student.Password);
-            if (match) {
-                isLoginSuccessful = true;
-                // Check if they are *still* flagged for a first login (shouldn't happen, but good check)
-                forcePasswordChange = student.IsFirstLogin; 
-            }
-        } else {
-            // --- SCENARIO 2: First-Time Login (Legacy) ---
-            // No password set, check if `password` matches their `ITS` number
-            if (password === student.ITS.toString()) {
-                isLoginSuccessful = true;
-                forcePasswordChange = true; // This is the key flag to force a change
-            }
-        }
-
-        // --- Handle Login Result ---
-        if (isLoginSuccessful) {
-            // Login successful. Store the authenticated TR in the session.
-            req.session.user = { TR: student.TR };
-            
-            // Send back the forcePasswordChange flag
-            return res.json({ success: true, forcePasswordChange });
-        } else {
-            // Login failed
-            return res.status(401).json({ success: false, message: 'Invalid TR or password.' });
-        }
-
-    } catch (err) {
-        console.error('Test Login Error:', err);
-        res.status(500).json({ success: false, message: 'Server error during login.' });
-    }
 });
 
 

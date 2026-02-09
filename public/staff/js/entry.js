@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let cachedSlots = null;
     let waitingListDataTable = null;
+    let lastPreviewedTR = null;
 
     // --- CORE FUNCTIONS for Slot and List Management ---
 
@@ -131,21 +132,97 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // --- DYNAMIC FORM LOGIC ---
-    function updateDarajahOptionsBasedOnGender(gender) {
-        if (!gender) return;
-        const isFemale = gender.toLowerCase() === 'female';
-        const darajahSelect = document.getElementById('darajah');
-        if (!darajahSelect) return;
-        const maleOptions = ["Class 5 AM", "Class 5 BM", "Class 6 AM", "Class 6 BM", "Class 7 AM", "Class 7 BM", "Class 8 AM", "Class 9 AM", "Class 10 AM", "Class 11 AM"];
-        darajahSelect.innerHTML = '<option value="" disabled selected>Select Darajah</option>';
-        maleOptions.forEach(optionText => {
-            let displayText = isFemale ? optionText.replace('AM', 'AF').replace('BM', 'BF') : optionText;
-            darajahSelect.appendChild(new Option(displayText, displayText));
+    // --- EVENT LISTENERS (NOW SAFELY INSIDE DOMCONTENTLOADED) ---
+    const trInput = document.getElementById('trNo');
+    const nameInput = document.getElementById('studentName');
+    const darajahInput = document.getElementById('darajah');
+
+    function setAddButtonEnabled(enabled) {
+        const submitBtn = document.getElementById('addStudentBtn');
+        if (submitBtn) submitBtn.disabled = !enabled;
+    }
+
+    function setDarajahValue(darajah) {
+        if (!darajahInput) return;
+        const value = (darajah || '').toString().trim();
+        darajahInput.value = value;
+    }
+
+    function clearPreviewFields() {
+        if (nameInput) nameInput.value = '';
+        setDarajahValue('');
+        setAddButtonEnabled(false);
+        lastPreviewedTR = null;
+    }
+
+    async function previewStudentByTR(tr) {
+        const trValue = (tr || '').toString().trim();
+        const trInt = parseInt(trValue, 10);
+
+        if (!trValue || Number.isNaN(trInt)) {
+            clearPreviewFields();
+            return;
+        }
+
+        if (lastPreviewedTR === trValue) {
+            return;
+        }
+        lastPreviewedTR = trValue;
+
+        setAddButtonEnabled(false);
+        if (nameInput) nameInput.value = 'Loading...';
+        setDarajahValue('');
+
+        try {
+            const res = await fetch('/api/add-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ TR: trValue, preview: true })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data?.success) {
+                const message = data?.message || data?.error || 'Could not fetch student details';
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'error',
+                    title: message,
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+                clearPreviewFields();
+                return;
+            }
+
+            if (nameInput) nameInput.value = data.student?.Name || '';
+            setDarajahValue(data.student?.Darajah || '');
+            setAddButtonEnabled(true);
+
+        } catch (err) {
+            console.error("Preview student error:", err);
+            clearPreviewFields();
+        }
+    }
+
+    if (trInput) {
+        trInput.addEventListener('blur', () => previewStudentByTR(trInput.value));
+        trInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                previewStudentByTR(trInput.value);
+            }
+        });
+        trInput.addEventListener('input', () => {
+            // If staff changes TR after a preview, invalidate the preview fields.
+            const current = trInput.value.trim();
+            if (lastPreviewedTR && current !== lastPreviewedTR) {
+                clearPreviewFields();
+            }
         });
     }
 
-    // --- EVENT LISTENERS (NOW SAFELY INSIDE DOMCONTENTLOADED) ---
     document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
         event.preventDefault();
 
@@ -159,12 +236,9 @@ document.addEventListener("DOMContentLoaded", () => {
         buttonText.classList.add('d-none');
         spinner.classList.remove('d-none');
 
-        // 3. Prepare payload (same as before)
+        // 3. Prepare payload (TR only; backend fetches Name/Darajah from TestMaster)
         const payload = {
-            TR: document.getElementById('trNo').value.trim(), 
-            Name: document.getElementById('studentName').value,
-            Darajah: document.getElementById('darajah').value,
-            // Goal: document.getElementById('goal').value // <-- MODIFICATION: Removed Goal
+            TR: document.getElementById('trNo').value.trim()
         };
 
         try {
@@ -188,6 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 refreshSlotEntryPage(); // Refreshes tables
                 this.reset(); // Resets the form fields
+                clearPreviewFields();
             } else {
                 Swal.fire({ 
                     icon: 'error', 
@@ -374,10 +449,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- PAGE INITIALIZATION ---
 
-    const user = JSON.parse(localStorage.getItem('staffUser'));
-    if (user && user.Gender) {
-        updateDarajahOptionsBasedOnGender(user.Gender);
-    }
+    // Manual entry now requires TR lookup first.
+    clearPreviewFields();
 
     // --- START: MODIFIED BULK IMPORT LOGIC ---
 
@@ -449,57 +522,149 @@ document.addEventListener("DOMContentLoaded", () => {
         reader.readAsArrayBuffer(file);
     });
 
-    // MODIFIED function inside the DOMContentLoaded listener
-    async function validateAndPreview(students) {
-        Swal.fire({
-            title: 'Validating Students...',
-            text: 'Please wait while we check for duplicates and errors.',
-            didOpen: () => { Swal.showLoading() }
-        });
+    async function mapWithConcurrency(items, limit, mapper) {
+        const results = new Array(items.length);
+        let nextIndex = 0;
 
-        const res = await fetch('/api/bulk-validate-students', {
+        async function worker() {
+            while (true) {
+                const index = nextIndex++;
+                if (index >= items.length) return;
+                results[index] = await mapper(items[index], index);
+            }
+        }
+
+        const workerCount = Math.max(1, Math.min(limit, items.length));
+        await Promise.all(Array.from({ length: workerCount }, () => worker()));
+        return results;
+    }
+
+    async function previewTR(tr) {
+        const res = await fetch('/api/add-student', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ students })
+            body: JSON.stringify({ TR: tr, preview: true })
         });
-        const result = await res.json();
 
-        if (!res.ok) {
-            Swal.fire('Validation Error', result.message || 'An unknown error occurred.', 'error');
-            return;
+        let data = null;
+        try { data = await res.json(); } catch { /* ignore */ }
+
+        if (res.ok && data?.success) {
+            return { tr, status: 'ok', name: data.student?.Name, darajah: data.student?.Darajah };
         }
 
-        // NEW: Handle the more detailed response
-        const { validStudents, duplicateTRs, invalidRows } = result;
+        const message = data?.message || data?.error || 'Unknown error';
+        if (res.status === 404) return { tr, status: 'not_found', message };
+        if (res.status === 400) {
+            if (message.includes('already assigned')) return { tr, status: 'already_active', message };
+            if (message.includes('already in waiting list')) return { tr, status: 'already_waiting', message };
+            return { tr, status: 'blocked', message };
+        }
+        return { tr, status: 'error', message };
+    }
 
-        // Build the HTML for the SweetAlert summary
+    async function addTRToWaitingList(tr) {
+        const res = await fetch('/api/add-student', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ TR: tr })
+        });
+
+        let data = null;
+        try { data = await res.json(); } catch { /* ignore */ }
+
+        if (res.ok && data?.success) {
+            return { tr, status: 'added' };
+        }
+        return { tr, status: 'failed', message: data?.message || data?.error || 'Unknown error' };
+    }
+
+    // MODIFIED function inside the DOMContentLoaded listener
+    async function validateAndPreview(students) {
+        const rawTRs = students
+            .map(s => (s.TR ?? '').toString().trim())
+            .filter(Boolean);
+
+        const seen = new Set();
+        const uniqueTRs = [];
+        const duplicateInFile = new Set();
+        rawTRs.forEach(tr => {
+            if (seen.has(tr)) duplicateInFile.add(tr);
+            else {
+                seen.add(tr);
+                uniqueTRs.push(tr);
+            }
+        });
+
+        Swal.fire({
+            title: 'Validating TRs...',
+            text: 'Please wait while we fetch Name/Darajah from TestMaster.',
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        const previews = await mapWithConcurrency(uniqueTRs, 6, (tr) => previewTR(tr));
+
+        const toAdd = previews.filter(p => p.status === 'ok');
+        const alreadyActive = previews.filter(p => p.status === 'already_active');
+        const alreadyWaiting = previews.filter(p => p.status === 'already_waiting');
+        const notFound = previews.filter(p => p.status === 'not_found');
+        const blocked = previews.filter(p => p.status === 'blocked');
+        const errors = previews.filter(p => p.status === 'error');
+
+        const list = (items, formatter) => {
+            const max = 12;
+            const shown = items.slice(0, max);
+            const more = items.length - shown.length;
+            const html = shown.map(formatter).join('');
+            return more > 0 ? `${html}<li>...and ${more} more</li>` : html;
+        };
+
         let summaryHtml = `<div style="text-align: left; margin-top: 1rem;">`;
+        summaryHtml += `<p class="text-success"><strong>✅ Ready to add: ${toAdd.length}</strong></p>`;
 
-        if (validStudents.length > 0) {
-            summaryHtml += `<p class="text-success"><strong>✅ Students to be added: ${validStudents.length}</strong></p>`;
-        }
-
-        if (duplicateTRs.length > 0) {
+        if (duplicateInFile.size > 0) {
+            const dupes = Array.from(duplicateInFile);
             summaryHtml += `
                 <hr>
-                <p class="text-warning"><strong>⚠️ Skipping ${duplicateTRs.length} duplicate(s):</strong></p>
-                <ul class="swal-list">
-                    ${duplicateTRs.map(s => `<li>TR <strong>${s.TR}</strong> (${s.Name}) already exists.</li>`).join('')}
-                </ul>`;
+                <p class="text-warning"><strong>⚠️ Duplicate TRs in file: ${dupes.length}</strong></p>
+                <ul class="swal-list">${list(dupes, (tr) => `<li>TR <strong>${tr}</strong></li>`)}</ul>
+            `;
         }
-        
-        if (invalidRows.length > 0) {
+
+        if (alreadyWaiting.length > 0) {
             summaryHtml += `
                 <hr>
-                <p class="text-danger"><strong>❌ Skipping ${invalidRows.length} invalid row(s):</strong></p>
-                <ul class="swal-list">
-                    ${invalidRows.map(row => `<li>Row ${row.fileRow}: ${row.rowData.Name} - <strong>${row.reason}</strong></li>`).join('')}
-                </ul>`;
+                <p class="text-warning"><strong>⚠️ Already in waiting list: ${alreadyWaiting.length}</strong></p>
+                <ul class="swal-list">${list(alreadyWaiting, (s) => `<li>TR <strong>${s.tr}</strong></li>`)}</ul>
+            `;
+        }
+
+        if (alreadyActive.length > 0) {
+            summaryHtml += `
+                <hr>
+                <p class="text-warning"><strong>⚠️ Already Active: ${alreadyActive.length}</strong></p>
+                <ul class="swal-list">${list(alreadyActive, (s) => `<li>TR <strong>${s.tr}</strong></li>`)}</ul>
+            `;
+        }
+
+        if (notFound.length > 0) {
+            summaryHtml += `
+                <hr>
+                <p class="text-danger"><strong>❌ Not found in TestMaster: ${notFound.length}</strong></p>
+                <ul class="swal-list">${list(notFound, (s) => `<li>TR <strong>${s.tr}</strong></li>`)}</ul>
+            `;
+        }
+
+        if (blocked.length > 0 || errors.length > 0) {
+            summaryHtml += `
+                <hr>
+                <p class="text-danger"><strong>❌ Errors: ${blocked.length + errors.length}</strong></p>
+                <ul class="swal-list">${list([...blocked, ...errors], (s) => `<li>TR <strong>${s.tr}</strong> - ${s.message}</li>`)}</ul>
+            `;
         }
 
         summaryHtml += `</div>`;
 
-        // Show the confirmation dialog
         Swal.fire({
             title: 'Import Summary',
             html: summaryHtml,
@@ -507,36 +672,46 @@ document.addEventListener("DOMContentLoaded", () => {
             showCancelButton: true,
             confirmButtonColor: '#4CAF50',
             cancelButtonColor: '#d33',
-            confirmButtonText: `Yes, add ${validStudents.length} students!`,
+            confirmButtonText: `Yes, add ${toAdd.length} students!`,
             preConfirm: () => {
-                if (validStudents.length === 0) {
-                    Swal.showValidationMessage('There are no new students to import.');
+                if (toAdd.length === 0) {
+                    Swal.showValidationMessage('There are no students ready to import.');
                     return false;
                 }
                 return true;
             }
         }).then((action) => {
             if (action.isConfirmed) {
-                commitBulkAdd(validStudents);
+                commitBulkAdd(toAdd.map(s => s.tr));
             }
         });
     }
-        
-    // 8. Function to send the final, validated list for insertion
-    async function commitBulkAdd(validStudents) {
-        const res = await fetch('/api/bulk-commit-students', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ students: validStudents })
-        });
-        const data = await res.json();
 
-        if (res.ok) {
-            Swal.fire('Success!', `${data.count} students have been added to the waiting list.`, 'success');
-            refreshSlotEntryPage(); // Use your existing function to refresh tables!
+    async function commitBulkAdd(trs) {
+        Swal.fire({
+            title: 'Adding students...',
+            text: 'Please wait while we add students to the waiting list.',
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        const results = await mapWithConcurrency(trs, 6, (tr) => addTRToWaitingList(tr));
+        const added = results.filter(r => r.status === 'added');
+        const failed = results.filter(r => r.status === 'failed');
+
+        if (failed.length === 0) {
+            Swal.fire('Success!', `${added.length} students have been added to the waiting list.`, 'success');
         } else {
-            Swal.fire('Error!', 'Could not add students: ' + data.message, 'error');
+            const max = 10;
+            const details = failed.slice(0, max).map(f => `<li>TR <strong>${f.tr}</strong> - ${f.message}</li>`).join('');
+            const more = failed.length - Math.min(max, failed.length);
+            Swal.fire({
+                icon: 'warning',
+                title: 'Completed with issues',
+                html: `Added <strong>${added.length}</strong>. Failed <strong>${failed.length}</strong>.<br><br><ul class="swal-list">${details}${more > 0 ? `<li>...and ${more} more</li>` : ''}</ul>`
+            });
         }
+
+        refreshSlotEntryPage();
     }
 
 
@@ -545,8 +720,7 @@ document.addEventListener("DOMContentLoaded", () => {
     downloadTemplateBtn.addEventListener('click', () => {
         // Define the headers for the template file
         const headers = [
-            // MODIFICATION: Removed "Goal"
-            ["TR", "Name", "Darajah"] 
+            ["TR"]
         ];
 
         // Create a new worksheet from the headers

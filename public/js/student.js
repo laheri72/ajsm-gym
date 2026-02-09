@@ -187,15 +187,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Keyboard Shortcuts ---
     document.addEventListener('keydown', (e) => {
-        if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-            const key = e.key.toLowerCase();
-            if (key === '1') window.location.hash = 'planner';
-            if (key === '2') window.location.hash = 'logs';
-            if (key === '3') window.location.hash = 'attendance';
-            if (key === '4') window.location.hash = 'leaves';
-            if (key === '5') window.location.hash = 'tips';
-            if (key === '6') window.location.hash = 'fame';
-        }
+         if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+             const key = e.key.toLowerCase();
+             if (key === '1') window.location.hash = 'planner';
+             if (key === '2') window.location.hash = 'logs';
+             if (key === '3') window.location.hash = 'attendance';
+             if (key === '4') window.location.hash = 'leaves';
+             if (key === '5') window.location.hash = 'tips';
+             if (key === '6') window.location.hash = 'fame';
+             if (key === '7') window.location.hash = 'fitness';
+         }
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
             document.getElementById('savePlanBtn')?.click();

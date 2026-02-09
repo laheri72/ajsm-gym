@@ -106,7 +106,7 @@ async function getConsistencyProgress(tr) {
                 WHERE TR = @TR AND OnLeave = 1;
 
                 -- 3. Get the user's personal best streak
-                SELECT BestStreak FROM Master WHERE TR = @TR;
+                SELECT BestStreak FROM TestMaster WHERE TR = @TR;
             `);
 
         // 1. Process "present" dates.
@@ -218,7 +218,7 @@ async function getMilestoneLiftProgress(tr) {
 // REPLACE the old getIronDedicationProgress helper function
 async function getIronDedicationProgress(tr) {
     const studentRes = await pool.request().input('TR', sql.Int, tr)
-        .query(`SELECT TotalMinutesLogged FROM Master WHERE TR = @TR`);
+        .query(`SELECT TotalMinutesLogged FROM TestMaster WHERE TR = @TR`);
 
     const totalMinutes = studentRes.recordset[0]?.TotalMinutesLogged || 0;
     const currentHours = totalMinutes / 60;
@@ -261,7 +261,7 @@ async function awardXP(tr, xpAmount, transaction) {
     request.input('TR', sql.Int, tr);
 
     // 1. Get current level and XP
-    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM Master WHERE TR = @TR');
+    const result = await request.query('SELECT FitnessLevel, CurrentXP FROM TestMaster WHERE TR = @TR');
     if (result.recordset.length === 0) return { levelledUp: false };
 
     let { FitnessLevel, CurrentXP } = result.recordset[0];
@@ -284,7 +284,7 @@ async function awardXP(tr, xpAmount, transaction) {
     updateRequest.input('TR', sql.Int, tr);
     updateRequest.input('NewLevel', sql.Int, FitnessLevel);
     updateRequest.input('NewXP', sql.Int, CurrentXP);
-    await updateRequest.query('UPDATE Master SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
+    await updateRequest.query('UPDATE TestMaster SET FitnessLevel = @NewLevel, CurrentXP = @NewXP WHERE TR = @TR');
 
     return { levelledUp, newLevel: FitnessLevel, newXP: CurrentXP };
 }
@@ -329,7 +329,7 @@ router.get('/api/daily-attendance', async (req, res) => {
                         WHEN A.IsPresent = 1 THEN 'Present'
                         ELSE 'Absent'
                     END AS IsPresentToday
-                FROM Master M
+                FROM TestMaster M
                 LEFT JOIN Attendance A
                     ON M.TR = A.TR 
                     -- 4. Find attendance records that fall within the UTC range of the IST day.
@@ -371,7 +371,7 @@ router.get('/api/active-sessions', async (req, res) => {
                     M.Name,
                     A.CreatedAt -- The check-in timestamp
                 FROM Attendance A
-                JOIN Master M ON A.TR = M.TR
+                JOIN TestMaster M ON A.TR = M.TR
                 WHERE 
                     M.Branch = @Branch 
                     AND M.Gender = @Gender
@@ -410,7 +410,7 @@ router.get('/api/verify-tr/:tr', async (req, res) => {
 
         const result = await request.query(`
             SELECT m.TR, m.Name, m.Darajah, m.Goal, s.SlotID, s.SlotName
-            FROM Master m
+            FROM TestMaster m
             LEFT JOIN Slots s ON m.SlotID = s.SlotID
             WHERE m.TR = @TR AND m.Status = 'Active' AND m.Branch = @Branch AND m.Gender = @Gender
         `);
@@ -534,10 +534,10 @@ router.post('/api/checkout', async (req, res) => {
                 SET OutTime = @OutTime, DurationInMinutes = @Duration
                 WHERE AttendanceID = @AttendanceID;
             `);
-        // Update total minutes in Master table
+        // Update total minutes in TestMaster table
         await request.input('TR_Update', sql.Int, TR)
             .input('Duration_Update', sql.Int, duration)
-            .query('UPDATE Master SET TotalMinutesLogged = TotalMinutesLogged + @Duration_Update WHERE TR = @TR_Update');
+            .query('UPDATE TestMaster SET TotalMinutesLogged = TotalMinutesLogged + @Duration_Update WHERE TR = @TR_Update');
 
 
         // --- ✅ NEW XP Integration (10 XP per minute) ---
@@ -870,7 +870,7 @@ router.post('/api/attendance-manual', async (req, res) => {
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
-            .query(`SELECT 1 FROM Master WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender`);
+            .query(`SELECT 1 FROM TestMaster WHERE TR = @TR AND Status = 'Active' AND Branch = @Branch AND Gender = @Gender`);
 
         if (studentCheck.recordset.length === 0) {
             return res.status(403).json({ error: '❌ TR not authorized or inactive.' });
@@ -982,7 +982,7 @@ router.get('/api/student-lookup/:query', async (req, res) => {
     const isNumeric = /^\d+$/.test(query);
 
     let sqlQuery = `
-        SELECT TR FROM Master 
+        SELECT TR FROM TestMaster 
         WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND 
     `;
 
@@ -1121,42 +1121,78 @@ router.post('/api/add-student', async (req, res) => {
         if (!req.session.user) {
             return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
         }
-        
-        // MODIFICATION: Removed Goal from destructuring
-        const { TR, Name, Darajah } = req.body;
+
+        const { TR, preview } = req.body;
         const { Branch, Gender } = req.session.user;
-
-        // --- ✅ START: NEW CHECK ---
-        // 1. Check if the TR already exists in the Master table
-        const checkRequest = pool.request();
-        checkRequest.input('TR', sql.Int, TR);
-        const existingMember = await checkRequest.query(`
-            SELECT TR, Status FROM Master WHERE TR = @TR
-        `);
-
-        // 2. If a record is found, stop and send an error message
-        if (existingMember.recordset.length > 0) {
-            const status = existingMember.recordset[0].Status;
-            return res.status(409).json({ // 409 Conflict is a good status code here
-                success: false, 
-                message: `This TR already exists as an '${status}' member. Please check the active/inactive students list or contact an admin.` 
-            });
+        if (!Branch || !Gender) {
+            return res.status(401).json({ success: false, message: 'Unauthorized. Session missing branch or gender.' });
         }
-        // --- ✅ END: NEW CHECK ---
 
-        // 3. If the TR is unique, proceed to insert into the WaitingList
-        await pool.request()
-            .input('TR', sql.Int, TR)
-            .input('Name', sql.NVarChar(100), Name)
-            .input('Darajah', sql.NVarChar(50), Darajah)
-            // .input('Goal', sql.NVarChar(100), Goal) // <-- MODIFICATION: Removed
+        const trInt = parseInt(TR, 10);
+        if (!TR || Number.isNaN(trInt)) {
+            return res.status(400).json({ success: false, message: 'TR is required' });
+        }
+
+        // 1️⃣ Fetch student from TestMaster (single identity source)
+        const studentResult = await pool.request()
+            .input('TR', sql.Int, trInt)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
-                INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender)
-                VALUES (@TR, @Name, @Darajah, @Branch, @Gender)
+                SELECT Name, Darajah, Status
+                FROM TestMaster
+                WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
             `);
-        // MODIFICATION: Removed Goal from INSERT statement
+
+        if (studentResult.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: 'Student not found in TestMaster' });
+        }
+
+        const student = studentResult.recordset[0];
+
+        // 2️⃣ Reject if already active gym member
+        if (student.Status === 'Active') {
+            return res.status(400).json({ success: false, message: 'Student already assigned to gym' });
+        }
+
+        // 3️⃣ Prevent duplicate waiting list entry
+        const waitingCheck = await pool.request()
+            .input('TR', sql.Int, trInt)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`SELECT 1 FROM WaitingList WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+
+        if (waitingCheck.recordset.length > 0) {
+            return res.status(400).json({ success: false, message: 'Student already in waiting list' });
+        }
+
+        // Optional "preview" mode for UI auto-fill (no insert)
+        if (preview) {
+            return res.json({
+                success: true,
+                canAdd: true,
+                student: { Name: student.Name, Darajah: student.Darajah, Status: student.Status }
+            });
+        }
+
+        // 4️⃣ Insert into WaitingList (using TestMaster data only)
+        const insertRes = await pool.request()
+            .input('TR', sql.Int, trInt)
+            .input('Name', sql.NVarChar(100), student.Name)
+            .input('Darajah', sql.NVarChar(50), student.Darajah)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                IF NOT EXISTS (SELECT 1 FROM WaitingList WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender)
+                BEGIN
+                    INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender)
+                    VALUES (@TR, @Name, @Darajah, @Branch, @Gender)
+                END
+            `);
+
+        if (Array.isArray(insertRes.rowsAffected) && insertRes.rowsAffected[0] === 0) {
+            return res.status(400).json({ success: false, message: 'Student already in waiting list' });
+        }
 
         res.json({ success: true, message: 'Student added to Waiting List.' });
 
@@ -1170,51 +1206,93 @@ router.post('/api/add-student', async (req, res) => {
 
 // ➕ Assign WaitingList Student to a Slot
 router.post('/api/assign-student-slot', async (req, res) => {
-  try {
     if (!req.session.user) {
-      // If there's no session, stop right here and send an error.
-      return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
     }
 
     const { WaitingID, SlotID } = req.body;
+    const waitingIdInt = parseInt(WaitingID, 10);
+    const slotIdInt = parseInt(SlotID, 10);
+
+    if (!waitingIdInt || !slotIdInt) {
+        return res.status(400).json({ success: false, message: 'Missing data' });
+    }
+
     const { Branch, Gender } = req.session.user;
+    if (!Branch || !Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Session missing branch or gender.' });
+    }
 
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        const request = new sql.Request(transaction);
 
-    // 1️⃣ Fetch student from WaitingList
-    const studentRes = await pool.request()
-      .input('WaitingID', sql.Int, WaitingID)
-      .query(`SELECT TR, Name, Darajah FROM WaitingList WHERE WaitingID=@WaitingID`);
-    // MODIFICATION: Explicitly selected columns, removed Goal
+        // 1️⃣ Get TR from WaitingList (scoped)
+        const waiting = await request
+            .input('WaitingID', sql.Int, waitingIdInt)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT TR
+                FROM WaitingList
+                WHERE WaitingID = @WaitingID AND Branch = @Branch AND Gender = @Gender
+            `);
 
-    if (!studentRes.recordset.length)
-      return res.status(404).json({ success: false, message: "Student not found" });
-    
-    const stu = studentRes.recordset[0];
+        if (waiting.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: 'Waiting entry not found' });
+        }
 
-    // 2️⃣ Insert into Master
-    await pool.request()
-      .input('TR', sql.Int, stu.TR)
-      .input('Name', sql.NVarChar(100), stu.Name)
-      .input('Darajah', sql.NVarChar(50), stu.Darajah)
-      .input('Branch', sql.NVarChar(50), Branch)
-      .input('Gender', sql.NVarChar(10), Gender)
-      .input('SlotID', sql.Int, SlotID)
-      .query(`
-        INSERT INTO Master (TR, Name, Darajah, Branch, Gender, SlotID, Status)
-        VALUES (@TR, @Name, @Darajah, @Branch, @Gender, @SlotID, 'Active')
-      `);
+        const TR = waiting.recordset[0].TR;
 
-    // 3️⃣ Remove from WaitingList
-    await pool.request()
-      .input('WaitingID', sql.Int, WaitingID)
-      .query(`DELETE FROM WaitingList WHERE WaitingID=@WaitingID`);
+        // 2️⃣ Verify student exists + not active
+        const studentRes = await request
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT Status
+                FROM TestMaster
+                WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
+            `);
 
-    res.json({ success: true, message: "Student assigned to slot" });
+        if (studentRes.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: 'Student not found in TestMaster' });
+        }
 
-  } catch (err) {
-    console.error("Assign student error:", err);
-    res.status(500).json({ success: false, message: "Failed to assign student" });
-  }
+        if (studentRes.recordset[0].Status === 'Active') {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'Student already assigned to gym' });
+        }
+
+        // 3️⃣ Activate in TestMaster
+        await request
+            .input('SlotID', sql.Int, slotIdInt)
+            .query(`
+                UPDATE TestMaster
+                SET
+                    Status = 'Active',
+                    SlotID = @SlotID,
+                    JoinedAt = GETDATE()
+                WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
+            `);
+
+        // 4️⃣ Remove from WaitingList
+        await request.query(`
+            DELETE FROM WaitingList
+            WHERE WaitingID = @WaitingID AND Branch = @Branch AND Gender = @Gender
+        `);
+
+        await transaction.commit();
+        res.json({ success: true, message: "Student assigned to slot" });
+
+    } catch (err) {
+        if (transaction._aborted === false) {
+            await transaction.rollback();
+        }
+        console.error("Assign student error:", err);
+        res.status(500).json({ success: false, message: "Failed to assign student" });
+    }
 });
 
 // routes/staff.js
@@ -1303,7 +1381,7 @@ router.post('/api/bulk-validate-students', async (req, res) => {
         const params = incomingTRs.map((tr, index) => `@TR${index}`);
         incomingTRs.forEach((tr, index) => request.input(`TR${index}`, sql.Int, tr));
         
-        const result = await request.query(`SELECT TR FROM Master WHERE TR IN (${params.join(',')})`);
+        const result = await request.query(`SELECT TR FROM TestMaster WHERE TR IN (${params.join(',')})`);
         
         const existingTRs = new Set(result.recordset.map(r => r.TR));
 
@@ -1425,7 +1503,7 @@ router.get('/api/slots', async (req, res) => {
         SELECT s.SlotID, s.SlotName, s.MaxCapacity,
           (s.MaxCapacity - COUNT(m.TR)) AS AvailableSeats
         FROM Slots s
-        LEFT JOIN Master m ON s.SlotID = m.SlotID AND m.Status = 'Active'
+        LEFT JOIN TestMaster m ON s.SlotID = m.SlotID AND m.Status = 'Active'
         WHERE s.Branch = @Branch AND s.Gender = @Gender AND s.IsActive = 1
         GROUP BY s.SlotID, s.SlotName, s.MaxCapacity
         ORDER BY s.SlotName
@@ -1454,7 +1532,7 @@ router.delete('/api/slots/:id', async (req, res) => {
 
         // Step 1: Unassign all active students from this slot
         await request.query(`
-            UPDATE Master SET SlotID = NULL WHERE SlotID = @SlotID;
+            UPDATE TestMaster SET SlotID = NULL WHERE SlotID = @SlotID;
         `);
 
         // Step 2: permanently delete the slot itself
@@ -1491,7 +1569,7 @@ router.get('/api/attendance-record/:tr/:date', async (req, res) => {
         request.input('Date', sql.Date, date);
 
         // First, authorize that the staff member can view this student
-        const studentCheck = await request.query(`SELECT 1 FROM Master WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+        const studentCheck = await request.query(`SELECT 1 FROM TestMaster WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
         if (studentCheck.recordset.length === 0) {
             return res.status(403).json({ success: false, error: 'Forbidden: TR not found in your branch/gender' });
         }
@@ -1614,7 +1692,7 @@ router.post('/api/attendance/bulk-leave', async (req, res) => {
             MERGE Attendance AS target
             USING (
                 -- Select all active students who had joined by the event date
-                SELECT TR FROM Master 
+                SELECT TR FROM TestMaster 
                 WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND JoinedAt <= @Date
             ) AS source
             ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = @Date)
@@ -1694,7 +1772,7 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                     M.TR, M.Name, M.JoinedAt, S.SlotName,
                     DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
                     A.IsPresent, A.OnLeave
-                FROM Master M
+                FROM TestMaster M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
                 LEFT JOIN Slots S ON M.SlotID = S.SlotID
                 WHERE 
@@ -1773,7 +1851,7 @@ router.put('/api/students/status/:TR', async (req, res) => {
         request.input('Status', sql.NVarChar(20), Status);
 
         await request.query(`
-            UPDATE Master
+            UPDATE TestMaster
             SET
                 Status = @Status,
                 SlotID = CASE WHEN @Status = 'Inactive' THEN NULL ELSE SlotID END
@@ -1809,7 +1887,7 @@ router.get('/api/staff/leaves/pending', async (req, res) => {
                     L.Status, -- <<-- 1. ADDED THIS LINE
                     M.Name AS StudentName
                 FROM LeaveRequests L
-                JOIN Master M ON L.TR = M.TR
+                JOIN TestMaster M ON L.TR = M.TR
                 WHERE L.Status IN ('Pending', 'On Hold') AND M.Branch = @Branch AND M.Gender = @Gender -- <<-- 2. MODIFIED THIS LINE
                 ORDER BY L.RequestedAt ASC
             `);
@@ -1925,7 +2003,7 @@ router.get('/api/staff/leaves/history', async (req, res) => {
                     L.Status, L.ReviewedBy, L.ReviewedAt, L.Remarks,
                     M.Name AS StudentName
                 FROM LeaveRequests L
-                JOIN Master M ON L.TR = M.TR
+                JOIN TestMaster M ON L.TR = M.TR
                 WHERE L.Status <> 'Pending' AND M.Branch = @Branch AND M.Gender = @Gender
                 ORDER BY L.ReviewedAt DESC
             `);
@@ -1954,11 +2032,11 @@ router.get('/api/overview-stats', async (req, res) => {
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
                 SELECT
-                    (SELECT COUNT(*) FROM Master WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender) AS activeStudents,
-                    (SELECT COUNT(*) FROM Master WHERE Status = 'Inactive' AND Branch = @Branch AND Gender = @Gender) AS inactiveStudents,
+                    (SELECT COUNT(*) FROM TestMaster WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender) AS activeStudents,
+                    (SELECT COUNT(*) FROM TestMaster WHERE Status = 'Inactive' AND Branch = @Branch AND Gender = @Gender) AS inactiveStudents,
                     (SELECT COUNT(*) FROM Slots WHERE IsActive = 1 AND Branch = @Branch AND Gender = @Gender) AS slots,
                     
-                    (SELECT COUNT(T.TestLog) FROM TestRecords T JOIN Master M ON T.TR = M.TR WHERE M.Branch = @Branch AND M.Gender = @Gender) AS fitnessTests,
+                    (SELECT COUNT(T.TestLog) FROM TestRecords T JOIN TestMaster M ON T.TR = M.TR WHERE M.Branch = @Branch AND M.Gender = @Gender) AS fitnessTests,
                     
                     -- --- ✅ REFINED LOGIC ---
                     -- This line is changed to compare dates in IST (+330 minutes) instead of UTC.
@@ -2006,7 +2084,7 @@ router.get('/api/staff/student-search', async (req, res) => {
             .input('Gender', sql.NVarChar, Gender)
             .query(`
                 SELECT TOP 10 TR, Name 
-                FROM Master
+                FROM TestMaster
                 WHERE (CAST(TR AS NVARCHAR(20)) LIKE @SearchTerm OR Name LIKE @SearchTerm)
                   AND Branch = @Branch
                   AND Gender = @Gender
@@ -2037,7 +2115,7 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
             .input('TR', sql.Int, tr)
             .input('Branch', sql.NVarChar, Branch)
             .input('Gender', sql.NVarChar, Gender)
-            .query(`SELECT 1 FROM Master WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+            .query(`SELECT 1 FROM TestMaster WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
         
         if (authResult.recordset.length === 0) {
             return res.status(403).json({ success: false, message: 'You are not authorized to view this student.' });
@@ -2064,7 +2142,7 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
             ]).then(([consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication]) => ({ consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication })),
             
             // 2. Get Basic Info
-            pool.request().input('TR', sql.Int, tr).query(`SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName FROM Master M LEFT JOIN Slots S ON M.SlotID = S.SlotID WHERE M.TR = @TR;`),
+            pool.request().input('TR', sql.Int, tr).query(`SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName FROM TestMaster M LEFT JOIN Slots S ON M.SlotID = S.SlotID WHERE M.TR = @TR;`),
             
             // 3. Get Earned Achievements
             pool.request().input('TR', sql.Int, tr).query(`SELECT A.AchievementName, A.Description, A.BadgeImageURL, SA.DateEarned FROM StudentAchievements SA JOIN Achievements A ON SA.AchievementID = A.AchievementID WHERE SA.TR = @TR ORDER BY SA.DateEarned DESC;`),
@@ -2159,7 +2237,7 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
             DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
             SELECT
                 (SELECT ISNULL(AVG(CAST(DurationInMinutes AS FLOAT)), 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND DurationInMinutes IS NOT NULL) as avgDuration,
-                (SELECT TOP 1 S.SlotName FROM Attendance A JOIN Master M ON A.TR = M.TR JOIN Slots S ON M.SlotID = S.SlotID WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL GROUP BY S.SlotName ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
+                (SELECT TOP 1 S.SlotName FROM Attendance A JOIN TestMaster M ON A.TR = M.TR JOIN Slots S ON M.SlotID = S.SlotID WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL GROUP BY S.SlotName ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
                 (SELECT ISNULL(SUM(DurationInMinutes) / 60.0, 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as totalHoursThisWeek;
         `;
         const durationSummaryResult = await request.query(durationSummaryQuery);
@@ -2179,7 +2257,7 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
         const allTrainingPlansQuery = `
             SELECT P.TR, M.Name, P.CreatedAt, STRING_AGG(B.Name, ', ') AS BodyParts
             FROM TrainingPlan P
-            JOIN Master M ON P.TR = M.TR
+            JOIN TestMaster M ON P.TR = M.TR
             JOIN TrainingLog L ON P.PlanID = L.PlanID
             JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
             WHERE P.Branch = @Branch AND P.Gender = @Gender
@@ -2191,7 +2269,7 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
         const engagementReportQuery = `
             WITH LastVisit AS (SELECT TR, MAX(CreatedAt) as lastVisitDate FROM Attendance GROUP BY TR)
             SELECT M.Name, ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours, ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration, DATEDIFF(day, LV.lastVisitDate, DATEADD(MINUTE, 330, GETUTCDATE())) as DaysSinceLastVisit
-            FROM Master M
+            FROM TestMaster M
             LEFT JOIN Attendance A ON M.TR = A.TR
             LEFT JOIN LastVisit LV ON M.TR = LV.TR
             WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
@@ -2249,7 +2327,7 @@ router.get('/api/staff/workout-summary-by-bodypart', async (req, res) => {
             .query(`
                 SELECT
                     M.TR, M.Name, COUNT(L.LogID) AS WorkoutCount
-                FROM Master M
+                FROM TestMaster M
                 JOIN TrainingPlan P ON M.TR = P.TR
                 JOIN TrainingLog L ON P.PlanID = L.PlanID
                 JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
@@ -2284,7 +2362,7 @@ router.get('/api/staff/goal-alignment', async (req, res) => {
             .input('PartName', sql.NVarChar(50), partName)
             .query(`
                 SELECT M.Name, M.Goal, COUNT(L.LogID) as TimesTrained
-                FROM Master M
+                FROM TestMaster M
                 LEFT JOIN TrainingPlan P ON M.TR = P.TR
                 LEFT JOIN TrainingLog L ON P.PlanID = L.PlanID
                 LEFT JOIN BodyParts B ON L.BodyPartID = B.BodyPartID AND B.Name = @PartName
@@ -2325,16 +2403,16 @@ router.get('/api/students', async (req, res) => {
                     M.[Name],
                     M.[Darajah],
                     M.[Goal],
-                    M.[SlotID],   -- Added: The frontend needs this for logic
+                    M.[SlotID],
                     S.[SlotName],
                     S.[IsActive]
                 FROM
-                    [Master] AS M
+                    [TestMaster] AS M
                 LEFT JOIN
                     [Slots] AS S ON M.[SlotID] = S.[SlotID]
                 WHERE
-                    M.[Status] = 'Active' 
-                    AND M.[Branch] = @Branch 
+                    M.[Status] = 'Active'
+                    AND M.[Branch] = @Branch
                     AND M.[Gender] = @Gender;
             `);
         
@@ -2365,7 +2443,7 @@ router.put('/api/change-student-slot', async (req, res) => {
     // 🔹 Check capacity first
     const capacityCheck = await request.query(`
       SELECT s.MaxCapacity, 
-             (SELECT COUNT(*) FROM Master WHERE SlotID = s.SlotID AND Status = 'Active') AS Assigned
+             (SELECT COUNT(*) FROM TestMaster WHERE SlotID = s.SlotID AND Status = 'Active') AS Assigned
       FROM Slots s
       WHERE s.SlotID = @SlotID AND s.IsActive = 1 
     `);
@@ -2381,7 +2459,7 @@ router.put('/api/change-student-slot', async (req, res) => {
 
     // 🔹 Update student's slot
     await request.query(`
-      UPDATE Master
+      UPDATE TestMaster
       SET SlotID = @SlotID
       WHERE TR = @TR
     `);
@@ -2418,7 +2496,7 @@ router.put('/api/change-student-goal', async (req, res) => {
         request.input('Gender', sql.NVarChar(10), req.session.user.Gender);
 
         const result = await request.query(`
-            UPDATE Master
+            UPDATE TestMaster
             SET Goal = @Goal
             WHERE TR = @TR
               AND Branch = @Branch
@@ -2451,7 +2529,7 @@ router.put('/api/slots/:id', async (req, res) => {
         UPDATE Slots 
         SET SlotName = @SlotName, MaxCapacity = @MaxCapacity
         WHERE SlotID = @SlotID
-        WHERE @MaxCapacity >= (SELECT COUNT(*) FROM Master WHERE SlotID=@SlotID AND Status='Active')
+        WHERE @MaxCapacity >= (SELECT COUNT(*) FROM TestMaster WHERE SlotID=@SlotID AND Status='Active')
 
       `);
 
