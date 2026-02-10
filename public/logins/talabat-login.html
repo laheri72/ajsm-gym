@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GYM Login - FitTracker</title>
+<title>Student Login - FitTracker</title>
 
 
 <!-- Preload optimized background -->
@@ -51,7 +51,7 @@ object-fit: cover;
   <div class="login-container">
 
     <div class="login-form">
-      <h1>GYM Login</h1>
+      <h1>Student Login</h1>
       <p>Log in to track your progress</p>
 
       <form id="loginForm">
@@ -127,7 +127,8 @@ document.addEventListener('submit', async function(e) {
             if (attempts[tr] >= 3) {
                 forgotLink.style.display = 'block';
             }
-            Swal.fire('Login Failed', data.message || 'Invalid TR or password.', 'error');
+            Toast.fire({ icon: 'error', title: '❌ Login Failed' });
+            Swal.fire('Login Failed', `${data.message || 'Invalid TR or password.'}\n\n💡 Tip: Your first login password is your "TR number". Try again!`, 'error');
         }
     } catch (error) {
         console.error('Login error:', error);

@@ -7,6 +7,7 @@
 /* 1. Core variables and base styles */
 @import url('./_variables.css');
 @import url('./_base.css');
+@import url('./modals.css'); /* modals before components to ensure modal styles are applied globally */
 
 /* 2. Dashboard component styles */
 @import url('./planner.css');

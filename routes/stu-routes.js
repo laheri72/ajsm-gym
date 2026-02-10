@@ -1057,48 +1057,60 @@ router.get(
 
 
 router.get(
-  '/api/student/eligible-weeks',
-  cacheMiddleware(req => `eligible_weeks_${req.session.user?.TR}`, 43200),
-  async (req, res) => {
-      // your code…
-    // 1. Ensure a student is logged in by checking the session
-    if (!req.session.user || !req.session.user.TR) {
-        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
-    }
-
-    const { TR } = req.session.user;
-
-    try {
-        // 2. Get the student's official join date from the TestMaster table
-        const studentResult = await pool.request()
-            .input('TR', sql.Int, TR)
-            .query(`SELECT JoinedAt FROM TestMaster WHERE TR = @TR`);
-
-        if (studentResult.recordset.length === 0 || !studentResult.recordset[0].JoinedAt) {
-             return res.status(404).json({ success: false, error: 'Student join date not found.' });
+    '/api/student/eligible-weeks',
+    cacheMiddleware(req => `eligible_weeks_${req.session.user?.TR}`, 43200),
+    async (req, res) => {
+        // 1. Ensure a student is logged in by checking the session
+        if (!req.session.user || !req.session.user.TR) {
+            return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
         }
-        
-        const joinedDate = studentResult.recordset[0].JoinedAt;
-        
-        // 3. Fetch all weeks that END on or after the student joined
-        const weeksResult = await pool.request()
-            .input('JoinedAt', sql.Date, joinedDate)
-            .query(`
-                SELECT WeekID,
-                       CONVERT(varchar, WeekStartDate, 23) AS WeekStartDate,
-                       CONVERT(varchar, WeekEndDate, 23) AS WeekEndDate
-                FROM AttendanceWeek
-                -- THE FIX IS HERE: Use WeekEndDate instead of WeekStartDate
-                WHERE WeekEndDate >= @JoinedAt
-                ORDER BY WeekID ASC
-            `);
 
-        res.json({ success: true, weeks: weeksResult.recordset });
+        const { TR } = req.session.user;
 
-    } catch (err) {
-        next(err); // Pass error to centralized handler
+        try {
+            // 2. Get the student's official join date from the TestMaster table
+            const studentResult = await pool.request()
+                .input('TR', sql.Int, TR)
+                .query(`SELECT JoinedAt FROM TestMaster WHERE TR = @TR`);
+
+            if (studentResult.recordset.length === 0) {
+                return res.status(401).json({ success: false, message: 'Student record not found.' });
+            }
+
+            const joinedDate = studentResult.recordset[0].JoinedAt;
+
+            // 3. Check if student is a gym member (JoinedAt must exist)
+            if (!joinedDate) {
+                return res.json({
+                    success: true,
+                    isGymMember: false,
+                    weeks: []
+                });
+            }
+
+            // 4. Fetch all weeks that END on or after the student joined
+            const weeksResult = await pool.request()
+                .input('JoinedAt', sql.Date, joinedDate)
+                .query(`
+                    SELECT WeekID,
+                                 CONVERT(varchar, WeekStartDate, 23) AS WeekStartDate,
+                                 CONVERT(varchar, WeekEndDate, 23) AS WeekEndDate
+                    FROM AttendanceWeek
+                    WHERE WeekEndDate >= @JoinedAt
+                    ORDER BY WeekID ASC
+                `);
+
+            res.json({
+                success: true,
+                isGymMember: true,
+                weeks: weeksResult.recordset
+            });
+
+        } catch (err) {
+            next(err);
+        }
     }
-});
+);
 
 
 //--- 🍃 Leave Management (Leaves Tab)
