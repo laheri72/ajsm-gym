@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // Event listener for adding a new user
-    document.getElementById('adminAddForm').addEventListener('submit', async (e) => {
+    document.getElementById('adminAddForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         // 1. Get references to the button and its parts
@@ -235,7 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Reset Password Form
-    document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    document.getElementById('resetPasswordForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const trInput = document.getElementById('studentTrReset');
         const tr = trInput.value;
@@ -569,7 +569,7 @@ function buildLogDetailsHTML(r) {
 
     // ★★★ ADD THIS NEW EVENT LISTENER ★★★
     // Reset TestMaster Password Form
-    document.getElementById('resetTestPasswordForm').addEventListener('submit', async (e) => {
+    document.getElementById('resetTestPasswordForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const trInput = document.getElementById('studentTrTestReset'); // Get new input ID
         const tr = trInput.value;
@@ -610,7 +610,7 @@ function buildLogDetailsHTML(r) {
     });
 
     // Change Admin Password Form
-    document.getElementById('changeMyPasswordForm').addEventListener('submit', async (e) => {
+    document.getElementById('changeMyPasswordForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const currentPassword = document.getElementById('currentPassword').value;
         const newPassword = document.getElementById('newAdminPassword').value;
@@ -762,14 +762,14 @@ function buildLogDetailsHTML(r) {
     // --- Event Listeners for Batch Management ---
 
     // Create Male Batch
-    document.getElementById('createMaleBatchForm').addEventListener('submit', async (e) => {
+    document.getElementById('createMaleBatchForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const batchName = document.getElementById('newMaleBatchName').value;
         await createBatch(batchName, 'Male', document.getElementById('newMaleBatchName'));
     });
 
     // Create Female Batch
-    document.getElementById('createFemaleBatchForm').addEventListener('submit', async (e) => {
+    document.getElementById('createFemaleBatchForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const batchName = document.getElementById('newFemaleBatchName').value;
         await createBatch(batchName, 'Female', document.getElementById('newFemaleBatchName'));
@@ -827,14 +827,14 @@ function buildLogDetailsHTML(r) {
     });
 
     // Assign Male Unbatched
-    document.getElementById('assignMaleUnbatchedForm').addEventListener('submit', async (e) => {
+    document.getElementById('assignMaleUnbatchedForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const batchId = document.getElementById('assignMaleBatchSelect').value;
         await assignUnbatched('Male', batchId);
     });
 
     // Assign Female Unbatched
-    document.getElementById('assignFemaleUnbatchedForm').addEventListener('submit', async (e) => {
+    document.getElementById('assignFemaleUnbatchedForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const batchId = document.getElementById('assignFemaleBatchSelect').value;
         await assignUnbatched('Female', batchId);
@@ -965,8 +965,7 @@ async function loadEvaluators() {
 
 
 // Handle evaluator edit (Admin only)
-document.getElementById('evaluatorsTableBody')
-    .addEventListener('click', async function (e) {
+document.getElementById('evaluatorsTableBody')?.addEventListener('click', async function (e) {
 
         const btn = e.target.closest('.edit-evaluator-btn');
         if (!btn) return;
@@ -1068,10 +1067,26 @@ const { value: formData } = await Swal.fire({
                 body: JSON.stringify(formData)
             });
 
-            const result = await res.json();
-            if (!res.ok || !result.success) {
-                throw new Error(result.message || 'Update failed');
-            }
+                // Try to parse JSON response; if it fails, fall back to text.
+                let result = null;
+                try {
+                    result = await res.json();
+                } catch (parseErr) {
+                    // ignore parse error - response may be plain text
+                }
+
+                if (!res.ok || !result || !result.success) {
+                    // Build an informative error message using JSON message or plain text
+                    let serverMsg = result && result.message ? result.message : null;
+                    if (!serverMsg) {
+                        try {
+                            serverMsg = await (res.clone().text());
+                        } catch (tErr) {
+                            serverMsg = `HTTP ${res.status} ${res.statusText}`;
+                        }
+                    }
+                    throw new Error(serverMsg || 'Update failed');
+                }
 
             Swal.fire('Updated', 'Evaluator details updated successfully.', 'success');
             loadEvaluators(); // refresh table
@@ -1085,7 +1100,7 @@ const { value: formData } = await Swal.fire({
     // --- Event Listeners for Category Management ---
 
     // Add new category
-    addCategoryForm.addEventListener('submit', async (e) => {
+    addCategoryForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('newCategoryName').value;
         const desc = document.getElementById('newCategoryDesc').value;
@@ -1377,7 +1392,7 @@ async function loadTrainers() {
 }
 
 // delete test record
-document.getElementById('deleteTestRecordBtn').addEventListener('click', async () => {
+document.getElementById('deleteTestRecordBtn')?.addEventListener('click', async () => {
     const id = document.getElementById('deleteTestLogInput').value.trim();
     if (!id) return Swal.fire("Error", "Enter a TestLog ID first!", "error");
 
@@ -1398,6 +1413,6 @@ document.getElementById('deleteTestRecordBtn').addEventListener('click', async (
 });
 
 // Load when tab is clicked
-document.getElementById('trainer-tab').addEventListener('click', loadTrainers);
+document.getElementById('trainer-tab')?.addEventListener('click', loadTrainers);
 
 });
