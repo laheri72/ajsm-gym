@@ -108,7 +108,7 @@ body {
     /* --- FIX: Make it responsive and centered --- */
     width: 100%;
     max-width: 600px; /* Give it a max width */
-    min-width: 300px; /* Give it a min width */
+    min-width: auto;   /* MOBILE FIX: Remove fixed min-width */
 }
 .app-header-info .rank-tag { padding: 0.3rem 0.75rem; font-size: 0.7rem; font-weight: 700; border-radius: 6px; text-transform: uppercase; flex-shrink: 0; cursor: pointer; }
 .app-header-info .rank-tag:hover { filter: brightness(1.05); }
@@ -222,6 +222,11 @@ body {
     max-width: 600px;
     width: 100%;
   }
+
+  /* Desktop navigation should be visible */
+  #mainNavCollapse {
+    display: flex !important;
+  }
 }
 
 /* ===========================================================
@@ -270,4 +275,94 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* ===========================================================
+   📱 MOBILE HEADER OPTIMIZATIONS (Extra Small Screens)
+   =========================================================== */
+@media (max-width: 575.98px) {
+  /* Reduce header size on very small screens */
+  .app-header-main {
+    height: 55px;
+    padding: 0 0.75rem;
+  }
+
+  /* Smaller brand logo */
+  .brand-logo {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .brand-logo i {
+    font-size: 1rem !important;
+  }
+
+  /* Smaller brand text */
+  .brand-title {
+    font-size: 0.65rem !important;
+    letter-spacing: 0.2px;
+  }
+
+  .brand-highlight {
+    font-size: 0.85rem !important;
+    max-width: 180px;
+  }
+
+  /* Better spacing for XP bar on mobile */
+  .app-header-info .xp-level-container {
+    gap: 0.4rem;
+    padding: 0 0.5rem;
+  }
+
+  .app-header-info .level-display {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.4rem;
+  }
+
+  .app-header-info .rank-tag {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.55rem;
+  }
+
+  .app-header-info .xp-bar-wrapper {
+    min-width: 70px;
+    height: 14px;
+  }
+
+  .app-header-info .xp-bar-text {
+    font-size: 0.65rem;
+  }
+
+  .app-header-info .info-icon {
+    font-size: 0.95rem;
+  }
+
+  /* Better button sizing for touch */
+  .btn-icon {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .account-btn {
+    min-width: 44px;
+    height: 44px;
+  }
+}
+
+/* ===========================================================
+   📱 TABLET HEADER OPTIMIZATIONS (576px - 992px)
+   =========================================================== */
+@media (min-width: 576px) and (max-width: 991.98px) {
+  /* Slightly larger header on tablets */
+  .app-header-main {
+    height: 58px;
+  }
+
+  .app-header-info .xp-level-container {
+    min-width: 250px;
+    max-width: 500px;
+  }
+
+  .brand-highlight {
+    max-width: 220px;
+  }
 }

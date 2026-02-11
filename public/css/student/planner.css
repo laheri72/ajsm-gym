@@ -456,3 +456,123 @@ input:checked+.slider:before {
     font-style: italic;
     cursor: text;
 }
+
+/* ===========================================================
+   📱 MOBILE-SPECIFIC PLANNER IMPROVEMENTS  
+   =========================================================== */
+@media (max-width: 768px) {
+    /* Single column layout for mobile */
+    .planner {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0 0.5rem;
+        justify-content: center;
+    }
+
+    .day-wrapper {
+        flex: 1 1 auto;
+        max-width: 100%;
+        width: 100%;
+        padding: 12px;
+        margin: 0 auto;
+    }
+
+    .day-card {
+        min-height: 100px;
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    .day-name {
+        font-size: 1rem;
+        margin-bottom: 6px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    /* Extra small phones */
+    .planner {
+        padding: 0 0.25rem;
+    }
+
+    .day-wrapper {
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .day-card {
+        min-height: 90px;
+        padding: 8px;
+        font-size: 0.85rem;
+    }
+
+    .day-name {
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        padding: 4px 0;
+    }
+
+    /* Better form spacing on small screens */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .filter-group {
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Make buttons touch-friendly */
+    .quick-add-btn,
+    .btn-sm {
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .attendance-summary {
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        margin: 0.75rem 0;
+    }
+
+    /* Better spacing for action buttons */
+    .text-center .btn {
+        min-height: 44px;
+        font-size: 0.9rem;
+        margin: 0.25rem;
+        flex: 1 1 auto;
+        max-width: 100px;
+    }
+}
+
+/* Ensure daily view stats stack properly on mobile */
+@media (max-width: 768px) {
+    .today-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .today-plan-card {
+        width: 100%;
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .stat-module {
+        width: 100%;
+    }
+
+    /* Better weight bmi grid on mobile */
+    .weight-bmi-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}

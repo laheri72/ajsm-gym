@@ -1421,36 +1421,56 @@ const sections = {
     'tab-achievements': 'achievements'
 };
 
-// Function to show a specific tab
-// Function to show a specific tab
+// Function to show a specific tab with proper active state highlighting
 function showTab(tabId) {
     // Remove 'active' class from all nav links
-    navLinks.forEach(nav => nav.classList.remove('active'));
+    navLinks.forEach(nav => {
+        nav.classList.remove('active');
+        nav.blur();
+    });
     
-    // Hide all sections
+    // Hide all sections - IMMEDIATELY hide with display:none
     Object.values(sections).forEach(id => {
         const section = document.getElementById(id);
-        if (section) section.style.display = 'none';
+        if (section) {
+            section.style.display = 'none';
+            section.classList.remove('visible');
+        }
     });
 
     // Activate the selected tab and section
     const link = document.getElementById(tabId);
     const sectionId = sections[tabId];
+    
     if (link && sectionId) {
+        // Add active class - this triggers the highlight styling
         link.classList.add('active');
+        
         const section = document.getElementById(sectionId);
-        if (section) section.style.display = 'block';
-
-        // ★★★ THIS IS THE NEW FIX ★★★
-        // If we just revealed the history tab, initialize the table (if not already done).
-        if (tabId === 'tab-history') {
-            initializeHistoryTable();
+        if (section) {
+            // Show section immediately and completely
+            section.style.display = 'block';
+            // Remove inline opacity styles
+            section.style.opacity = '';
+            // Add visible class after display is set
+            setTimeout(() => {
+                if (section) {
+                    section.classList.add('visible');
+                    section.style.opacity = '1';
+                }
+            }, 10);
         }
-        // ★★★ END OF FIX ★★★
+
+        // ★★★ Initialize DataTable for history tab
+        if (tabId === 'tab-history') {
+            setTimeout(() => {
+                initializeHistoryTable();
+            }, 350);
+        }
     }
 }
 
-// Add click listener to each link
+// Add click listener to each link with proper active state
 navLinks.forEach(link => {
     link.addEventListener('click', function(event) {
         event.preventDefault();
@@ -1458,6 +1478,22 @@ navLinks.forEach(link => {
         showTab(tabId);
         localStorage.setItem('activeTab', tabId); // Save active tab
     });
+    
+    // Add keyboard navigation support (Enter/Space)
+    link.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.click();
+        }
+    });
+});
+
+// Restore active tab on page load
+window.addEventListener('load', () => {
+    const savedTab = localStorage.getItem('activeTab') || 'tab-profile';
+    if (document.getElementById(savedTab)) {
+        showTab(savedTab);
+    }
 });
 
 
@@ -1543,6 +1579,30 @@ function toggleSidebar() {
     // Optionally remember user preference
     localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
 }
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.querySelector('.sidebar');
+    const main = document.querySelector('.main-content');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    // Close sidebar when clicking on main content area (mobile)
+    if (main && window.innerWidth <= 576) {
+        main.addEventListener('click', () => {
+            if (sidebar && sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                if (main) main.classList.remove('expanded');
+                localStorage.setItem('sidebarCollapsed', false);
+            }
+        });
+    }
+    
+    // Restore sidebar state from localStorage
+    if (sidebar && localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+        if (main) main.classList.add('expanded');
+    }
+});
 
 // ✅ Unified DOMContentLoaded Loader — combines all initialization steps
 window.addEventListener('DOMContentLoaded', () => {

@@ -9,10 +9,12 @@
 /* TABLE OF CONTENTS:
 /* 
 /* 1. PREFERS-REDUCED-MOTION RULES
-/* 2. MAX-WIDTH: 768PX (MOBILE-SPECIFIC)
-/* 3. MAX-WIDTH: 992PX (TABLET/MOBILE GRIDS)
-/* 4. MIN-WIDTH: 992PX AND ABOVE (DESKTOP)
-/* 5. MAX-WIDTH: 991.98PX (MOBILE HEADER & NAV)
+/* 2. FITNESS IFRAME RESPONSIVE STYLES
+/* 3. MAX-WIDTH: 576PX (EXTRA SMALL MOBILE)
+/* 4. MAX-WIDTH: 768PX (MOBILE-SPECIFIC)
+/* 5. MAX-WIDTH: 992PX (TABLET/MOBILE GRIDS)
+/* 6. MIN-WIDTH: 992PX AND ABOVE (DESKTOP)
+/* 7. MAX-WIDTH: 991.98PX (MOBILE HEADER & NAV)
 /* 
 /* =================================================================== */
 
@@ -29,23 +31,348 @@
 }
 
 /* =================================================================== */
-/* 2. MAX-WIDTH: 768PX (MOBILE-SPECIFIC)
+/* 2. FITNESS IFRAME RESPONSIVE STYLES
 /* =================================================================== */
-/* =================================================================== */
-/* 9. RESPONSIVE DESIGN FOR MOBILE DEVICES
-/* =================================================================== */
+/* Optimize embedded fitness-test.html view for mobile */
+#fitness-iframe-container {
+    height: 80vh;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
 
+@media (max-width: 992px) {
+    #fitness-iframe-container {
+        height: auto;
+        min-height: 600px;
+        max-height: 75vh;
+    }
+}
+
+@media (max-width: 768px) {
+    #fitness-iframe-container {
+        min-height: 500px;
+        max-height: 70vh;
+        border-radius: 8px;
+    }
+    
+    /* Embedded fitness styles */
+    body.embedded .sidebar {
+        position: fixed;
+        left: -80px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+    }
+    
+    body.embedded .main-content {
+        margin-left: 0;
+        padding: 0.75rem;
+    }
+    
+    body.embedded .content-section {
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    body.embedded table {
+        font-size: 0.8rem;
+    }
+    
+    body.embedded .col-md-4,
+    body.embedded .col-md-8 {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    #fitness-iframe-container {
+        min-height: 400px;
+        max-height: 65vh;
+    }
+    
+    body.embedded .main-content {
+        margin-left: 0;
+        padding: 0.5rem;
+        width: 100%;
+    }
+    
+    /* Mobile active state styling - show highlight clearly */
+    body.embedded .sidebar a.active {
+        background-color: rgba(76, 175, 80, 0.2);
+        border-left-color: var(--primary);
+        color: var(--primary);
+    }
+    
+    body.embedded .sidebar a.active i {
+        color: var(--primary);
+    }
+    
+    body.embedded h2 {
+        font-size: 1.3rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    body.embedded h3, 
+    body.embedded h4, 
+    body.embedded h5 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    body.embedded .row {
+        gap: 1rem;
+    }
+    
+    body.embedded .col-md-4,
+    body.embedded .col-md-8 {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    body.embedded img {
+        max-width: 100% !important;
+        height: auto;
+    }
+    
+    body.embedded .card {
+        border-radius: 0.5rem;
+    }
+    
+    body.embedded .table {
+        font-size: 0.7rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    body.embedded .table th,
+    body.embedded .table td {
+        padding: 0.35rem 0.25rem;
+    }
+    
+    body.embedded .form-control {
+        padding: 0.4rem;
+        font-size: 0.9rem;
+        min-height: 36px;
+    }
+    
+    body.embedded .btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        min-height: 40px;
+        min-width: 40px;
+    }
+    
+    body.embedded select,
+    body.embedded input[type="number"],
+    body.embedded input[type="text"],
+    body.embedded input[type="date"],
+    body.embedded textarea {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    body.embedded .accordion-button {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    body.embedded .text-center {
+        text-align: center;
+    }
+    
+    /* Ensure full-width row columns on mobile */
+    body.embedded .row > * {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+}
+
+/* =================================================================== */
+/* 2. MAX-WIDTH: 576PX (EXTRA SMALL MOBILE - PHONES)
+/* =================================================================== */
+/* Ultra-small screens: phones in portrait mode */
+@media (max-width: 575.98px) {
+    /* --- Body Padding --- */
+    body { 
+        padding-top: calc(var(--header-height) + var(--info-height) + 0.5rem) !important;
+    }
+
+    /* --- Content Padding --- */
+    .content {
+        padding: 0.75rem;
+    }
+
+    /* --- Header Scaling --- */
+    .app-header-main {
+        height: 55px;
+        padding: 0 0.75rem;
+    }
+
+    .header-brand .brand-logo {
+        width: 32px;
+        height: 32px;
+    }
+
+    .header-brand .brand-logo i {
+        font-size: 1rem;
+    }
+
+    .brand-title {
+        font-size: 0.7rem !important;
+    }
+
+    .brand-highlight {
+        font-size: 0.9rem !important;
+    }
+
+    /* --- Navigation: Collapse to hamburger --- */
+    .navbar-toggler {
+        padding: 0.25rem 0;
+        font-size: 1.3rem;
+    }
+
+    #mainNavCollapse {
+        position: fixed;
+        top: 55px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: calc(100vh - 55px);
+        overflow-y: auto;
+        background-color: var(--dark-bg-secondary);
+        border: none;
+        border-top: 1px solid var(--dark-border);
+        padding: 0.75rem 0;
+        z-index: 1050;
+    }
+
+    #mainNavCollapse.show {
+        display: flex !important;
+    }
+
+    .header-center {
+        width: 100%;
+        margin: 0;
+    }
+
+    .main-nav-list {
+        flex-direction: column;
+        width: 100%;
+        gap: 0;
+    }
+
+    .main-nav-list .nav-link {
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid var(--dark-border);
+        border-radius: 0;
+        font-size: 0.9rem;
+        justify-content: flex-start;
+    }
+
+    .main-nav-list .nav-link i {
+        font-size: 1rem;
+        margin-right: 0.5rem;
+    }
+
+    .main-nav-list .nav-link span {
+        display: inline;
+    }
+
+    /* --- Dropdown Menu: Stack vertically with indent --- */
+    .dropdown-menu {
+        position: static !important;
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        max-width: none;
+    }
+
+    .dropdown-menu .dropdown-item {
+        padding: 0.6rem 1rem 0.6rem 2.5rem;
+        padding-left: 2.5rem;
+        font-size: 0.85rem;
+    }
+
+    /* --- Header Actions: Stack better --- */
+    .header-actions {
+        flex-direction: row;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-top: 1px solid var(--dark-border);
+        margin-top: 0.5rem;
+    }
+
+    .header-actions .btn {
+        min-width: 44px;
+        height: 44px;
+        padding: 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    /* --- Info Header Scaling --- */
+    .app-header-info {
+        height: auto;
+        min-height: 50px;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .app-header-info .xp-level-container {
+        width: 100%;
+        max-width: 100%;
+        min-width: auto;
+        gap: 0.5rem;
+        padding: 0 0.5rem;
+    }
+
+    .app-header-info .level-display {
+        font-size: 0.7rem;
+        padding: 0.4rem 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .app-header-info .level-display span {
+        font-size: 0.85rem;
+    }
+
+    .app-header-info .rank-tag {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.6rem;
+        flex-shrink: 0;
+    }
+
+    .app-header-info .xp-bar-wrapper {
+        flex-grow: 1;
+        min-width: 80px;
+        height: 16px;
+    }
+
+    .app-header-info .xp-bar-text {
+        font-size: 0.7rem;
+    }
+
+    .app-header-info .info-icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+}
+
+/* =================================================================== */
+/* 2B. MAX-WIDTH: 768PX (MOBILE & TABLET)
+/* =================================================================== */
 @media (max-width: 768px) {
 
     /* --- Header on Mobile --- */
     .header {
-        flex-direction: column; /* Stack welcome text and button vertically */
+        flex-direction: column;
         gap: 15px;
         padding: 15px;
     }
 
     .header h1 {
-        font-size: 1.5rem; /* Smaller font for small screens */
+        font-size: 1.5rem;
     }
 
     .header h2 {
@@ -54,34 +381,52 @@
 
     /* --- Info Bar on Mobile --- */
     .info-bar {
-        justify-content: flex-start; /* Align items to the left */
+        justify-content: flex-start;
         gap: 15px;
         padding: 10px 15px;
     }
     
     .info-item:not(:first-child)::before {
-        display: none; /* Hide the separators on mobile to save space */
-    }
-
-    /* --- Navigation on Mobile --- */
-    /* Bootstrap handles the collapse, so remove custom stacking */
-    .navbar .nav-link {
-        border-bottom: 1px solid #465a70;
-        border-radius: 0;
+        display: none;
     }
 
     /* --- Main Content on Mobile --- */
     .content {
-        padding: 1rem; /* Reduce padding on smaller screens */
+        padding: 1rem;
     }
     
-    /* --- Planner on Mobile --- */
+    /* --- Planner on Mobile: BETTER GRID --- */
     .planner {
-        flex-direction: column; /* Ensure day cards stack in a single column */
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0 0.5rem;
+        justify-content: center;
     }
 
-    
+    .day-wrapper {
+        flex: 1 1 auto;
+        max-width: 100%;
+        margin: 0 auto;
+        width: 100%;
+    }
 
+    /* --- Daily View on Mobile --- */
+    .today-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .stat-module {
+        width: 100%;
+    }
 }
 
 /* =================================================================== */
@@ -92,26 +437,27 @@
     .today-grid {
         grid-template-columns: 1fr;
     }
-}
 
-/* Make it responsive on smaller screens */
-@media (max-width: 992px) {
     .analytics-row {
         grid-template-columns: 1fr;
     }
-}
 
-/* --- Responsive Styles --- */
-@media (max-width: 992px) {
     .weight-logger-grid {
-        grid-template-columns: 1fr; /* Stack columns on mobile */
+        grid-template-columns: 1fr;
     }
-}
 
-/* Responsive adjustments for the fame section */
-@media (max-width: 992px) {
     .fame-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* --- Better form spacing on tablet --- */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    /* --- Make cards more readable --- */
+    .card {
+        padding: 1rem;
     }
 }
 
@@ -119,121 +465,86 @@
 /* 4. MIN-WIDTH: 992PX AND ABOVE (DESKTOP)
 /* =================================================================== */
 /* This rule hides the toggler on desktop */
-@media (min-width: 991.99px) {
+@media (min-width: 992px) {
     .app-header-main .navbar-toggler {
         display: none;
     }
-}
 
-/* Only display flex when shown (not when collapsed) */
-@media (min-width: 992px) {
     #mainNavCollapse {
         display: flex !important;
+        position: static !important;
+        flex-direction: row;
+        width: auto;
+        max-height: none;
+        padding: 0;
+        background: none;
+        border: none;
+        top: auto;
+    }
+
+    .header-center {
+        margin: 0 auto;
+    }
+
+    .main-nav-list {
+        flex-direction: row;
+        width: auto;
+    }
+
+    .main-nav-list .nav-link {
+        padding: 0.45rem 0.7rem;
+        border: none;
+    }
+
+    .dropdown-menu {
+        position: absolute !important;
+    }
+
+    /* --- Better planner grid on desktop --- */
+    .planner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+        padding: 0 15px;
+    }
+
+    .day-wrapper {
+        flex: 1 1 240px;
+        max-width: 260px;
     }
 }
 
 /* =================================================================== */
-/* 5. MAX-WIDTH: 991.98PX (MOBILE HEADER & NAV)
+/* 5. MAX-WIDTH: 991.98PX (MOBILE HEADER & NAV COLLAPSE)
 /* =================================================================== */
-/* =================================================================== */
-/* 7. RESPONSIVE DESIGN (Corrected) */
-/* =================================================================== */
-/* All media queries and responsive overrides grouped here for easy breakpoint management. */
-/* --- FIX: Delete the 1200px rule that was causing the "dead zone" --- */
-
 @media (max-width: 991.98px) {
-    body { padding-top: calc(var(--header-height) + var(--info-height)); } /* 60px + 50px */
-    .app-header-main { height: var(--header-height); }
+    body { 
+        padding-top: calc(var(--header-height) + var(--info-height)) !important;
+    }
+    
+    .app-header-main { 
+        height: var(--header-height); 
+    }
+    
     .app-header-info {
         top: var(--header-height);
-        flex-direction: column;
-        height: auto;
-        padding: 0.5rem 1rem;
-        align-items: center;
-        gap: 0.5rem;
     }
-    
-    .app-header-info .xp-level-container { min-width: 300px; width: 100%; max-width: 450px; }
-    
-    /* --- FIX: We deleted .info-bar-sleek, so this rule is gone --- */
+}
 
-    /* Collapsible menu container */
-    #mainNavCollapse {
-        display: none; /* Bootstrap will handle show/hide */
-        position: fixed;
-        top: var(--header-height);
-        left: 0;
-        width: 100%;
-        max-height: calc(100vh - 60px);
-        overflow-y: auto;
-        flex-direction: column;
-        flex-grow: 1;
-        align-items: center;
-        justify-content: space-between;
-        background-color: var(--dark-bg-secondary);
-        border-top: 1px solid var(--dark-border);
-        padding: 1rem;
-        box-shadow: 0 8px 15px rgba(0,0,0,0.3);
-        z-index: 1050; /* ensures it sits above content but below modals */
-    }
-    .header-center { margin: 0; width: 100%; }
-    .main-nav-list { flex-direction: column; width: 100%; }
-    .main-nav-list .nav-link { padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--dark-border); }
-    .main-nav-list .nav-link.active { border-bottom-color: var(--accent); }
-    .dropdown-menu { position: static; background: none; border: none; box-shadow: none; padding: 0 0 0 1rem; }
-    .dropdown-menu a { padding: 0.5rem; color: #9fb0c3; }
-    .dropdown-menu a:hover { color: var(--accent); }
-    
-    .header-actions {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 0.8rem;
-        width: 100%;
-        margin-top: 0.5rem;
-        padding-top: 0.8rem;
-        border-top: 1px solid var(--dark-border);
-    }
-    .header-actions .btn {
-        flex-grow: 0; /* remove stretching */
-        flex-shrink: 0;
-        width: auto;
-        min-width: 40px;
-        height: 40px;
-        padding: 0.4rem 0.8rem;
-        font-size: 0.9rem;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
+/* =================================================================== */
+/* 6. EXTRA LARGE SCREENS (1200PX+)
+/* =================================================================== */
+@media (min-width: 1200px) {
+    .content {
+        max-width: 1400px;
     }
 
+    .planner {
+        gap: 25px;
+    }
 
-      #themeToggleBtn.btn-icon i {
-    font-size: 1.1rem;
-  }
-
-  /* Add subtle hover/active polish */
-  .header-actions .btn:hover {
-    transform: translateY(-1px);
-    opacity: 0.95;
-  }
-
-  /* Keep color consistency */
-  #themeToggleBtn {
-    background: linear-gradient(135deg, #00c2ff, #00ffcc);
-    color: #0a2239;
-    box-shadow: 0 2px 5px rgba(0, 255, 204, 0.2);
-  }
-
-  #logoutBtn {
-    background: linear-gradient(135deg, #ff4e50, #f9d423);
-    color: #fff;
-    border: none;
-  }
-
-  #logoutBtn:hover {
-    filter: brightness(1.1);
-  }
+    .card {
+        padding: 2rem;
+    }
 }

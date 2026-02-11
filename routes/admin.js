@@ -230,7 +230,7 @@ router.put('/api/admin/reset-testmaster-password/:tr', async (req, res, next) =>
         // 3. Run the reset query as requested
         await request.query(`
             UPDATE TestMaster 
-            SET Password = NULL, IsFirstLogin = 1 
+            SET Password = NULL, HasLoggedInBefore = 0 
             WHERE TR = @TR
         `);
         

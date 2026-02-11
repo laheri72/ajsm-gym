@@ -68,6 +68,20 @@
     width: 80px;
 }
 
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--primary);
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    text-align: center;
+}
+
 .sidebar a {
     display: flex;
     align-items: center;
@@ -76,14 +90,33 @@
     padding: 1rem;
     border-radius: 0.5rem;
     margin-bottom: 0.5rem;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     justify-content: space-between;
+    position: relative;
+    border-left: 4px solid transparent;
+}
+
+.sidebar a:hover {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: var(--primary);
+}
+
+.sidebar a.active {
+    background-color: rgba(76, 175, 80, 0.15);
+    color: var(--primary);
+    border-left-color: var(--primary);
+    font-weight: 600;
 }
 
 .sidebar a i {
     margin-right: 1rem;
     font-size: 1.2rem;
-    transition: margin 0.3s;
+    transition: all 0.3s ease;
+}
+
+.sidebar a.active i {
+    color: var(--primary);
+    transform: scale(1.1);
 }
 
 .sidebar a span {
@@ -155,12 +188,14 @@
 
 
 /* Responsive Adjustments */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
     .sidebar {
-        width: 80px;
+        width: 60px;
+        padding: 1rem 0.5rem;
     }
     .main-content {
-        margin-left: 80px;
+        margin-left: 60px;
+        padding: 1.25rem 0.75rem;
     }
     .sidebar a span {
         display: none;
@@ -168,21 +203,145 @@
     .sidebar .btn span {
         display: none; /* Hide text on mobile by default */
     }
-    .sidebar.collapsed {
-        width: 80px;
+}
+
+/* Tablet - Better spacing */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 70px;
+        padding: 1rem 0.5rem;
     }
-    .main-content.expanded {
-        margin-left: 80px;
+    
+    .main-content {
+        margin-left: 70px;
+        padding: 1rem 0.75rem;
+    }
+    
+    .sidebar-toggle {
+        display: block;
     }
 }
 
+/* Ultra Mobile - Full overlay sidebar */
+@media (max-width: 576px) {
+    .sidebar {
+        position: fixed;
+        left: -250px;
+        top: 0;
+        width: 250px;
+        height: 100vh;
+        z-index: 1050;
+        transition: left 0.3s ease;
+        padding: 1rem;
+        background: white;
+        box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+    }
+    
+    .sidebar.collapsed {
+        left: 0;
+        width: 250px;
+    }
+    
+    .sidebar.collapsed a span,
+    .sidebar.collapsed a {
+        opacity: 1;
+        width: auto;
+        margin-right: 1rem;
+    }
+    
+    .sidebar.collapsed a i {
+        margin-right: 1rem;
+    }
+    
+    .sidebar.collapsed a.active {
+        background-color: rgba(76, 175, 80, 0.2);
+        border-left-color: var(--primary);
+    }
+    
+    .sidebar.collapsed .btn span {
+        opacity: 1;
+        width: auto;
+        margin-right: 0.5rem;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0.75rem;
+        width: 100%;
+    }
+    
+    .sidebar-toggle {
+        display: block !important;
+        position: fixed;
+        top: 0.5rem;
+        right: 0.5rem;
+        z-index: 1020;
+        background: var(--primary);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        padding: 0;
+        margin: 0;
+    }
+    
+    .sidebar-toggle:active {
+        transform: scale(0.95);
+    }
+}
+
+        /* Main tab sections - controlled by JS */
+        #profile-overview,
+        #student-fit,
+        #student-evaluations,
+        #goals-progress,
+        #test-history,
+        #achievements {
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+        }
+
+        /* Main sections become visible when .visible class is added */
+        #profile-overview.visible,
+        #student-fit.visible,
+        #student-evaluations.visible,
+        #goals-progress.visible,
+        #test-history.visible,
+        #achievements.visible {
+            opacity: 1;
+            animation: fadeInSmooth 0.3s ease-out;
+        }
+
+        /* Nested content-sections (like medical-history-card) always visible */
         .content-section {
             background: white;
-            padding: 2rem;
+            padding: clamp(1rem, 3vw, 2rem);
             border-radius: 1rem;
             box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            margin-bottom: 2rem;
-            animation: fadeIn 0.5s ease;
+            margin-bottom: clamp(1rem, 3vw, 2rem);
+        }
+        
+        @keyframes fadeInSmooth {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .content-section {
+                padding: 1rem 0.75rem;
+                margin-bottom: 1rem;
+                border-radius: 0.75rem;
+            }
         }
 
         @keyframes fadeIn {
@@ -194,16 +353,94 @@
             color: var(--primary);
             font-weight: 600;
         }
+        
+        /* Section grouping for better organization */
+        .form-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .form-section h5 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .form-section .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        /* Focus styles for accessibility */
+        a:focus, button:focus, input:focus, select:focus, textarea:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        
+        @media (max-width: 576px) {
+            h2 {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+            }
+            h3 {
+                font-size: 1.25rem;
+            }
+            h4, h5 {
+                font-size: 1rem;
+            }
+        }
 
         .form-control {
             border-radius: 0.5rem;
             border: 1px solid #dee2e6;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
+            color: black;
         }
 
         .form-control:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 0.25rem rgba(76, 175, 80, 0.25);
+        }
+        
+        /* Form section grouping for better organization */
+        .form-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        
+        .form-section:hover {
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
+        }
+        
+        .form-section h5 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .form-section .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-section .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Content sections transition smoothly */
+        .content-section {
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
         }
 
         .btn {
@@ -222,6 +459,13 @@
             border: none;
             border-radius: 1rem;
             overflow: hidden;
+        }
+        
+        @media (max-width: 576px) {
+            .card {
+                border-radius: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
         }
 
         /* Progress Bar Modern */
@@ -247,6 +491,8 @@
             background: var(--primary);
             color: white;
             border: none;
+            padding: clamp(0.5rem, 1vw, 1rem);
+            font-size: clamp(0.75rem, 2vw, 1rem);
         }
 
         table.dataTable tbody tr {
@@ -257,6 +503,24 @@
 
         table.dataTable tbody td {
             border: none;
+            padding: clamp(0.5rem, 1vw, 0.75rem);
+            font-size: clamp(0.75rem, 2vw, 0.95rem);
+        }
+        
+        @media (max-width: 576px) {
+            table.dataTable {
+                border-spacing: 0 0.25rem;
+                font-size: 0.8rem;
+            }
+            
+            table.dataTable thead th {
+                padding: 0.5rem 0.4rem;
+                font-size: 0.75rem;
+            }
+            
+            table.dataTable tbody td {
+                padding: 0.4rem 0.3rem;
+            }
         }
 
         /* Student Info Card */
@@ -587,9 +851,12 @@ body.dark-mode .progress {
 body.dark-mode .progress-bar {
     background: linear-gradient(90deg, var(--secondary), var(--accent));
 }
-
-/* ---- Links ---- */
-body.dark-mode a,
+    
+    /* Dark mode active state */
+    body.dark-mode .sidebar a.active {
+        background-color: rgba(76, 175, 80, 0.25);
+        border-left-color: #4CAF50;
+    }
 body.dark-mode a:visited {
     color: var(--accent);
 }

@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Final working collapsible toggler ---
+    // --- Final working collapsible toggler with smart dropdown handling ---
 const toggler = document.querySelector('.navbar-toggler');
 const collapseElement = document.getElementById('mainNavCollapse');
 
@@ -219,9 +219,17 @@ if (toggler && collapseElement) {
         }
     });
 
-    // Close when clicking any nav or dropdown item
-    collapseElement.querySelectorAll('a.nav-link, .dropdown-menu a').forEach(link => {
+    // Close when clicking non-dropdown nav links
+    collapseElement.querySelectorAll('a.nav-link:not(.dropdown-toggle)').forEach(link => {
         link.addEventListener('click', () => bsCollapse.hide());
+    });
+
+    // Close menu after selecting a dropdown item (navigation happens)
+    collapseElement.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            // Delay close to allow navigation to process
+            setTimeout(() => bsCollapse.hide(), 150);
+        });
     });
 }
 

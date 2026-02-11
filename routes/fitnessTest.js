@@ -154,8 +154,7 @@ router.post('/api/test/set-password', async (req, res) => {
             UPDATE TestMaster 
             SET 
                 Password = @HashedPassword,
-                HasLoggedInBefore = 1,
-                IsFirstLogin = 0 
+                HasLoggedInBefore = 1
             WHERE TR = @TR
         `);
         
