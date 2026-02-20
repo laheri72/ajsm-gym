@@ -302,6 +302,7 @@ router.get('/api/daily-attendance', async (req, res) => {
     }
 
     const { Branch, Gender } = req.session.user;
+    const { SlotID } = req.query; // Get SlotID from query parameters
 
     try {
         // --- ✅ REFINED LOGIC ---
@@ -314,13 +315,7 @@ router.get('/api/daily-attendance', async (req, res) => {
         const endUTC = endOfTodayIST.utc().toDate();
         // --- END REFINEMENT ---
 
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            // 3. Pass the UTC range as parameters to the query.
-            .input('StartUTC', sql.DateTime, startUTC)
-            .input('EndUTC', sql.DateTime, endUTC)
-            .query(`
+        let query = `
                 SELECT 
                     M.TR,
                     M.Name,
@@ -337,8 +332,22 @@ router.get('/api/daily-attendance', async (req, res) => {
                 WHERE M.Status = 'Active'
                 AND M.Branch = @Branch
                 AND M.Gender = @Gender
-                ORDER BY M.Name
-            `);
+        `;
+
+        const request = pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .input('StartUTC', sql.DateTime, startUTC)
+            .input('EndUTC', sql.DateTime, endUTC);
+
+        if (SlotID) {
+            query += ` AND M.SlotID = @SlotID`;
+            request.input('SlotID', sql.Int, SlotID);
+        }
+
+        query += ` ORDER BY M.Name`;
+
+        const result = await request.query(query);
 
         res.json(result.recordset);
     } catch (err) {
@@ -3462,6 +3471,39 @@ router.delete('/api/trainer/delete-test-record/:logId', isTrainer, async (req, r
 });
 
 
+router.get('/api/trainer/profile', isTrainer, async (req, res) => {
+    try {
+        const result = await pool.request()
+            .input("UserID", sql.Int, req.UserID)
+            .query(`
+                SELECT P.Username, P.Role, P.Branch, P.Gender, T.Name, T.Profession, T.Contact, T.Email
+                FROM PassBank P
+                LEFT JOIN Trainers T ON P.UserID = T.UserID
+                WHERE P.UserID = @UserID
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: "Trainer not found." });
+        }
+
+        const trainer = result.recordset[0];
+        const isProfileComplete = !!(trainer.Name && trainer.Contact);
+
+        res.json({ 
+            success: true, 
+            user: {
+                ...trainer,
+                isProfileComplete
+            }
+        });
+
+    } catch (err) {
+        console.error("Error fetching trainer profile:", err);
+        res.status(500).json({ success: false, message: "Failed to fetch profile." });
+    }
+});
+
+
 router.put('/api/trainer/profile', isTrainer, async (req, res) => {
     const { Name, Profession, Contact, Email } = req.body;
 
@@ -3483,6 +3525,42 @@ router.put('/api/trainer/profile', isTrainer, async (req, res) => {
     } catch (err) {
         console.error("Error updating trainer profile:", err);
         res.status(500).json({ success: false, message: "Failed to update profile." });
+    }
+});
+
+// NEW: Endpoint for trainers to see a student's plan for today
+router.get('/api/trainer/student-plan/:tr', isTrainer, async (req, res) => {
+    try {
+        const { tr } = req.params;
+        const todayStr = moment.tz("Asia/Kolkata").format('YYYY-MM-DD');
+
+        // 1. Get current week ID
+        const weekResult = await pool.request()
+            .input('Today', sql.Date, todayStr)
+            .query(`
+                SELECT TOP 1 WeekID FROM AttendanceWeek
+                WHERE WeekStartDate <= @Today AND WeekEndDate >= @Today
+            `);
+
+        if (weekResult.recordset.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const currentWeekID = weekResult.recordset[0].WeekID;
+
+        // 2. Fetch plan for that student
+        const planResult = await pool.request()
+            .input('TR', sql.Int, tr)
+            .input('WeekID', sql.Int, currentWeekID)
+            .query(`
+                SELECT Day, Content FROM WorkoutPlan
+                WHERE TR = @TR AND WeekID = @WeekID
+            `);
+
+        res.json({ success: true, data: planResult.recordset });
+    } catch (err) {
+        console.error('Error fetching student plan for trainer:', err);
+        res.status(500).json({ success: false, message: 'Failed to load student plan' });
     }
 });
 

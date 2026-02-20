@@ -9,12 +9,14 @@
         profileTR: document.getElementById('profile-tr'),
         profileGoal: document.getElementById('profile-goal'),
         profileSlot: document.getElementById('profile-slot'),
+        profileTodayPlan: document.getElementById('profile-today-plan'),
         profileRecent: document.getElementById('profile-recent'),
         profileAttendanceBtn: document.getElementById('profile-attendance-btn'),
         profileHistoryBtn: document.getElementById('profile-history-btn'),
         profileTestBtn: document.getElementById('profile-test-btn')
     };
     let currentUser = null;
+    let selectedSlotID = localStorage.getItem('trainerSelectedSlotID') || null;
     let activeSessionsCache = [];
     let dailyAttendanceCache = [];
     let currentStudent = null;
@@ -41,16 +43,27 @@
 
     async function validateTrainerSession() {
         try {
-            const res = await fetch('/api/session-user', { credentials: 'include' });
-            const data = await res.json();
-            if (!data.success || !data.user) {
+            // First get basic session info
+            const sessionRes = await fetch('/api/session-user', { credentials: 'include' });
+            const sessionData = await sessionRes.json();
+            if (!sessionData.success || !sessionData.user) {
                 window.location.href = '../Forbidden.html';
                 return null;
             }
-            currentUser = data.user;
-            // Store the user so EditProfile has something to load
-            localStorage.setItem("staffUser", JSON.stringify(data.user));
-            return data.user;
+
+            // Then get detailed trainer profile
+            const profileRes = await fetch('/api/trainer/profile', { credentials: 'include' });
+            const profileData = await profileRes.json();
+            
+            if (profileData.success && profileData.user) {
+                currentUser = profileData.user;
+                localStorage.setItem("staffUser", JSON.stringify(profileData.user));
+                return profileData.user;
+            } else {
+                currentUser = sessionData.user;
+                localStorage.setItem("staffUser", JSON.stringify(sessionData.user));
+                return sessionData.user;
+            }
     
         } catch (err) {
             console.error('Session validation failed:', err);
@@ -62,12 +75,16 @@
     // --- Student Mini Profile Logic ---
     async function showMiniProfile(tr) {
         try {
-            const [verifyRes, plansRes] = await Promise.all([
+            elements.profileTodayPlan.innerHTML = '<span class="text-muted italic">Loading plan...</span>';
+            
+            const [verifyRes, plansRes, studentPlanRes] = await Promise.all([
                 fetch(`/api/verify-tr/${tr}`),
-                fetch(`/api/training-plans/${tr}`)
+                fetch(`/api/training-plans/${tr}`),
+                fetch(`/api/trainer/student-plan/${tr}`)
             ]);
             const verifyData = await verifyRes.json();
             const plansData = await plansRes.json();
+            const studentPlanData = await studentPlanRes.json();
 
             if (!verifyData.valid) {
                 throw new Error(verifyData.message || 'Invalid TR or membership expired');
@@ -78,6 +95,18 @@
             elements.profileTR.textContent = currentStudent.TR;
             elements.profileGoal.textContent = currentStudent.Goal || 'Not set';
             elements.profileSlot.textContent = currentStudent.SlotName || 'Not assigned';
+
+            // --- Render Today's Plan ---
+            const todayName = moment().tz("Asia/Kolkata").format('dddd'); // e.g. "Monday"
+            const todayPlan = studentPlanData.success && studentPlanData.data 
+                ? studentPlanData.data.find(p => p.Day === todayName)
+                : null;
+
+            if (todayPlan && todayPlan.Content && todayPlan.Content.trim() !== "") {
+                elements.profileTodayPlan.innerHTML = todayPlan.Content;
+            } else {
+                elements.profileTodayPlan.innerHTML = `<span class="text-muted italic">No workout planned for ${todayName}.</span>`;
+            }
 
             elements.profileRecent.innerHTML = '';
             if (plansData.success && plansData.data.length > 0) {
@@ -104,10 +133,19 @@
 // Updated renderHomePage to fetch data once and add collapsible attendance
 // show username after welcome ,and display "Talabat" when Gender is Male and "Talebaat" when Gender is Female instead of just Gender
 function renderHomePage() {
+    const displayName = currentUser?.Name || currentUser?.Username || 'Trainer';
     elements.mainContent.innerHTML = `
         <div class="card fade-in">
-            <h3 id="welcomeText">Welcome, ${currentUser?.Username}! <br> <span>${currentUser?.Branch} - ${currentUser?.Gender === 'Male' ? 'Talabat' : 'Talebaat'}</span></h3>
+            <h3 id="welcomeText">Welcome, <span id="welcomeNameDisplay">${displayName}</span>! <br> <span>${currentUser?.Branch} - ${currentUser?.Gender === 'Male' ? 'Talabat' : 'Talebaat'}</span></h3>
             <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${new Date().toISOString().split('T')[0]}</span></p>
+        </div>
+        <div class="card" id="slot-selection-card">
+            <h4>Filter by Slot</h4>
+            <div class="form-group">
+                <select id="slot-selector" class="form-control">
+                    <option value="">All Slots</option>
+                </select>
+            </div>
         </div>
         <div class="card" id="quick-stats">
             <p style="text-align:center;">Loading stats...</p> 
@@ -132,9 +170,28 @@ function renderHomePage() {
             </div>
         </div>
     `;
-    // Fetch data once and share
+
+    // Fetch Slots first
+    fetch('/api/slots')
+        .then(res => res.json())
+        .then(data => {
+            const slotSelect = document.getElementById('slot-selector');
+            if (data.success && data.slots) {
+                data.slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = slot.SlotID;
+                    option.textContent = slot.SlotName;
+                    if (String(slot.SlotID) === String(selectedSlotID)) option.selected = true;
+                    slotSelect.appendChild(option);
+                });
+            }
+        });
+
+    // Fetch data once and share, including SlotID filter
+    const attendanceUrl = selectedSlotID ? `/api/daily-attendance?SlotID=${selectedSlotID}` : '/api/daily-attendance';
+    
     Promise.all([ 
-        fetch('/api/daily-attendance').then(res => res.json()),
+        fetch(attendanceUrl).then(res => res.json()),
         fetch('/api/active-sessions', { credentials: 'include' }).then(res => res.json())
     ]).then(([attendanceData, sessionsData]) => {
         if (attendanceData.error) throw new Error(attendanceData.error);
@@ -214,9 +271,22 @@ function renderQuickStats(presentCount, totalAttendance, active) {
 
     function renderMenuPage() {
         const isDarkMode = document.body.classList.contains('dark-mode');
+        const profileAlert = !currentUser?.isProfileComplete ? `
+            <div class="alert alert-warning fade-in" style="margin-bottom: 1.5rem; border-radius: 12px; border: 1px solid #ffeeba;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem; color: #856404;"></i>
+                    <div>
+                        <strong style="color: #856404; display: block; margin-bottom: 2px;">Incomplete Profile</strong>
+                        <span style="font-size: 0.85rem; color: #856404; opacity: 0.9;">Please add your name and contact details to complete your trainer profile.</span>
+                    </div>
+                </div>
+            </div>
+        ` : '';
+
         elements.mainContent.innerHTML = `
             <div class="card fade-in">
                 <h3>Menu</h3>
+                ${profileAlert}
                 <div class="list-group">
                     <div class="menu-item" id="editProfileBtn">
                     <i class="fas fa-user-edit"></i>
@@ -581,16 +651,16 @@ async function updateTrainerProfile(event) {
         });
 
         // Update local values immediately
-        let localUser = JSON.parse(localStorage.getItem("staffUser"));
-        localUser.Name = payload.Name;
-        localUser.Profession = payload.Profession;
-        localUser.Contact = payload.Contact;
-        localUser.Email = payload.Email;
-        localStorage.setItem("staffUser", JSON.stringify(localUser));
+        currentUser.Name = payload.Name;
+        currentUser.Profession = payload.Profession;
+        currentUser.Contact = payload.Contact;
+        currentUser.Email = payload.Email;
+        currentUser.isProfileComplete = !!(payload.Name && payload.Contact);
+        localStorage.setItem("staffUser", JSON.stringify(currentUser));
 
         // Refresh displayed name on Home page immediately
-        const welcomeName = document.getElementById("welcomeName");
-        if (welcomeName) welcomeName.innerText = payload.Name;
+        const welcomeNameDisplay = document.getElementById("welcomeNameDisplay");
+        if (welcomeNameDisplay) welcomeNameDisplay.innerText = payload.Name;
 
     } else {
         Swal.fire("Error", data.message || "Profile update failed.", "error");
@@ -605,8 +675,9 @@ async function loadQuickStats() {
     const statsContainer = document.getElementById('quick-stats');
     statsContainer.innerHTML = '<p style="text-align:center;">Loading stats...</p>'; 
     try {
+        const attendanceUrl = selectedSlotID ? `/api/daily-attendance?SlotID=${selectedSlotID}` : '/api/daily-attendance';
         const [attendanceRes, sessionsRes] = await Promise.all([
-            fetch('/api/daily-attendance'),
+            fetch(attendanceUrl),
             fetch('/api/active-sessions', { credentials: 'include' })
         ]);
         const attendanceData = await attendanceRes.json(); 
@@ -651,7 +722,8 @@ async function loadQuickStats() {
         const tbody = document.querySelector('#dailyAttendanceTable tbody');
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading attendance...</td></tr>';
         try {
-            const res = await fetch('/api/daily-attendance');
+            const attendanceUrl = selectedSlotID ? `/api/daily-attendance?SlotID=${selectedSlotID}` : '/api/daily-attendance';
+            const res = await fetch(attendanceUrl);
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Failed to load attendance');
             dailyAttendanceCache = data;
@@ -842,6 +914,21 @@ async function initializeSearchSelector(students) {
 function initHomeListeners() {
     const trInput = document.getElementById('tr-input');
     const searchBtn = document.getElementById('search-btn');
+    const slotSelector = document.getElementById('slot-selector');
+
+    // --- MODIFICATION: Listener for Slot Selector ---
+    if (slotSelector) {
+        slotSelector.addEventListener('change', (e) => {
+            selectedSlotID = e.target.value || null;
+            if (selectedSlotID) {
+                localStorage.setItem('trainerSelectedSlotID', selectedSlotID);
+            } else {
+                localStorage.removeItem('trainerSelectedSlotID');
+            }
+            renderHomePage(); // Refresh everything with the new slot filter
+        });
+    }
+    // --- End Modification ---
 
     // --- MODIFICATION: Listener for Active Stats Card (using event delegation) ---
     const quickStatsCard = document.getElementById('quick-stats');
