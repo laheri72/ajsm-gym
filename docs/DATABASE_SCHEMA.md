@@ -6,42 +6,45 @@ The AJSM Gym Management System uses a Microsoft SQL Server (MSSQL) database. The
 
 ### `PassBank`
 Stores login credentials and roles for Staff, Trainers, Admins, and Evaluators.
-- `UserID` (INT, PK, IDENTITY)
-- `Username` (NVARCHAR(50), UNIQUE)
+- `Username` (VARCHAR(50), PK)
 - `Password` (NVARCHAR(100)) - Hashed with bcrypt.
-- `Gender` (NVARCHAR(10)) - 'Male' or 'Female'.
-- `Role` (NVARCHAR(20)) - 'Admin', 'Staff', 'Trainer', 'Evaluator'.
-- `Branch` (NVARCHAR(50)) - The physical gym branch.
+- `Role` (VARCHAR(9)) - 'Admin', 'Staff', 'Trainer', 'Evaluator'.
+- `Branch` (VARCHAR(7)) - The physical gym branch.
+- `Gender` (VARCHAR(6)) - 'Male' or 'Female'.
 - `IsDefaultPassword` (BIT) - Flag for mandatory first-time password change.
+- `UserID` (INT, UNIQUE, IDENTITY)
 
 ### `TestMaster`
 The central identity table for Students.
 - `TR` (INT, PK) - Student's unique TR number.
-- `ITS` (BIGINT) - Student's ITS number.
+- `ITS` (INT, UNIQUE) - Student's ITS number.
+- `Darajah` (VARCHAR(15)) - Student's class/grade level.
 - `Name` (NVARCHAR(100))
-- `Branch` (NVARCHAR(50))
-- `Gender` (NVARCHAR(10))
-- `Status` (NVARCHAR(20)) - 'Active', 'Inactive'.
+- `DOB` (DATE)
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
 - `Password` (NVARCHAR(100)) - Hashed with bcrypt. NULL for first-time login.
-- `HasLoggedInBefore` (BIT)
-- `JoinedAt` (DATETIME)
-- `DOB` (DATE, Nullable)
 - `FitnessLevel` (INT) - Current gamification level (starts at 1).
 - `CurrentXP` (INT) - Current XP towards next level.
+- `Status` (VARCHAR(8)) - 'Active', 'Inactive'.
 - `SlotID` (INT, FK) -> `Slots.SlotID`
-- `TotalMinutesLogged` (INT) - Running total for 'Iron Dedication' badge.
+- `JoinedAt` (DATETIME)
 - `BestStreak` (INT) - Student's personal best workout streak.
+- `TotalMinutesLogged` (INT) - Running total for 'Iron Dedication' badge.
+- `Goal` (VARCHAR(50)) - Fitness goal.
+- `Height` (DECIMAL(5,2)) - Height in meters.
+- `HasLoggedInBefore` (BIT)
 
 ## Gym Operations
 
 ### `Slots`
 Defines available gym timing sessions.
 - `SlotID` (INT, PK, IDENTITY)
-- `SlotName` (NVARCHAR(50))
+- `SlotName` (NVARCHAR(25))
 - `MaxCapacity` (INT)
-- `Branch` (NVARCHAR(50))
-- `Gender` (NVARCHAR(10))
-- `IsActive` (BIT, Default 1)
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
+- `IsActive` (BIT)
 
 ### `Attendance`
 Logs daily gym check-ins and check-outs.
@@ -49,12 +52,12 @@ Logs daily gym check-ins and check-outs.
 - `TR` (INT, FK) -> `TestMaster.TR`
 - `WeekID` (INT, FK) -> `AttendanceWeek.WeekID`
 - `IsPresent` (BIT)
-- `OnLeave` (BIT)
 - `CreatedAt` (DATETIME) - Timestamp of check-in.
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
+- `OnLeave` (BIT)
 - `OutTime` (DATETIME) - Timestamp of check-out.
 - `DurationInMinutes` (INT) - Calculated duration of the session.
-- `Branch` (NVARCHAR(50))
-- `Gender` (NVARCHAR(10))
 
 ### `AttendanceWeek`
 Defines the ISO week boundaries for attendance tracking.
@@ -65,12 +68,27 @@ Defines the ISO week boundaries for attendance tracking.
 ### `WaitingList`
 Students waiting to be assigned to a gym slot.
 - `WaitingID` (INT, PK, IDENTITY)
-- `TR` (INT)
+- `TR` (INT, UNIQUE)
 - `Name` (NVARCHAR(100))
-- `Darajah` (NVARCHAR(50))
-- `Branch` (NVARCHAR(50))
-- `Gender` (NVARCHAR(10))
-- `RequestedAt` (DATETIME, Default GETDATE())
+- `Darajah` (VARCHAR(15))
+- `Goal` (VARCHAR(50))
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
+- `RequestedAt` (DATETIME)
+- `SlotID` (INT)
+
+### `LeaveRequests`
+Management of student leave of absences.
+- `LeaveID` (INT, PK, IDENTITY)
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `LeaveStartDate` (DATE)
+- `LeaveEndDate` (DATE)
+- `Reason` (NVARCHAR(500))
+- `Status` (VARCHAR(10)) - 'Pending', 'Approved', 'Rejected'.
+- `RequestedAt` (DATETIME)
+- `ReviewedBy` (VARCHAR(50))
+- `ReviewedAt` (DATETIME)
+- `Remarks` (NVARCHAR(500))
 
 ## Fitness & Medical
 
@@ -78,28 +96,36 @@ Students waiting to be assigned to a gym slot.
 Stores results of comprehensive fitness tests.
 - `TestLog` (INT, PK, IDENTITY)
 - `TR` (INT, FK) -> `TestMaster.TR`
-- `Weight` (FLOAT)
-- `Height` (FLOAT)
-- `Waist`, `Hips`, `Neck` (FLOAT)
-- `BMI`, `BodyFat`, `BMR`, `CalorieIntake`, `VO2Max` (FLOAT)
+- `Weight`, `Height`, `Waist`, `Hips`, `Neck` (FLOAT)
+- `BMI` (FLOAT)
+- `BMIStatus` (VARCHAR(20))
+- `BodyFat`, `BMR`, `CalorieIntake`, `VO2Max` (FLOAT)
 - `Total` (FLOAT) - Aggregated fitness score.
 - `Grade` (NVARCHAR(2)) - A, B, C, etc.
-- `CreatedAt` (DATETIME, Default GETUTCDATE())
-- `SubmittedBy` (NVARCHAR(10)) - 'Student' or 'Trainer'.
-- `Branch`, `Gender` (NVARCHAR)
+- `CreatedAt` (DATETIME)
+- `SubmittedBy` (VARCHAR(7)) - 'Student' or 'Trainer'.
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
 - `BatchID` (INT, FK) -> `EvaluationBatches.BatchID`
-- `TrainerID` (INT, FK) -> `Trainers.TrainerID` (Only if `SubmittedBy` = 'Trainer')
+- `TrainerID` (INT, FK) -> `Trainers.TrainerID`
 
 ### `TestActivityLog`
 Specific physical activity counts associated with a `TestRecord`.
 - `ActivityLogID` (INT, PK, IDENTITY)
-- `TestLog` (INT, FK) -> `TestRecords.TestLog`
+- `TestLog` (INT, FK) -> `TestRecords.TestLog` (ON DELETE CASCADE)
 - `PushUps`, `SitUps`, `Squats`, `SitAndReach`, `StepUpPulseRate` (SMALLINT)
+
+### `WeightTracking`
+Ad-hoc weight logs for progression tracking.
+- `LogID` (INT, PK, IDENTITY)
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `Weight` (DECIMAL(5,2))
+- `CreatedAt` (DATETIME)
 
 ### `MedicalHistory`
 One-to-one record for student health disclosures.
-- `MedicalID` (INT, PK, IDENTITY)
-- `TR` (INT, FK, UNIQUE) -> `TestMaster.TR`
+- `HistoryID` (INT, PK, IDENTITY)
+- `TR` (INT, FK, UNIQUE) -> `TestMaster.TR` (ON DELETE CASCADE)
 - `Allergies`, `Medications`, `FamilyHistory`, `PreviousInjuries` (NVARCHAR(MAX))
 
 ## Evaluation & Feedback
@@ -107,56 +133,152 @@ One-to-one record for student health disclosures.
 ### `Evaluators`
 Profiles for the expert evaluator role.
 - `EvaluatorID` (INT, PK, IDENTITY)
-- `UserID` (INT, FK) -> `PassBank.UserID`
-- `Name`, `Profession`, `Contact`, `Email` (NVARCHAR)
+- `UserID` (INT, FK) -> `PassBank.UserID` (ON DELETE SET NULL)
+- `Name`, `Profession`, `Contact`, `Email` (NVARCHAR(100))
 
 ### `Evaluations`
 Feedback comments on specific fitness tests.
 - `EvaluationID` (INT, PK, IDENTITY)
-- `LogID` (INT, FK) -> `TestRecords.TestLog`
+- `LogID` (INT, FK) -> `TestRecords.TestLog` (ON DELETE CASCADE)
 - `EvaluatorID` (INT, FK) -> `Evaluators.EvaluatorID`
 - `CategoryID` (INT, FK) -> `CommentCategories.CategoryID`
 - `CommentText` (NVARCHAR(MAX))
-- `DateEvaluated` (DATETIME, Default GETUTCDATE())
+- `DateEvaluated` (DATETIME)
 
 ### `EvaluationBatches`
 Groupings of tests for periodic grading.
 - `BatchID` (INT, PK, IDENTITY)
 - `BatchName` (NVARCHAR(100))
-- `Branch`, `Gender` (NVARCHAR)
-- `IsActive` (BIT) - Only one active batch allowed per section.
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
+- `IsActive` (BIT)
 - `CreatedAt` (DATETIME)
-- `CreatedBy` (NVARCHAR) - Username from `PassBank`.
+- `CreatedBy` (VARCHAR(50))
 
-## Training & Gamification
+### `CommentCategories`
+Categories for evaluation comments.
+- `CategoryID` (INT, PK, IDENTITY)
+- `CategoryName` (NVARCHAR(100))
+- `Description` (NVARCHAR(255))
+
+## Structured Workout Planner (V2)
+
+### `Exercises`
+Master lookup list for movements.
+- `ExerciseID` (INT, PK, IDENTITY)
+- `Name` (NVARCHAR(100))
+- `BodyPartID` (INT, FK) -> `BodyParts.BodyPartID`
+- `Equipment` (NVARCHAR(50))
+- `Difficulty` (NVARCHAR(20)) - 'Beginner', 'Intermediate', 'Advanced'.
+- `VideoURL` (NVARCHAR(255))
+- `IsActive` (BIT)
+- `CreatedAt` (DATETIME)
+
+### `WorkoutPrograms`
+High-level training blocks (Global or Custom).
+- `ProgramID` (INT, PK, IDENTITY)
+- `TR` (INT, FK) -> `TestMaster.TR` (NULL for System Templates)
+- `ProgramName` (NVARCHAR(100))
+- `Description` (NVARCHAR(500))
+- `IsActive` (BIT)
+- `CreatedAt` (DATETIME)
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
+
+### `WorkoutWeeks`
+Relative weeks within a program.
+- `WeekID` (INT, PK, IDENTITY)
+- `ProgramID` (INT, FK) -> `WorkoutPrograms.ProgramID` (ON DELETE CASCADE)
+- `WeekNumber` (INT)
+- `Theme` (NVARCHAR(50))
+
+### `WorkoutDays`
+Specific day definitions within a week.
+- `DayID` (INT, PK, IDENTITY)
+- `WeekID` (INT, FK) -> `WorkoutWeeks.WeekID` (ON DELETE CASCADE)
+- `DayName` (NVARCHAR(20))
+- `OrderIndex` (INT)
+
+### `PlannedExercises`
+The workout "prescription" (Target Sets/Reps).
+- `PlannedID` (INT, PK, IDENTITY)
+- `DayID` (INT, FK) -> `WorkoutDays.DayID` (ON DELETE CASCADE)
+- `ExerciseID` (INT, FK) -> `Exercises.ExerciseID`
+- `TargetSets` (INT)
+- `TargetReps` (NVARCHAR(20))
+- `RestSeconds` (INT)
+- `OrderIndex` (INT)
+- `Notes` (NVARCHAR(255))
+
+### `PerformanceLogs`
+Granular set-by-set execution results.
+- `LogID` (INT, PK, IDENTITY)
+- `PlanID` (INT, FK) -> `TrainingPlan.PlanID` (ON DELETE CASCADE)
+- `PlannedID` (INT, FK) -> `PlannedExercises.PlannedID` (NULL for ad-hoc)
+- `ExerciseID` (INT, FK) -> `Exercises.ExerciseID`
+- `SetNumber` (INT)
+- `RepsPerformed` (INT)
+- `WeightUsed` (DECIMAL(10,2))
+- `RPE` (INT)
+- `IsPR` (BIT)
+- `CompletedAt` (DATETIME)
+
+### `StudentPRs`
+Personal records snapshot for quick lookup.
+- `PRID` (INT, PK, IDENTITY)
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `ExerciseID` (INT, FK) -> `Exercises.ExerciseID`
+- `OneRepMax` (DECIMAL(10,2))
+- `AchievedAt` (DATETIME)
+- `PlanID` (INT, FK) -> `TrainingPlan.PlanID`
+
+## Training & Gamification (Legacy & Helpers)
+
+### `BodyParts`
+Lookup table for target muscle groups.
+- `BodyPartID` (INT, PK, IDENTITY)
+- `Name` (VARCHAR(25), UNIQUE)
 
 ### `TrainingPlan`
-Logs a completed workout session (date and student).
+Session header for a completed workout.
 - `PlanID` (INT, PK, IDENTITY)
 - `TR` (INT, FK) -> `TestMaster.TR`
 - `CreatedAt` (DATETIME)
-- `Branch`, `Gender` (NVARCHAR)
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
 
-### `TrainingLog`
+### `TrainingLog` (Legacy Support)
 Junction table linking workout sessions to specific body parts.
 - `LogID` (INT, PK, IDENTITY)
-- `PlanID` (INT, FK) -> `TrainingPlan.PlanID`
+- `PlanID` (INT, FK) -> `TrainingPlan.PlanID` (ON DELETE CASCADE)
 - `BodyPartID` (INT, FK) -> `BodyParts.BodyPartID`
 
-### `Achievements` & `StudentAchievements`
-- `Achievements`: Lookup table for achievement metadata (Name, Description, Badge URL).
-- `StudentAchievements`: Junction table linking earned achievements to students.
+### `Achievements`
+Metadata for system badges and milestones.
+- `AchievementID` (INT, PK, IDENTITY)
+- `AchievementName` (NVARCHAR(100))
+- `Description` (NVARCHAR(255))
+- `BadgeImageURL` (NVARCHAR(255))
 
-### `WorkoutPlan`
-Student-defined weekly workout schedules.
-- `WorkoutPlanID` (INT, PK, IDENTITY)
+### `StudentAchievements`
+Junction table for earned achievements.
+- `StudentAchievementID` (INT, PK, IDENTITY)
 - `TR` (INT, FK) -> `TestMaster.TR`
-- `Day` (NVARCHAR(20)) - 'Monday' through 'Saturday'.
-- `Content` (NVARCHAR(MAX)) - Exercise details.
+- `AchievementID` (INT, FK) -> `Achievements.AchievementID`
+- `DateEarned` (DATETIME)
+- `Context` (NVARCHAR(50))
+
+### `WorkoutPlan` (Legacy Content)
+Student-defined weekly workout schedules (Plain text).
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `Day` (VARCHAR(20))
+- `Content` (NVARCHAR(MAX))
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
 - `WeekID` (INT, FK) -> `AttendanceWeek.WeekID`
 
 ## Relationships Summary
-- **Sectioning:** Most operational tables (`TestMaster`, `Attendance`, `Slots`, `WaitingList`, `TestRecords`, `EvaluationBatches`) use a composite `Branch` + `Gender` scope for data isolation.
-- **Cascading:** Users in `PassBank` link to role-specific profile tables (`Evaluators`, `Trainers`).
-- **Activity Tracking:** `TestRecords` and `TestActivityLog` share a 1:1 relationship via `TestLog`.
-- **Workouts:** `TrainingPlan` and `TrainingLog` have a 1:N relationship.
+- **Sectioning:** Data isolation is maintained via `Branch` and `Gender` columns across core tables.
+- **Identity:** `PassBank` (Internal Users) and `TestMaster` (Students) are the primary identity anchors.
+- **Cascading:** `ON DELETE CASCADE` is used for dependent logs (`TestActivityLog`, `MedicalHistory`, `Evaluations`, `TrainingLog`, `PerformanceLogs`) to ensure cleanup.
+- **Set Null:** `ON DELETE SET NULL` is used for profile links (`Evaluators`, `Trainers`) to preserve records if the login account is removed.
