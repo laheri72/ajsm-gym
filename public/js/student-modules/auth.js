@@ -33,7 +33,38 @@ export async function getStudentSession() {
     showLeaderboard();
     
     const stu = data.user; 
-    const memberSinceDate = new Date(stu.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Handle Member Since Date
+    let memberSinceDate = 'N/A';
+    if (stu.joinedAt) {
+        memberSinceDate = new Date(stu.joinedAt).toLocaleDateString(undefined, { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+    }
+
+    // --- GYM MEMBER & STATUS CHECK ---
+    const isNotGymMember = !stu.joinedAt;
+    const isInactive = stu.Status === 'Inactive';
+
+    if (isNotGymMember) {
+        // Remove Attendance and Leaves tabs for non-gym members
+        const attendanceTab = document.querySelector('a[href="#attendance"]')?.closest('.nav-item');
+        const leavesTab = document.querySelector('a[href="#leaves"]')?.closest('.nav-item');
+        
+        if (attendanceTab) attendanceTab.remove();
+        if (leavesTab) leavesTab.remove();
+    }
+
+    if (isNotGymMember || isInactive) {
+        const banner = document.getElementById('inactive-status-banner');
+        if (banner) {
+            banner.style.display = 'block'; // Show the banner
+        }
+        // Add a class to the body to disable features or for styling
+        document.body.classList.add('is-inactive');
+    }
 
     // --- Set Global State ---
     setStudentAuthData({
@@ -46,18 +77,6 @@ export async function getStudentSession() {
     setStudentHeight(stu.Height);
     setStudentGoal(stu.Goal);
     // --- End State Set ---
-
-    // --- (NEW) INACTIVE STUDENT CHECK ---
-    // This is the new logic you need to add.
-    if (stu.Status === 'Inactive') {
-        const banner = document.getElementById('inactive-status-banner');
-        if (banner) {
-            banner.style.display = 'block'; // Show the banner
-        }
-        // Add a class to the body to disable features
-        document.body.classList.add('is-inactive');
-    }
-    // --- (END NEW) ---
 
     // --- XP & Level ---
     document.getElementById('xpBarText').textContent = 'Loading...';
