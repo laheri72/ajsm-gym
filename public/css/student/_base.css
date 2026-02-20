@@ -331,12 +331,21 @@ table th, table td {
     border-bottom: 1px solid #1f2d40;
     color: var(--text-on-light);
 }
+[data-theme="dark"] .table {
+    --bs-table-bg: var(--dark-bg-primary);
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.02);
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.05);
+    --bs-table-color: var(--text-on-light);
+    --bs-table-border-color: var(--border-color);
+    color: var(--text-on-light);
+}
+
 [data-theme="dark"] .table,
 [data-theme="dark"] .table tbody tr,
 [data-theme="dark"] #studentPlanTable,
 [data-theme="dark"] #sessionHistoryTable,
 [data-theme="dark"] #weightHistoryTable {
-    background-color: #0f1722;
+    background-color: var(--dark-bg-primary);
 }
 
 [data-theme="dark"] #studentPlanTable tbody td,
@@ -368,6 +377,10 @@ table thead th {
 
 table tr:nth-child(even) {
     background: rgba(67, 97, 238, 0.05);
+}
+
+[data-theme="dark"] table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02) !important;
 }
 
 /* Specific styles for #attendanceTable */
@@ -534,5 +547,39 @@ td iframe {
     background-color: #2b210a; /* A dark, warm yellow */
     color: #ffeca7;           /* Light yellow text */
     border-color: #594700;   /* A darker gold border */
+}
+
+/* --- Global Dark Mode Overrides --- */
+[data-theme="dark"] .text-dark {
+    color: var(--text-on-light) !important;
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--gray) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background-color: var(--dark-bg-secondary) !important;
+    color: var(--text-on-light) !important;
+}
+
+[data-theme="dark"] .badge.bg-light {
+    background-color: var(--dark-bg-secondary) !important;
+    color: var(--text-on-light) !important;
+    border: 1px solid var(--dark-border);
+}
+
+[data-theme="dark"] .alert-light {
+    background-color: var(--dark-bg-secondary) !important;
+    color: var(--text-on-light) !important;
+    border: 1px dashed var(--dark-border) !important;
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(even) {
+    background-color: transparent !important;
 }
 

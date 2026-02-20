@@ -221,9 +221,24 @@
     color: white;
 }
 
+[data-theme="dark"] .eval-header .text-muted,
+[data-theme="dark"] .comment-block .text-muted {
+    color: var(--gray) !important;
+}
+
 [data-theme="dark"] .comment-block {
     background: rgba(255, 255, 255, 0.03);
     border-color: var(--fitness-primary);
+}
+
+[data-theme="dark"] .comment-block p {
+    color: var(--text-on-light) !important; /* Ensure visibility on dark bg */
+}
+
+[data-theme="dark"] .eval-header .badge {
+    background-color: var(--dark-bg-secondary) !important;
+    color: var(--text-on-light) !important;
+    border-color: var(--dark-border) !important;
 }
 
 [data-theme="dark"] .fitness-tabs {
@@ -241,15 +256,48 @@
 
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select {
-    background: var(--dark-bg-secondary);
-    border-color: var(--dark-border);
-    color: white;
+    background: var(--dark-bg-secondary) !important;
+    border-color: var(--dark-border) !important;
+    color: white !important;
 }
 
-[data-theme="dark"] .form-control:focus {
-    background: var(--dark-bg-secondary);
-    border-color: var(--fitness-primary);
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: var(--dark-bg-secondary) !important;
+    border-color: var(--fitness-primary) !important;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2) !important;
+    color: white !important;
+}
+
+/* Fix for Activity and History Tables in Dark Mode */
+[data-theme="dark"] #activity-card table,
+[data-theme="dark"] #fit-tab-history table,
+[data-theme="dark"] #historyTable {
+    background-color: var(--dark-bg-primary) !important;
+    color: var(--text-on-light) !important;
+    border-color: var(--dark-border) !important;
+}
+
+[data-theme="dark"] #activity-card thead,
+[data-theme="dark"] #fit-tab-history thead,
+[data-theme="dark"] #historyTable thead {
+    background-color: var(--dark-bg-secondary) !important;
+}
+
+[data-theme="dark"] #activity-card th,
+[data-theme="dark"] #fit-tab-history th,
+[data-theme="dark"] #historyTable th,
+[data-theme="dark"] #activity-card td,
+[data-theme="dark"] #fit-tab-history td,
+[data-theme="dark"] #historyTable td {
+    color: var(--text-on-light) !important;
+    border-color: var(--dark-border) !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
 }
 
 /* --- Mobile Spacing --- */
