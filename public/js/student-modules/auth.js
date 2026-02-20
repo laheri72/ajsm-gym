@@ -1,10 +1,17 @@
-import { setStudentAuthData, setStudentHeight, isPlannerDirty, setStudentGoal } from './state.js';
+import { setStudentAuthData, setStudentHeight, isPlannerDirty, setStudentGoal, studentTR } from './state.js';
 import { showLeaderboard, updateXPBarUI, showLevelUpAnimation } from './gamification.js';
 import { loadTip } from './tips.js';
 import { loadWeeklyPlan } from './planner.js';
 import { loadDashboardStats } from './dashboard.js';
 import { loadCurrentWeightStat } from './progression.js';
 import { initializeHeaderPopovers } from './new-header.js'; // <-- This is crucial
+
+/**
+ * Helper to get the current student TR
+ */
+export function getTR() {
+    return studentTR;
+}
 
 /**
  * Fetches the student's session data, sets global state, and triggers

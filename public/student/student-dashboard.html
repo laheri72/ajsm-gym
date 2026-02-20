@@ -504,19 +504,215 @@
 </section>
 
 <section class="card" id="fitness-low" style="display: none;">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <h2 class="mb-0">🧪 Fitness Profile</h2>
-    <small class="text-muted">Powered by TestMaster</small>
+  <div class="tips-header">
+    <h2 class="text-center mb-4">🧪 Fitness Profile</h2>
+    <p>Manage your health data, take fitness tests, and view expert evaluations.</p>
   </div>
 
-  <div class="mt-3" id="fitness-iframe-container" style="height: 80vh; border-radius: 12px; overflow: hidden;">
-    <iframe
-      id="fitness-iframe"
-      title="Fitness Profile"
-      data-src="fitness-test.html?embedded=1"
-      style="width: 100%; height: 100%; border: 0;"
-      loading="lazy"
-    ></iframe>
+  <!-- 🔹 Fitness Sub Navigation -->
+  <div class="tab-nav fitness-tabs">
+    <button class="tab-link active" data-tab="overview">
+      <i class="bi bi-person-badge"></i><span>Snapshot</span>
+    </button>
+    <button class="tab-link" data-tab="test">
+      <i class="bi bi-clipboard-pulse"></i><span>Take Test</span>
+    </button>
+    <button class="tab-link" data-tab="evaluations">
+      <i class="bi bi-chat-right-quote"></i><span>Feedback</span>
+    </button>
+    <button class="tab-link" data-tab="history">
+      <i class="bi bi-clock-history"></i><span>History</span>
+    </button>
+  </div>
+
+  <!-- 🔸 Fitness Tab Content -->
+  <div class="tab-content fitness-tab-content">
+    
+    <!-- 1️⃣ Overview & Medical -->
+    <div class="tab-pane fitness-tab-pane active" id="fit-tab-overview">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="stat-module">
+            <h4><i class="bi bi-file-medical"></i> Medical History</h4>
+            <div class="d-flex justify-content-end mb-2">
+              <button class="btn btn-sm btn-outline-secondary" id="editMedicalBtn">Edit</button>
+            </div>
+            
+            <div id="medical-view">
+              <p class="text-muted">Loading medical history...</p>
+            </div>
+
+            <form id="medical-form" style="display: none;">
+              <div class="mb-3">
+                <label class="form-label">Known Allergies</label>
+                <textarea id="medAllergies" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Current Medications</label>
+                <textarea id="medMedications" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Family History</label>
+                <textarea id="medFamilyHistory" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Previous Injuries</label>
+                <textarea id="medPreviousInjuries" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-sm btn-secondary" id="cancelMedicalBtn">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary" id="saveMedicalBtn">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="stat-module">
+            <h4><i class="bi bi-activity"></i> Performance Snapshot</h4>
+            <div id="latest-test-snapshot" class="snapshot-grid">
+              <div class="text-center p-4">
+                <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                <p class="small text-muted mt-2">Loading snapshot...</p>
+              </div>
+            </div>
+            
+            <div id="activity-card" class="mt-4">
+              <!-- Activity table will load here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2️⃣ Fitness Test Form -->
+    <div class="tab-pane fitness-tab-pane" id="fit-tab-test">
+      <div class="fitness-form-container">
+        <div class="d-flex justify-content-end gap-2 mb-3">
+            <button class="btn btn-sm btn-outline-info" onclick="fitnessModule.showTestInfo()"><i class="bi bi-info-circle"></i> Test Info</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="fitnessModule.showConverter()"><i class="bi bi-rulers"></i> Inches to CM</button>
+        </div>
+        
+        <!-- Progress Indicator -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted small">Test Completion</span>
+                <span id="formProgressText" class="text-primary small fw-bold">0%</span>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div id="formProgressBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <form id="testForm" class="row g-3">
+            <div class="form-section-modern">
+                <h5><i class="bi bi-ruler"></i> Body Measurements</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Gender</label>
+                        <select name="Gender" class="form-select" required readonly style="background-color: #f8f9fa;">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Weight (kg)</label>
+                        <input type="number" step="0.1" class="form-control" name="Weight" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Height (cm)</label>
+                        <input type="number" step="0.1" class="form-control" name="Height" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Waist (cm)</label>
+                        <input type="number" step="0.1" class="form-control" name="Waist" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Hips (cm)</label>
+                        <input type="number" step="0.1" class="form-control" name="Hips">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Neck (cm)</label>
+                        <input type="number" step="0.1" class="form-control" name="Neck" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section-modern mt-4">
+                <h5><i class="bi bi-lightning-charge"></i> Physical Tests</h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Push-ups</label>
+                        <input type="number" class="form-control" name="PushUps" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sit-ups</label>
+                        <input type="number" class="form-control" name="SitUps" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Squats</label>
+                        <input type="number" class="form-control" name="Squats" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sit & Reach</label>
+                        <input type="number" step="0.1" class="form-control" name="SitReach" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section-modern mt-4">
+                <h5><i class="bi bi-heart-pulse"></i> Vitals</h5>
+                <div class="col-md-6">
+                    <label class="form-label">Step-Up Pulse Rate (bpm)</label>
+                    <input type="number" class="form-control" name="PulseRate" required>
+                </div>
+            </div>
+
+            <div class="col-12 mt-4">
+                <button type="button" onclick="fitnessModule.generateReport()" class="btn btn-success w-100 py-2">
+                  <i class="bi bi-file-earmark-bar-graph"></i> Generate My Fitness Report
+                </button>
+            </div>
+        </form>
+
+        <div id="reportSection" class="mt-5 hidden">
+            <h4 class="mb-3">📊 Your Fitness Report</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr><th>Metric</th><th>Your Value</th><th>Evaluation</th></tr>
+                    </thead>
+                    <tbody id="reportTableBody"></tbody>
+                </table>
+            </div>
+            <div class="alert alert-warning small">
+                <i class="bi bi-exclamation-triangle"></i> You can only save your result once per week.
+            </div>
+            <button id="saveBtn" type="button" onclick="fitnessModule.saveRecord()" class="btn btn-primary w-100">
+              <i class="bi bi-cloud-arrow-up"></i> Save Record to History
+            </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3️⃣ Evaluations -->
+    <div class="tab-pane fitness-tab-pane" id="fit-tab-evaluations">
+      <div id="evaluation-accordion-container">
+        <p class="text-muted">Loading evaluations...</p>
+      </div>
+    </div>
+
+    <!-- 4️⃣ Test History -->
+    <div class="tab-pane fitness-tab-pane" id="fit-tab-history">
+      <div class="table-responsive">
+        <table id="historyTable" class="table table-striped table-bordered" style="width:100%">
+          <thead>
+            <tr><th>Date</th><th>BMI</th><th>Score</th><th>Grade</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1196,6 +1392,3 @@
 </div>
 </body>
 </html>
-
-
-

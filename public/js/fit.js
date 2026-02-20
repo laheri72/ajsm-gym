@@ -1668,12 +1668,47 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------
-    // 7️⃣ Restore Saved Fitness Goal
+    // 8️⃣ Initialize Form Progress Tracking
     // ----------------------------
-    const savedGoal = localStorage.getItem('fitnessGoal');
-    if (savedGoal) {
-        const goalInput = document.getElementById('goalInput');
-        if (goalInput) goalInput.value = savedGoal;
+    const testForm = document.getElementById('testForm');
+    if (testForm) {
+        // Function to calculate and update form progress
+        const updateFormProgress = () => {
+            const requiredFields = testForm.querySelectorAll('[required]');
+            if (requiredFields.length === 0) return;
+
+            let completedFields = 0;
+            requiredFields.forEach(field => {
+                if (field.value && field.value.trim() !== "") {
+                    completedFields++;
+                }
+            });
+
+            const progress = Math.round((completedFields / requiredFields.length) * 100);
+            const progressBar = document.getElementById('formProgressBar');
+            const progressText = document.getElementById('formProgressText');
+
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+                
+                // Change color based on completion
+                progressBar.classList.remove('bg-danger', 'bg-warning', 'bg-success');
+                if (progress < 30) progressBar.classList.add('bg-danger');
+                else if (progress < 70) progressBar.classList.add('bg-warning');
+                else progressBar.classList.add('bg-success');
+            }
+            if (progressText) progressText.textContent = `${progress}%`;
+        };
+
+        // Attach event listener to update on input
+        testForm.addEventListener('input', updateFormProgress);
+        
+        // Initial call to set state (for pre-filled fields like Gender)
+        setTimeout(updateFormProgress, 500);
+        
+        // Expose to window if needed for manual triggers
+        window.updateFormProgress = updateFormProgress;
     }
 });
 

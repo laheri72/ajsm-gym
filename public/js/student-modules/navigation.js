@@ -44,10 +44,9 @@ export function navigateToSection(targetSectionId) {
         loadFitnessProgress(); 
     }
     if (targetSectionId === 'fitness-low') {
-        const iframe = document.getElementById('fitness-iframe');
-        if (iframe && !iframe.getAttribute('src')) {
-            iframe.setAttribute('src', iframe.getAttribute('data-src') || 'fitness-test.html?embedded=1');
-        }
+        import('./fitness.js').then(mod => {
+            mod.showFitnessTab('overview');
+        });
     }
 if (targetSectionId === 'tips-low') {
     // initialize tips UI, tabs and loaders

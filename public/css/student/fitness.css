@@ -1,0 +1,301 @@
+/* =================================================================== */
+/* 🏋️ MODULAR FITNESS DASHBOARD STYLES
+/* =================================================================== */
+
+:root {
+    --fitness-primary: #4CAF50;
+    --fitness-primary-soft: rgba(76, 175, 80, 0.1);
+    --fitness-primary-border: rgba(76, 175, 80, 0.2);
+    --fitness-card-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Navigation Tabs Enhancement --- */
+.fitness-tabs {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.fitness-tabs .tab-link {
+    flex: 1;
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    color: var(--gray);
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.fitness-tabs .tab-link i,
+.fitness-tabs .tab-link bi {
+    font-size: 1.1rem;
+}
+
+.fitness-tabs .tab-link:hover {
+    background: var(--fitness-primary-soft);
+    color: var(--fitness-primary);
+}
+
+.fitness-tabs .tab-link.active {
+    background: var(--fitness-primary);
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    transform: translateY(-2px);
+}
+
+/* --- Container Polish --- */
+.fitness-tab-pane {
+    display: none;
+    animation: slideUpFade 0.4s ease-out;
+}
+
+.fitness-tab-pane.active {
+    display: block;
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Snapshot Cards (Overview) --- */
+.snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.snapshot-card {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 16px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--fitness-card-shadow);
+    transition: transform 0.3s ease;
+}
+
+.snapshot-card:hover {
+    transform: translateY(-5px);
+}
+
+.snapshot-card .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.snapshot-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.snapshot-card.grade-A { border-bottom: 4px solid #4CAF50; color: #4CAF50; }
+.snapshot-card.grade-B { border-bottom: 4px solid #2196F3; color: #2196F3; }
+.snapshot-card.grade-C { border-bottom: 4px solid #FF9800; color: #FF9800; }
+.snapshot-card.grade-D { border-bottom: 4px solid #f44336; color: #f44336; }
+
+/* --- Modern Form Sections --- */
+.form-section-modern {
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--fitness-card-shadow);
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.form-section-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: var(--fitness-primary);
+}
+
+.form-section-modern h5 {
+    color: var(--fitness-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.form-section-modern h5 i {
+    background: var(--fitness-primary-soft);
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+/* --- Professional Evaluations (Accordion) --- */
+.eval-item {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    box-shadow: var(--fitness-card-shadow);
+}
+
+.eval-header {
+    padding: 1.25rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.eval-header:hover {
+    background: var(--light);
+}
+
+.eval-body {
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px dashed var(--border-color);
+    margin-top: -1px;
+}
+
+.comment-block {
+    background: var(--light);
+    padding: 1rem;
+    border-radius: 12px;
+    margin-top: 1rem;
+    border-left: 3px solid var(--fitness-primary);
+}
+
+.comment-block h6 {
+    color: var(--fitness-primary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* --- Progress Bar --- */
+.progress-container {
+    background: var(--bg-secondary);
+    border-radius: 50px;
+    height: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--fitness-primary), #81C784);
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- DARK MODE OVERRIDES --- */
+[data-theme="dark"] .snapshot-card,
+[data-theme="dark"] .form-section-modern,
+[data-theme="dark"] .eval-item {
+    background: var(--dark-bg-primary);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .snapshot-card .value,
+[data-theme="dark"] .eval-header h6 {
+    color: white;
+}
+
+[data-theme="dark"] .comment-block {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--fitness-primary);
+}
+
+[data-theme="dark"] .fitness-tabs {
+    background: var(--dark-bg-secondary);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .tab-link {
+    color: var(--gray);
+}
+
+[data-theme="dark"] .tab-link:hover {
+    background: rgba(76, 175, 80, 0.15);
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background: var(--dark-bg-secondary);
+    border-color: var(--dark-border);
+    color: white;
+}
+
+[data-theme="dark"] .form-control:focus {
+    background: var(--dark-bg-secondary);
+    border-color: var(--fitness-primary);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+}
+
+/* --- Mobile Spacing --- */
+@media (max-width: 576px) {
+    .form-section-modern {
+        padding: 1.25rem;
+    }
+    .fitness-tabs .tab-link span {
+        display: none; /* Icons only on very small screens if needed */
+    }
+    .fitness-tabs .tab-link {
+        padding: 0.75rem;
+    }
+}
+
+/* Professional Evaluation Avatar */
+.avatar-mini {
+    width: 24px;
+    height: 24px;
+    background: var(--fitness-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+/* Tab text handling */
+.fitness-tabs .tab-link span {
+    margin-left: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .fitness-tabs .tab-link span {
+        display: none;
+    }
+}
+
+/* Force hidden utility */
+.hidden {
+    display: none !important;
+}
+
+.italic {
+    font-style: italic;
+}
+

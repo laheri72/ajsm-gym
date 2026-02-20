@@ -15,6 +15,7 @@ import { setPlannerDirty } from './student-modules/state.js';
 import { loadStudentPlans, loadTrainingAnalytics, loadHistoryAnalytics, loadWorkoutConsistency, loadOverviewAnalytics, applyChartTheme } from './student-modules/analysis.js';
 import { loadLeaveData, handleLeaveSubmit, handleLeaveCancel } from './student-modules/leaves.js';
 import { loadBodyPartTips } from './student-modules/tips.js';
+import { initializeFitness, showFitnessTab } from './student-modules/fitness.js';
 
 /* =================================================================== */
 /* MOBILE NAVBAR COLLAPSE HANDLER
@@ -237,6 +238,7 @@ if (toggler && collapseElement) {
     // --- Initial Data Loading ---
     getStudentSession();
     initializeWeekPicker();
+    initializeFitness();
     routeFromHash();
     window.addEventListener('hashchange', routeFromHash);
     
