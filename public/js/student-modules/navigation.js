@@ -8,6 +8,17 @@ import { loadWeightLogHistory, loadFitnessProgress } from './progression.js';
  * Programmatically switches the dashboard view to a specific section.
  */
 export function navigateToSection(targetSectionId) {
+    // --- RESTRICTION CHECK ---
+    // Prevent non-members/inactive users from accessing functional gym sections
+    const restrictedSections = ['attendance-low', 'leaves-low'];
+    const isRestricted = document.body.classList.contains('is-inactive');
+
+    if (isRestricted && restrictedSections.includes(targetSectionId)) {
+        console.warn(`Access to ${targetSectionId} is restricted.`);
+        window.location.hash = 'planner';
+        return;
+    }
+
     // --- THIS IS THE FIX ---
     // The main nav list is no longer .navbar, it's .main-nav-list
     const mainNav = document.querySelector('.main-nav-list'); 
