@@ -72,7 +72,8 @@ export async function getStudentSession() {
         Name: stu.Name,
         Branch: stu.Branch,
         Gender: stu.Gender,
-        membersince: memberSinceDate
+        membersince: memberSinceDate,
+        FeatureFlags: stu.FeatureFlags || {}
     });
     setStudentHeight(stu.Height);
     setStudentGoal(stu.Goal);

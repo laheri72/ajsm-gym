@@ -51,7 +51,9 @@ Logic is predominantly co-located with route handlers in `routes/`. Key features
 - **Gamification Engine (`routes/gamification.js`):** Calculates XP, levels, and awards achievements (Consistency King, Social Butterfly, etc.) based on attendance and workouts.
 - **Fitness Evaluation:** Experts (`Evaluators`) provide categorized comments on trainer-logged fitness tests.
 - **Attendance Management:** Handled in `routes/staff.js`, including "On Leave" bulk updates and manual attendance correction.
-- **Workout Planner:** Students can build and save weekly workout plans stored in the `WorkoutPlan` table.
+- **Workout Planner:** Students use a structured planner composer (not `contenteditable` HTML). Plans are saved as JSON in `WorkoutPlan.Content` (legacy HTML is still readable), with intelligence from `TrainingPlan/TrainingLog`, `Attendance`, `WeightTracking`, `TestRecords`, and `StudentAchievements`.
+- **Planner Rollout Control:** Student session payload includes `FeatureFlags.planner_v2_ui` to support phased rollout by TR/environment flags.
+- **Execution Logging Bridge:** Trainer workout logging continues to write legacy body-part logs and can additionally persist optional exercise-level entries into `PerformanceLogs` when V2 tables are available.
 
 ## External Integrations
 - **MSSQL (External):** Remote database hosting via MSSQL server.

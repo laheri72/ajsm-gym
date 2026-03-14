@@ -37,12 +37,17 @@ Endpoints for managing weekly workout schedules and daily exercise logs.
 
 | Method | Endpoint | Role | Purpose | Input |
 | :--- | :--- | :--- | :--- | :--- |
-| POST | `/api/save-workout-plan` | Student | Save a weekly workout plan (Monday-Saturday). | `{ Monday, ..., Saturday }` |
-| GET | `/api/student/workout-plan` | Student | Fetch the workout plan for the current week. | None |
-| POST | `/api/student/apply-last-week` | Student | Copy the most recent previous workout plan to the current week. | None |
+| GET | `/api/student/planner/insights` | Student | Fetch planner intelligence (weekday history, duration baseline, adherence, fitness context). | None |
+| POST | `/api/save-workout-plan` | Student | Save structured weekly workout plan (JSON day objects, no raw HTML). | `{ schemaVersion, days: { Monday..Sunday } }` |
+| GET | `/api/student/workout-plan` | Student | Fetch current week planner as structured day plans + insight summary metadata. | None |
+| POST | `/api/student/apply-last-week` | Student | Copy previous week plan to current week, or fallback to history-informed autofill if no prior plan. | None |
+| GET | `/api/student/planner/v2` | Student | V2 planner bridge (redirects to structured current planner endpoint). | None |
+| POST | `/api/student/planner/v2` | Student | V2 planner bridge save endpoint (redirects to structured save endpoint). | `{ schemaVersion, days }` |
+| POST | `/api/student/planner/v2/autofill` | Student | Auto-fill planner from deterministic recommendations (`week` or `monday`). | `{ mode }` |
+| POST | `/api/student/planner/v2/complete-item` | Student | Mark a body-part planner item as completed by creating `TrainingPlan/TrainingLog`. | `{ bodyPart }` |
 | GET | `/api/student/training-plans` | Student | Fetch historical workout logs (date + body parts). | None |
 | GET | `/api/student/training-analytics` | Student | Counts of body parts trained (for pie charts). | None |
-| POST | `/api/log-training-plan` | Trainer | Log a student's completed workout session. | `{ TR, BodyParts }` |
+| POST | `/api/log-training-plan` | Trainer | Log a completed workout session; keeps body-part logs and optionally records exercise-level execution into `PerformanceLogs` when V2 tables exist. | `{ TR, BodyParts, Exercises? }` |
 
 ## 🏥 Fitness Tests & Medical History (`routes/fitnessTest.js`)
 Endpoints for recording physical measurements and medical status.

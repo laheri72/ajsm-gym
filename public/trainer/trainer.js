@@ -102,8 +102,15 @@
                 ? studentPlanData.data.find(p => p.Day === todayName)
                 : null;
 
-            if (todayPlan && todayPlan.Content && todayPlan.Content.trim() !== "") {
-                elements.profileTodayPlan.innerHTML = todayPlan.Content;
+            if (todayPlan && todayPlan.displayText && todayPlan.displayText.trim() !== "") {
+                const safeHtml = todayPlan.displayText
+                    .split('\n')
+                    .map(line => line
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;'))
+                    .join('<br>');
+                elements.profileTodayPlan.innerHTML = safeHtml;
             } else {
                 elements.profileTodayPlan.innerHTML = `<span class="text-muted italic">No workout planned for ${todayName}.</span>`;
             }

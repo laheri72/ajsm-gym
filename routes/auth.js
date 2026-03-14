@@ -5,6 +5,25 @@ const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); // All login routes need this
 
+const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase());
+const parseTRList = (value) => String(value || '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+function isPlannerV2Enabled(tr) {
+    const trString = String(tr || '').trim();
+    const enabledList = parseTRList(process.env.PLANNER_V2_UI_TRS);
+    const disabledList = parseTRList(process.env.PLANNER_V2_UI_DISABLED_TRS);
+
+    if (disabledList.includes(trString)) return false;
+    if (isTruthy(process.env.PLANNER_V2_UI)) return true;
+    if (enabledList.includes(trString)) return true;
+
+    // Default-on so rollout can be restricted explicitly via DISABLED list or env toggle.
+    return !isTruthy(process.env.PLANNER_V2_UI_DEFAULT_OFF);
+}
+
 // --- Paste all the routes from the list below here ---
 
 // routes/auth.js
@@ -136,7 +155,10 @@ router.get('/api/student-session', async (req, res) => {
       // with ALL the new data we just fetched from the database.
       const userProfile = {
         ...req.session.user,
-        ...result.recordset[0] 
+        ...result.recordset[0],
+        FeatureFlags: {
+          planner_v2_ui: isPlannerV2Enabled(TR)
+        }
       };
 
       res.json({ success: true, user: userProfile });

@@ -219,9 +219,13 @@ Granular set-by-set execution results.
 - `SetNumber` (INT)
 - `RepsPerformed` (INT)
 - `WeightUsed` (DECIMAL(10,2))
+- `DurationMinutes` (INT)
 - `RPE` (INT)
 - `IsPR` (BIT)
 - `CompletedAt` (DATETIME)
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
+- `TR` (INT, FK) -> `TestMaster.TR`
 
 ### `StudentPRs`
 Personal records snapshot for quick lookup.
@@ -268,14 +272,16 @@ Junction table for earned achievements.
 - `DateEarned` (DATETIME)
 - `Context` (NVARCHAR(50))
 
-### `WorkoutPlan` (Legacy Content)
-Student-defined weekly workout schedules (Plain text).
+### `WorkoutPlan` (Legacy-Compatible Structured Content)
+Student-defined weekly workout schedules (now stored as structured JSON text, with legacy HTML/plain-text still readable by APIs).
 - `TR` (INT, FK) -> `TestMaster.TR`
 - `Day` (VARCHAR(20))
-- `Content` (NVARCHAR(MAX))
+- `Content` (NVARCHAR(MAX)) - JSON payload: `{ schemaVersion, items[], notes }`
 - `Branch` (VARCHAR(7))
 - `Gender` (VARCHAR(6))
 - `WeekID` (INT, FK) -> `AttendanceWeek.WeekID`
+- Unique index: `(TR, WeekID, Day)` (filtered on non-null values)
+- Check constraint: `Day` must be one of `Monday`...`Sunday` (or `NULL` for legacy rows)
 
 ## Relationships Summary
 - **Sectioning:** Data isolation is maintained via `Branch` and `Gender` columns across core tables.

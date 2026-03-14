@@ -11,6 +11,7 @@ export let gender;
 export let studentGoal;
 export let membersince;
 export let studentHeight;
+export let studentFeatureFlags = {};
 
 // Chart instances
 export let bodyPartChart = null;
@@ -45,6 +46,7 @@ export function setStudentAuthData(data) {
     branch = data.Branch;
     gender = data.Gender;
     membersince = data.membersince;
+    studentFeatureFlags = data.FeatureFlags || {};
 }
 
 export function setStudentGoal(goal) {

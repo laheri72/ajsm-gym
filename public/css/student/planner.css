@@ -74,9 +74,149 @@
     overflow-y: auto;
 }
 
+.structured-day-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.coach-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.coach-metric {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    background: #fafcff;
+}
+
+.metric-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--gray);
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-weight: 700;
+    color: var(--dark);
+    font-size: 1.05rem;
+}
+
+.planner-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    min-height: 1.5rem;
+}
+
+.planner-chip {
+    border: 1px solid #ced4da;
+    background: #f8f9fb;
+    color: #334155;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+    cursor: pointer;
+}
+
+.planner-chip:hover {
+    background: #eef4ff;
+}
+
+.planner-item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.planner-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border: 1px solid #e8ebf0;
+    border-radius: 8px;
+    padding: 0.35rem 0.55rem;
+    background: #ffffff;
+}
+
+.planner-item-text {
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+
+.planner-item-remove {
+    border: none;
+    background: transparent;
+    color: #ef4444;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.2rem;
+}
+
+.planner-empty-text {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--gray);
+    font-style: italic;
+}
+
+.planner-note-input {
+    width: 100%;
+    border: 1px dashed #c9d2de;
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.8rem;
+    resize: vertical;
+    min-height: 56px;
+    background: #fcfdff;
+}
+
+.planner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
 [data-theme="dark"] .day-card {
     background: #0f1722;
     border-color: #1f2d40;
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .coach-metric {
+    background: #0f1722;
+    border-color: #1f2d40;
+}
+
+[data-theme="dark"] .metric-value {
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .planner-chip {
+    background: #162130;
+    border-color: #223249;
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .planner-item-row {
+    background: #0b1420;
+    border-color: #1f2d40;
+}
+
+[data-theme="dark"] .planner-note-input {
+    background: #0f1722;
+    border-color: #2b3b52;
     color: var(--text-on-light);
 }
 
@@ -461,6 +601,10 @@ input:checked+.slider:before {
    📱 MOBILE-SPECIFIC PLANNER IMPROVEMENTS  
    =========================================================== */
 @media (max-width: 768px) {
+    .coach-strip {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+
     /* Single column layout for mobile */
     .planner {
         display: grid;

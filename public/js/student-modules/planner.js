@@ -1,276 +1,588 @@
 import { exerciseDatabase } from './data.js';
-import { setPlannerDirty } from './state.js';
+import { setPlannerDirty, studentFeatureFlags } from './state.js';
 
-/**
- * Saves the current weekly workout plan to the server.
- */
-export function savePlan() {
-  const cards = document.querySelectorAll('.day-card');
-  const plan = {};
+const PLANNER_SCHEMA_VERSION = 1;
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DRAFT_KEY = 'plannerDraftV2';
 
-  let hasContent = false;
-  cards.forEach(card => {
-    const day = card.getAttribute('data-day');
-    const content = DOMPurify.sanitize(card.innerHTML.trim());
-    plan[day] = content;
-    if (content) hasContent = true;
+let plannerState = buildEmptyWeekState();
+let plannerInsights = null;
+let plannerEventsBound = false;
+
+function isPlannerV2Enabled() {
+  return studentFeatureFlags?.planner_v2_ui !== false;
+}
+
+function buildEmptyDayPlan() {
+  return {
+    schemaVersion: PLANNER_SCHEMA_VERSION,
+    items: [],
+    notes: ''
+  };
+}
+
+function buildEmptyWeekState() {
+  const week = {};
+  DAYS.forEach((day) => { week[day] = buildEmptyDayPlan(); });
+  return week;
+}
+
+function normalizeNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function normalizeItem(item, idx = 0) {
+  if (!item || typeof item !== 'object') return null;
+
+  const exercise = String(item.exercise || item.name || '').trim();
+  const bodyPart = String(item.bodyPart || '').trim();
+  const note = String(item.note || '').trim();
+  if (!exercise && !bodyPart && !note) return null;
+
+  return {
+    id: String(item.id || `item-${idx + 1}`),
+    type: String(item.type || (bodyPart ? 'bodypart' : 'exercise')),
+    exercise: exercise.slice(0, 120),
+    bodyPart: bodyPart.slice(0, 40),
+    sets: normalizeNumber(item.sets),
+    reps: String(item.reps || '').trim().slice(0, 40),
+    durationMinutes: normalizeNumber(item.durationMinutes),
+    note: note.slice(0, 255),
+    source: String(item.source || 'manual').slice(0, 24)
+  };
+}
+
+function normalizeDayPlan(raw = {}) {
+  const items = Array.isArray(raw.items)
+    ? raw.items.map((item, idx) => normalizeItem(item, idx)).filter(Boolean).slice(0, 16)
+    : [];
+
+  return {
+    schemaVersion: PLANNER_SCHEMA_VERSION,
+    items,
+    notes: String(raw.notes || '').trim().slice(0, 800)
+  };
+}
+
+function parseLegacyContent(content = '') {
+  const lines = String(content)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return normalizeDayPlan({
+    items: lines.map((line, idx) => ({
+      id: `legacy-${idx + 1}`,
+      exercise: line,
+      source: 'legacy'
+    }))
+  });
+}
+
+function parseServerPlan(entry) {
+  if (entry?.Plan && typeof entry.Plan === 'object') {
+    return normalizeDayPlan(entry.Plan);
+  }
+
+  if (typeof entry?.Content === 'string') {
+    try {
+      const parsed = JSON.parse(entry.Content);
+      if (parsed && typeof parsed === 'object') {
+        return normalizeDayPlan(parsed);
+      }
+    } catch (_) {
+      return parseLegacyContent(entry.Content);
+    }
+  }
+
+  return buildEmptyDayPlan();
+}
+
+function hasDayContent(dayPlan) {
+  return (Array.isArray(dayPlan.items) && dayPlan.items.length > 0) || String(dayPlan.notes || '').trim().length > 0;
+}
+
+function hasAnyPlanContent() {
+  return DAYS.some((day) => hasDayContent(plannerState[day]));
+}
+
+function getTodayName() {
+  return moment.tz('Asia/Kolkata').format('dddd');
+}
+
+function escapeHtml(input = '') {
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatItemLabel(item) {
+  const primary = item.exercise || (item.bodyPart ? `${item.bodyPart} Focus` : 'Workout Item');
+  const details = [];
+  if (item.sets) details.push(`${item.sets} sets`);
+  if (item.reps) details.push(`${item.reps} reps`);
+  if (item.durationMinutes) details.push(`${item.durationMinutes} min`);
+  const suffix = details.length ? ` (${details.join(' - ')})` : '';
+  return `${primary}${suffix}`;
+}
+
+function markPlannerDirty() {
+  setPlannerDirty(true);
+  document.getElementById('savePlanBtn')?.classList.add('btn-glowing');
+}
+
+function markPlannerSaved() {
+  setPlannerDirty(false);
+  document.getElementById('savePlanBtn')?.classList.remove('btn-glowing');
+}
+
+function saveDraft() {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(plannerState));
+}
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const normalized = buildEmptyWeekState();
+    DAYS.forEach((day) => {
+      if (parsed[day]) normalized[day] = normalizeDayPlan(parsed[day]);
+    });
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
+function renderItemsInCard(card, dayPlan) {
+  const listEl = card.querySelector('[data-role="items"]');
+  const emptyEl = card.querySelector('.planner-empty-text');
+  const notesInput = card.querySelector('[data-role="notes"]');
+
+  if (!listEl || !emptyEl || !notesInput) return;
+
+  listEl.innerHTML = '';
+  dayPlan.items.forEach((item) => {
+    const li = document.createElement('li');
+    li.className = 'planner-item-row';
+    li.innerHTML = `
+      <span class="planner-item-text">${escapeHtml(formatItemLabel(item))}</span>
+      <button type="button" class="planner-item-remove" data-item-id="${escapeHtml(item.id)}" aria-label="Remove item">&times;</button>
+    `;
+    listEl.appendChild(li);
   });
 
-  if (!hasContent) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Empty Plan',
-      text: 'Please add at least one workout to your weekly plan.',
+  emptyEl.style.display = dayPlan.items.length === 0 ? 'block' : 'none';
+  notesInput.value = dayPlan.notes || '';
+}
+
+function renderHistoryChips(card, day) {
+  const historyRow = card.querySelector('.history-chip-row');
+  if (!historyRow) return;
+  historyRow.innerHTML = '';
+  historyRow.style.display = isPlannerV2Enabled() ? '' : 'none';
+  if (!isPlannerV2Enabled()) return;
+
+  const history = plannerInsights?.weekdayHistory?.[day] || [];
+  history.slice(0, 3).forEach((entry) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'planner-chip history-chip';
+    chip.textContent = `${entry.bodyPart} (${entry.count})`;
+    chip.dataset.action = 'add-bodypart';
+    chip.dataset.bodyPart = entry.bodyPart;
+    chip.dataset.day = day;
+    historyRow.appendChild(chip);
+  });
+}
+
+function deriveSuggestionsForDay(day) {
+  const history = plannerInsights?.weekdayHistory?.[day] || [];
+  const fromHistory = history.slice(0, 2).map((h) => h.bodyPart).filter(Boolean);
+  const balance = plannerInsights?.recommendations?.bodyPartBalance || {};
+  const fromBalance = Object.entries(balance)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+    .filter(Boolean);
+
+  return [...new Set([...fromHistory, ...fromBalance])].slice(0, 3);
+}
+
+function renderSuggestionChips(card, day) {
+  const suggestionRow = card.querySelector('.suggestion-chip-row');
+  if (!suggestionRow) return;
+  suggestionRow.innerHTML = '';
+  suggestionRow.style.display = isPlannerV2Enabled() ? '' : 'none';
+  if (!isPlannerV2Enabled()) return;
+
+  deriveSuggestionsForDay(day).forEach((bodyPart) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'planner-chip suggestion-chip';
+    chip.textContent = `${bodyPart} Focus`;
+    chip.dataset.action = 'add-bodypart';
+    chip.dataset.bodyPart = bodyPart;
+    chip.dataset.day = day;
+    suggestionRow.appendChild(chip);
+  });
+}
+
+function renderDay(day) {
+  const dayPlan = plannerState[day] || buildEmptyDayPlan();
+  document.querySelectorAll(`.structured-day-card[data-day="${day}"]`).forEach((card) => {
+    renderItemsInCard(card, dayPlan);
+    renderHistoryChips(card, day);
+    renderSuggestionChips(card, day);
+  });
+}
+
+function renderAllDays() {
+  DAYS.forEach(renderDay);
+  const todayName = getTodayName();
+  const heading = document.getElementById('today-date-heading');
+  if (heading) heading.textContent = `Today's Plan (${todayName})`;
+  const todayCard = document.getElementById('today-day-card');
+  if (todayCard) todayCard.dataset.day = todayName;
+}
+
+function updateCoachStrip() {
+  if (!isPlannerV2Enabled()) return;
+
+  const weekly = plannerInsights?.consistency?.weeklyAdherence || [];
+  const latest = weekly.length ? weekly[weekly.length - 1] : null;
+  const adherenceValue = latest ? `${latest.adherencePct}%` : '--%';
+  const streakValue = plannerInsights?.consistency?.daysSinceLastWorkout ?? '--';
+  const focus = Object.entries(plannerInsights?.recommendations?.bodyPartBalance || {})
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || '--';
+
+  const durations = plannerInsights?.durationBaseline || {};
+  const values = Object.values(durations)
+    .map((d) => Number(d.median || 0))
+    .filter((n) => n > 0);
+  const avgDuration = values.length
+    ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+    : null;
+
+  const adherenceEl = document.getElementById('planner-adherence-value');
+  const streakEl = document.getElementById('planner-streak-value');
+  const durationEl = document.getElementById('planner-duration-value');
+  const focusEl = document.getElementById('planner-focus-value');
+
+  if (adherenceEl) adherenceEl.textContent = adherenceValue;
+  if (streakEl) streakEl.textContent = streakValue === null ? '--' : `${streakValue}d`;
+  if (durationEl) durationEl.textContent = avgDuration ? `${avgDuration} min` : '-- min';
+  if (focusEl) focusEl.textContent = focus;
+}
+
+async function fetchPlannerInsights() {
+  if (!isPlannerV2Enabled()) return null;
+
+  const res = await fetch('/api/student/planner/insights', { credentials: 'include' });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.message || 'Failed to fetch planner insights.');
+  plannerInsights = data.data;
+  updateCoachStrip();
+  renderAllDays();
+  return plannerInsights;
+}
+
+function noteInputHandler(event) {
+  const target = event.target;
+  if (!target.matches('.planner-note-input')) return;
+
+  const card = target.closest('.structured-day-card');
+  if (!card) return;
+  const day = card.dataset.day;
+  if (!DAYS.includes(day)) return;
+
+  plannerState[day].notes = target.value.slice(0, 800);
+  markPlannerDirty();
+  saveDraft();
+}
+
+function clickHandler(event) {
+  const removeBtn = event.target.closest('.planner-item-remove');
+  if (removeBtn) {
+    const card = removeBtn.closest('.structured-day-card');
+    const day = card?.dataset.day;
+    const itemID = removeBtn.dataset.itemId;
+    if (day && itemID && plannerState[day]) {
+      plannerState[day].items = plannerState[day].items.filter((item) => item.id !== itemID);
+      renderDay(day);
+      markPlannerDirty();
+      saveDraft();
+    }
+    return;
+  }
+
+  const chip = event.target.closest('.planner-chip[data-action="add-bodypart"]');
+  if (chip) {
+    const day = chip.dataset.day;
+    const bodyPart = chip.dataset.bodyPart;
+    if (day && bodyPart) {
+      addExerciseToCard(day, {
+        exercise: `${bodyPart} Focus`,
+        bodyPart,
+        sets: 3,
+        reps: '10-12',
+        source: 'suggested'
+      });
+    }
+  }
+}
+
+function bindPlannerEvents() {
+  if (plannerEventsBound) return;
+
+  const plannerSection = document.getElementById('planner-low');
+  if (plannerSection) {
+    plannerSection.addEventListener('click', clickHandler);
+    plannerSection.addEventListener('input', noteInputHandler);
+  }
+
+  plannerEventsBound = true;
+}
+
+function applyPlannerFeatureGate() {
+  const enabled = isPlannerV2Enabled();
+  const coachStrip = document.getElementById('planner-coach-strip');
+  const gatedActionIds = [
+    'autoFillWeekBtn',
+    'reuseBestWeekdayBtn',
+    'applyLastCompletedMondayBtn',
+    'today-autofill-btn'
+  ];
+
+  if (coachStrip) coachStrip.style.display = enabled ? '' : 'none';
+  gatedActionIds.forEach((id) => {
+    const element = document.getElementById(id);
+    if (element) element.style.display = enabled ? '' : 'none';
+  });
+}
+
+function buildPayload() {
+  return {
+    schemaVersion: PLANNER_SCHEMA_VERSION,
+    days: DAYS.reduce((acc, day) => {
+      acc[day] = normalizeDayPlan(plannerState[day]);
+      return acc;
+    }, {})
+  };
+}
+
+function nextItemID(day) {
+  return `${day.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function addExerciseToCard(day, itemLike) {
+  if (!DAYS.includes(day)) return;
+
+  let normalized = null;
+  if (typeof itemLike === 'string') {
+    const [exercise, ...rest] = itemLike.split(' - ').map((s) => s.trim());
+    normalized = normalizeItem({
+      id: nextItemID(day),
+      exercise,
+      note: rest.join(' '),
+      source: 'manual'
     });
+  } else {
+    normalized = normalizeItem({
+      id: nextItemID(day),
+      ...itemLike
+    });
+  }
+
+  if (!normalized) return;
+
+  plannerState[day].items.push(normalized);
+  renderDay(day);
+  markPlannerDirty();
+  saveDraft();
+
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: `Added to ${day}`,
+    showConfirmButton: false,
+    timer: 1600
+  });
+}
+
+export async function savePlan() {
+  if (!hasAnyPlanContent()) {
+    Swal.fire({ icon: 'warning', title: 'Empty Plan', text: 'Please add at least one exercise or note before saving.' });
     return;
   }
 
   const saveButton = document.getElementById('savePlanBtn');
-  const buttonText = saveButton.querySelector('.button-text');
-  const spinner = saveButton.querySelector('.spinner-border');
+  const buttonText = saveButton?.querySelector('.button-text');
+  const spinner = saveButton?.querySelector('.spinner-border');
 
-  buttonText.classList.add('d-none');
-  spinner.classList.remove('d-none');
-  saveButton.disabled = true;
+  if (buttonText) buttonText.classList.add('d-none');
+  if (spinner) spinner.classList.remove('d-none');
+  if (saveButton) saveButton.disabled = true;
 
-  fetch('/api/save-workout-plan', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(plan)
-  })
-    .then(res => {
-      if (res.status === 401) {
-        window.location.href = '../Forbidden.html';
-        return new Promise(() => {}); 
-      }
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      return res.json();
-    })
-    .then(data => {
-      if (data.success) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Workout Plan Saved!',
-          text: 'Your weekly plan was saved successfully.',
-          timer: 2000,
-          showConfirmButton: false
-        });
-        setPlannerDirty(false);
-    document.getElementById('savePlanBtn').classList.remove('btn-glowing');
-    localStorage.removeItem('plannerDraft'); // It's saved, so clear the draft
-      } else {
-        Swal.fire({ icon: 'error', title: 'Save Failed', text: data.message || 'Please try again.' });
-      }
-    })
-    .catch(err => {
-      console.error('Save error:', err);
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Could not save.' });
-    })
-    .finally(() => {
-      buttonText.classList.remove('d-none');
-      spinner.classList.add('d-none');
-      saveButton.disabled = false;
+  try {
+    const res = await fetch('/api/save-workout-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(buildPayload())
     });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || `Server error: ${res.status}`);
+
+    localStorage.removeItem(DRAFT_KEY);
+    markPlannerSaved();
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Workout Plan Saved',
+      text: 'Your structured weekly plan has been saved.',
+      timer: 1600,
+      showConfirmButton: false
+    });
+  } catch (err) {
+    console.error('Save error:', err);
+    Swal.fire({ icon: 'error', title: 'Save Failed', text: err.message || 'Could not save planner.' });
+  } finally {
+    if (buttonText) buttonText.classList.remove('d-none');
+    if (spinner) spinner.classList.add('d-none');
+    if (saveButton) saveButton.disabled = false;
+  }
 }
 
-/**
- * Asks for confirmation and clears the planner.
- */
 export function clearPlanner() {
   Swal.fire({
-    title: 'Clear weekly planner?',
-    text: 'This will remove all exercises from the current planner view.',
+    title: 'Clear planner?',
+    text: 'This removes all planned items and notes for this week.',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Clear',
     confirmButtonColor: '#dc3545'
-  }).then(r => {
-    if (!r.isConfirmed) return;
-    document.querySelectorAll('.day-card').forEach(card => { card.innerHTML = ''; });
-    localStorage.removeItem('plannerDraft');
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    plannerState = buildEmptyWeekState();
+    renderAllDays();
+    markPlannerDirty();
+    saveDraft();
   });
 }
 
-/**
- * Helper to add a formatted exercise string to the correct day card(s).
- */
-export function addExerciseToCard(day, formattedExercise) {
-    const dayCards = document.querySelectorAll(`.day-card[data-day="${day}"]`);
-    if (dayCards.length === 0) return;
-
-    dayCards.forEach(card => {
-        const placeholder = card.querySelector('.placeholder-text');
-        if (placeholder) {
-            card.innerHTML = '';
-        }
-
-        if (card.innerHTML.trim() !== '') {
-            card.innerHTML += '<br>' + DOMPurify.sanitize(formattedExercise);
-        } else {
-            card.innerHTML = DOMPurify.sanitize(formattedExercise);
-        }
-    });
-    
-    Swal.fire({ 
-        toast: true, 
-        position: 'top-end', 
-        icon: 'success', 
-        title: `Added to ${day}!`, 
-        showConfirmButton: false, 
-        timer: 1600 
-    });
-}
-
-/**
- * Opens the "Add Exercise" modal.
- */
 export function openQuickAddDialog(day) {
-    const bodyPartOptions = ['All', ...new Set(exerciseDatabase.map(ex => ex.primaryMuscle))];
+  const bodyPartOptions = ['All', ...new Set(exerciseDatabase.map((ex) => ex.primaryMuscle))];
 
-    const html = `
-        <div class="exercise-explorer">
-            <div class="filters">
-                <select id="qa-filter-bodypart" class="swal2-select">
-                    ${bodyPartOptions.map(bp => `<option value="${bp}">${bp}</option>`).join('')}
-                </select>
-                <select id="qa-filter-difficulty" class="swal2-select">
-                    <option value="All">All Difficulties</option>
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                </select>
-            </div>
-            <div id="qa-exercise-list" class="exercise-list"></div>
-            <div id="qa-sets-reps-container" class="sets-reps-container" style="display:none;">
-                <h4 id="qa-selected-exercise-name"></h4>
-                <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" />
-                <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" />
-            </div>
-        </div>
-    `;
+  const html = `
+    <div class="exercise-explorer">
+      <div class="filters">
+        <select id="qa-filter-bodypart" class="swal2-select">
+          ${bodyPartOptions.map((bp) => `<option value="${bp}">${bp}</option>`).join('')}
+        </select>
+        <select id="qa-filter-difficulty" class="swal2-select">
+          <option value="All">All Difficulties</option>
+          <option value="Beginner">Beginner</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+        </select>
+      </div>
+      <div id="qa-exercise-list" class="exercise-list"></div>
+      <div id="qa-sets-reps-container" class="sets-reps-container" style="display:none;">
+        <h4 id="qa-selected-exercise-name"></h4>
+        <input id="qa-sets" class="swal2-input" type="number" min="1" placeholder="Sets" />
+        <input id="qa-reps" class="swal2-input" type="text" placeholder="Reps (e.g., 10-12)" />
+      </div>
+    </div>
+  `;
 
-    Swal.fire({
-        title: `Select an Exercise for ${day}`,
-        html,
-        width: '600px',
-        showCancelButton: true,
-        confirmButtonText: 'Add to Plan',
-        focusConfirm: false,
-        didOpen: () => {
-            renderExerciseList();
-            document.getElementById('qa-filter-bodypart').addEventListener('change', renderExerciseList);
-            document.getElementById('qa-filter-difficulty').addEventListener('change', renderExerciseList);
-        },
-        preConfirm: () => {
-            const selectedItem = document.querySelector('.exercise-item.selected');
-            if (!selectedItem) {
-                Swal.showValidationMessage('Please select an exercise from the list');
-                return false;
-            }
-            const name = selectedItem.dataset.name;
-            const sets = (document.getElementById('qa-sets').value || '').trim();
-            const reps = (document.getElementById('qa-reps').value || '').trim();
-            return { name, sets, reps };
-        }
-    }).then(result => {
-            if (!result.isConfirmed) return;
-            const { name, sets, reps } = result.value;
-            const formatted = [name, sets && `${sets} sets`, reps && `${reps} reps`].filter(Boolean).join(' - ');
-            addExerciseToCard(day, formatted);
-        });
+  Swal.fire({
+    title: `Select Exercise for ${day}`,
+    html,
+    width: '620px',
+    showCancelButton: true,
+    confirmButtonText: 'Add to Plan',
+    focusConfirm: false,
+    didOpen: () => {
+      renderExerciseList();
+      document.getElementById('qa-filter-bodypart').addEventListener('change', renderExerciseList);
+      document.getElementById('qa-filter-difficulty').addEventListener('change', renderExerciseList);
+    },
+    preConfirm: () => {
+      const selectedItem = document.querySelector('.exercise-item.selected');
+      if (!selectedItem) {
+        Swal.showValidationMessage('Please select an exercise from the list.');
+        return false;
+      }
+
+      const sets = normalizeNumber(document.getElementById('qa-sets').value);
+      const reps = String(document.getElementById('qa-reps').value || '').trim();
+
+      return {
+        exercise: selectedItem.dataset.name,
+        bodyPart: selectedItem.dataset.bodypart || '',
+        sets,
+        reps,
+        source: 'manual'
+      };
+    }
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+    addExerciseToCard(day, result.value);
+  });
 }
 
-/**
- * Renders the filtered exercise list inside the modal.
- */
 function renderExerciseList() {
-    const bodyPartFilter = document.getElementById('qa-filter-bodypart').value;
-    const difficultyFilter = document.getElementById('qa-filter-difficulty').value;
-    const listContainer = document.getElementById('qa-exercise-list');
+  const bodyPartFilter = document.getElementById('qa-filter-bodypart').value;
+  const difficultyFilter = document.getElementById('qa-filter-difficulty').value;
+  const listContainer = document.getElementById('qa-exercise-list');
 
-    const filteredExercises = exerciseDatabase.filter(ex => {
-        const bodyPartMatch = bodyPartFilter === 'All' || ex.primaryMuscle === bodyPartFilter;
-        const difficultyMatch = difficultyFilter === 'All' || ex.difficulty === difficultyFilter;
-        return bodyPartMatch && difficultyMatch;
-    });
+  const filtered = exerciseDatabase.filter((ex) => {
+    const bodyMatch = bodyPartFilter === 'All' || ex.primaryMuscle === bodyPartFilter;
+    const diffMatch = difficultyFilter === 'All' || ex.difficulty === difficultyFilter;
+    return bodyMatch && diffMatch;
+  });
 
-    if (filteredExercises.length === 0) {
-        listContainer.innerHTML = '<p class="no-results">No exercises match your criteria.</p>';
-        return;
-    }
-
-    listContainer.innerHTML = filteredExercises.map(ex => `
-            <div class="exercise-item" data-name="${ex.name}">
-                <div class="exercise-info">
-                    <strong>${ex.name}</strong>
-                    <div class="tags">
-                        <span class="badge badge-${{'Beginner':'green', 'Intermediate':'yellow', 'Advanced':'red'}[ex.difficulty]}">${ex.difficulty}</span>
-                        ${ex.secondaryMuscles.map(sm => `<span class="badge badge-dark">${sm}</span>`).join('')}
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-    listContainer.querySelectorAll('.exercise-item').forEach(item => {
-        item.addEventListener('click', () => {
-            listContainer.querySelectorAll('.exercise-item').forEach(el => el.classList.remove('selected'));
-            item.classList.add('selected');
-            document.getElementById('qa-selected-exercise-name').textContent = item.dataset.name;
-            document.getElementById('qa-sets-reps-container').style.display = 'flex';
-            document.getElementById('qa-sets').focus();
-        });
-    });
-}
-
-/**
- * Fetches and populates the weekly planner and "Today" view.
- */
-export async function loadWeeklyPlan() {
-  try {
-    const res = await fetch('/api/student/workout-plan', {
-      method: 'GET',
-      credentials: 'include'
-    });
-    const data = await res.json();
-
-    if (data.success && Array.isArray(data.data)) {
-      moment.tz.setDefault("Asia/Kolkata");
-      const todayName = moment().format('dddd');
-
-      const todayDateHeading = document.getElementById('today-date-heading');
-      const todayCard = document.getElementById('today-day-card');
-      todayDateHeading.textContent = `Today's Plan (${todayName})`;
-      todayCard.dataset.day = todayName; 
-
-      const todayPlan = data.data.find(entry => entry.Day === todayName);
-      if (todayPlan && todayPlan.Content) {
-          todayCard.innerHTML = DOMPurify.sanitize(todayPlan.Content);
-      } else {
-          todayCard.innerHTML = ''; // <-- THIS IS THE FIX
-      }
-
-      const weeklyCards = document.querySelectorAll('#weekly-view .day-card');
-      weeklyCards.forEach(card => {
-        const day = card.getAttribute('data-day');
-        const planData = data.data.find(p => p.Day === day);
-        card.innerHTML = DOMPurify.sanitize(planData?.Content || '');
-      });
-
-      if (data.data.length === 0) {
-        document.getElementById('applyLastWeekBtn').style.display = 'inline-block';
-      }
-    } else {
-      console.warn('Invalid response from workout plan API:', data.message);
-    }
-  } catch (err) {
-    console.error('Error loading workout plan:', err);
+  if (!filtered.length) {
+    listContainer.innerHTML = '<p class="no-results">No exercises match your criteria.</p>';
+    return;
   }
+
+  listContainer.innerHTML = filtered.map((ex) => `
+    <div class="exercise-item" data-name="${escapeHtml(ex.name)}" data-bodypart="${escapeHtml(ex.primaryMuscle)}">
+      <div class="exercise-info">
+        <strong>${escapeHtml(ex.name)}</strong>
+        <div class="tags">
+          <span class="badge badge-${{ 'Beginner': 'green', 'Intermediate': 'yellow', 'Advanced': 'red' }[ex.difficulty]}">${escapeHtml(ex.difficulty)}</span>
+          ${ex.secondaryMuscles.map((sm) => `<span class="badge badge-dark">${escapeHtml(sm)}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  listContainer.querySelectorAll('.exercise-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      listContainer.querySelectorAll('.exercise-item').forEach((el) => el.classList.remove('selected'));
+      item.classList.add('selected');
+      document.getElementById('qa-selected-exercise-name').textContent = item.dataset.name;
+      document.getElementById('qa-sets-reps-container').style.display = 'flex';
+      document.getElementById('qa-sets').focus();
+    });
+  });
 }
 
-/**
- * Applies last week's plan to the current week.
- */
 export async function applyLastWeeksPlan() {
   try {
     const res = await fetch('/api/student/apply-last-week', {
@@ -279,28 +591,182 @@ export async function applyLastWeeksPlan() {
     });
     const data = await res.json();
 
-    if (data.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Applied!',
-        text: 'Last week’s plan applied successfully.',
-        timer: 2000,
-        showConfirmButton: false
-      });
-      loadWeeklyPlan();
-    } else {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Apply Failed',
-        text: data.message || 'Could not apply last week’s plan.',
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Could not apply plan.');
+    }
+
+    localStorage.removeItem(DRAFT_KEY);
+    await loadWeeklyPlan();
+    Swal.fire({ icon: 'success', title: 'Applied', text: 'Previous week plan copied.', timer: 1500, showConfirmButton: false });
+  } catch (err) {
+    console.error('Apply last week error:', err);
+    Swal.fire({ icon: 'warning', title: 'Apply Failed', text: err.message || 'Could not apply previous week plan.' });
+  }
+}
+
+export async function autoFillWeek() {
+  if (!isPlannerV2Enabled()) {
+    Swal.fire({ icon: 'info', title: 'Unavailable', text: 'Auto-fill is not enabled for your account yet.' });
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/student/planner/v2/autofill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ mode: 'week' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to auto-fill week.');
+
+    localStorage.removeItem(DRAFT_KEY);
+    await loadWeeklyPlan();
+    markPlannerSaved();
+    Swal.fire({ icon: 'success', title: 'Auto-filled', text: 'Week filled using your workout history.', timer: 1600, showConfirmButton: false });
+  } catch (err) {
+    console.error('Auto-fill error:', err);
+    Swal.fire({ icon: 'error', title: 'Auto-fill Failed', text: err.message || 'Could not auto-fill planner.' });
+  }
+}
+
+export function reuseBestWeekday() {
+  if (!isPlannerV2Enabled()) {
+    Swal.fire({ icon: 'info', title: 'Unavailable', text: 'This option is not enabled for your account yet.' });
+    return;
+  }
+
+  const bestDay = DAYS
+    .map((day) => ({ day, count: (plannerInsights?.weekdayHistory?.[day] || []).reduce((sum, entry) => sum + Number(entry.count || 0), 0) }))
+    .sort((a, b) => b.count - a.count)[0];
+
+  if (!bestDay || !bestDay.count || !hasDayContent(plannerState[bestDay.day])) {
+    Swal.fire({ icon: 'info', title: 'No Best Day Yet', text: 'Not enough history to reuse a best weekday.' });
+    return;
+  }
+
+  const sourcePlan = normalizeDayPlan(plannerState[bestDay.day]);
+  DAYS.forEach((day) => {
+    if (day === bestDay.day) return;
+    if (!hasDayContent(plannerState[day])) {
+      plannerState[day] = normalizeDayPlan(sourcePlan);
+    }
+  });
+
+  renderAllDays();
+  markPlannerDirty();
+  saveDraft();
+
+  Swal.fire({ icon: 'success', title: 'Copied', text: `${bestDay.day} template applied to empty days.` });
+}
+
+export async function applyLastCompletedMonday() {
+  if (!isPlannerV2Enabled()) {
+    Swal.fire({ icon: 'info', title: 'Unavailable', text: 'Monday template is not enabled for your account yet.' });
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/student/planner/v2/autofill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ mode: 'monday' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to apply Monday template.');
+
+    localStorage.removeItem(DRAFT_KEY);
+    await loadWeeklyPlan();
+    markPlannerSaved();
+    Swal.fire({ icon: 'success', title: 'Applied', text: 'Latest completed Monday pattern applied.' });
+  } catch (err) {
+    console.error('Apply Monday error:', err);
+    Swal.fire({ icon: 'error', title: 'Failed', text: err.message || 'Could not apply Monday template.' });
+  }
+}
+
+export async function smartFillToday() {
+  if (!isPlannerV2Enabled()) {
+    Swal.fire({ icon: 'info', title: 'Unavailable', text: 'Smart Fill is not enabled for your account yet.' });
+    return;
+  }
+
+  const today = getTodayName();
+  const candidates = deriveSuggestionsForDay(today);
+  if (!candidates.length) {
+    Swal.fire({ icon: 'info', title: 'No Suggestions Yet', text: 'Log a few sessions to unlock smart suggestions.' });
+    return;
+  }
+
+  candidates.slice(0, 2).forEach((bodyPart) => {
+    addExerciseToCard(today, {
+      exercise: `${bodyPart} Focus`,
+      bodyPart,
+      sets: 3,
+      reps: '10-12',
+      source: 'smart-fill'
+    });
+  });
+}
+
+export async function loadWeeklyPlan() {
+  bindPlannerEvents();
+  applyPlannerFeatureGate();
+
+  try {
+    const res = await fetch('/api/student/workout-plan', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Failed to load planner.');
+    }
+
+    plannerState = buildEmptyWeekState();
+    if (Array.isArray(data.data)) {
+      data.data.forEach((entry) => {
+        if (!DAYS.includes(entry.Day)) return;
+        plannerState[entry.Day] = parseServerPlan(entry);
       });
     }
+
+    const draft = loadDraft();
+    if (draft) {
+      DAYS.forEach((day) => {
+        if (hasDayContent(draft[day])) {
+          plannerState[day] = normalizeDayPlan(draft[day]);
+        }
+      });
+      markPlannerDirty();
+    } else {
+      markPlannerSaved();
+    }
+
+    renderAllDays();
+
+    const applyLastBtn = document.getElementById('applyLastWeekBtn');
+    if (applyLastBtn) {
+      applyLastBtn.style.display = hasAnyPlanContent() ? 'none' : 'inline-block';
+    }
+
+    await fetchPlannerInsights();
   } catch (err) {
-    console.error('Error applying last week’s plan:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Network Error',
-      text: 'Failed to apply last week’s plan.',
-    });
+    console.error('Error loading workout plan:', err);
   }
+}
+
+export async function loadPlannerInsights() {
+  try {
+    await fetchPlannerInsights();
+  } catch (err) {
+    console.error('Error loading planner insights:', err);
+  }
+}
+
+export function initializePlannerInteractions() {
+  bindPlannerEvents();
+  applyPlannerFeatureGate();
 }

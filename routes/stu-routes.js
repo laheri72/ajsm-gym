@@ -6,6 +6,537 @@ const sql = require('mssql');
 const moment = require('moment-timezone'); // This file needs moment
 const { cacheMiddleware, cache } = require('../utils/cache.js');
 
+const VALID_PLANNER_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const PLANNER_SCHEMA_VERSION = 1;
+const MAX_PLANNER_ITEMS_PER_DAY = 16;
+
+function isValidPlannerDay(day) {
+    return VALID_PLANNER_DAYS.includes(day);
+}
+
+function getCurrentDateInIST() {
+    return moment.tz("Asia/Kolkata").format('YYYY-MM-DD');
+}
+
+function decodeHtmlEntities(input = '') {
+    return String(input)
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&#39;/gi, "'")
+        .replace(/&quot;/gi, '"');
+}
+
+function stripHtmlToLines(html = '') {
+    const lineBroken = String(html)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<li[^>]*>/gi, '- ');
+
+    const plain = lineBroken.replace(/<[^>]+>/g, '');
+    const decoded = decodeHtmlEntities(plain);
+    return decoded
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+function normalizePlannerItem(rawItem, idx = 0) {
+    if (!rawItem || typeof rawItem !== 'object') return null;
+
+    const exercise = String(rawItem.exercise || rawItem.name || '').trim();
+    const bodyPart = String(rawItem.bodyPart || '').trim();
+    const note = String(rawItem.note || '').trim();
+    const reps = String(rawItem.reps || '').trim();
+    const source = String(rawItem.source || 'manual').trim();
+    const sets = Number.isFinite(Number(rawItem.sets)) ? Number(rawItem.sets) : null;
+    const durationMinutes = Number.isFinite(Number(rawItem.durationMinutes)) ? Number(rawItem.durationMinutes) : null;
+
+    if (!exercise && !bodyPart && !note) return null;
+
+    return {
+        id: String(rawItem.id || `item-${idx + 1}`),
+        type: String(rawItem.type || (bodyPart ? 'bodypart' : 'exercise')),
+        exercise: exercise.slice(0, 120),
+        bodyPart: bodyPart.slice(0, 40),
+        sets: sets && sets > 0 ? Math.min(sets, 99) : null,
+        reps: reps.slice(0, 40),
+        durationMinutes: durationMinutes && durationMinutes > 0 ? Math.min(durationMinutes, 240) : null,
+        note: note.slice(0, 255),
+        source: source.slice(0, 30)
+    };
+}
+
+function normalizeDayPlan(rawPlan = {}) {
+    const input = rawPlan && typeof rawPlan === 'object' ? rawPlan : {};
+    const items = Array.isArray(input.items) ? input.items : [];
+    const normalizedItems = items
+        .map((item, idx) => normalizePlannerItem(item, idx))
+        .filter(Boolean)
+        .slice(0, MAX_PLANNER_ITEMS_PER_DAY);
+
+    return {
+        schemaVersion: PLANNER_SCHEMA_VERSION,
+        items: normalizedItems,
+        notes: String(input.notes || '').trim().slice(0, 800)
+    };
+}
+
+function legacyContentToDayPlan(legacyContent = '') {
+    const lines = stripHtmlToLines(legacyContent);
+    return {
+        schemaVersion: PLANNER_SCHEMA_VERSION,
+        items: lines.slice(0, MAX_PLANNER_ITEMS_PER_DAY).map((line, idx) => ({
+            id: `legacy-${idx + 1}`,
+            type: 'exercise',
+            exercise: line.slice(0, 120),
+            bodyPart: '',
+            sets: null,
+            reps: '',
+            durationMinutes: null,
+            note: '',
+            source: 'legacy'
+        })),
+        notes: ''
+    };
+}
+
+function parseWorkoutContent(content) {
+    const raw = String(content || '').trim();
+    if (!raw) return normalizeDayPlan({});
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.items)) {
+            return normalizeDayPlan(parsed);
+        }
+    } catch (_) {
+        // Content is legacy plain/html.
+    }
+
+    return legacyContentToDayPlan(raw);
+}
+
+function dayPlanHasContent(dayPlan) {
+    if (!dayPlan || typeof dayPlan !== 'object') return false;
+    const notes = String(dayPlan.notes || '').trim();
+    return (Array.isArray(dayPlan.items) && dayPlan.items.length > 0) || notes.length > 0;
+}
+
+function validateIncomingPlanPayload(payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new Error('Malformed planner payload.');
+    }
+
+    const source = payload.days && typeof payload.days === 'object' && !Array.isArray(payload.days)
+        ? payload.days
+        : payload;
+
+    const keys = Object.keys(source);
+    if (keys.length === 0) throw new Error('Planner payload is empty.');
+
+    const unknownDays = keys.filter((day) => !isValidPlannerDay(day));
+    if (unknownDays.length > 0) {
+        throw new Error(`Invalid planner day(s): ${unknownDays.join(', ')}`);
+    }
+
+    const normalizedByDay = {};
+    for (const day of keys) {
+        const rawValue = source[day];
+        if (typeof rawValue === 'string') {
+            normalizedByDay[day] = legacyContentToDayPlan(rawValue);
+            continue;
+        }
+        normalizedByDay[day] = normalizeDayPlan(rawValue);
+    }
+
+    const hasContent = Object.values(normalizedByDay).some(dayPlanHasContent);
+    if (!hasContent) throw new Error('Planner payload has no exercises or notes.');
+
+    return normalizedByDay;
+}
+
+function getMedian(values = []) {
+    if (!values.length) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+}
+
+async function getCurrentWeekIdForToday() {
+    const todayStr = getCurrentDateInIST();
+    const weekResult = await pool.request()
+        .input('Today', sql.Date, todayStr)
+        .query(`
+            SELECT TOP 1 WeekID
+            FROM AttendanceWeek
+            WHERE WeekStartDate <= @Today AND WeekEndDate >= @Today
+            ORDER BY WeekID DESC
+        `);
+
+    if (weekResult.recordset.length > 0) {
+        return weekResult.recordset[0].WeekID;
+    }
+
+    return getOrCreateWeekIdByDate(todayStr, pool);
+}
+
+function buildEmptyWeekdayMap() {
+    return VALID_PLANNER_DAYS.reduce((acc, day) => {
+        acc[day] = [];
+        return acc;
+    }, {});
+}
+
+function deriveIntensity(goal = '', medianDuration = 0, daysSinceLastWorkout = 0) {
+    const normalizedGoal = String(goal || '').toLowerCase();
+    let intensity = 'moderate';
+
+    if (normalizedGoal.includes('strength') || normalizedGoal.includes('muscle')) intensity = 'high';
+    if (normalizedGoal.includes('endurance') || normalizedGoal.includes('weight loss')) intensity = 'moderate-high';
+    if (medianDuration > 75) intensity = 'high';
+    if (daysSinceLastWorkout >= 5) intensity = 'light';
+
+    return intensity;
+}
+
+function buildAutoFilledWeek(insights, mode = 'week') {
+    const week = {};
+    const weekdayHistory = insights?.weekdayHistory || buildEmptyWeekdayMap();
+    const durationBaseline = insights?.durationBaseline || {};
+    const goal = insights?.fitnessContext?.goal || '';
+    const daysSinceLastWorkout = Number(insights?.consistency?.daysSinceLastWorkout || 0);
+    const globalTopBodyParts = Object.entries(insights?.recommendations?.bodyPartBalance || {})
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name);
+
+    const dayList = mode === 'monday_only' ? ['Monday'] : VALID_PLANNER_DAYS;
+    for (const day of dayList) {
+        const historicalForDay = Array.isArray(weekdayHistory[day]) ? weekdayHistory[day] : [];
+        const dayTop = historicalForDay
+            .slice(0, 2)
+            .map((entry) => entry.bodyPart)
+            .filter(Boolean);
+
+        const candidates = [...dayTop, ...globalTopBodyParts].filter(Boolean);
+        const uniqueCandidates = [...new Set(candidates)].slice(0, 2);
+
+        const baseline = durationBaseline[day] || {};
+        const medianDuration = Number(baseline.median || 45);
+        const intensity = deriveIntensity(goal, medianDuration, daysSinceLastWorkout);
+
+        const items = uniqueCandidates.map((bodyPart, idx) => ({
+            id: `auto-${day}-${idx + 1}`,
+            type: 'bodypart',
+            exercise: `${bodyPart} Focus`,
+            bodyPart,
+            sets: intensity === 'high' ? 4 : 3,
+            reps: intensity === 'high' ? '6-10' : '10-12',
+            durationMinutes: Math.max(20, Math.round(medianDuration)),
+            note: `Auto-suggested from your ${day} history`,
+            source: 'autofill'
+        }));
+
+        week[day] = normalizeDayPlan({
+            schemaVersion: PLANNER_SCHEMA_VERSION,
+            items,
+            notes: items.length ? '' : 'Recovery / mobility day'
+        });
+    }
+
+    return week;
+}
+
+async function upsertPlannerDays({ TR, Branch, Gender, WeekID, planByDay, transaction = null }) {
+    const requestFactory = () => transaction ? new sql.Request(transaction) : pool.request();
+
+    for (const [day, dayPlan] of Object.entries(planByDay)) {
+        if (!isValidPlannerDay(day)) continue;
+
+        const request = requestFactory();
+        await request
+            .input('TR', sql.Int, TR)
+            .input('Day', sql.NVarChar(20), day)
+            .input('Content', sql.NVarChar(sql.MAX), JSON.stringify(normalizeDayPlan(dayPlan)))
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .input('WeekID', sql.Int, WeekID)
+            .query(`
+                MERGE WorkoutPlan AS target
+                USING (SELECT @TR AS TR, @Day AS Day, @WeekID AS WeekID) AS source
+                ON target.TR = source.TR AND target.Day = source.Day AND target.WeekID = source.WeekID
+                WHEN MATCHED THEN
+                    UPDATE SET Content = @Content, Branch = @Branch, Gender = @Gender
+                WHEN NOT MATCHED THEN
+                    INSERT (TR, Day, Content, Branch, Gender, WeekID)
+                    VALUES (@TR, @Day, @Content, @Branch, @Gender, @WeekID);
+            `);
+    }
+}
+
+async function getPlannerInsights(TR) {
+    const [weekdayHistoryRes, durationsRes, adherenceRes, profileRes, weightRes, testsRes, achievementRes, lastWorkoutRes] = await Promise.all([
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT
+                    B.Name AS BodyPart,
+                    P.CreatedAt
+                FROM TrainingPlan P
+                JOIN TrainingLog L ON P.PlanID = L.PlanID
+                JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+                WHERE P.TR = @TR
+                  AND P.CreatedAt >= DATEADD(WEEK, -8, SYSUTCDATETIME());
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT CreatedAt, DurationInMinutes
+                FROM Attendance
+                WHERE TR = @TR
+                  AND DurationInMinutes IS NOT NULL
+                  AND DurationInMinutes > 0
+                  AND CreatedAt >= DATEADD(WEEK, -8, SYSUTCDATETIME());
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 8
+                    W.WeekID,
+                    W.WeekStartDate,
+                    W.WeekEndDate,
+                    ISNULL(P.PlannedDays, 0) AS PlannedDays,
+                    ISNULL(C.CompletedDays, 0) AS CompletedDays
+                FROM AttendanceWeek W
+                OUTER APPLY (
+                    SELECT COUNT(*) AS PlannedDays
+                    FROM WorkoutPlan WP
+                    WHERE WP.TR = @TR
+                      AND WP.WeekID = W.WeekID
+                      AND LEN(LTRIM(RTRIM(ISNULL(WP.Content, '')))) > 0
+                ) P
+                OUTER APPLY (
+                    SELECT COUNT(DISTINCT CAST(DATEADD(MINUTE, 330, TP.CreatedAt) AS DATE)) AS CompletedDays
+                    FROM TrainingPlan TP
+                    WHERE TP.TR = @TR
+                      AND CAST(DATEADD(MINUTE, 330, TP.CreatedAt) AS DATE) BETWEEN W.WeekStartDate AND W.WeekEndDate
+                ) C
+                WHERE W.WeekEndDate <= CAST(DATEADD(MINUTE, 330, SYSUTCDATETIME()) AS DATE)
+                ORDER BY W.WeekStartDate DESC;
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT Goal, FitnessLevel, CurrentXP
+                FROM TestMaster
+                WHERE TR = @TR;
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 6 Weight, CreatedAt
+                FROM WeightTracking
+                WHERE TR = @TR
+                ORDER BY CreatedAt DESC;
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 6 BMI, BodyFat, Weight, CreatedAt
+                FROM TestRecords
+                WHERE TR = @TR
+                ORDER BY CreatedAt DESC;
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 5 A.AchievementName, SA.DateEarned
+                FROM StudentAchievements SA
+                JOIN Achievements A ON A.AchievementID = SA.AchievementID
+                WHERE SA.TR = @TR
+                ORDER BY SA.DateEarned DESC;
+            `),
+        pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 1 CreatedAt
+                FROM TrainingPlan
+                WHERE TR = @TR
+                ORDER BY CreatedAt DESC;
+            `)
+    ]);
+
+    const weekdayHistory = buildEmptyWeekdayMap();
+    const weekdayBodyPartAccumulator = buildEmptyWeekdayMap();
+    for (const row of weekdayHistoryRes.recordset) {
+        if (!row.CreatedAt) continue;
+        const day = moment.tz(row.CreatedAt, "Asia/Kolkata").format('dddd');
+        if (!isValidPlannerDay(day)) continue;
+        const bodyPart = String(row.BodyPart || '').trim();
+        if (!bodyPart) continue;
+
+        const map = weekdayBodyPartAccumulator[day];
+        const existing = map.find((entry) => entry.bodyPart === bodyPart);
+        if (existing) {
+            existing.count += 1;
+            if (!existing.lastTrainedAt || row.CreatedAt > existing.lastTrainedAt) {
+                existing.lastTrainedAt = row.CreatedAt;
+            }
+        } else {
+            map.push({
+                bodyPart,
+                count: 1,
+                lastTrainedAt: row.CreatedAt
+            });
+        }
+    }
+    for (const day of VALID_PLANNER_DAYS) {
+        weekdayHistory[day] = weekdayBodyPartAccumulator[day].sort((a, b) => b.count - a.count);
+    }
+
+    const weekdayDurations = buildEmptyWeekdayMap();
+    for (const row of durationsRes.recordset) {
+        if (!row.CreatedAt) continue;
+        const day = moment.tz(row.CreatedAt, "Asia/Kolkata").format('dddd');
+        if (!isValidPlannerDay(day)) continue;
+        weekdayDurations[day].push(Number(row.DurationInMinutes || 0));
+    }
+
+    const durationBaseline = {};
+    for (const day of VALID_PLANNER_DAYS) {
+        const values = weekdayDurations[day].filter((v) => v > 0);
+        if (!values.length) {
+            durationBaseline[day] = { min: 0, max: 0, avg: 0, median: 0 };
+            continue;
+        }
+        const sum = values.reduce((a, b) => a + b, 0);
+        durationBaseline[day] = {
+            min: Math.min(...values),
+            max: Math.max(...values),
+            avg: Number((sum / values.length).toFixed(1)),
+            median: Number(getMedian(values).toFixed(1))
+        };
+    }
+
+    const weeklyAdherence = adherenceRes.recordset
+        .map((row) => {
+            const planned = Number(row.PlannedDays || 0);
+            const completed = Number(row.CompletedDays || 0);
+            return {
+                weekID: row.WeekID,
+                weekStartDate: row.WeekStartDate,
+                weekEndDate: row.WeekEndDate,
+                plannedDays: planned,
+                completedDays: completed,
+                adherencePct: planned > 0 ? Number(((completed / planned) * 100).toFixed(1)) : 0
+            };
+        })
+        .reverse();
+
+    const profile = profileRes.recordset[0] || {};
+    const latestWeight = weightRes.recordset[0] || null;
+    const oldestWeight = weightRes.recordset[weightRes.recordset.length - 1] || null;
+    const weightDelta = latestWeight && oldestWeight
+        ? Number((Number(latestWeight.Weight) - Number(oldestWeight.Weight)).toFixed(2))
+        : 0;
+
+    const latestTest = testsRes.recordset[0] || null;
+    const oldestTest = testsRes.recordset[testsRes.recordset.length - 1] || null;
+    const bmiDelta = latestTest && oldestTest
+        ? Number((Number(latestTest.BMI) - Number(oldestTest.BMI)).toFixed(2))
+        : 0;
+    const bodyFatDelta = latestTest && oldestTest
+        ? Number((Number(latestTest.BodyFat) - Number(oldestTest.BodyFat)).toFixed(2))
+        : 0;
+
+    const lastWorkoutAt = lastWorkoutRes.recordset[0]?.CreatedAt || null;
+    const daysSinceLastWorkout = lastWorkoutAt
+        ? moment.tz("Asia/Kolkata").startOf('day').diff(moment.tz(lastWorkoutAt, "Asia/Kolkata").startOf('day'), 'days')
+        : null;
+
+    const bodyPartBalance = {};
+    for (const day of VALID_PLANNER_DAYS) {
+        for (const row of weekdayHistory[day]) {
+            bodyPartBalance[row.bodyPart] = (bodyPartBalance[row.bodyPart] || 0) + Number(row.count || 0);
+        }
+    }
+
+    return {
+        generatedAt: new Date().toISOString(),
+        weekdayHistory,
+        durationBaseline,
+        consistency: {
+            weeklyAdherence,
+            daysSinceLastWorkout
+        },
+        fitnessContext: {
+            goal: profile.Goal || null,
+            fitnessLevel: profile.FitnessLevel || 1,
+            currentXP: profile.CurrentXP || 0,
+            latestWeight: latestWeight ? Number(latestWeight.Weight) : null,
+            weightDelta,
+            bmiDelta,
+            bodyFatDelta,
+            recentAchievements: achievementRes.recordset.map((row) => ({
+                name: row.AchievementName,
+                dateEarned: row.DateEarned
+            }))
+        },
+        recommendations: {
+            bodyPartBalance
+        }
+    };
+}
+
+async function savePlannerPayloadForCurrentWeek({ TR, Branch, Gender, payload, transaction = null }) {
+    const planByDay = validateIncomingPlanPayload(payload);
+    const currentWeekID = await getCurrentWeekIdForToday();
+
+    await upsertPlannerDays({
+        TR,
+        Branch,
+        Gender,
+        WeekID: currentWeekID,
+        planByDay,
+        transaction
+    });
+
+    return { currentWeekID, planByDay };
+}
+
+async function readStructuredPlannerForWeek({ TR, Branch, Gender, WeekID }) {
+    const planResult = await pool.request()
+        .input('TR', sql.Int, TR)
+        .input('Branch', sql.NVarChar(50), Branch)
+        .input('Gender', sql.NVarChar(50), Gender)
+        .input('WeekID', sql.Int, WeekID)
+        .query(`
+            SELECT Day, Content
+            FROM WorkoutPlan
+            WHERE TR = @TR
+              AND Branch = @Branch
+              AND Gender = @Gender
+              AND WeekID = @WeekID;
+        `);
+
+    const rowsByDay = {};
+    for (const row of planResult.recordset) {
+        rowsByDay[row.Day] = row;
+    }
+
+    return VALID_PLANNER_DAYS.map((day) => {
+        const rawContent = rowsByDay[day]?.Content || '';
+        const parsed = parseWorkoutContent(rawContent);
+        return {
+            Day: day,
+            Plan: parsed
+        };
+    });
+}
 
 
 // Helper functions from server.js will go here
@@ -598,215 +1129,262 @@ router.get(
 // ---------- 📅 Workout Planner (Planner Tab)
 
 
+router.get(
+  '/api/student/planner/insights',
+  cacheMiddleware(req => `planner_insights_${req.session.user?.TR}`, 120),
+  async (req, res) => {
+    try {
+      if (!req.session.user?.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const insights = await getPlannerInsights(req.session.user.TR);
+      res.json({ success: true, data: insights });
+    } catch (err) {
+      console.error('Planner insights error:', err);
+      res.status(500).json({ success: false, message: 'Failed to build planner insights' });
+    }
+  }
+);
+
 router.post('/api/save-workout-plan', async (req, res) => {
   try {
-    
-    const { TR, Branch, Gender } = req.session.user;
-    if (!TR || !Branch || !Gender) { 
-        return res.status(401).json({ success: false, message: "Unauthorized" });   
+    const { TR, Branch, Gender } = req.session.user || {};
+    if (!TR || !Branch || !Gender) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const plan = req.body; // { Monday: '...', Tuesday: '...', ... }
+    const { currentWeekID } = await savePlannerPayloadForCurrentWeek({
+      TR,
+      Branch,
+      Gender,
+      payload: req.body
+    });
 
+    cache.del(`workout_${TR}`);
+    cache.del(`planner_insights_${TR}`);
 
-    // ✅ Get today's date in 'YYYY-MM-DD' format
-
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
-
-
-
-    // ✅ Get current week ID
-       const weekResult = await pool.request()
-      .input('Today', sql.Date, todayStr)
-      .query(`
-        SELECT TOP 1 WeekID FROM AttendanceWeek
-        WHERE WeekStartDate <= @Today AND WeekEndDate >= @Today
-      `);
-
-    if (weekResult.recordset.length === 0) {
-      return res.status(400).json({ success: false, message: 'Current week not found in AttendanceWeek' });
-    }
-
-    const currentWeekID = weekResult.recordset[0].WeekID;
-
-    // ✅ Save or update each day's plan
-    for (const [day, content] of Object.entries(plan)) {
-      await pool.request()
-        .input('TR', sql.Int, TR)
-        .input('Day', sql.NVarChar(20), day)
-        .input('Content', sql.NVarChar(sql.MAX), content)
-        .input('Branch', sql.NVarChar(50), Branch)
-        .input('Gender', sql.NVarChar(50), Gender)
-        .input('WeekID', sql.Int, currentWeekID)
-        .query(`
-          MERGE WorkoutPlan AS target
-          USING (SELECT @TR AS TR, @Day AS Day, @WeekID AS WeekID) AS source
-          ON target.TR = source.TR AND target.Day = source.Day AND target.WeekID = source.WeekID
-          WHEN MATCHED THEN 
-              UPDATE SET Content = @Content, Branch = @Branch, Gender = @Gender
-          WHEN NOT MATCHED THEN
-              INSERT (TR, Day, Content, Branch, Gender, WeekID)
-              VALUES (@TR, @Day, @Content, @Branch, @Gender, @WeekID);
-        `);
-    }
-
-    res.json({ success: true });
-
+    res.json({
+      success: true,
+      currentWeekID,
+      schemaVersion: PLANNER_SCHEMA_VERSION
+    });
   } catch (err) {
+    const message = err?.message || 'Workout plan save failed';
+    const status = message.toLowerCase().includes('invalid') || message.toLowerCase().includes('payload')
+      ? 400
+      : 500;
     console.error('Save error:', err);
-    res.status(500).json({ success: false, message: 'Workout plan save failed' });
+    res.status(status).json({ success: false, message });
   }
 });
-
 
 router.get(
   '/api/student/workout-plan',
   cacheMiddleware(req => `workout_${req.session.user?.TR}`, 60),
   async (req, res) => {
-  try {
-    // ✅ ADD THIS CHECK FIRST
-    // This ensures a user is logged in before we try to access their details.
-    if (!req.session.user) {
-      return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+    try {
+      if (!req.session.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+      }
+
+      const { TR, Branch, Gender } = req.session.user;
+      if (!TR || !Branch || !Gender) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+
+      const currentWeekID = await getCurrentWeekIdForToday();
+      const data = await readStructuredPlannerForWeek({ TR, Branch, Gender, WeekID: currentWeekID });
+      const insights = await getPlannerInsights(TR);
+
+      res.json({
+        success: true,
+        currentWeekID,
+        schemaVersion: PLANNER_SCHEMA_VERSION,
+        data,
+        hasCurrentWeek: data.some((day) => dayPlanHasContent(day.Plan)),
+        insightsSummary: {
+          generatedAt: insights.generatedAt,
+          consistency: insights.consistency,
+          fitnessContext: insights.fitnessContext
+        }
+      });
+    } catch (err) {
+      console.error('Workout GET error:', err);
+      res.status(500).json({ success: false, message: 'Failed to load workout plan' });
     }
-
-    // Now that we know req.session.user exists, it's safe to destructure it.
-    const { TR, Branch, Gender } = req.session.user;
-
-    // This check is still useful for data integrity.
-    if (!TR || !Branch || !Gender) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
-
-    // 1. Get current week ID
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-
-    const weekResult = await pool.request()
-      .input('Today', sql.Date, todayStr)
-      .query(`
-        SELECT TOP 1 WeekID FROM AttendanceWeek
-        WHERE WeekStartDate <= @Today AND WeekEndDate >= @Today
-      `);
-
-    if (weekResult.recordset.length === 0) {
-      return res.json({ success: true, currentWeekID: null, plans: [], hasCurrentWeek: false });
-    }
-
-    const currentWeekID = weekResult.recordset[0].WeekID;
-
-    // 2. Fetch current week plan
-    const planResult = await pool.request()
-      .input('TR', sql.Int, TR)
-      .input('Branch', sql.NVarChar(50), Branch)
-      .input('Gender', sql.NVarChar(50), Gender)
-      .input('WeekID', sql.Int, currentWeekID)
-      .query(`
-        SELECT Day, Content FROM WorkoutPlan
-        WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender AND WeekID = @WeekID
-      `);
-      
-    res.json({
-      success: true,
-      currentWeekID,
-      data: planResult.recordset,
-      hasCurrentWeek: planResult.recordset.length > 0
-    });
-  } catch (err) {
-    console.error('Workout GET error:', err);
-    res.status(500).json({ success: false, message: 'Failed to load workout plan' });
   }
-});
-
-
+);
 
 router.post('/api/student/apply-last-week', async (req, res) => {
   try {
-    const { TR, Branch, Gender } = req.session.user;
-
+    const { TR, Branch, Gender } = req.session.user || {};
     if (!TR || !Branch || !Gender) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    const currentWeekID = await getCurrentWeekIdForToday();
 
-    
-
-    // Get current week
-    const weekResult = await pool.request()
-      .input('Today', sql.Date, todayStr)
-      .query(`
-        SELECT TOP 1 WeekID FROM AttendanceWeek
-        WHERE WeekStartDate <= @Today AND WeekEndDate >= @Today
-      `);
-
-    if (weekResult.recordset.length === 0) {
-      return res.status(400).json({ success: false, message: "Current week not found" });
-    }
-
-    const currentWeekID = weekResult.recordset[0].WeekID;
-
-    // Get last week's plan
     const lastWeekPlanResult = await pool.request()
       .input('TR', sql.Int, TR)
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(50), Gender)
+      .input('CurrentWeekID', sql.Int, currentWeekID)
       .query(`
-        SELECT TOP 1 WeekID FROM WorkoutPlan
-        WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
-          AND WeekID <> ${currentWeekID}
-        ORDER BY WeekID DESC
+        SELECT TOP 1 WeekID
+        FROM WorkoutPlan
+        WHERE TR = @TR
+          AND Branch = @Branch
+          AND Gender = @Gender
+          AND WeekID <> @CurrentWeekID
+        ORDER BY WeekID DESC;
       `);
 
-    if (lastWeekPlanResult.recordset.length === 0) {
-      return res.json({ success: false, message: "No previous week plan found" });
-    }
-
-    const lastWeekID = lastWeekPlanResult.recordset[0].WeekID;
-
-    // Get actual content from that week
-    const contentResult = await pool.request()
-      .input('TR', sql.Int, TR)
-      .input('Branch', sql.NVarChar(50), Branch)
-      .input('Gender', sql.NVarChar(50), Gender)
-      .input('WeekID', sql.Int, lastWeekID)
-      .query(`
-        SELECT Day, Content FROM WorkoutPlan
-        WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender AND WeekID = @WeekID
-      `);
-
-    // Insert into current week
-    for (const row of contentResult.recordset) {
-      await pool.request()
+    let planByDay = null;
+    if (lastWeekPlanResult.recordset.length > 0) {
+      const lastWeekID = lastWeekPlanResult.recordset[0].WeekID;
+      const contentResult = await pool.request()
         .input('TR', sql.Int, TR)
-        .input('Day', sql.NVarChar(20), row.Day)
-        .input('Content', sql.NVarChar(sql.MAX), row.Content)
         .input('Branch', sql.NVarChar(50), Branch)
         .input('Gender', sql.NVarChar(50), Gender)
-        .input('WeekID', sql.Int, currentWeekID)
+        .input('WeekID', sql.Int, lastWeekID)
         .query(`
-          MERGE WorkoutPlan AS target
-          USING (SELECT @TR AS TR, @Day AS Day, @WeekID AS WeekID) AS source
-          ON target.TR = source.TR AND target.Day = source.Day AND target.WeekID = source.WeekID
-          WHEN MATCHED THEN UPDATE SET Content = @Content
-          WHEN NOT MATCHED THEN
-            INSERT (TR, Day, Content, Branch, Gender, WeekID)
-            VALUES (@TR, @Day, @Content, @Branch, @Gender, @WeekID);
+          SELECT Day, Content
+          FROM WorkoutPlan
+          WHERE TR = @TR
+            AND Branch = @Branch
+            AND Gender = @Gender
+            AND WeekID = @WeekID;
         `);
+
+      planByDay = {};
+      for (const row of contentResult.recordset) {
+        if (!isValidPlannerDay(row.Day)) continue;
+        planByDay[row.Day] = parseWorkoutContent(row.Content || '');
+      }
     }
 
-    res.json({ success: true });
+    if (!planByDay || Object.keys(planByDay).length === 0) {
+      const insights = await getPlannerInsights(TR);
+      planByDay = buildAutoFilledWeek(insights, 'week');
+    }
 
+    await upsertPlannerDays({
+      TR,
+      Branch,
+      Gender,
+      WeekID: currentWeekID,
+      planByDay
+    });
+
+    cache.del(`workout_${TR}`);
+    cache.del(`planner_insights_${TR}`);
+
+    res.json({ success: true, currentWeekID, data: planByDay });
   } catch (err) {
     console.error('Apply last week error:', err);
     res.status(500).json({ success: false, message: "Failed to apply last week plan" });
   }
 });
 
+// --------- Planner V2 Bridge Endpoints
 
-// --------- 📊 Workout Logs (Logs Tab)
+router.get('/api/student/planner/v2', async (req, res) => {
+  if (!req.session.user?.TR) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  return res.redirect(307, '/api/student/workout-plan');
+});
+
+router.post('/api/student/planner/v2', async (req, res) => {
+  if (!req.session.user?.TR) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  return res.redirect(307, '/api/save-workout-plan');
+});
+
+router.post('/api/student/planner/v2/autofill', async (req, res) => {
+  try {
+    const { TR, Branch, Gender } = req.session.user || {};
+    if (!TR || !Branch || !Gender) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const mode = String(req.body?.mode || 'week').toLowerCase();
+    const insights = await getPlannerInsights(TR);
+    const currentWeekID = await getCurrentWeekIdForToday();
+    const planByDay = buildAutoFilledWeek(insights, mode === 'monday' ? 'monday_only' : 'week');
+
+    await upsertPlannerDays({
+      TR,
+      Branch,
+      Gender,
+      WeekID: currentWeekID,
+      planByDay
+    });
+
+    cache.del(`workout_${TR}`);
+    cache.del(`planner_insights_${TR}`);
+
+    res.json({ success: true, currentWeekID, data: planByDay });
+  } catch (err) {
+    console.error('Planner auto-fill error:', err);
+    res.status(500).json({ success: false, message: 'Failed to auto-fill planner' });
+  }
+});
+
+router.post('/api/student/planner/v2/complete-item', async (req, res) => {
+  const { TR, Branch, Gender } = req.session.user || {};
+  if (!TR || !Branch || !Gender) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  const bodyPart = String(req.body?.bodyPart || '').trim();
+  if (!bodyPart) {
+    return res.status(400).json({ success: false, message: 'bodyPart is required.' });
+  }
+
+  const transaction = new sql.Transaction(pool);
+  try {
+    await transaction.begin();
+
+    const planInsert = await new sql.Request(transaction)
+      .input('TR', sql.Int, TR)
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(50), Gender)
+      .query(`
+        INSERT INTO TrainingPlan (TR, Branch, Gender)
+        OUTPUT INSERTED.PlanID
+        VALUES (@TR, @Branch, @Gender);
+      `);
+
+    const planID = planInsert.recordset[0].PlanID;
+
+    const logInsert = await new sql.Request(transaction)
+      .input('PlanID', sql.Int, planID)
+      .input('BodyPartName', sql.NVarChar(50), bodyPart)
+      .query(`
+        INSERT INTO TrainingLog (PlanID, BodyPartID)
+        SELECT @PlanID, BodyPartID
+        FROM BodyParts
+        WHERE Name = @BodyPartName;
+      `);
+
+    if (!logInsert.rowsAffected[0]) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Unknown body part.' });
+    }
+
+    await transaction.commit();
+    cache.del(`planner_insights_${TR}`);
+
+    res.json({ success: true, planID, bodyPart });
+  } catch (err) {
+    if (transaction._aborted === false) await transaction.rollback();
+    console.error('Complete planner item error:', err);
+    res.status(500).json({ success: false, message: 'Failed to complete planner item.' });
+  }
+});
 
 router.get(
   '/api/student/training-plans',
@@ -1334,3 +1912,4 @@ router.get(
 // --- End of routes ---
 
 module.exports = router; // Export the router
+

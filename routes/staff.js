@@ -5,6 +5,70 @@ const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const moment = require('moment-timezone');
 
+function decodeHtmlEntities(input = '') {
+    return String(input)
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&#39;/gi, "'")
+        .replace(/&quot;/gi, '"');
+}
+
+function stripHtmlToText(input = '') {
+    const withBreaks = String(input)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<li[^>]*>/gi, '- ');
+    return decodeHtmlEntities(withBreaks.replace(/<[^>]+>/g, ''));
+}
+
+function parsePlannerContentForTrainer(content = '') {
+    const raw = String(content || '').trim();
+    if (!raw) {
+        return { items: [], notes: '', displayText: '' };
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.items)) {
+            const items = parsed.items
+                .map((item) => ({
+                    exercise: String(item.exercise || '').trim(),
+                    bodyPart: String(item.bodyPart || '').trim(),
+                    sets: item.sets ?? null,
+                    reps: String(item.reps || '').trim()
+                }))
+                .filter((item) => item.exercise || item.bodyPart);
+
+            const lines = items.map((item) => {
+                const primary = item.exercise || `${item.bodyPart} Focus`;
+                const meta = [item.sets ? `${item.sets} sets` : '', item.reps ? `${item.reps} reps` : '']
+                    .filter(Boolean)
+                    .join(' • ');
+                return meta ? `${primary} (${meta})` : primary;
+            });
+
+            return {
+                items,
+                notes: String(parsed.notes || '').trim(),
+                displayText: lines.join('\n')
+            };
+        }
+    } catch (_) {
+        // legacy content
+    }
+
+    const displayText = stripHtmlToText(raw)
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join('\n');
+
+    return { items: [], notes: '', displayText };
+}
+
 // Helper functions will go here
 const isStaffOrAdmin = (req, res, next) => {
     if (!req.session.user) {
@@ -935,14 +999,31 @@ router.post('/api/attendance-manual', async (req, res) => {
 
 // ✅ Log Training Plan API with XP integration
 router.post('/api/log-training-plan', async (req, res) => {
-    const { TR, BodyParts } = req.body;
-    const { Branch, Gender } = req.session.user;
+    const { TR, BodyParts, Exercises } = req.body || {};
+    const { Branch, Gender } = req.session.user || {};
+
+    if (!TR || !Array.isArray(BodyParts) || BodyParts.length === 0) {
+        return res.status(400).json({ success: false, message: 'TR and BodyParts[] are required.' });
+    }
+
+    const safeBodyParts = [...new Set(
+        BodyParts
+            .map((name) => String(name || '').trim())
+            .filter(Boolean)
+    )];
+
+    if (!safeBodyParts.length) {
+        return res.status(400).json({ success: false, message: 'BodyParts[] must include at least one valid value.' });
+    }
+
+    const safeExercises = Array.isArray(Exercises) ? Exercises.slice(0, 50) : [];
+    const toInt = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
 
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
 
-        // Step 1: Insert into TrainingPlan
+        // Step 1: Insert session header into TrainingPlan
         const planResult = await new sql.Request(transaction)
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
@@ -955,37 +1036,157 @@ router.post('/api/log-training-plan', async (req, res) => {
 
         const newPlanID = planResult.recordset[0].PlanID;
 
-        // Step 2: Insert each body part into TrainingLog
-        for (const partName of BodyParts) {
-            await new sql.Request(transaction)
+        // Step 2: Keep legacy body-part logging for existing analytics and dashboards.
+        for (const partName of safeBodyParts) {
+            const insertResult = await new sql.Request(transaction)
                 .input('PlanID', sql.Int, newPlanID)
                 .input('PartName', sql.NVarChar(50), partName)
                 .query(`
                     INSERT INTO TrainingLog (PlanID, BodyPartID)
                     SELECT @PlanID, BodyPartID FROM BodyParts WHERE Name = @PartName;
                 `);
+
+            if (!insertResult.rowsAffected[0]) {
+                throw new Error(`Unknown body part: ${partName}`);
+            }
         }
 
-        // --- ✅ NEW XP integration ---
-        const xpToAward = 10 + (BodyParts.length > 1 ? (BodyParts.length - 1) * 3 : 0);
+        // Step 3: Optional V2 exercise-level execution logging (only if V2 tables exist).
+        let loggedExerciseCount = 0;
+        if (safeExercises.length > 0) {
+            const v2SupportResult = await new sql.Request(transaction).query(`
+                SELECT
+                    CASE
+                        WHEN OBJECT_ID('dbo.PerformanceLogs', 'U') IS NOT NULL
+                         AND OBJECT_ID('dbo.Exercises', 'U') IS NOT NULL
+                        THEN 1 ELSE 0
+                    END AS IsSupported;
+            `);
+            const isV2Supported = Boolean(v2SupportResult.recordset[0]?.IsSupported);
+
+            if (isV2Supported) {
+                for (const exercise of safeExercises) {
+                    if (!exercise || typeof exercise !== 'object') continue;
+
+                    const exerciseID = toInt(exercise.exerciseID ?? exercise.ExerciseID ?? exercise.exerciseId);
+                    const plannedID = toInt(exercise.plannedID ?? exercise.PlannedID ?? exercise.plannedId);
+                    const setNumber = toInt(exercise.setNumber ?? exercise.SetNumber);
+                    const repsPerformed = toInt(exercise.repsPerformed ?? exercise.RepsPerformed ?? exercise.reps);
+                    const durationMinutes = toInt(exercise.durationMinutes ?? exercise.DurationMinutes);
+                    const rpe = toInt(exercise.rpe ?? exercise.RPE);
+                    const weightUsed = Number.isFinite(Number(exercise.weightUsed ?? exercise.WeightUsed))
+                        ? Number(exercise.weightUsed ?? exercise.WeightUsed)
+                        : null;
+                    const isPR = Boolean(exercise.isPR ?? exercise.IsPR);
+                    const completedAt = exercise.completedAt ?? exercise.CompletedAt ?? null;
+                    const exerciseName = String(
+                        exercise.exerciseName ??
+                        exercise.ExerciseName ??
+                        exercise.name ??
+                        ''
+                    ).trim();
+                    const bodyPartName = String(
+                        exercise.bodyPart ??
+                        exercise.BodyPart ??
+                        ''
+                    ).trim();
+
+                    const insertPerformanceResult = await new sql.Request(transaction)
+                        .input('PlanID', sql.Int, newPlanID)
+                        .input('TR', sql.Int, TR)
+                        .input('Branch', sql.NVarChar(50), Branch)
+                        .input('Gender', sql.NVarChar(10), Gender)
+                        .input('PlannedID', sql.Int, plannedID)
+                        .input('ExerciseID', sql.Int, exerciseID)
+                        .input('ExerciseName', sql.NVarChar(100), exerciseName)
+                        .input('BodyPartName', sql.NVarChar(50), bodyPartName)
+                        .input('SetNumber', sql.Int, setNumber)
+                        .input('RepsPerformed', sql.Int, repsPerformed)
+                        .input('WeightUsed', sql.Decimal(10, 2), weightUsed)
+                        .input('DurationMinutes', sql.Int, durationMinutes)
+                        .input('RPE', sql.Int, rpe)
+                        .input('IsPR', sql.Bit, isPR)
+                        .input('CompletedAt', sql.DateTime, completedAt)
+                        .query(`
+                            DECLARE @ResolvedExerciseID INT = @ExerciseID;
+                            DECLARE @InsertedPerformance INT = 0;
+
+                            IF @ResolvedExerciseID IS NULL AND LEN(LTRIM(RTRIM(ISNULL(@ExerciseName, '')))) > 0
+                            BEGIN
+                                SELECT TOP 1 @ResolvedExerciseID = E.ExerciseID
+                                FROM dbo.Exercises E
+                                WHERE E.Name = @ExerciseName
+                                ORDER BY E.ExerciseID DESC;
+
+                                IF @ResolvedExerciseID IS NULL AND LEN(LTRIM(RTRIM(ISNULL(@BodyPartName, '')))) > 0
+                                BEGIN
+                                    DECLARE @ResolvedBodyPartID INT;
+                                    SELECT TOP 1 @ResolvedBodyPartID = B.BodyPartID
+                                    FROM dbo.BodyParts B
+                                    WHERE B.Name = @BodyPartName;
+
+                                    IF @ResolvedBodyPartID IS NOT NULL
+                                    BEGIN
+                                        INSERT INTO dbo.Exercises (Name, BodyPartID, Difficulty, IsActive, CreatedAt)
+                                        VALUES (@ExerciseName, @ResolvedBodyPartID, 'Beginner', 1, GETDATE());
+                                        SET @ResolvedExerciseID = SCOPE_IDENTITY();
+                                    END
+                                END
+                            END
+
+                            IF @ResolvedExerciseID IS NOT NULL
+                            BEGIN
+                                INSERT INTO dbo.PerformanceLogs (
+                                    PlanID, PlannedID, ExerciseID, SetNumber, RepsPerformed, WeightUsed,
+                                    DurationMinutes, RPE, IsPR, CompletedAt, Branch, Gender, TR
+                                )
+                                VALUES (
+                                    @PlanID,
+                                    @PlannedID,
+                                    @ResolvedExerciseID,
+                                    @SetNumber,
+                                    @RepsPerformed,
+                                    @WeightUsed,
+                                    @DurationMinutes,
+                                    @RPE,
+                                    @IsPR,
+                                    COALESCE(@CompletedAt, GETDATE()),
+                                    @Branch,
+                                    @Gender,
+                                    @TR
+                                );
+                                SET @InsertedPerformance = 1;
+                            END
+
+                            SELECT @InsertedPerformance AS InsertedPerformance;
+                        `);
+
+                    loggedExerciseCount += Number(insertPerformanceResult.recordset[0]?.InsertedPerformance || 0);
+                }
+            }
+        }
+
+        // Step 4: XP integration
+        const xpToAward = 10 + (safeBodyParts.length > 1 ? (safeBodyParts.length - 1) * 3 : 0);
         const levelUpInfo = await awardXP(TR, xpToAward, transaction);
 
-        // Commit if all inserts + XP succeed
         await transaction.commit();
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: 'Training plan logged successfully',
-            levelUpInfo // ← Extra info about XP/level up
+            planID: newPlanID,
+            loggedBodyParts: safeBodyParts.length,
+            loggedExercises: loggedExerciseCount,
+            levelUpInfo
         });
 
     } catch (err) {
-        // Rollback if anything fails
         if (transaction._aborted === false) {
             await transaction.rollback();
         }
-        console.error('❌ Error logging training plan:', err);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+        console.error('Error logging training plan:', err);
+        res.status(500).json({ success: false, message: err.message || 'Internal server error' });
     }
 });
 
@@ -3739,7 +3940,17 @@ router.get('/api/trainer/student-plan/:tr', isTrainer, async (req, res) => {
                 WHERE TR = @TR AND WeekID = @WeekID
             `);
 
-        res.json({ success: true, data: planResult.recordset });
+        const structured = planResult.recordset.map((row) => {
+            const parsed = parsePlannerContentForTrainer(row.Content || '');
+            return {
+                Day: row.Day,
+                items: parsed.items,
+                notes: parsed.notes,
+                displayText: parsed.displayText
+            };
+        });
+
+        res.json({ success: true, data: structured });
     } catch (err) {
         console.error('Error fetching student plan for trainer:', err);
         res.status(500).json({ success: false, message: 'Failed to load student plan' });
@@ -3808,3 +4019,4 @@ router.get("/api/trainer/log-details/:logId", isTrainer, async (req, res) => {
 
 
 module.exports = router; // Export the router
+

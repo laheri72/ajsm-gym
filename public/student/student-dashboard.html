@@ -163,13 +163,11 @@
     <section class="card" id="planner-low">
       <div class="planner-header">
         <h1 class="planner-title">Your Workout Planner</h1>
-        <!--  tooltip-->
         <span class="info-icon" data-bs-toggle="tooltip"
-          title="Plan your workouts for the week! Use the toggle to switch between daily and weekly views. Click 'Add Exercise' to quickly add exercises to your plan. Don't forget to save your plan!">
+          title="Your plan now adapts to your logs, attendance, and fitness trends. Use suggestions and history chips to build faster.">
           <i class="bi bi-info-circle-fill"></i>
         </span>
 
-        <!-- The Daily/Weekly Toggle Switch -->
         <div class="view-toggle">
           <span>Daily</span>
           <label class="switch">
@@ -180,21 +178,43 @@
         </div>
       </div>
 
-      <!-- View 1: Today's Hub (Visible by default) -->
+      <div class="coach-strip" id="planner-coach-strip">
+        <div class="coach-metric">
+          <span class="metric-label">Adherence</span>
+          <span class="metric-value" id="planner-adherence-value">--%</span>
+        </div>
+        <div class="coach-metric">
+          <span class="metric-label">Streak</span>
+          <span class="metric-value" id="planner-streak-value">--</span>
+        </div>
+        <div class="coach-metric">
+          <span class="metric-label">Avg Session</span>
+          <span class="metric-value" id="planner-duration-value">-- min</span>
+        </div>
+        <div class="coach-metric">
+          <span class="metric-label">Current Focus</span>
+          <span class="metric-value" id="planner-focus-value">--</span>
+        </div>
+      </div>
+
       <div id="daily-view">
         <div class="today-grid">
-          <!-- Today's Workout Plan Card -->
           <div class="today-plan-card">
             <h3 id="today-date-heading">Loading...</h3>
-            <div class="day-card" id="today-day-card" contenteditable="true" data-day="">
-              <p class="placeholder-text">Plan your workout for today!</p>
+            <div class="day-card structured-day-card" id="today-day-card" data-day="">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned for today yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2"
+                placeholder="Optional note for today..."></textarea>
             </div>
             <div class="today-actions">
               <button class="btn btn-sm btn-outline-primary quick-add-btn" id="today-quick-add">Add Exercise</button>
+              <button class="btn btn-sm btn-outline-success" id="today-autofill-btn" type="button">Smart Fill Today</button>
             </div>
           </div>
 
-          <!-- Key Stats Modules -->
           <div class="stats-container">
             <div class="stat-module consistency-module">
               <h4><i class="bi bi-calendar-check"></i> Consistency Streak</h4>
@@ -238,59 +258,100 @@
           </div>
         </div>
       </div>
-      </div>
 
-      <!-- View 2: Full Weekly Planner (Hidden by default) -->
       <div id="weekly-view" style="display: none;">
         <div class="planner">
           <div class="day-wrapper">
             <div class="day-name">Monday</div>
-            <div class="day-card" contenteditable="true" data-day="Monday"></div>
+            <div class="day-card structured-day-card" data-day="Monday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Monday">Add Exercise</button>
           </div>
           <div class="day-wrapper">
             <div class="day-name">Tuesday</div>
-            <div class="day-card" contenteditable="true" data-day="Tuesday"></div>
+            <div class="day-card structured-day-card" data-day="Tuesday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Tuesday">Add Exercise</button>
           </div>
           <div class="day-wrapper">
             <div class="day-name">Wednesday</div>
-            <div class="day-card" contenteditable="true" data-day="Wednesday"></div>
+            <div class="day-card structured-day-card" data-day="Wednesday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Wednesday">Add Exercise</button>
           </div>
           <div class="day-wrapper">
             <div class="day-name">Thursday</div>
-            <div class="day-card" contenteditable="true" data-day="Thursday"></div>
+            <div class="day-card structured-day-card" data-day="Thursday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Thursday">Add Exercise</button>
           </div>
           <div class="day-wrapper">
             <div class="day-name">Friday</div>
-            <div class="day-card" contenteditable="true" data-day="Friday"></div>
+            <div class="day-card structured-day-card" data-day="Friday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Friday">Add Exercise</button>
           </div>
           <div class="day-wrapper">
             <div class="day-name">Saturday</div>
-            <div class="day-card" contenteditable="true" data-day="Saturday"></div>
+            <div class="day-card structured-day-card" data-day="Saturday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Saturday">Add Exercise</button>
           </div>
           <div class="day-wrapper">
             <div class="day-name">Sunday</div>
-            <div class="day-card" contenteditable="true" data-day="Sunday"></div>
+            <div class="day-card structured-day-card" data-day="Sunday">
+              <div class="planner-chip-row history-chip-row" data-role="history"></div>
+              <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
+              <ul class="planner-item-list" data-role="items"></ul>
+              <p class="planner-empty-text">No workout planned yet.</p>
+              <textarea class="planner-note-input" data-role="notes" rows="2" placeholder="Optional note..."></textarea>
+            </div>
             <button class="btn btn-sm btn-outline-primary mt-2 quick-add-btn" data-day="Sunday">Add Exercise</button>
           </div>
         </div>
       </div>
 
-      <!-- The main Save/Clear buttons are now outside the views -->
-      <div class="text-center mt-4">
+      <div class="text-center mt-4 planner-actions">
+        <button id="autoFillWeekBtn" type="button" class="btn btn-outline-success">Auto-fill Week</button>
+        <button id="reuseBestWeekdayBtn" type="button" class="btn btn-outline-info">Reuse Best Weekday</button>
+        <button id="applyLastCompletedMondayBtn" type="button" class="btn btn-outline-secondary">Apply Last Completed Monday</button>
         <button id="savePlanBtn" class="btn btn-primary">
           <span class="button-text">Save</span>
           <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
         </button>
         <button id="clearPlanBtn" type="button" class="btn btn-outline-danger">Clear</button>
-        <button id="applyLastWeekBtn" onclick="applyLastWeeksPlan()" type="button" style="display: none;"
-          class="btn btn-secondary">
-          Apply Last Week’s Plan
+        <button id="applyLastWeekBtn" type="button" style="display: none;" class="btn btn-secondary">
+          Apply Last Week's Plan
         </button>
       </div>
 

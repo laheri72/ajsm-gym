@@ -10,8 +10,17 @@ import { showXpInfoModal } from './student-modules/gamification.js';
 import { navigateToSection, routeFromHash } from './student-modules/navigation.js';
 import { handleWeightLogSubmit, handleWeightLogDelete, loadFitnessProgress, loadWeightLogHistory } from './student-modules/progression.js';
 import { initializeWeekPicker } from './student-modules/attendance.js';
-import { savePlan, clearPlanner, applyLastWeeksPlan, openQuickAddDialog, addExerciseToCard } from './student-modules/planner.js';
-import { setPlannerDirty } from './student-modules/state.js';
+import {
+    savePlan,
+    clearPlanner,
+    applyLastWeeksPlan,
+    openQuickAddDialog,
+    initializePlannerInteractions,
+    autoFillWeek,
+    reuseBestWeekday,
+    applyLastCompletedMonday,
+    smartFillToday
+} from './student-modules/planner.js';
 import { loadStudentPlans, loadTrainingAnalytics, loadHistoryAnalytics, loadWorkoutConsistency, loadOverviewAnalytics, applyChartTheme } from './student-modules/analysis.js';
 import { loadLeaveData, handleLeaveSubmit, handleLeaveCancel } from './student-modules/leaves.js';
 import { loadBodyPartTips } from './student-modules/tips.js';
@@ -82,33 +91,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('savePlanBtn').addEventListener('click', savePlan);
     document.getElementById('applyLastWeekBtn').addEventListener('click', applyLastWeeksPlan);
     document.getElementById('clearPlanBtn')?.addEventListener('click', clearPlanner);
+    document.getElementById('autoFillWeekBtn')?.addEventListener('click', autoFillWeek);
+    document.getElementById('reuseBestWeekdayBtn')?.addEventListener('click', reuseBestWeekday);
+    document.getElementById('applyLastCompletedMondayBtn')?.addEventListener('click', applyLastCompletedMonday);
     document.querySelectorAll('#weekly-view .quick-add-btn').forEach(btn => {
         btn.addEventListener('click', () => openQuickAddDialog(btn.dataset.day));
     });
     document.getElementById('today-quick-add').addEventListener('click', () => {
         openQuickAddDialog(document.getElementById('today-day-card').dataset.day);
     });
-
-    // --- Planner Autosave ---
-    const weeklyPlannerCards = document.querySelectorAll('#weekly-view .day-card');
-    try {
-        const draft = JSON.parse(localStorage.getItem('plannerDraft') || '{}');
-        weeklyPlannerCards.forEach(card => {
-            const day = card.getAttribute('data-day');
-            if (draft[day]) card.innerHTML = draft[day];
-        });
-    } catch {}
-    weeklyPlannerCards.forEach(card => {
-        card.addEventListener('input', () => {
-            const draft = {};
-            document.querySelectorAll('#weekly-view .day-card').forEach(c => {
-                draft[c.getAttribute('data-day')] = c.innerHTML.trim();
-            });
-            localStorage.setItem('plannerDraft', JSON.stringify(draft));
-            setPlannerDirty(true);
-        document.getElementById('savePlanBtn').classList.add('btn-glowing');
-        });
-    });
+    document.getElementById('today-autofill-btn')?.addEventListener('click', smartFillToday);
+    initializePlannerInteractions();
 
     // --- Planner View Toggle ---
     const plannerViewToggle = document.getElementById('plannerViewToggle');
@@ -116,18 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const isWeekly = plannerViewToggle.checked;
         document.getElementById('daily-view').style.display = isWeekly ? 'none' : 'block';
         document.getElementById('weekly-view').style.display = isWeekly ? 'block' : 'none';
-    });
-
-    // --- Planner Sync ---
-    const todayCard = document.getElementById('today-day-card');
-    todayCard.addEventListener('input', () => {
-        const todayName = todayCard.dataset.day;
-        const correspondingWeeklyCard = document.querySelector(`#weekly-view .day-card[data-day="${todayName}"]`);
-        if (correspondingWeeklyCard) {
-            correspondingWeeklyCard.innerHTML = todayCard.innerHTML;
-        }
-        setPlannerDirty(true);
-        document.getElementById('savePlanBtn').classList.add('btn-glowing');
     });
 
     // --- Progression (Weight Logging) ---
