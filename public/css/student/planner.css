@@ -74,6 +74,14 @@
     overflow-y: auto;
 }
 
+#planner-low {
+    border: 1px solid #dce6f4;
+    background:
+        radial-gradient(circle at 10% -10%, rgba(14, 165, 233, 0.12), transparent 40%),
+        radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.1), transparent 35%),
+        #ffffff;
+}
+
 .structured-day-card {
     display: flex;
     flex-direction: column;
@@ -128,6 +136,55 @@
     background: #eef4ff;
 }
 
+.planner-chip:active {
+    transform: translateY(1px);
+}
+
+.history-chip-row::before,
+.suggestion-chip-row::before {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.12rem 0.5rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.history-chip-row::before {
+    content: "LAST WEEK";
+    color: #1d4ed8;
+    background: #e8f0ff;
+}
+
+.suggestion-chip-row::before {
+    content: "SUGGESTED";
+    color: #047857;
+    background: #e7f9ef;
+}
+
+.history-chip {
+    background: #f1f6ff;
+    border-color: #bfd6ff;
+    color: #1d4ed8;
+}
+
+.history-chip:hover {
+    background: #dfeaff;
+    border-color: #9ec1ff;
+}
+
+.suggestion-chip {
+    background: #ecfbf3;
+    border-color: #a9e7c6;
+    color: #047857;
+}
+
+.suggestion-chip:hover {
+    background: #d9f6e8;
+    border-color: #82d9b0;
+}
+
 .planner-item-list {
     list-style: none;
     margin: 0;
@@ -146,6 +203,11 @@
     border-radius: 8px;
     padding: 0.35rem 0.55rem;
     background: #ffffff;
+}
+
+.planner-item-row:hover {
+    border-color: #c6d6ea;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
 }
 
 .planner-item-text {
@@ -181,6 +243,12 @@
     background: #fcfdff;
 }
 
+.planner-note-input:focus {
+    outline: none;
+    border-color: #7aaef5;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+}
+
 .planner-actions {
     display: flex;
     flex-wrap: wrap;
@@ -188,10 +256,85 @@
     gap: 0.45rem;
 }
 
+.planner-actions .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    border-width: 1px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+#autoFillWeekBtn {
+    background: #e8f9ef;
+    color: #0f6b42;
+    border-color: #87d5ab;
+}
+
+#autoFillWeekBtn:hover {
+    background: #d2f2e1;
+    border-color: #5cc58f;
+    color: #0b5d39;
+}
+
+#reuseBestWeekdayBtn {
+    background: #e8f5ff;
+    color: #15558f;
+    border-color: #8bc5ee;
+}
+
+#reuseBestWeekdayBtn:hover {
+    background: #d7eeff;
+    border-color: #64b0e5;
+    color: #124a7b;
+}
+
+#applyLastCompletedMondayBtn {
+    background: #f0f1f6;
+    color: #49566e;
+    border-color: #c4cad6;
+}
+
+#applyLastCompletedMondayBtn:hover {
+    background: #e4e7ee;
+    border-color: #aeb8ca;
+    color: #3f4b62;
+}
+
+#applyLastWeekBtn {
+    background: #eef2ff;
+    color: #434f75;
+    border-color: #c6cee7;
+}
+
+#applyLastWeekBtn:hover {
+    background: #e1e8ff;
+    color: #344165;
+    border-color: #aeb9dd;
+}
+
+#today-autofill-btn {
+    background: #e8f9ef;
+    color: #0f6b42;
+    border-color: #87d5ab;
+}
+
+#today-autofill-btn:hover {
+    background: #d2f2e1;
+    border-color: #5cc58f;
+    color: #0b5d39;
+}
+
 [data-theme="dark"] .day-card {
     background: #0f1722;
     border-color: #1f2d40;
     color: var(--text-on-light);
+}
+
+[data-theme="dark"] #planner-low {
+    border-color: #24354a;
+    background:
+        radial-gradient(circle at 12% -8%, rgba(14, 165, 233, 0.16), transparent 45%),
+        radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.14), transparent 35%),
+        #0b1320;
 }
 
 [data-theme="dark"] .coach-metric {
@@ -209,6 +352,38 @@
     color: var(--text-on-light);
 }
 
+[data-theme="dark"] .history-chip-row::before {
+    color: #93c5fd;
+    background: #1f2f4f;
+}
+
+[data-theme="dark"] .suggestion-chip-row::before {
+    color: #6ee7b7;
+    background: #1a3c33;
+}
+
+[data-theme="dark"] .history-chip {
+    background: #1a2943;
+    border-color: #2c4e7c;
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .history-chip:hover {
+    background: #20345a;
+    border-color: #3a659f;
+}
+
+[data-theme="dark"] .suggestion-chip {
+    background: #17352b;
+    border-color: #2d6c54;
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .suggestion-chip:hover {
+    background: #1c4435;
+    border-color: #3b8a6b;
+}
+
 [data-theme="dark"] .planner-item-row {
     background: #0b1420;
     border-color: #1f2d40;
@@ -218,6 +393,35 @@
     background: #0f1722;
     border-color: #2b3b52;
     color: var(--text-on-light);
+}
+
+[data-theme="dark"] .planner-actions .btn {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] #autoFillWeekBtn,
+[data-theme="dark"] #today-autofill-btn {
+    background: #17382d;
+    color: #73e3b3;
+    border-color: #2d785c;
+}
+
+[data-theme="dark"] #reuseBestWeekdayBtn {
+    background: #173147;
+    color: #8ecaf5;
+    border-color: #2f6188;
+}
+
+[data-theme="dark"] #applyLastCompletedMondayBtn {
+    background: #253145;
+    color: #d4d9e6;
+    border-color: #44536c;
+}
+
+[data-theme="dark"] #applyLastWeekBtn {
+    background: #2b3350;
+    color: #d7ddf5;
+    border-color: #505f87;
 }
 
 
@@ -688,6 +892,11 @@ input:checked+.slider:before {
         margin: 0.25rem;
         flex: 1 1 auto;
         max-width: 100px;
+    }
+
+    .planner-actions .btn {
+        max-width: none;
+        flex: 1 1 calc(50% - 0.5rem);
     }
 }
 
