@@ -6,6 +6,17 @@ const sql = require('mssql');
 const moment = require('moment-timezone');
 
 // Helper functions will go here
+const isStaffOrAdmin = (req, res, next) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (req.session.user.Role !== 'Staff' && req.session.user.Role !== 'Admin') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Staff/Admin access required.' });
+    }
+
+    next();
+};
 
 
 // (HELPER FUNCTION) to find or create a week for a given date
@@ -3391,6 +3402,177 @@ router.get('/api/staff/evaluation-batches-overview', async (req, res) => {
     } catch (err) {
         console.error('❌ Staff Batch Overview Error:', err);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+
+// ----------------------------------------------------------
+// STAFF/ADMIN: Fitness test attendance checklist (session scoped)
+// ----------------------------------------------------------
+router.get('/api/staff/fitness-test-attendance', isStaffOrAdmin, async (req, res) => {
+    const { Branch, Gender } = req.session.user;
+
+    if (!Branch || !Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Session missing branch or gender.' });
+    }
+
+    try {
+        const activeBatchRequest = pool.request();
+        activeBatchRequest.input('Branch', sql.NVarChar(50), Branch);
+        activeBatchRequest.input('Gender', sql.NVarChar(10), Gender);
+
+        const activeBatchResult = await activeBatchRequest.query(`
+            SELECT TOP 1
+                BatchID,
+                BatchName,
+                IsActive,
+                CreatedAt,
+                CreatedBy
+            FROM EvaluationBatches
+            WHERE Branch = @Branch
+              AND Gender = @Gender
+              AND IsActive = 1
+            ORDER BY CreatedAt DESC, BatchID DESC;
+        `);
+
+        const activeBatchCountRequest = pool.request();
+        activeBatchCountRequest.input('Branch', sql.NVarChar(50), Branch);
+        activeBatchCountRequest.input('Gender', sql.NVarChar(10), Gender);
+
+        const activeBatchCountResult = await activeBatchCountRequest.query(`
+            SELECT COUNT(*) AS ActiveBatchConflictCount
+            FROM EvaluationBatches
+            WHERE Branch = @Branch
+              AND Gender = @Gender
+              AND IsActive = 1;
+        `);
+
+        const activeBatch = activeBatchResult.recordset[0] || null;
+        const activeBatchConflictCount = activeBatchCountResult.recordset[0]?.ActiveBatchConflictCount || 0;
+
+        const rosterRequest = pool.request();
+        rosterRequest.input('Branch', sql.NVarChar(50), Branch);
+        rosterRequest.input('Gender', sql.NVarChar(10), Gender);
+
+        const rosterResult = await rosterRequest.query(`
+            SELECT
+                TM.TR,
+                TM.Name,
+                TM.Darajah,
+                TM.JoinedAt,
+                S.SlotName
+            FROM TestMaster TM
+            LEFT JOIN Slots S ON TM.SlotID = S.SlotID
+            WHERE TM.Status = 'Active'
+              AND TM.Branch = @Branch
+              AND TM.Gender = @Gender
+            ORDER BY TM.TR ASC;
+        `);
+
+        const roster = rosterResult.recordset || [];
+        const totalActiveStudents = roster.length;
+
+        let pending = [];
+        let completed = [];
+
+        if (activeBatch) {
+            const completionRequest = pool.request();
+            completionRequest.input('BatchID', sql.Int, activeBatch.BatchID);
+            completionRequest.input('Branch', sql.NVarChar(50), Branch);
+            completionRequest.input('Gender', sql.NVarChar(10), Gender);
+
+            const completionResult = await completionRequest.query(`
+                SELECT
+                    TR,
+                    MAX(CreatedAt) AS CompletedAt,
+                    COUNT(*) AS RecordCountInBatch
+                FROM TestRecords
+                WHERE BatchID = @BatchID
+                  AND Branch = @Branch
+                  AND Gender = @Gender
+                  AND SubmittedBy = 'Trainer'
+                GROUP BY TR;
+            `);
+
+            const completionMap = new Map();
+            for (const row of completionResult.recordset) {
+                completionMap.set(row.TR, {
+                    CompletedAt: row.CompletedAt,
+                    RecordCountInBatch: row.RecordCountInBatch
+                });
+            }
+
+            for (const student of roster) {
+                const completion = completionMap.get(student.TR);
+                const email = `${student.TR}@jameasaifiyah.edu`;
+
+                if (completion) {
+                    completed.push({
+                        TR: student.TR,
+                        Name: student.Name,
+                        Darajah: student.Darajah,
+                        SlotName: student.SlotName,
+                        JoinedAt: student.JoinedAt,
+                        Email: email,
+                        CompletionStatus: 'Completed',
+                        CompletedAt: completion.CompletedAt,
+                        RecordCountInBatch: completion.RecordCountInBatch
+                    });
+                } else {
+                    pending.push({
+                        TR: student.TR,
+                        Name: student.Name,
+                        Darajah: student.Darajah,
+                        SlotName: student.SlotName,
+                        JoinedAt: student.JoinedAt,
+                        Email: email,
+                        CompletionStatus: 'Pending'
+                    });
+                }
+            }
+
+            completed.sort((a, b) => {
+                const aTime = a.CompletedAt ? new Date(a.CompletedAt).getTime() : 0;
+                const bTime = b.CompletedAt ? new Date(b.CompletedAt).getTime() : 0;
+                return bTime - aTime;
+            });
+
+            pending.sort((a, b) => a.TR - b.TR);
+        }
+
+        const completedCount = completed.length;
+        const pendingCount = pending.length;
+        const completionPercent = totalActiveStudents > 0
+            ? Math.round((completedCount / totalActiveStudents) * 10000) / 100
+            : 0;
+
+        const pendingEmails = pending.map(student => student.Email);
+
+        res.json({
+            success: true,
+            context: {
+                branch: Branch,
+                gender: Gender,
+                activeBatch,
+                activeBatchConflictCount,
+                generatedAt: new Date().toISOString()
+            },
+            summary: {
+                totalActiveStudents,
+                completedCount,
+                pendingCount,
+                completionPercent
+            },
+            pending,
+            completed,
+            emailExports: {
+                newlineList: pendingEmails.join('\n'),
+                semicolonList: pendingEmails.join(';')
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching staff fitness test attendance checklist:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch fitness test attendance checklist.' });
     }
 });
 

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fitness Test Attendance</title>
+    <link rel="icon" href="../images/favicon.png" type="image/png">
+    <script>
+        try {
+            const userString = localStorage.getItem('staffUser');
+            if (userString) {
+                const user = JSON.parse(userString);
+                const classList = [];
+                if (user.Role === 'Admin') classList.push('is-admin');
+                if (classList.length > 0) document.documentElement.className = classList.join(' ');
+            }
+        } catch (e) {
+            console.error('Bootstrap script failed:', e);
+        }
+    </script>
+
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/fitness-attendance.css">
+</head>
+<body style="visibility: hidden;">
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
+            </div>
+
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav class="navbar" id="navbar">
+                <div class="sidebar-header">
+                    <span id="staff-username-display" class="navbar-username-mobile"
+                        data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
+
+                <a href="admin.html" id="tab-admin">Admin Panel</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+
+                <div class="nav-item dropdown" id="students-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Student Records
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
+                        <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-item dropdown" id="time-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Attendance
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
+                        <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
+                        <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-item dropdown" id="analytics-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Analytics
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
+                        <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-item" id="user-menu-desktop">
+                    <span id="staff-username-display-desktop" class="navbar-username-desktop"
+                        data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
+
+                <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+                <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="content">
+                <section class="card page-card">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h2 class="mb-1">Fitness Test Attendance Checklist</h2>
+                            <p class="text-muted mb-0">Live completion status for the currently active evaluation batch.</p>
+                        </div>
+                        <button class="btn btn-primary" id="refreshAttendanceBtn">Refresh Now</button>
+                    </div>
+
+                    <div id="statusBanner" class="alert d-none" role="alert"></div>
+
+                    <div class="context-card mb-3">
+                        <div class="context-line"><strong>Branch:</strong> <span id="ctxBranch">-</span></div>
+                        <div class="context-line"><strong>Gender:</strong> <span id="ctxGender">-</span></div>
+                        <div class="context-line"><strong>Active Batch:</strong> <span id="ctxActiveBatch">-</span></div>
+                        <div class="context-line"><strong>Generated:</strong> <span id="ctxGeneratedAt">-</span></div>
+                        <div id="ctxConflictWarning" class="alert alert-warning py-2 px-3 mt-2 mb-0 d-none"></div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-lg-3">
+                            <div class="kpi-card">
+                                <div class="kpi-label">Total Active</div>
+                                <div class="kpi-value" id="kpiTotal">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="kpi-card">
+                                <div class="kpi-label">Completed</div>
+                                <div class="kpi-value text-success" id="kpiCompleted">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="kpi-card">
+                                <div class="kpi-label">Pending</div>
+                                <div class="kpi-value text-danger" id="kpiPending">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="kpi-card">
+                                <div class="kpi-label">Completion %</div>
+                                <div class="kpi-value" id="kpiPercent">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="copyPendingDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                Copy Pending Emails
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="copyPendingDropdownBtn">
+                                <li><button class="dropdown-item" type="button" id="copyEmailsNewlineOption">Copy newline format</button></li>
+                                <li><button class="dropdown-item" type="button" id="copyEmailsSemicolonOption">Copy semicolon format</button></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h4 class="mb-2">Pending Students</h4>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-striped align-middle" id="pendingTable">
+                            <thead>
+                                <tr>
+                                    <th>TR</th>
+                                    <th>Name</th>
+                                    <th>Darajah</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                </tr>
+                                <tr class="filters">
+                                    <th></th>
+                                    <th></th>
+                                    <th></th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <button class="btn btn-outline-secondary mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#completedSection" aria-expanded="false">
+                        Toggle Completed Students
+                    </button>
+                    <div class="collapse" id="completedSection">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle" id="completedTable">
+                                <thead>
+                                    <tr>
+                                        <th>TR</th>
+                                        <th>Name</th>
+                                        <th>Darajah</th>
+                                        <th>Completed At</th>
+                                        <th>Records</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
+
+    <script src="/assets/js/jquery.min.js"></script>
+    <script src="/assets/js/dataTables.min.js"></script>
+    <script src="/assets/js/dataTables.bootstrap5.min.js"></script>
+    <script src="/assets/js/sweetalert2.all.min.js"></script>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/fitness-attendance.js"></script>
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navOverlay = document.getElementById('nav-overlay');
+
+            function toggleNav() {
+                document.body.classList.toggle('nav-open');
+            }
+
+            if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleNav);
+            if (navOverlay) navOverlay.addEventListener('click', toggleNav);
+        });
+    </script>
+
+    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Your New Password</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Welcome! For your security, you must create a new password for your account.</p>
+                    <form id="setPasswordForm">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
