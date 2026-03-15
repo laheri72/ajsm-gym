@@ -68,19 +68,6 @@ Defines the ISO week boundaries for attendance tracking.
 ### `WaitingList`
 Students waiting to be assigned to a gym slot.
 - `WaitingID` (INT, PK, IDENTITY)
-- `TR` (INT, UNIQUE)
-- `Name` (NVARCHAR(100))
-- `Darajah` (VARCHAR(15))
-- `Goal` (VARCHAR(50))
-- `Branch` (VARCHAR(7))
-- `Gender` (VARCHAR(6))
-- `RequestedAt` (DATETIME)
-- `SlotID` (INT)
-
-### `LeaveRequests`
-Management of student leave of absences.
-- `LeaveID` (INT, PK, IDENTITY)
-- `TR` (INT, FK) -> `TestMaster.TR`
 - `LeaveStartDate` (DATE)
 - `LeaveEndDate` (DATE)
 - `Reason` (NVARCHAR(500))

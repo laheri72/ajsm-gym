@@ -72,8 +72,8 @@ Endpoints for gym operations, attendance, enrollment, and leave management.
 | POST | `/api/checkout` | Trainer | Mark a student's checkout and award XP for duration. | `{ TR }` |
 | GET | `/api/active-sessions` | Trainer | Fetch all students currently checked in (not checked out). | None |
 | GET | `/api/verify-tr/:tr` | Trainer | Verify a student TR is active and belongs to the section. | None |
-| GET | `/api/waiting-list` | Staff | Fetch the waiting list for the current section. | None |
-| POST | `/api/add-student` | Staff | Add a student from `TestMaster` to the `WaitingList`. | `{ TR, preview }` |
+| GET | `/api/waiting-list` | Staff | Fetch the waiting list (includes PreferredSlotID and Goal) for the current section. | None |
+| POST | `/api/add-student` | Staff | Add/preview a student in `TestMaster` and add to `WaitingList`. | `{ TR, ITS, Name, Darajah, SlotID, Goal, preview }` |
 | POST | `/api/assign-student-slot` | Staff | Activate a waiting list student and assign a time slot. | `{ WaitingID, SlotID }` |
 | GET | `/api/weekly-attendance/:weekId` | Staff | Fetch a grid of attendance for a specific week. | None |
 | PUT | `/api/attendance-record` | Staff | Manually update attendance/leave status for a student. | `{ TR, CreatedAt, IsPresent, OnLeave }` |

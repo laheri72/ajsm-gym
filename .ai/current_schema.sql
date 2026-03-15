@@ -499,6 +499,7 @@ CREATE TABLE [dbo].[WaitingList](
 	[Gender] [varchar](6) NULL,
 	[RequestedAt] [datetime] NULL,
 	[SlotID] [int] NULL,
+	[PreferredSlotID] [int] NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[WaitingID] ASC
