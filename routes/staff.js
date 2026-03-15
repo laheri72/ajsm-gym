@@ -1322,12 +1322,11 @@ router.get('/api/waiting-list', async (req, res) => {
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
       .query(`
-        SELECT WL.WaitingID, WL.TR, WL.Name, WL.Darajah, WL.RequestedAt
+        SELECT WL.WaitingID, WL.TR, WL.Name, WL.Darajah, WL.RequestedAt, WL.Goal, WL.PreferredSlotID AS SlotID
         FROM WaitingList WL
         WHERE WL.Branch = @Branch AND WL.Gender = @Gender
         ORDER BY WL.RequestedAt ASC
       `);
-    // MODIFICATION: Removed WL.Goal from SELECT
 
     res.json(result.recordset);
   } catch (err) {
@@ -1343,8 +1342,9 @@ router.post('/api/add-student', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
         }
 
-        const { TR, preview } = req.body;
+        const { TR, preview, Goal, SlotID, ITS, Name, Darajah } = req.body;
         const { Branch, Gender } = req.session.user;
+
         if (!Branch || !Gender) {
             return res.status(401).json({ success: false, message: 'Unauthorized. Session missing branch or gender.' });
         }
@@ -1354,72 +1354,91 @@ router.post('/api/add-student', async (req, res) => {
             return res.status(400).json({ success: false, message: 'TR is required' });
         }
 
-        // 1️⃣ Fetch student from TestMaster (single identity source)
-        const studentResult = await pool.request()
+        // 1️⃣ Check if student exists in TestMaster
+        let studentResult = await pool.request()
             .input('TR', sql.Int, trInt)
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(10), Gender)
-            .query(`
-                SELECT Name, Darajah, Status
-                FROM TestMaster
-                WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
-            `);
+            .query(`SELECT Name, Darajah, Status, Branch, Gender FROM TestMaster WHERE TR = @TR`);
 
-        if (studentResult.recordset.length === 0) {
-            return res.status(404).json({ success: false, message: 'Student not found in TestMaster' });
+        let student = studentResult.recordset[0];
+
+        // Ensure branch/gender match if they exist
+        if (student && (student.Branch !== Branch || student.Gender !== Gender)) {
+             return res.status(400).json({ success: false, message: `Student belongs to ${student.Branch} - ${student.Gender}` });
         }
 
-        const student = studentResult.recordset[0];
+        // Optional "preview" mode for UI auto-fill
+        if (preview) {
+            if (student) {
+                if (student.Status === 'Active') {
+                     return res.status(400).json({ success: false, message: 'Student already assigned to gym' });
+                }
+                return res.json({
+                    success: true,
+                    canAdd: true,
+                    student: { Name: student.Name, Darajah: student.Darajah, Status: student.Status }
+                });
+            } else {
+                 return res.status(404).json({ success: false, message: 'Student not found in TestMaster, need input' });
+            }
+        }
 
-        // 2️⃣ Reject if already active gym member
+        // 2️⃣ If student does not exist, insert them as new
+        if (!student) {
+            if (!ITS || !Name || !Darajah) {
+                 return res.status(400).json({ success: false, message: 'Student is new. ITS, Name, and Darajah are required.' });
+            }
+            
+            await pool.request()
+                .input('TR', sql.Int, trInt)
+                .input('ITS', sql.BigInt, parseInt(ITS, 10))
+                .input('Name', sql.NVarChar(100), Name)
+                .input('Darajah', sql.NVarChar(50), Darajah)
+                .input('Branch', sql.VarChar(7), Branch)
+                .input('Gender', sql.VarChar(6), Gender)
+                .query(`
+                    INSERT INTO TestMaster (TR, ITS, Name, Darajah, Branch, Gender, Status)
+                    VALUES (@TR, @ITS, @Name, @Darajah, @Branch, @Gender, 'Inactive')
+                `);
+            
+            student = { Name, Darajah, Status: 'Inactive' };
+        }
+
+        // 3️⃣ Reject if already active gym member
         if (student.Status === 'Active') {
             return res.status(400).json({ success: false, message: 'Student already assigned to gym' });
         }
 
-        // 3️⃣ Prevent duplicate waiting list entry
+        // 4️⃣ Prevent duplicate waiting list entry
         const waitingCheck = await pool.request()
             .input('TR', sql.Int, trInt)
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(10), Gender)
-            .query(`SELECT 1 FROM WaitingList WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+            .query(`SELECT 1 FROM WaitingList WHERE TR = @TR`);
 
         if (waitingCheck.recordset.length > 0) {
             return res.status(400).json({ success: false, message: 'Student already in waiting list' });
         }
 
-        // Optional "preview" mode for UI auto-fill (no insert)
-        if (preview) {
-            return res.json({
-                success: true,
-                canAdd: true,
-                student: { Name: student.Name, Darajah: student.Darajah, Status: student.Status }
-            });
-        }
-
-        // 4️⃣ Insert into WaitingList (using TestMaster data only)
-        const insertRes = await pool.request()
+        // 5️⃣ Insert into WaitingList
+        await pool.request()
             .input('TR', sql.Int, trInt)
             .input('Name', sql.NVarChar(100), student.Name)
             .input('Darajah', sql.NVarChar(50), student.Darajah)
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
+            .input('Goal', sql.VarChar(50), Goal || null)
+            .input('SlotID', sql.Int, SlotID || null)
             .query(`
-                IF NOT EXISTS (SELECT 1 FROM WaitingList WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender)
-                BEGIN
-                    INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender)
-                    VALUES (@TR, @Name, @Darajah, @Branch, @Gender)
-                END
+                INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender, Goal, PreferredSlotID)
+                VALUES (@TR, @Name, @Darajah, @Branch, @Gender, @Goal, @SlotID)
             `);
-
-        if (Array.isArray(insertRes.rowsAffected) && insertRes.rowsAffected[0] === 0) {
-            return res.status(400).json({ success: false, message: 'Student already in waiting list' });
-        }
 
         res.json({ success: true, message: 'Student added to Waiting List.' });
 
     } catch (err) {
+        if (err.message && err.message.includes('Violation of UNIQUE KEY constraint')) {
+            return res.status(400).json({ success: false, message: 'ITS number already exists for another student.' });
+        }
         console.error('Add student error:', err);
-        res.status(500).json({ success: false, message: 'Failed to add student' });
+        res.status(500).json({ success: false, message: 'Failed to add student. ' + (err.message || '') });
     }
 });
 

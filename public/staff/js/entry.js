@@ -8,6 +8,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- CORE FUNCTIONS for Slot and List Management ---
 
+    function makeTableResponsive(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const headers = [];
+        table.querySelectorAll('thead th').forEach(th => {
+            headers.push(th.textContent.trim());
+        });
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.querySelectorAll('td').forEach((td, index) => {
+                if (headers[index]) {
+                    td.setAttribute('data-label', headers[index]);
+                }
+            });
+        });
+    }
+
     async function getSlots() {
         if (cachedSlots) return cachedSlots;
         const res = await fetch('/api/slots');
@@ -46,6 +62,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 { data: 'TR' },
                 { data: 'Name' },
                 { data: 'Darajah' },
+                { data: 'Goal', render: data => data || '-' },
+                { 
+                    data: 'SlotID', 
+                    render: (data) => {
+                        if (!data) return 'Any';
+                        const sl = availableSlots.find(s => s.SlotID === data);
+                        return sl ? sl.SlotName : 'Unknown';
+                    }
+                },
                 { data: 'RequestedAt', render: (data) => new Date(data).toLocaleString() },
                 { 
                     data: 'WaitingID', 
@@ -67,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 </select>
                                 <button class="btn assign-btn" data-id="${data}">Assign</button>
                                 
-                                <button class="btn btn-sm btn-danger delete-btn" data-id="${data}" data-name="${row.Name}" title="Remove from list" style="background-color: red">
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${data}" data-name="${String(row.Name).replace(/"/g, '&quot;')}" title="Remove from list">
                                     <i class="bi bi-trash">Delete</i>
                                 </button>
                             </div>
@@ -79,39 +104,135 @@ document.addEventListener("DOMContentLoaded", () => {
             destroy: true,
             language: {
                 emptyTable: "No students in the waiting list."
+            },
+            drawCallback: function(settings) {
+                makeTableResponsive('waitingListTable');
             }
         });
     }
 
-    // --- SLOT MANAGEMENT ---
+    // --- 🔨 SLOT MANAGEMENT --- //
+    // ---------------------------- //
+
+    let slotDataTable; // new data table ref
+
     async function loadSlotTable() {
-        const tbody = document.querySelector('#slotTable tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="loader-cell"><div class="loader"></div></td></tr>';
-        try {
-            const slots = await getSlots();
-            if (slots.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6">No slots created yet</td></tr>';
-                return;
+        if (slotDataTable) {
+            slotDataTable.ajax.reload(() => populatePreferredSlotDropdown(slotDataTable.ajax.json().slots), false);
+            return;
+        }
+        
+        slotDataTable = $('#slotTable').DataTable({
+            ajax: { url: '/api/slots', dataSrc: 'slots' },
+            columns: [
+                { data: 'SlotID' },
+                { data: 'SlotName' },
+                { data: 'MaxCapacity' },
+                { 
+                    data: null, 
+                    render: (data, type, row) => row.MaxCapacity - row.AvailableSeats 
+                },
+                { data: 'AvailableSeats' },
+                {
+                    data: 'SlotID',
+                    orderable: false,
+                    render: function (data, type, row) {
+                        return `
+                            <button class="btn btn-sm btn-warning edit-slot-btn" 
+                                data-id="${data}" 
+                                data-name="${String(row.SlotName).replace(/"/g, '&quot;')}" 
+                                data-capacity="${row.MaxCapacity}">
+                                Edit
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-slot-btn" data-id="${data}">Delete</button>
+                        `;
+                    }
+                }
+            ],
+            responsive: true,
+            destroy: true,
+            initComplete: function(settings, json) {
+                populatePreferredSlotDropdown(json.slots);
+            },
+            drawCallback: function(settings) {
+                makeTableResponsive('slotTable');
             }
-            tbody.innerHTML = '';
+        });
+    }
+
+    function populatePreferredSlotDropdown(slots) {
+        slots = slots || [];
+        const select = $('#preferredSlot');
+        select.find('option:not(:first)').remove(); // Keep the placeholder
+        
+        if (slots.length === 0) {
+            $('#noSlotsWarning').removeClass('d-none');
+            $('#preferredSlot').prop('disabled', true);
+            $('#addStudentBtn').prop('disabled', true);
+        } else {
+            $('#noSlotsWarning').addClass('d-none');
+            $('#preferredSlot').prop('disabled', false);
             slots.forEach(slot => {
-                const assignedCount = (slot.MaxCapacity || 0) - (slot.AvailableSeats || 0);
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${slot.SlotID}</td>
-                    <td>${slot.SlotName}</td>
-                    <td>${slot.MaxCapacity}</td>
-                    <td>${assignedCount}</td>
-                    <td>${slot.AvailableSeats || 0}</td>
-                    <td><button class="btn btn-sm btn-danger" onclick="deleteSlot(${slot.SlotID})">Delete</button></td>
-                `;
-                tbody.appendChild(tr);
+                select.append(`<option value="${slot.SlotID}">${slot.SlotName} (${slot.AvailableSeats} seats)</option>`);
             });
-        } catch (err) {
-            console.error('Error loading slots:', err);
-            tbody.innerHTML = '<tr><td colspan="6">Error loading slots</td></tr>';
         }
     }
+
+    // Assign Slot Edit Event
+    $('#slotTable').on('click', '.edit-slot-btn', async function() {
+        const slotId = $(this).data('id');
+        const currentName = $(this).data('name');
+        const currentCapacity = $(this).data('capacity');
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Edit Slot Properties',
+            html:
+                `<div class="text-start mb-3">` +
+                `   <label for="swal-input1" class="form-label text-muted small mb-1">Slot Name / Time</label>` +
+                `   <input id="swal-input1" class="form-control" placeholder="e.g., 4:00-4:40 PM" value="${currentName}">` +
+                `</div>` +
+                `<div class="text-start">` +
+                `   <label for="swal-input2" class="form-label text-muted small mb-1">Max Capacity</label>` +
+                `   <input id="swal-input2" class="form-control" type="number" min="1" placeholder="Max Capacity" value="${currentCapacity}">` +
+                `</div>`,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Save Changes',
+            preConfirm: () => {
+                const name = document.getElementById('swal-input1').value.trim();
+                const capacity = document.getElementById('swal-input2').value;
+                if (!name || !capacity || capacity <= 0) {
+                    Swal.showValidationMessage('Please enter a valid Name and Capacity');
+                }
+                return [name, capacity];
+            }
+        });
+
+        if (formValues) {
+            const [newName, newCapacity] = formValues;
+            try {
+                const response = await fetch(`/api/slots/${slotId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ SlotName: newName, MaxCapacity: parseInt(newCapacity, 10) })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    Swal.fire('Updated!', result.message, 'success');
+                    loadSlotTable();
+                    loadWaitingList();
+                } else {
+                    Swal.fire('Error', result.message || 'Failed to update slot', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            }
+        }
+    });
+
+    $('#slotTable').on('click', '.delete-slot-btn', function() {
+        deleteSlot($(this).data('id'));
+    });
 
     window.deleteSlot = async function(slotId) { // Attached to window to be accessible from inline onclick
         Swal.fire({
@@ -133,156 +254,139 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- EVENT LISTENERS (NOW SAFELY INSIDE DOMCONTENTLOADED) ---
-    const trInput = document.getElementById('trNo');
-    const nameInput = document.getElementById('studentName');
-    const darajahInput = document.getElementById('darajah');
-
-    function setAddButtonEnabled(enabled) {
-        const submitBtn = document.getElementById('addStudentBtn');
-        if (submitBtn) submitBtn.disabled = !enabled;
-    }
-
-    function setDarajahValue(darajah) {
-        if (!darajahInput) return;
-        const value = (darajah || '').toString().trim();
-        darajahInput.value = value;
-    }
-
-    function clearPreviewFields() {
-        if (nameInput) nameInput.value = '';
-        setDarajahValue('');
-        setAddButtonEnabled(false);
-        lastPreviewedTR = null;
-    }
 
     async function previewStudentByTR(tr) {
-        const trValue = (tr || '').toString().trim();
-        const trInt = parseInt(trValue, 10);
+        tr = parseInt(tr, 10);
+        
+        const existingDisplay = $('#existingStudentDisplay');
+        const newFields = $('#newStudentFields');
+        const addBtn = $('#addStudentBtn');
 
-        if (!trValue || Number.isNaN(trInt)) {
-            clearPreviewFields();
+        if (!tr || isNaN(tr) || tr <= 0) {
+            existingDisplay.addClass('d-none');
+            newFields.addClass('d-none');
+            addBtn.prop('disabled', true);
             return;
         }
-
-        if (lastPreviewedTR === trValue) {
-            return;
-        }
-        lastPreviewedTR = trValue;
-
-        setAddButtonEnabled(false);
-        if (nameInput) nameInput.value = 'Loading...';
-        setDarajahValue('');
 
         try {
-            const res = await fetch('/api/add-student', {
+            const response = await fetch('/api/add-student', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ TR: trValue, preview: true })
+                body: JSON.stringify({ TR: tr, preview: true })
             });
+            const result = await response.json();
 
-            const data = await res.json();
+            if (result.success && result.canAdd) {
+                // Student exists and can be added
+                $('#studentNameLabel').text(result.student.Name);
+                $('#darajahLabel').text(result.student.Darajah);
+                existingDisplay.removeClass('d-none');
+                newFields.addClass('d-none');
+                
+                // Clear new fields just in case
+                $('#itsNo').val('');
+                $('#studentName').val('');
+                $('#darajah').val('');
+                
+                addBtn.prop('disabled', false);
+            } else if (response.status === 404) {
+                // Student does NOT exist. Show new student fields.
+                existingDisplay.addClass('d-none');
+                newFields.removeClass('d-none');
+                $('#studentName').val('');
+                $('#darajah').val('');
+                $('#itsNo').val('');
+                addBtn.prop('disabled', false);
+            } else {
+                // Other error (e.g. already active)
+                existingDisplay.addClass('d-none');
+                newFields.addClass('d-none');
+                addBtn.prop('disabled', true);
+                Swal.fire('Note', result.message || 'Cannot add this student.', 'info');
+            }
+        } catch (err) {
+            console.error('Preview Error:', err);
+            existingDisplay.addClass('d-none');
+            newFields.addClass('d-none');
+            addBtn.prop('disabled', true);
+        }
+    }
 
-            if (!res.ok || !data?.success) {
-                const message = data?.message || data?.error || 'Could not fetch student details';
+    let searchTimeout;
+    $('#trNo').on('input', function () {
+        clearTimeout(searchTimeout);
+        const tr = $(this).val().trim();
+        searchTimeout = setTimeout(() => {
+            previewStudentByTR(tr);
+        }, 500); // 500ms debounce
+    });
+
+    $('#studentEntryForm').on('submit', async function (e) {
+        e.preventDefault();
+        const tr = $('#trNo').val().trim();
+        const preferredSlot = $('#preferredSlot').val();
+        const goal = $('#preferredGoal').val().trim();
+        
+        // Fields for new students
+        const its = $('#itsNo').val() ? parseInt($('#itsNo').val(), 10) : null;
+        const name = $('#studentName').val().trim();
+        const darajah = $('#darajah').val().trim();
+
+        if (!tr || !preferredSlot) {
+            Swal.fire('Required', 'Please enter TR and select a preferred slot', 'warning');
+            return;
+        }
+
+        const data = {
+            TR: tr,
+            SlotID: preferredSlot,
+            Goal: goal,
+            ITS: its,
+            Name: name,
+            Darajah: darajah
+        };
+
+        const $btn = $('#addStudentBtn');
+        const $text = $btn.find('.button-text');
+        const $spinner = $btn.find('.spinner-border');
+
+        $btn.prop('disabled', true);
+        $text.addClass('d-none');
+        $spinner.removeClass('d-none');
+
+        try {
+            const response = await fetch('/api/add-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.success) {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
-                    icon: 'error',
-                    title: message,
+                    icon: 'success',
+                    title: 'Student added' + (result.message.includes('Waiting List') ? ' to Waiting List' : ''),
                     showConfirmButton: false,
                     timer: 3000
                 });
-                clearPreviewFields();
-                return;
-            }
-
-            if (nameInput) nameInput.value = data.student?.Name || '';
-            setDarajahValue(data.student?.Darajah || '');
-            setAddButtonEnabled(true);
-
-        } catch (err) {
-            console.error("Preview student error:", err);
-            clearPreviewFields();
-        }
-    }
-
-    if (trInput) {
-        trInput.addEventListener('blur', () => previewStudentByTR(trInput.value));
-        trInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                previewStudentByTR(trInput.value);
-            }
-        });
-        trInput.addEventListener('input', () => {
-            // If staff changes TR after a preview, invalidate the preview fields.
-            const current = trInput.value.trim();
-            if (lastPreviewedTR && current !== lastPreviewedTR) {
-                clearPreviewFields();
-            }
-        });
-    }
-
-    document.getElementById('studentEntryForm').addEventListener('submit', async function (event) {
-        event.preventDefault();
-
-        // 1. Get references to the button and its parts
-        const submitBtn = document.getElementById('addStudentBtn'); // Use the ID we added
-        const buttonText = submitBtn.querySelector('.button-text');
-        const spinner = submitBtn.querySelector('.spinner-border');
-
-        // 2. Start Loader: Disable button, show spinner
-        submitBtn.disabled = true;
-        buttonText.classList.add('d-none');
-        spinner.classList.remove('d-none');
-
-        // 3. Prepare payload (TR only; backend fetches Name/Darajah from TestMaster)
-        const payload = {
-            TR: document.getElementById('trNo').value.trim()
-        };
-
-        try {
-            // 4. Make the API call (same as before)
-            const res = await fetch('/api/add-student', {
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const data = await res.json();
-
-            // 5. Handle response (same as before)
-            if (res.ok && data.success) {
-                Swal.fire({ 
-                    toast: true, 
-                    position: 'top-end', 
-                    icon: 'success', 
-                    title: 'Student added to Waiting List!', 
-                    showConfirmButton: false, 
-                    timer: 2000 
-                });
+                $('#studentEntryForm')[0].reset();
+                $('#existingStudentDisplay').addClass('d-none');
+                $('#newStudentFields').addClass('d-none');
+                $('#addStudentBtn').prop('disabled', true);
                 refreshSlotEntryPage(); // Refreshes tables
-                this.reset(); // Resets the form fields
-                clearPreviewFields();
             } else {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'Oops...', 
-                    text: 'Error: ' + data.message 
-                });
+                 Swal.fire('Error', result.message || 'Failed to add student', 'error');
             }
         } catch (err) {
-            // Handle potential network errors
-            console.error("Add student error:", err);
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'Server Error', 
-                text: 'Could not add student. Please try again later.' 
-            });
+             console.error('Add student error:', err);
+             Swal.fire('Error', 'An unexpected error occurred.', 'error');
         } finally {
-            // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
-            submitBtn.disabled = false;
-            buttonText.classList.remove('d-none');
-            spinner.classList.add('d-none');
+            $btn.prop('disabled', false);
+            $text.removeClass('d-none');
+            $spinner.addClass('d-none');
         }
     });
 
@@ -450,7 +554,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- PAGE INITIALIZATION ---
 
     // Manual entry now requires TR lookup first.
-    clearPreviewFields();
+    // clearPreviewFields();
+
 
     // --- START: MODIFIED BULK IMPORT LOGIC ---
 

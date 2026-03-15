@@ -125,16 +125,47 @@
                              <label for="trNo">Tr No</label>
                              <input type="text" id="trNo" class="form-control" required />
                          </div>
-                         <div class="form-group">
-                             <label for="studentName">Name</label>
-                            <input type="text" id="studentName" class="form-control" placeholder="Name will be Auto-fetched..." readonly />
+                         <div id="existingStudentDisplay" class="d-none alert alert-info p-2 mt-2 mb-3">
+                             <strong>Found:</strong> <span id="studentNameLabel">...</span> - <span id="darajahLabel">...</span>
                          </div>
-                         <div class="form-group">
-                              <label for="darajah">Darajah</label>
-                             <input type="text" id="darajah" class="form-control" placeholder="Darajah will be Auto-fetched..." readonly />
-                             <small class="text-muted">Name and Darajah are auto-fetched.</small>
+                         <div id="newStudentFields" class="d-none">
+                             <div class="form-group mt-2">
+                                 <label for="itsNo">ITS No</label>
+                                 <input type="number" id="itsNo" class="form-control" placeholder="Enter ITS Number" />
+                             </div>
+                             <div class="form-group mt-2">
+                                 <label for="studentName">Name</label>
+                                 <input type="text" id="studentName" class="form-control" placeholder="Enter Name" />
+                             </div>
+                             <div class="form-group mt-2">
+                                  <label for="darajah">Darajah</label>
+                                 <input type="text" id="darajah" class="form-control" placeholder="Enter Darajah" />
+                             </div>
+                             <small class="text-muted d-block mb-3">Student not found in TestMaster. Fill details to register.</small>
                          </div>
-                         <button type="submit" class="btn btn-primary" id="addStudentBtn">
+                         <div class="form-group mt-2">
+                             <label for="preferredSlot">Preferred Slot <span class="text-danger">*</span></label>
+                             <select id="preferredSlot" class="form-control" required>
+                                 <option value="" disabled selected>Select a preferred slot...</option>
+                             </select>
+                             <small class="text-danger d-none" id="noSlotsWarning">No slots available. Please create a slot first.</small>
+                         </div>
+                         <div class="form-group mt-2">
+                             <label for="preferredGoal">Preferred Goal</label>
+                             <select id="preferredGoal" class="form-control">
+                                 <option value="" selected>Not Set</option>
+                                 <option value="General Fitness">General Fitness</option>
+                                 <option value="Weight Loss">Weight Loss</option>
+                                 <option value="Muscle Gain">Muscle Gain</option>
+                                 <option value="Strength">Strength</option>
+                                 <option value="Endurance">Endurance</option>
+                                 <option value="Flexibility">Flexibility</option>
+                                 <option value="Energy Boost">Energy Boost</option>
+                                 <option value="Stress Relief">Stress Relief</option>
+                                 <option value="Overall Health">Overall Health</option>
+                             </select>
+                         </div>
+                         <button type="submit" class="btn btn-primary mt-3" id="addStudentBtn" disabled>
                              <span class="button-text">Add Student</span>
                              <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                          </button>
@@ -144,15 +175,17 @@
                 <section id="waiting-list" class="card">
                     <h2>Waiting List</h2>
                     <div style="overflow-x:auto;">
-                    <table id="waitingListTable">
+                    <table id="waitingListTable" class="table table-striped table-bordered stacking-card-table" style="width:100%">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>TR</th>
-                                <th>Name</th>
-                                <th>Darajah</th>
-                                <th>Requested</th>
-                                <th>Action</th>
+                                <th class="col-id">ID</th>
+                                <th class="col-tr">TR</th>
+                                <th class="col-name">Name</th>
+                                <th class="col-darajah">Darajah</th>
+                                <th class="col-goal">Preferred Goal</th>
+                                <th class="col-slot">Preferred Slot</th>
+                                <th class="col-req">Requested</th>
+                                <th class="col-act">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -178,15 +211,15 @@
                         </button>
                     </form>
                     <div style="margin-top: 2rem; overflow-x:auto;">
-                        <table id="slotTable">
+                        <table id="slotTable" class="table table-striped table-bordered stacking-card-table" style="width:100%">
                             <thead>
                                 <tr>
-                                    <th>Slot ID</th>
-                                    <th>Slot Name</th>
-                                    <th>Max Capacity</th>
-                                    <th>Assigned</th>
-                                    <th>Available</th>
-                                    <th>Actions</th>
+                                    <th class="col-slotid">Slot ID</th>
+                                    <th class="col-slotname">Slot Name</th>
+                                    <th class="col-maxcap">Max Capacity</th>
+                                    <th class="col-assgn">Assigned</th>
+                                    <th class="col-avail">Available</th>
+                                    <th class="col-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
