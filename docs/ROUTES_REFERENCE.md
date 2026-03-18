@@ -32,22 +32,24 @@ Endpoints for student progress, weight tracking, and workout analytics.
 | GET | `/api/student/analytics/history` | Student | Recent session history (timestamps and duration). | None |
 | GET | `/api/student/workout-calendar` | Student | 6-month workout consistency dates for heatmap. | None |
 
-## 📅 Workout Planner & Logs (`routes/stu-routes.js` & `routes/staff.js`)
+## 📅 Workout Planner (V2) & Logs (`routes/stu-routes.js` & `routes/staff.js`)
 Endpoints for managing weekly workout schedules and daily exercise logs.
+All planner data is stored in the normalized V2 tables (`WorkoutPrograms → WorkoutWeeks → WorkoutDays → PlannedExercises`). The legacy `WorkoutPlan` table has been dropped.
 
 | Method | Endpoint | Role | Purpose | Input |
 | :--- | :--- | :--- | :--- | :--- |
-| GET | `/api/student/planner/insights` | Student | Fetch planner intelligence (weekday history, duration baseline, adherence, fitness context). | None |
-| POST | `/api/save-workout-plan` | Student | Save structured weekly workout plan (JSON day objects, no raw HTML). | `{ schemaVersion, days: { Monday..Sunday } }` |
-| GET | `/api/student/workout-plan` | Student | Fetch current week planner as structured day plans + insight summary metadata. | None |
-| POST | `/api/student/apply-last-week` | Student | Copy previous week plan to current week, or fallback to history-informed autofill if no prior plan. | None |
+| GET | `/api/student/planner/insights` | Student | Fetch planner intelligence (weekday history, duration baseline, adherence counts from V2 `WorkoutDays`). | None |
+| POST | `/api/save-workout-plan` | Student | Save weekly plan → writes to `WorkoutPrograms/WorkoutWeeks/WorkoutDays/PlannedExercises`. Exercises resolved via `Exercises` table. | `{ schemaVersion, days: { Monday..Sunday } }` |
+| GET | `/api/student/workout-plan` | Student | Fetch current week planner from V2 tables as structured day plans + insight summary. | None |
+| POST | `/api/student/apply-last-week` | Student | Copy previous week V2 plan to current week, or fallback to autofill if no prior plan. | None |
 | GET | `/api/student/planner/v2` | Student | V2 planner bridge (redirects to structured current planner endpoint). | None |
 | POST | `/api/student/planner/v2` | Student | V2 planner bridge save endpoint (redirects to structured save endpoint). | `{ schemaVersion, days }` |
-| POST | `/api/student/planner/v2/autofill` | Student | Auto-fill planner from deterministic recommendations (`week` or `monday`). | `{ mode }` |
+| POST | `/api/student/planner/v2/autofill` | Student | Auto-fill planner from deterministic recommendations → writes to V2 tables. | `{ mode }` |
 | POST | `/api/student/planner/v2/complete-item` | Student | Mark a body-part planner item as completed by creating `TrainingPlan/TrainingLog`. | `{ bodyPart }` |
 | GET | `/api/student/training-plans` | Student | Fetch historical workout logs (date + body parts). | None |
 | GET | `/api/student/training-analytics` | Student | Counts of body parts trained (for pie charts). | None |
-| POST | `/api/log-training-plan` | Trainer | Log a completed workout session; keeps body-part logs and optionally records exercise-level execution into `PerformanceLogs` when V2 tables exist. | `{ TR, BodyParts, Exercises? }` |
+| GET | `/api/trainer/student-plan/:tr` | Trainer | Shows a specific student's V2 weekly plan (reads from `WorkoutDays/PlannedExercises`). | None |
+| POST | `/api/log-training-plan` | Trainer | Log a completed workout session; keeps body-part logs and optionally records exercise-level execution into `PerformanceLogs`. | `{ TR, BodyParts, Exercises? }` |
 
 ## 🏥 Fitness Tests & Medical History (`routes/fitnessTest.js`)
 Endpoints for recording physical measurements and medical status.

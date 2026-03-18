@@ -51,9 +51,9 @@ Logic is predominantly co-located with route handlers in `routes/`. Key features
 - **Gamification Engine (`routes/gamification.js`):** Calculates XP, levels, and awards achievements (Consistency King, Social Butterfly, etc.) based on attendance and workouts.
 - **Fitness Evaluation:** Experts (`Evaluators`) provide categorized comments on trainer-logged fitness tests.
 - **Attendance Management:** Handled in `routes/staff.js`, including "On Leave" bulk updates and manual attendance correction.
-- **Workout Planner:** Students use a structured planner composer (not `contenteditable` HTML). Plans are saved as JSON in `WorkoutPlan.Content` (legacy HTML is still readable), with intelligence from `TrainingPlan/TrainingLog`, `Attendance`, `WeightTracking`, `TestRecords`, and `StudentAchievements`.
+- **Workout Planner (V2):** Students compose weekly plans via a structured day-by-day UI. Plans are persisted in the normalized `WorkoutPrograms → WorkoutWeeks → WorkoutDays → PlannedExercises` tables. Exercises are resolved against the seeded `Exercises` table (98 entries from `data.js`); unknown free-text names are auto-inserted under a `General` body part. Planner insights (adherence, weekday history, duration baseline) are derived from `AttendanceWeek`, `WorkoutDays`, and `TrainingPlan/TrainingLog`.
 - **Planner Rollout Control:** Student session payload includes `FeatureFlags.planner_v2_ui` to support phased rollout by TR/environment flags.
-- **Execution Logging Bridge:** Trainer workout logging continues to write legacy body-part logs and can additionally persist optional exercise-level entries into `PerformanceLogs` when V2 tables are available.
+- **Execution Logging:** Trainer workout logging writes body-part logs to `TrainingPlan/TrainingLog` and can additionally persist exercise-level execution data into `PerformanceLogs` for granular performance tracking.
 
 ## External Integrations
 - **MSSQL (External):** Remote database hosting via MSSQL server.

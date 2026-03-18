@@ -148,7 +148,11 @@ Categories for evaluation comments.
 - `CategoryName` (NVARCHAR(100))
 - `Description` (NVARCHAR(255))
 
-## Structured Workout Planner (V2)
+## Structured Workout Planner (V2 — Active)
+
+> **Note:** The legacy `WorkoutPlan` table has been dropped. All planner data now lives in the normalized V2 tables below.
+> Run `sql/migrations/2026-03-18_seed_exercises.sql` to populate `BodyParts` + `Exercises`.
+> Run `sql/migrations/2026-03-18_drop_workoutplan.sql` to remove the legacy table.
 
 ### `Exercises`
 Master lookup list for movements.
@@ -275,3 +279,33 @@ Student-defined weekly workout schedules (now stored as structured JSON text, wi
 - **Identity:** `PassBank` (Internal Users) and `TestMaster` (Students) are the primary identity anchors.
 - **Cascading:** `ON DELETE CASCADE` is used for dependent logs (`TestActivityLog`, `MedicalHistory`, `Evaluations`, `TrainingLog`, `PerformanceLogs`) to ensure cleanup.
 - **Set Null:** `ON DELETE SET NULL` is used for profile links (`Evaluators`, `Trainers`) to preserve records if the login account is removed.
+
+# all tables select query [28 tables]
+SELECT * FROM WorkoutPlan;
+SELECT * FROM TestActivityLog;
+SELECT * FROM Trainers;
+SELECT * FROM AttendanceWeek;
+SELECT * FROM Slots;
+SELECT * FROM WaitingList;
+SELECT * FROM Attendance;
+SELECT * FROM PassBank;
+SELECT * FROM BodyParts;
+SELECT * FROM TrainingLog;
+SELECT * FROM LeaveRequests;
+SELECT * FROM Achievements;
+SELECT * FROM StudentAchievements;
+SELECT * FROM WeightTracking;
+SELECT * FROM Exercises;
+SELECT * FROM EvaluationBatches;
+SELECT * FROM WorkoutPrograms;
+SELECT * FROM WorkoutWeeks;
+SELECT * FROM WorkoutDays;
+SELECT * FROM TestMaster;
+SELECT * FROM MedicalHistory;
+SELECT * FROM TestRecords;
+SELECT * FROM PlannedExercises;
+SELECT * FROM Evaluators;
+SELECT * FROM TrainingPlan;
+SELECT * FROM PerformanceLogs;
+SELECT * FROM CommentCategories;
+SELECT * FROM Evaluations;

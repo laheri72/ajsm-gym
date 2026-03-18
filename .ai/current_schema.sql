@@ -526,20 +526,12 @@ PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[WorkoutPlan]    Script Date: 20-02-2026 16:19:26 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[WorkoutPlan](
-	[TR] [int] NULL,
-	[Day] [varchar](20) NULL,
-	[Content] [nvarchar](max) NULL,
-	[Branch] [varchar](7) NULL,
-	[Gender] [varchar](6) NULL,
-	[WeekID] [int] NULL
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
+-- WorkoutPlan table removed (2026-03-18).
+-- Planner data now stored in V2 tables:
+--   WorkoutPrograms -> WorkoutWeeks -> WorkoutDays -> PlannedExercises
+-- Run: sql/migrations/2026-03-18_seed_exercises.sql   (seed BodyParts + Exercises)
+-- Run: sql/migrations/2026-03-18_drop_workoutplan.sql (drop legacy table)
+
 /****** Object:  Index [IX_TestRecords_BatchID]    Script Date: 20-02-2026 16:19:26 ******/
 CREATE NONCLUSTERED INDEX [IX_TestRecords_BatchID] ON [dbo].[TestRecords]
 (
@@ -697,16 +689,8 @@ REFERENCES [dbo].[TestMaster] ([TR])
 GO
 ALTER TABLE [dbo].[WeightTracking] CHECK CONSTRAINT [FK_WeightTracking_TestMaster]
 GO
-ALTER TABLE [dbo].[WorkoutPlan]  WITH CHECK ADD  CONSTRAINT [FK_WorkoutPlan_AttendanceWeek] FOREIGN KEY([WeekID])
-REFERENCES [dbo].[AttendanceWeek] ([WeekID])
-GO
-ALTER TABLE [dbo].[WorkoutPlan] CHECK CONSTRAINT [FK_WorkoutPlan_AttendanceWeek]
-GO
-ALTER TABLE [dbo].[WorkoutPlan]  WITH CHECK ADD  CONSTRAINT [FK_WorkoutPlan_TestMaster] FOREIGN KEY([TR])
-REFERENCES [dbo].[TestMaster] ([TR])
-GO
-ALTER TABLE [dbo].[WorkoutPlan] CHECK CONSTRAINT [FK_WorkoutPlan_TestMaster]
-GO
+-- WorkoutPlan FK constraints removed (table dropped 2026-03-18)
+
 ALTER TABLE [dbo].[TestRecords]  WITH CHECK ADD  CONSTRAINT [CK_SubmittedBy_ValidValue] CHECK  (([SubmittedBy]='Trainer' OR [SubmittedBy]='Student'))
 GO
 ALTER TABLE [dbo].[TestRecords] CHECK CONSTRAINT [CK_SubmittedBy_ValidValue]

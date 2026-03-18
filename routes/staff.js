@@ -3950,26 +3950,60 @@ router.get('/api/trainer/student-plan/:tr', isTrainer, async (req, res) => {
 
         const currentWeekID = weekResult.recordset[0].WeekID;
 
-        // 2. Fetch plan for that student
+        // 2. Fetch student's V2 plan for the current week
         const planResult = await pool.request()
             .input('TR', sql.Int, tr)
-            .input('WeekID', sql.Int, currentWeekID)
+            .input('WeekNumber', sql.Int, currentWeekID)
             .query(`
-                SELECT Day, Content FROM WorkoutPlan
-                WHERE TR = @TR AND WeekID = @WeekID
+                SELECT
+                    wd.DayName AS Day,
+                    wd.Notes AS DayNotes,
+                    pe.OrderIndex,
+                    pe.TargetSets,
+                    pe.TargetReps,
+                    pe.TargetDurationMinutes,
+                    pe.Notes AS ItemNote,
+                    pe.Source,
+                    e.Name AS ExerciseName,
+                    bp.Name AS BodyPartName
+                FROM WorkoutPrograms wp
+                JOIN WorkoutWeeks ww ON ww.ProgramID = wp.ProgramID
+                    AND ww.WeekNumber = @WeekNumber
+                JOIN WorkoutDays wd ON wd.WeekID = ww.WeekID
+                LEFT JOIN PlannedExercises pe ON pe.DayID = wd.DayID
+                LEFT JOIN Exercises e ON e.ExerciseID = pe.ExerciseID
+                LEFT JOIN BodyParts bp ON bp.BodyPartID = e.BodyPartID
+                WHERE wp.TR = @TR AND wp.IsActive = 1
+                ORDER BY wd.OrderIndex, pe.OrderIndex;
             `);
 
-        const structured = planResult.recordset.map((row) => {
-            const parsed = parsePlannerContentForTrainer(row.Content || '');
-            return {
-                Day: row.Day,
-                items: parsed.items,
-                notes: parsed.notes,
-                displayText: parsed.displayText
-            };
-        });
+        // Group by day
+        const dayMap = {};
+        for (const row of planResult.recordset) {
+            if (!dayMap[row.Day]) {
+                dayMap[row.Day] = { Day: row.Day, items: [], notes: row.DayNotes || '', displayText: '' };
+            }
+            if (row.ExerciseName) {
+                const label = [
+                    row.ExerciseName,
+                    row.TargetSets ? `${row.TargetSets} sets` : null,
+                    row.TargetReps ? row.TargetReps : null
+                ].filter(Boolean).join(' – ');
+                dayMap[row.Day].items.push({
+                    exercise: row.ExerciseName,
+                    bodyPart: row.BodyPartName || '',
+                    sets: row.TargetSets,
+                    reps: row.TargetReps,
+                    note: row.ItemNote || '',
+                    source: row.Source || 'manual'
+                });
+                dayMap[row.Day].displayText += (dayMap[row.Day].displayText ? '\n' : '') + label;
+            }
+        }
 
+        const structured = Object.values(dayMap);
         res.json({ success: true, data: structured });
+
     } catch (err) {
         console.error('Error fetching student plan for trainer:', err);
         res.status(500).json({ success: false, message: 'Failed to load student plan' });

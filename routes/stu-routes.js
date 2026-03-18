@@ -251,32 +251,252 @@ function buildAutoFilledWeek(insights, mode = 'week') {
     return week;
 }
 
-async function upsertPlannerDays({ TR, Branch, Gender, WeekID, planByDay, transaction = null }) {
-    const requestFactory = () => transaction ? new sql.Request(transaction) : pool.request();
+// ─── V2 Planner Helpers ─────────────────────────────────────────────────────
 
+/**
+ * Resolves an exercise by name (case-insensitive). Falls back to inserting
+ * a new row under 'General' body part for free-text/custom exercises.
+ */
+async function resolveExerciseId(name, bodyPart) {
+    const cleanName = String(name || '').trim().slice(0, 100);
+    if (!cleanName) return null;
+
+    // 1. Try exact match first
+    const exactRes = await pool.request()
+        .input('Name', sql.NVarChar(100), cleanName)
+        .query(`SELECT TOP 1 ExerciseID FROM Exercises WHERE Name = @Name`);
+    if (exactRes.recordset.length > 0) return exactRes.recordset[0].ExerciseID;
+
+    // 2. Try case-insensitive match
+    const ciRes = await pool.request()
+        .input('Name', sql.NVarChar(100), cleanName)
+        .query(`SELECT TOP 1 ExerciseID FROM Exercises WHERE LOWER(Name) = LOWER(@Name)`);
+    if (ciRes.recordset.length > 0) return ciRes.recordset[0].ExerciseID;
+
+    // 3. Auto-insert under matched body part or 'General'
+    const bpName = String(bodyPart || 'General').trim().slice(0, 25);
+    const bpRes = await pool.request()
+        .input('BPName', sql.NVarChar(25), bpName)
+        .query(`SELECT TOP 1 BodyPartID FROM BodyParts WHERE Name = @BPName`);
+
+    let bodyPartID;
+    if (bpRes.recordset.length > 0) {
+        bodyPartID = bpRes.recordset[0].BodyPartID;
+    } else {
+        // Ensure 'General' exists
+        const genRes = await pool.request()
+            .query(`
+                MERGE BodyParts AS t USING (SELECT 'General' AS Name) AS s ON t.Name = s.Name
+                WHEN NOT MATCHED THEN INSERT (Name) VALUES ('General');
+                SELECT BodyPartID FROM BodyParts WHERE Name = 'General';
+            `);
+        bodyPartID = genRes.recordset[0].BodyPartID;
+    }
+
+    const insertRes = await pool.request()
+        .input('Name', sql.NVarChar(100), cleanName)
+        .input('BodyPartID', sql.Int, bodyPartID)
+        .query(`
+            INSERT INTO Exercises (Name, BodyPartID, Difficulty, IsActive, CreatedAt)
+            OUTPUT INSERTED.ExerciseID
+            VALUES (@Name, @BodyPartID, 'Beginner', 1, GETDATE());
+        `);
+    return insertRes.recordset[0].ExerciseID;
+}
+
+/**
+ * Gets or creates the student's single active WorkoutProgram.
+ */
+async function getOrCreateActiveProgram(TR, Branch, Gender) {
+    const res = await pool.request()
+        .input('TR', sql.Int, TR)
+        .input('Branch', sql.NVarChar(50), Branch)
+        .input('Gender', sql.NVarChar(50), Gender)
+        .query(`
+            MERGE WorkoutPrograms AS target
+            USING (
+                SELECT @TR AS TR, @Branch AS Branch, @Gender AS Gender
+            ) AS source
+            ON target.TR = source.TR
+               AND target.Branch = source.Branch
+               AND target.Gender = source.Gender
+               AND target.IsActive = 1
+            WHEN NOT MATCHED THEN
+                INSERT (TR, ProgramName, Description, IsActive, CreatedAt, Branch, Gender)
+                VALUES (@TR, 'My Weekly Plan', 'Auto-generated personal plan', 1, GETDATE(), @Branch, @Gender);
+
+            SELECT ProgramID FROM WorkoutPrograms
+            WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender AND IsActive = 1;
+        `);
+    return res.recordset[0].ProgramID;
+}
+
+/**
+ * Gets or creates a WorkoutWeeks row. WeekNumber = AttendanceWeek.WeekID.
+ */
+async function upsertV2Week(programID, weekNumber) {
+    const res = await pool.request()
+        .input('ProgramID', sql.Int, programID)
+        .input('WeekNumber', sql.Int, weekNumber)
+        .query(`
+            MERGE WorkoutWeeks AS target
+            USING (
+                SELECT @ProgramID AS ProgramID, @WeekNumber AS WeekNumber
+            ) AS source
+            ON target.ProgramID = source.ProgramID AND target.WeekNumber = source.WeekNumber
+            WHEN NOT MATCHED THEN
+                INSERT (ProgramID, WeekNumber, Theme)
+                VALUES (@ProgramID, @WeekNumber, NULL);
+
+            SELECT WeekID FROM WorkoutWeeks
+            WHERE ProgramID = @ProgramID AND WeekNumber = @WeekNumber;
+        `);
+    return res.recordset[0].WeekID;
+}
+
+/**
+ * Upserts WorkoutDays + PlannedExercises for a full week plan.
+ */
+async function upsertV2Days(weekIDV2, planByDay) {
     for (const [day, dayPlan] of Object.entries(planByDay)) {
         if (!isValidPlannerDay(day)) continue;
+        const normalized = normalizeDayPlan(dayPlan);
+        const hasContent = dayPlanHasContent(normalized);
 
-        const request = requestFactory();
-        await request
-            .input('TR', sql.Int, TR)
-            .input('Day', sql.NVarChar(20), day)
-            .input('Content', sql.NVarChar(sql.MAX), JSON.stringify(normalizeDayPlan(dayPlan)))
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(50), Gender)
-            .input('WeekID', sql.Int, WeekID)
+        // Upsert the day row
+        const dayRes = await pool.request()
+            .input('WeekID', sql.Int, weekIDV2)
+            .input('DayName', sql.NVarChar(20), day)
+            .input('OrderIndex', sql.Int, VALID_PLANNER_DAYS.indexOf(day))
+            .input('Notes', sql.NVarChar(500), normalized.notes.slice(0, 500))
             .query(`
-                MERGE WorkoutPlan AS target
-                USING (SELECT @TR AS TR, @Day AS Day, @WeekID AS WeekID) AS source
-                ON target.TR = source.TR AND target.Day = source.Day AND target.WeekID = source.WeekID
+                MERGE WorkoutDays AS target
+                USING (SELECT @WeekID AS WeekID, @DayName AS DayName) AS source
+                ON target.WeekID = source.WeekID AND target.DayName = source.DayName
                 WHEN MATCHED THEN
-                    UPDATE SET Content = @Content, Branch = @Branch, Gender = @Gender
+                    UPDATE SET Notes = @Notes, OrderIndex = @OrderIndex
                 WHEN NOT MATCHED THEN
-                    INSERT (TR, Day, Content, Branch, Gender, WeekID)
-                    VALUES (@TR, @Day, @Content, @Branch, @Gender, @WeekID);
+                    INSERT (WeekID, DayName, OrderIndex, Notes)
+                    VALUES (@WeekID, @DayName, @OrderIndex, @Notes);
+
+                SELECT DayID FROM WorkoutDays
+                WHERE WeekID = @WeekID AND DayName = @DayName;
             `);
+
+        const dayID = dayRes.recordset[0].DayID;
+
+        // Clear old exercises for this day then re-insert current ones
+        await pool.request()
+            .input('DayID', sql.Int, dayID)
+            .query(`DELETE FROM PlannedExercises WHERE DayID = @DayID`);
+
+        if (!hasContent || !normalized.items.length) continue;
+
+        for (let idx = 0; idx < normalized.items.length; idx++) {
+            const item = normalized.items[idx];
+            const exerciseID = await resolveExerciseId(
+                item.exercise || item.bodyPart,
+                item.bodyPart
+            );
+            if (!exerciseID) continue;
+
+            await pool.request()
+                .input('DayID', sql.Int, dayID)
+                .input('ExerciseID', sql.Int, exerciseID)
+                .input('TargetSets', sql.Int, item.sets || null)
+                .input('TargetReps', sql.NVarChar(20), item.reps || null)
+                .input('TargetDurationMinutes', sql.Int, item.durationMinutes || null)
+                .input('OrderIndex', sql.Int, idx + 1)
+                .input('Notes', sql.NVarChar(255), item.note || null)
+                .input('Source', sql.NVarChar(30), item.source || 'manual')
+                .query(`
+                    INSERT INTO PlannedExercises
+                        (DayID, ExerciseID, TargetSets, TargetReps, TargetDurationMinutes, OrderIndex, Notes, Source)
+                    VALUES
+                        (@DayID, @ExerciseID, @TargetSets, @TargetReps, @TargetDurationMinutes, @OrderIndex, @Notes, @Source);
+                `);
+        }
     }
 }
+
+/**
+ * Main orchestrator: save a week's plan to V2 tables.
+ */
+async function upsertPlannerV2({ TR, Branch, Gender, WeekID, planByDay }) {
+    const programID = await getOrCreateActiveProgram(TR, Branch, Gender);
+    const weekIDV2 = await upsertV2Week(programID, WeekID);
+    await upsertV2Days(weekIDV2, planByDay);
+}
+
+/**
+ * Read back a week's plan from V2 tables.
+ * Returns the same [{Day, Plan: {items, notes}}] shape the frontend expects.
+ */
+async function readPlannerV2({ TR, Branch, Gender, WeekID }) {
+    const res = await pool.request()
+        .input('TR', sql.Int, TR)
+        .input('Branch', sql.NVarChar(50), Branch)
+        .input('Gender', sql.NVarChar(50), Gender)
+        .input('WeekNumber', sql.Int, WeekID)
+        .query(`
+            SELECT
+                wd.DayName AS Day,
+                wd.Notes   AS DayNotes,
+                wd.DayID,
+                pe.PlannedID,
+                pe.OrderIndex,
+                pe.TargetSets,
+                pe.TargetReps,
+                pe.TargetDurationMinutes,
+                pe.Notes  AS ItemNote,
+                pe.Source,
+                e.Name    AS ExerciseName,
+                bp.Name   AS BodyPartName
+            FROM WorkoutPrograms wp
+            JOIN WorkoutWeeks ww ON ww.ProgramID = wp.ProgramID
+                AND ww.WeekNumber = @WeekNumber
+            JOIN WorkoutDays wd ON wd.WeekID = ww.WeekID
+            LEFT JOIN PlannedExercises pe ON pe.DayID = wd.DayID
+            LEFT JOIN Exercises e ON e.ExerciseID = pe.ExerciseID
+            LEFT JOIN BodyParts bp ON bp.BodyPartID = e.BodyPartID
+            WHERE wp.TR = @TR
+              AND wp.Branch = @Branch
+              AND wp.Gender = @Gender
+              AND wp.IsActive = 1
+            ORDER BY wd.OrderIndex, pe.OrderIndex;
+        `);
+
+    // Group rows by day
+    const dayMap = {};
+    for (const row of res.recordset) {
+        if (!dayMap[row.Day]) {
+            dayMap[row.Day] = {
+                Day: row.Day,
+                Plan: { schemaVersion: PLANNER_SCHEMA_VERSION, items: [], notes: row.DayNotes || '' }
+            };
+        }
+        if (row.PlannedID) {
+            dayMap[row.Day].Plan.items.push({
+                id: `pe-${row.PlannedID}`,
+                type: row.BodyPartName ? 'bodypart' : 'exercise',
+                exercise: row.ExerciseName || '',
+                bodyPart: row.BodyPartName || '',
+                sets: row.TargetSets || null,
+                reps: row.TargetReps || '',
+                durationMinutes: row.TargetDurationMinutes || null,
+                note: row.ItemNote || '',
+                source: row.Source || 'manual'
+            });
+        }
+    }
+
+    // Return all days in order, falling back to empty plan for days with no saved data
+    return VALID_PLANNER_DAYS.map((day) => dayMap[day] || {
+        Day: day,
+        Plan: normalizeDayPlan({})
+    });
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function getPlannerInsights(TR) {
     const [weekdayHistoryRes, durationsRes, adherenceRes, profileRes, weightRes, testsRes, achievementRes, lastWorkoutRes] = await Promise.all([
@@ -313,11 +533,14 @@ async function getPlannerInsights(TR) {
                     ISNULL(C.CompletedDays, 0) AS CompletedDays
                 FROM AttendanceWeek W
                 OUTER APPLY (
-                    SELECT COUNT(*) AS PlannedDays
-                    FROM WorkoutPlan WP
-                    WHERE WP.TR = @TR
-                      AND WP.WeekID = W.WeekID
-                      AND LEN(LTRIM(RTRIM(ISNULL(WP.Content, '')))) > 0
+                    -- V2: count days via WorkoutPrograms -> WorkoutWeeks -> WorkoutDays
+                    SELECT COUNT(DISTINCT wd.DayName) AS PlannedDays
+                    FROM WorkoutPrograms wp
+                    JOIN WorkoutWeeks ww ON ww.ProgramID = wp.ProgramID
+                        AND ww.WeekNumber = W.WeekID
+                    JOIN WorkoutDays wd ON wd.WeekID = ww.WeekID
+                    JOIN PlannedExercises pe ON pe.DayID = wd.DayID
+                    WHERE wp.TR = @TR AND wp.IsActive = 1
                 ) P
                 OUTER APPLY (
                     SELECT COUNT(DISTINCT CAST(DATEADD(MINUTE, 330, TP.CreatedAt) AS DATE)) AS CompletedDays
@@ -492,51 +715,22 @@ async function getPlannerInsights(TR) {
     };
 }
 
-async function savePlannerPayloadForCurrentWeek({ TR, Branch, Gender, payload, transaction = null }) {
+async function savePlannerPayloadForCurrentWeek({ TR, Branch, Gender, payload }) {
     const planByDay = validateIncomingPlanPayload(payload);
     const currentWeekID = await getCurrentWeekIdForToday();
 
-    await upsertPlannerDays({
+    await upsertPlannerV2({
         TR,
         Branch,
         Gender,
         WeekID: currentWeekID,
-        planByDay,
-        transaction
+        planByDay
     });
 
     return { currentWeekID, planByDay };
 }
 
-async function readStructuredPlannerForWeek({ TR, Branch, Gender, WeekID }) {
-    const planResult = await pool.request()
-        .input('TR', sql.Int, TR)
-        .input('Branch', sql.NVarChar(50), Branch)
-        .input('Gender', sql.NVarChar(50), Gender)
-        .input('WeekID', sql.Int, WeekID)
-        .query(`
-            SELECT Day, Content
-            FROM WorkoutPlan
-            WHERE TR = @TR
-              AND Branch = @Branch
-              AND Gender = @Gender
-              AND WeekID = @WeekID;
-        `);
-
-    const rowsByDay = {};
-    for (const row of planResult.recordset) {
-        rowsByDay[row.Day] = row;
-    }
-
-    return VALID_PLANNER_DAYS.map((day) => {
-        const rawContent = rowsByDay[day]?.Content || '';
-        const parsed = parseWorkoutContent(rawContent);
-        return {
-            Day: day,
-            Plan: parsed
-        };
-    });
-}
+// readStructuredPlannerForWeek replaced by readPlannerV2() above
 
 
 // Helper functions from server.js will go here
@@ -1194,7 +1388,7 @@ router.get(
       }
 
       const currentWeekID = await getCurrentWeekIdForToday();
-      const data = await readStructuredPlannerForWeek({ TR, Branch, Gender, WeekID: currentWeekID });
+      const data = await readPlannerV2({ TR, Branch, Gender, WeekID: currentWeekID });
       const insights = await getPlannerInsights(TR);
 
       res.json({
@@ -1225,56 +1419,87 @@ router.post('/api/student/apply-last-week', async (req, res) => {
 
     const currentWeekID = await getCurrentWeekIdForToday();
 
-    const lastWeekPlanResult = await pool.request()
-      .input('TR', sql.Int, TR)
-      .input('Branch', sql.NVarChar(50), Branch)
-      .input('Gender', sql.NVarChar(50), Gender)
-      .input('CurrentWeekID', sql.Int, currentWeekID)
-      .query(`
-        SELECT TOP 1 WeekID
-        FROM WorkoutPlan
-        WHERE TR = @TR
-          AND Branch = @Branch
-          AND Gender = @Gender
-          AND WeekID <> @CurrentWeekID
-        ORDER BY WeekID DESC;
-      `);
-
+    // Read last week's plan from V2 tables
     let planByDay = null;
-    if (lastWeekPlanResult.recordset.length > 0) {
-      const lastWeekID = lastWeekPlanResult.recordset[0].WeekID;
-      const contentResult = await pool.request()
-        .input('TR', sql.Int, TR)
-        .input('Branch', sql.NVarChar(50), Branch)
-        .input('Gender', sql.NVarChar(50), Gender)
-        .input('WeekID', sql.Int, lastWeekID)
-        .query(`
-          SELECT Day, Content
-          FROM WorkoutPlan
-          WHERE TR = @TR
-            AND Branch = @Branch
-            AND Gender = @Gender
-            AND WeekID = @WeekID;
-        `);
+    try {
+        const programRes = await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT TOP 1 wp.ProgramID
+                FROM WorkoutPrograms wp
+                WHERE wp.TR = @TR AND wp.Branch = @Branch AND wp.Gender = @Gender AND wp.IsActive = 1;
+            `);
 
-      planByDay = {};
-      for (const row of contentResult.recordset) {
-        if (!isValidPlannerDay(row.Day)) continue;
-        planByDay[row.Day] = parseWorkoutContent(row.Content || '');
-      }
+        if (programRes.recordset.length > 0) {
+            const programID = programRes.recordset[0].ProgramID;
+            // Find the most recent week that is NOT the current one
+            const prevWeekRes = await pool.request()
+                .input('ProgramID', sql.Int, programID)
+                .input('CurrentWeekID', sql.Int, currentWeekID)
+                .query(`
+                    SELECT TOP 1 ww.WeekID AS V2WeekID, ww.WeekNumber
+                    FROM WorkoutWeeks ww
+                    JOIN WorkoutDays wd ON wd.WeekID = ww.WeekID
+                    JOIN PlannedExercises pe ON pe.DayID = wd.DayID
+                    WHERE ww.ProgramID = @ProgramID
+                      AND ww.WeekNumber <> @CurrentWeekID
+                    GROUP BY ww.WeekID, ww.WeekNumber
+                    HAVING COUNT(pe.PlannedID) > 0
+                    ORDER BY ww.WeekNumber DESC;
+                `);
+
+            if (prevWeekRes.recordset.length > 0) {
+                const prevV2WeekID = prevWeekRes.recordset[0].V2WeekID;
+                const prevWeekData = await pool.request()
+                    .input('WeekID', sql.Int, prevV2WeekID)
+                    .query(`
+                        SELECT wd.DayName,
+                               pe.TargetSets, pe.TargetReps, pe.TargetDurationMinutes,
+                               pe.Notes, pe.Source, pe.OrderIndex,
+                               e.Name AS ExerciseName,
+                               bp.Name AS BodyPartName
+                        FROM WorkoutDays wd
+                        JOIN PlannedExercises pe ON pe.DayID = wd.DayID
+                        JOIN Exercises e ON e.ExerciseID = pe.ExerciseID
+                        JOIN BodyParts bp ON bp.BodyPartID = e.BodyPartID
+                        WHERE wd.WeekID = @WeekID
+                        ORDER BY wd.OrderIndex, pe.OrderIndex;
+                    `);
+
+                planByDay = {};
+                for (const row of prevWeekData.recordset) {
+                    if (!planByDay[row.DayName]) planByDay[row.DayName] = { items: [], notes: '' };
+                    planByDay[row.DayName].items.push({
+                        id: `copy-${row.DayName}-${row.OrderIndex}`,
+                        type: 'exercise',
+                        exercise: row.ExerciseName,
+                        bodyPart: row.BodyPartName,
+                        sets: row.TargetSets,
+                        reps: row.TargetReps || '',
+                        durationMinutes: row.TargetDurationMinutes,
+                        note: row.Notes || '',
+                        source: 'copied'
+                    });
+                }
+            }
+        }
+    } catch (readErr) {
+        console.warn('apply-last-week: could not read previous V2 plan, falling back to autofill.', readErr.message);
     }
 
     if (!planByDay || Object.keys(planByDay).length === 0) {
-      const insights = await getPlannerInsights(TR);
-      planByDay = buildAutoFilledWeek(insights, 'week');
+        const insights = await getPlannerInsights(TR);
+        planByDay = buildAutoFilledWeek(insights, 'week');
     }
 
-    await upsertPlannerDays({
-      TR,
-      Branch,
-      Gender,
-      WeekID: currentWeekID,
-      planByDay
+    await upsertPlannerV2({
+        TR,
+        Branch,
+        Gender,
+        WeekID: currentWeekID,
+        planByDay
     });
 
     cache.del(`workout_${TR}`);
@@ -1315,7 +1540,7 @@ router.post('/api/student/planner/v2/autofill', async (req, res) => {
     const currentWeekID = await getCurrentWeekIdForToday();
     const planByDay = buildAutoFilledWeek(insights, mode === 'monday' ? 'monday_only' : 'week');
 
-    await upsertPlannerDays({
+    await upsertPlannerV2({
       TR,
       Branch,
       Gender,
