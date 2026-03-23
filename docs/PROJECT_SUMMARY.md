@@ -10,6 +10,12 @@ The system supports several user roles:
 - **Evaluators:** Provide expert feedback and grading on student fitness records.
 - **Admins:** System-wide management, user administration, and batch control.
 
+## Recent Milestones (March 2026)
+- **Workout Planner V2 Core:** Fully transitioned from legacy JSON-based planning to a normalized 6-table relational schema for granular tracking.
+- **Dynamic Exercise Library:** Replaced 800+ lines of static HTML with a cached, API-driven exercise accordion including video tutorial links.
+- **In-Session Logging (Phase 3C):** Launched real-time performance logging, allowing students to record sets, reps, and weight during their sessions.
+- **PR Detection Engine:** Automated backend logic to detect and flag Personal Records (PRs) based on historical performance data.
+
 ## Tech Stack
 ### Backend
 - **Runtime:** Node.js

@@ -192,70 +192,27 @@ Layer 3: EXECUTION (not yet built)
 
 ### Summary: The Full System When Fully Built
 
-| Feature | Requires |
-|---|---|
-| Student self-plans weekly workout | ✅ Working now (Plan + Week + Days + PlannedExercises) |
-| See exercises grouped by body part | ✅ Working (Exercises + BodyParts seeded) |
-| Trainer assigns program to student | 🔲 Not built (WorkoutPrograms with trainer UserID, TR=student) |
-| Set-by-set workout logging during session | 🔲 Not built (PerformanceLogs write path) |
-| PR detection + achievement trigger | 🔲 Not built (depends on PerformanceLogs) |
-| Progressive overload chart | 🔲 Not built (PerformanceLogs aggregation over weeks) |
-| Plan vs. actual comparison | 🔲 Not built (join PlannedExercises + PerformanceLogs) |
-| Volume per body part per week | 🔲 Not built (aggregate query over both tables) |
-| Staff-assigned program templates | 🔲 Not built (WorkoutPrograms with TR=NULL) |
+| Feature | Status | Requires |
+|---|---|---|
+| Student self-plans weekly workout | ✅ Done | Plan + Week + Days + PlannedExercises |
+| Dynamic Exercise Library (API + UI) | ✅ Done | Exercises + BodyParts seeded + Video URLs |
+| In-session set logging modal | ✅ Done | PerformanceLogs write path |
+| PR detection + achievement notification | ✅ Done | depends on PerformanceLogs |
+| Trainer assigns program to student | 🔲 Not built | WorkoutPrograms with trainer UserID, TR=student |
+| Progressive overload chart | 🔲 Not built | PerformanceLogs aggregation over weeks |
+| Plan vs. actual comparison | 🔲 Not built | join PlannedExercises + PerformanceLogs |
+| Volume per body part per week | 🔲 Not built | aggregate query over both tables |
+| Staff-assigned program templates | 🔲 Not built | WorkoutPrograms with TR=NULL |
 
 
 
-# phase 3
+# Phase 3 Status (Active Progress)
 
-Phase 3 Plan Ready
-Here's the breakdown across all 3 roles:
-
-Phase	Who	What
-3A	You	Run seed SQL to put YouTube video URLs into Exercises.VideoURL (I'll generate this script)
-3B	Me	GET /api/exercises — new API replacing hardcoded HTML exercise tables
-3C	Me	Student in-session logging modal → writes to PerformanceLogs → auto-detects PRs
-3D	Me	Staff program template builder → assign to all students in a branch
-3E	Me	Trainer plan oversight — see planned vs. actual for any student
-3F	Me	Progressive overload chart — week-by-week weight/volume per exercise
-Which phase do you want to start with?
-
-I recommend starting with 3A + 3B together (you run the SQL, I build the API), since the Exercises table with VideoURL is the foundation for the entire UI. After that, each of 3C, 3D, 3F can be built independently in any order you prefer.
-
-Proceeded with
-Manually proceeded.
-
-Implementing Phase 3A+3B — Exercises API and Video URL Seed
-Imports cleaned up in student.js. Now adding the renderWorkoutList() trigger in the Initial Data Loading section so the workout list is fetched and rendered on page load.
-
-Files Edited
-Progress Updates
-1
-Generating VideoURL seed SQL and building GET /api/exercises route
-
-2
-Building GET /api/exercises route in stu-routes.js and the dynamic exercise table renderer in planner.js
-
-3
-Inserting Exercises API route into stu-routes.js and updating the student dashboard to dynamically render the exercise table
-
-4
-Replacing hardcoded HTML exercise accordion with dynamic JS renderer using the new /api/exercises endpoint
-
-5
-Replacing 870 lines of hardcoded HTML exercise accordion with a 20-line dynamic container
-
-6
-Removing hardcoded exercise rows from HTML accordion and writing JS renderer in planner.js
-
-7
-Appending exerciseModule (dynamic accordion renderer + in-session log modal) to planner.js
-
-8
-Wiring exerciseModule.renderWorkoutList() into the student app entry point
-
-9
-Updating student.js to import exerciseModule and call renderWorkoutList on Tips section open
-
-10
-Adding exerciseModule.renderWorkoutList() call in student.js on page load (eager prefetch)
+| Phase | Who | What | Status |
+|---|---|---|---|
+| 3A | AI | Seed SQL for YouTube Video URLs | ✅ Completed |
+| 3B | AI | GET /api/exercises — Dynamic Exercise Library | ✅ Completed |
+| 3C | AI | Student in-session logging modal → PerformanceLogs | ✅ Completed |
+| 3D | Me | Staff program template builder → assign to branch | 🔲 Pending |
+| 3E | Me | Trainer plan oversight — see planned vs. actual | 🔲 Pending |
+| 3F | Me | Progressive overload chart — history analytics | 🔲 Pending |

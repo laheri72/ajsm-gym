@@ -215,6 +215,7 @@ if (toggler && collapseElement) {
     getStudentSession();
     initializeWeekPicker();
     initializeFitness();
+    exerciseModule.renderWorkoutList();
     routeFromHash();
     window.addEventListener('hashchange', routeFromHash);
     
