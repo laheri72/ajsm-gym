@@ -133,14 +133,36 @@ function formatItemLabel(item) {
   return `${primary}${suffix}`;
 }
 
+let _autoSaveTimeout = null;
+
 function markPlannerDirty() {
   setPlannerDirty(true);
-  document.getElementById('savePlanBtn')?.classList.add('btn-glowing');
+  const statusEl = document.getElementById('planner-save-status');
+  if (statusEl) {
+    statusEl.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Syncing...';
+    statusEl.classList.remove('text-success');
+    statusEl.classList.add('text-muted');
+  }
+  queueAutoSave();
 }
 
 function markPlannerSaved() {
   setPlannerDirty(false);
-  document.getElementById('savePlanBtn')?.classList.remove('btn-glowing');
+  const statusEl = document.getElementById('planner-save-status');
+  if (statusEl) {
+    statusEl.innerHTML = '<i class="bi bi-check2-circle"></i> Saved';
+    statusEl.classList.remove('text-muted');
+    statusEl.classList.add('text-success');
+  }
+}
+
+function queueAutoSave() {
+  if (_autoSaveTimeout) clearTimeout(_autoSaveTimeout);
+  _autoSaveTimeout = setTimeout(() => {
+    if (hasAnyPlanContent()) {
+      savePlan(true); // true means silent auto-save
+    }
+  }, 1000);
 }
 
 function saveDraft() {
@@ -350,6 +372,13 @@ function bindPlannerEvents() {
     plannerSection.addEventListener('input', noteInputHandler);
   }
 
+  // Bind magic fill buttons
+  document.getElementById('autoFillWeekBtn')?.addEventListener('click', (e) => { e.preventDefault(); autoFillWeek(); });
+  document.getElementById('reuseBestWeekdayBtn')?.addEventListener('click', (e) => { e.preventDefault(); reuseBestWeekday(); });
+  document.getElementById('applyLastCompletedMondayBtn')?.addEventListener('click', (e) => { e.preventDefault(); applyLastCompletedMonday(); });
+  document.getElementById('clearPlanBtn')?.addEventListener('click', (e) => { e.preventDefault(); clearPlanner(); });
+  document.getElementById('applyLastWeekBtn')?.addEventListener('click', (e) => { e.preventDefault(); applyLastWeeksPlan(); });
+
   plannerEventsBound = true;
 }
 
@@ -357,16 +386,22 @@ function applyPlannerFeatureGate() {
   const enabled = isPlannerV2Enabled();
   const coachStrip = document.getElementById('planner-coach-strip');
   const gatedActionIds = [
-    'autoFillWeekBtn',
-    'reuseBestWeekdayBtn',
-    'applyLastCompletedMondayBtn',
+    'magicFillDropdown',
+    'applyLastWeekBtn',
     'today-autofill-btn'
   ];
 
   if (coachStrip) coachStrip.style.display = enabled ? '' : 'none';
   gatedActionIds.forEach((id) => {
     const element = document.getElementById(id);
-    if (element) element.style.display = enabled ? '' : 'none';
+    if (element) {
+        // Dropdowns are tricky with display: inline-block vs none
+        if (id === 'magicFillDropdown') {
+            element.closest('.dropdown').style.display = enabled ? 'inline-block' : 'none';
+        } else {
+            element.style.display = enabled ? '' : 'none';
+        }
+    }
   });
 }
 
@@ -420,19 +455,20 @@ export function addExerciseToCard(day, itemLike) {
   });
 }
 
-export async function savePlan() {
+export async function savePlan(silent = false) {
   if (!hasAnyPlanContent()) {
-    Swal.fire({ icon: 'warning', title: 'Empty Plan', text: 'Please add at least one exercise or note before saving.' });
+    if (!silent) {
+      Swal.fire({ icon: 'warning', title: 'Empty Plan', text: 'Please add at least one exercise or note before saving.' });
+    }
     return;
   }
 
-  const saveButton = document.getElementById('savePlanBtn');
-  const buttonText = saveButton?.querySelector('.button-text');
-  const spinner = saveButton?.querySelector('.spinner-border');
-
-  if (buttonText) buttonText.classList.add('d-none');
-  if (spinner) spinner.classList.remove('d-none');
-  if (saveButton) saveButton.disabled = true;
+  const statusEl = document.getElementById('planner-save-status');
+  if (statusEl) {
+    statusEl.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Syncing...';
+    statusEl.classList.remove('text-success');
+    statusEl.classList.add('text-muted');
+  }
 
   try {
     const res = await fetch('/api/save-workout-plan', {
@@ -448,20 +484,24 @@ export async function savePlan() {
     localStorage.removeItem(DRAFT_KEY);
     markPlannerSaved();
 
-    Swal.fire({
-      icon: 'success',
-      title: 'Workout Plan Saved',
-      text: 'Your structured weekly plan has been saved.',
-      timer: 1600,
-      showConfirmButton: false
-    });
+    if (!silent) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Workout Plan Saved',
+        text: 'Your structured weekly plan has been saved.',
+        timer: 1600,
+        showConfirmButton: false
+      });
+    }
   } catch (err) {
     console.error('Save error:', err);
-    Swal.fire({ icon: 'error', title: 'Save Failed', text: err.message || 'Could not save planner.' });
-  } finally {
-    if (buttonText) buttonText.classList.remove('d-none');
-    if (spinner) spinner.classList.add('d-none');
-    if (saveButton) saveButton.disabled = false;
+    if (!silent) {
+      Swal.fire({ icon: 'error', title: 'Save Failed', text: err.message || 'Could not save planner.' });
+    }
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Save Failed';
+      statusEl.classList.add('text-danger');
+    }
   }
 }
 

@@ -18,7 +18,7 @@ import { initializeFitness, showFitnessTab } from './student-modules/fitness.js'
 import {
     savePlan, clearPlanner, applyLastWeeksPlan, openQuickAddDialog,
     initializePlannerInteractions, autoFillWeek, reuseBestWeekday,
-    applyLastCompletedMonday, smartFillToday, exerciseModule
+    applyLastCompletedMonday, smartFillToday, exerciseModule, addExerciseToCard
 } from './student-modules/planner.js';
 
 /* =================================================================== */
@@ -83,17 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#leaveStatusTable tbody').addEventListener('click', handleLeaveCancel);
 
     // --- Planner ---
-    document.getElementById('savePlanBtn').addEventListener('click', savePlan);
-    document.getElementById('applyLastWeekBtn').addEventListener('click', applyLastWeeksPlan);
-    document.getElementById('clearPlanBtn')?.addEventListener('click', clearPlanner);
-    document.getElementById('autoFillWeekBtn')?.addEventListener('click', autoFillWeek);
-    document.getElementById('reuseBestWeekdayBtn')?.addEventListener('click', reuseBestWeekday);
-    document.getElementById('applyLastCompletedMondayBtn')?.addEventListener('click', applyLastCompletedMonday);
-    document.querySelectorAll('#weekly-view .quick-add-btn').forEach(btn => {
-        btn.addEventListener('click', () => openQuickAddDialog(btn.dataset.day));
-    });
-    document.getElementById('today-quick-add').addEventListener('click', () => {
-        openQuickAddDialog(document.getElementById('today-day-card').dataset.day);
+    // Note: Magic fill buttons (autofill, reuse, etc.) and Clear/Save are now handled inside planner.js bindPlannerEvents()
+    document.querySelectorAll('.quick-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const day = btn.dataset.day || document.getElementById('today-day-card').dataset.day;
+            openQuickAddDialog(day);
+        });
     });
     document.getElementById('today-autofill-btn')?.addEventListener('click', smartFillToday);
     initializePlannerInteractions();
@@ -176,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
          }
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
-            document.getElementById('savePlanBtn')?.click();
+            savePlan();
         }
     });
 

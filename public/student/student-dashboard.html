@@ -163,7 +163,10 @@
     <section class="card" id="planner-low">
       <div class="planner-header">
         <h1 class="planner-title">Your Workout Planner</h1>
-        <span class="info-icon" data-bs-toggle="tooltip"
+        <div id="planner-save-status" class="ms-3 small text-muted">
+          <i class="bi bi-check2-circle"></i> Saved
+        </div>
+        <span class="info-icon ms-auto" data-bs-toggle="tooltip"
           title="Your plan now adapts to your logs, attendance, and fitness trends. Use suggestions and history chips to build faster.">
           <i class="bi bi-info-circle-fill"></i>
         </span>
@@ -342,16 +345,21 @@
       </div>
 
       <div class="text-center mt-4 planner-actions">
-        <button id="autoFillWeekBtn" type="button" class="btn btn-outline-success">Auto-fill Week</button>
-        <button id="reuseBestWeekdayBtn" type="button" class="btn btn-outline-info">Reuse Best Weekday</button>
-        <button id="applyLastCompletedMondayBtn" type="button" class="btn btn-outline-secondary">Apply Last Completed Monday</button>
-        <button id="savePlanBtn" class="btn btn-primary">
-          <span class="button-text">Save</span>
-          <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-        </button>
-        <button id="clearPlanBtn" type="button" class="btn btn-outline-danger">Clear</button>
+        <div class="dropdown d-inline-block">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" id="magicFillDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-magic"></i> Magic Fill
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="magicFillDropdown">
+            <li><a class="dropdown-item" href="#" id="autoFillWeekBtn"><i class="bi bi-calendar-range"></i> Auto-fill Entire Week</a></li>
+            <li><a class="dropdown-item" href="#" id="reuseBestWeekdayBtn"><i class="bi bi-star"></i> Reuse Best Weekday</a></li>
+            <li><a class="dropdown-item" href="#" id="applyLastCompletedMondayBtn"><i class="bi bi-rewind"></i> Repeat Last Monday Pattern</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" id="clearPlanBtn"><i class="bi bi-trash"></i> Clear All Items</a></li>
+          </ul>
+        </div>
+
         <button id="applyLastWeekBtn" type="button" style="display: none;" class="btn btn-secondary">
-          Apply Last Week's Plan
+          <i class="bi bi-arrow-repeat"></i> Apply Last Week's Plan
         </button>
       </div>
 
