@@ -770,3 +770,263 @@ export function initializePlannerInteractions() {
   bindPlannerEvents();
   applyPlannerFeatureGate();
 }
+
+// ============================================================
+// exerciseModule — Phase 3B + 3C
+// Dynamically renders the Gym Workout List from /api/exercises
+// and provides in-session set logging via POST /api/student/log-performance
+// ============================================================
+export const exerciseModule = (() => {
+  let _exerciseData = null; // cached API response
+
+  // Body part emoji map
+  const EMOJI = {
+    'Cardio':    '🔁',
+    'Chest':     '💪',
+    'Back':      '🏋️',
+    'Shoulders': '🧱',
+    'Biceps':    '💪',
+    'Triceps':   '💪',
+    'Legs':      '🦵',
+    'Core':      '🧘',
+    'General':   '⚙️'
+  };
+
+  async function fetchExercises() {
+    if (_exerciseData) return _exerciseData;
+    const res = await fetch('/api/exercises');
+    const json = await res.json();
+    if (!json.success) throw new Error('Failed to load exercises');
+    _exerciseData = json.data;
+    return _exerciseData;
+  }
+
+  async function renderWorkoutList() {
+    const accordion = document.getElementById('workoutAccordion');
+    const spinner   = document.getElementById('exerciseListLoading');
+    if (!accordion) return;
+
+    try {
+      const data = await fetchExercises();
+      if (spinner) spinner.style.display = 'none';
+
+      // Clear any hardcoded static content
+      accordion.innerHTML = '';
+
+      const bodyParts = Object.keys(data).sort();
+
+      bodyParts.forEach((bp, idx) => {
+        const collapseID = `collapse-${bp.replace(/\s+/g,'_')}`;
+        const headingID  = `heading-${bp.replace(/\s+/g,'_')}`;
+        const emoji = EMOJI[bp] || '🏋️';
+        const isFirst = idx === 0;
+
+        const rows = data[bp].exercises.map(ex => {
+          const watchLink = ex.videoURL
+            ? `<a href="${ex.videoURL}" target="_blank" rel="noopener">Watch</a>`
+            : `<span class="text-muted">—</span>`;
+          const diffBadge = ex.difficulty === 'Beginner'
+            ? `<span class="badge bg-success bg-opacity-75">${ex.difficulty}</span>`
+            : ex.difficulty === 'Intermediate'
+              ? `<span class="badge bg-warning text-dark">${ex.difficulty}</span>`
+              : `<span class="badge bg-danger">${ex.difficulty}</span>`;
+
+          return `<tr>
+            <td>${ex.name} ${diffBadge}</td>
+            <td>${ex.equipment || '—'}</td>
+            <td>${watchLink}</td>
+            <td>
+              <button class="btn btn-sm btn-primary add-to-plan-btn"
+                data-exercise="${ex.name}"
+                data-exercise-id="${ex.id}">Add</button>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-success log-session-btn"
+                data-exercise-id="${ex.id}"
+                data-exercise-name="${ex.name}"
+                title="Log sets performed today">
+                <i class="bi bi-lightning-fill"></i>
+              </button>
+            </td>
+          </tr>`;
+        }).join('');
+
+        accordion.insertAdjacentHTML('beforeend', `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="${headingID}">
+              <button class="accordion-button ${isFirst ? '' : 'collapsed'}" type="button"
+                data-bs-toggle="collapse" data-bs-target="#${collapseID}"
+                aria-expanded="${isFirst}" aria-controls="${collapseID}">
+                ${emoji} ${bp}
+              </button>
+            </h2>
+            <div id="${collapseID}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
+              aria-labelledby="${headingID}" data-bs-parent="#workoutAccordion">
+              <div class="accordion-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-bordered mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Exercise</th>
+                        <th>Equipment</th>
+                        <th>Video</th>
+                        <th>Add to Plan</th>
+                        <th>Log Sets</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>`);
+      });
+
+      // Bind log-session buttons
+      accordion.querySelectorAll('.log-session-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          openLogModal(
+            parseInt(btn.dataset.exerciseId, 10),
+            btn.dataset.exerciseName
+          );
+        });
+      });
+
+    } catch (err) {
+      console.error('renderWorkoutList error:', err);
+      if (spinner) spinner.innerHTML = '<p class="text-danger">Failed to load exercises.</p>';
+    }
+  }
+
+  // --------------------------------------------------------
+  // In-session set logger modal (Phase 3C)
+  // --------------------------------------------------------
+  function openLogModal(exerciseID, exerciseName) {
+    // Remove existing modal if any
+    document.getElementById('logSessionModal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'logSessionModal';
+    modal.innerHTML = `
+      <div class="modal fade show" tabindex="-1" style="display:block; background:rgba(0,0,0,0.55)">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">⚡ Log Sets — ${exerciseName}</h5>
+              <button type="button" class="btn-close" id="closeLogModal"></button>
+            </div>
+            <div class="modal-body">
+              <div id="logSetRows">
+                ${buildSetRow(1)}
+              </div>
+              <button class="btn btn-sm btn-outline-secondary mt-2" id="addSetRowBtn">
+                + Add Set
+              </button>
+              <div class="mt-3">
+                <label class="form-label small">Overall RPE (1–10)</label>
+                <input type="number" id="logRPE" class="form-control form-control-sm"
+                  min="1" max="10" placeholder="e.g. 7">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary btn-sm" id="closeLogModal2">Cancel</button>
+              <button class="btn btn-success btn-sm" id="submitLogBtn">
+                <i class="bi bi-cloud-upload"></i> Save to Log
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+
+    let setCount = 1;
+
+    modal.querySelector('#addSetRowBtn').addEventListener('click', () => {
+      setCount++;
+      modal.querySelector('#logSetRows').insertAdjacentHTML('beforeend', buildSetRow(setCount));
+    });
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('#closeLogModal').addEventListener('click', closeModal);
+    modal.querySelector('#closeLogModal2').addEventListener('click', closeModal);
+
+    modal.querySelector('#submitLogBtn').addEventListener('click', async () => {
+      const sets = [];
+      modal.querySelectorAll('.set-row').forEach((row, i) => {
+        sets.push({
+          setNumber:    i + 1,
+          repsPerformed: parseInt(row.querySelector('.set-reps').value, 10) || null,
+          weightUsed:    parseFloat(row.querySelector('.set-weight').value) || null,
+        });
+      });
+
+      const rpe = parseInt(modal.querySelector('#logRPE').value, 10) || null;
+      const btn = modal.querySelector('#submitLogBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        const res = await fetch('/api/student/log-performance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exerciseID, sets, rpe })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          closeModal();
+          if (json.newPR) {
+            showPRCelebration(exerciseName);
+          } else {
+            showToast(`✅ ${sets.length} set(s) logged for ${exerciseName}`, 'success');
+          }
+        } else {
+          showToast(json.message || 'Log failed', 'danger');
+          btn.disabled = false;
+          btn.textContent = 'Save to Log';
+        }
+      } catch (err) {
+        console.error('log-performance error:', err);
+        btn.disabled = false;
+        btn.textContent = 'Save to Log';
+      }
+    });
+  }
+
+  function buildSetRow(n) {
+    return `<div class="set-row d-flex align-items-center gap-2 mb-2">
+      <span class="badge bg-secondary">Set ${n}</span>
+      <input type="number" class="form-control form-control-sm set-reps"
+        placeholder="Reps" min="0" style="width:80px">
+      <input type="number" step="0.5" class="form-control form-control-sm set-weight"
+        placeholder="kg" min="0" style="width:90px">
+    </div>`;
+  }
+
+  function showPRCelebration(exerciseName) {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:linear-gradient(135deg,#f59e0b,#ef4444);
+      color:#fff; padding:2rem 3rem; border-radius:1rem;
+      font-size:1.4rem; font-weight:700; z-index:9999;
+      box-shadow:0 20px 60px rgba(0,0,0,0.4); text-align:center;
+      animation: fadeInScale .3s ease;`;
+    el.innerHTML = `🏆 New Personal Record!<br><span style="font-size:1rem;font-weight:400">${exerciseName}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.createElement('div');
+    t.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3`;
+    t.style.cssText = 'z-index:9999; min-width:260px; animation:fadeIn .2s ease';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  return { renderWorkoutList, openLogModal };
+})();
+

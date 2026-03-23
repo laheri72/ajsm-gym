@@ -2136,5 +2136,218 @@ router.get(
 
 // --- End of routes ---
 
+// ============================================================
+// Phase 3B: GET /api/exercises
+// Returns all active exercises grouped by body part.
+// Cached for 10 minutes — exercise list rarely changes.
+// ============================================================
+router.get('/api/exercises', async (req, res) => {
+    const cacheKey = 'exercises_all';
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ success: true, data: cached });
+
+    try {
+        const result = await pool.request().query(`
+            SELECT
+                e.ExerciseID,
+                e.Name,
+                e.Difficulty,
+                e.Equipment,
+                e.VideoURL,
+                bp.Name AS BodyPart,
+                bp.BodyPartID
+            FROM Exercises e
+            JOIN BodyParts bp ON bp.BodyPartID = e.BodyPartID
+            WHERE e.IsActive = 1
+            ORDER BY bp.Name ASC, e.Name ASC;
+        `);
+
+        // Group by body part for easy frontend rendering
+        const grouped = {};
+        for (const row of result.recordset) {
+            if (!grouped[row.BodyPart]) {
+                grouped[row.BodyPart] = { bodyPartID: row.BodyPartID, exercises: [] };
+            }
+            grouped[row.BodyPart].exercises.push({
+                id: row.ExerciseID,
+                name: row.Name,
+                difficulty: row.Difficulty,
+                equipment: row.Equipment || null,
+                videoURL: row.VideoURL || null
+            });
+        }
+
+        cache.set(cacheKey, grouped, 600); // 10-minute cache
+        res.json({ success: true, data: grouped });
+    } catch (err) {
+        console.error('GET /api/exercises error:', err);
+        res.status(500).json({ success: false, message: 'Failed to load exercises' });
+    }
+});
+
+// ============================================================
+// Phase 3F: GET /api/student/performance/history/:exerciseID
+// Returns week-by-week progressive overload data for one exercise.
+// Shows max weight, total volume, and avg RPE per calendar week.
+// ============================================================
+router.get('/api/student/performance/history/:exerciseID', async (req, res) => {
+    const { TR } = req.session.user || {};
+    if (!TR) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const exerciseID = parseInt(req.params.exerciseID, 10);
+    if (isNaN(exerciseID)) return res.status(400).json({ success: false, message: 'Invalid exerciseID' });
+
+    try {
+        const request = pool.request();
+        request.input('TR', sql.Int, TR);
+        request.input('ExerciseID', sql.Int, exerciseID);
+
+        const result = await request.query(`
+            SELECT
+                YEAR(CompletedAt)                       AS Year,
+                DATEPART(ISO_WEEK, CompletedAt)         AS WeekNum,
+                MIN(CompletedAt)                        AS WeekStart,
+                MAX(WeightUsed)                         AS MaxWeight,
+                SUM(ISNULL(WeightUsed,0) * ISNULL(RepsPerformed,0)) AS TotalVolume,
+                SUM(RepsPerformed)                      AS TotalReps,
+                AVG(CAST(RPE AS FLOAT))                 AS AvgRPE,
+                COUNT(CASE WHEN IsPR = 1 THEN 1 END)    AS PRsThisWeek
+            FROM PerformanceLogs
+            WHERE TR = @TR
+              AND ExerciseID = @ExerciseID
+            GROUP BY YEAR(CompletedAt), DATEPART(ISO_WEEK, CompletedAt)
+            ORDER BY Year ASC, WeekNum ASC;
+        `);
+
+        // Also fetch exercise name
+        const exResult = await pool.request()
+            .input('ExerciseID', sql.Int, exerciseID)
+            .query(`
+                SELECT e.Name, bp.Name AS BodyPart
+                FROM Exercises e
+                JOIN BodyParts bp ON bp.BodyPartID = e.BodyPartID
+                WHERE e.ExerciseID = @ExerciseID
+            `);
+
+        const exercise = exResult.recordset[0] || { Name: 'Unknown', BodyPart: '' };
+
+        res.json({
+            success: true,
+            exercise: { id: exerciseID, name: exercise.Name, bodyPart: exercise.BodyPart },
+            history: result.recordset
+        });
+    } catch (err) {
+        console.error('Performance history error:', err);
+        res.status(500).json({ success: false, message: 'Failed to load performance history' });
+    }
+});
+
+// ============================================================
+// Phase 3C: POST /api/student/log-performance
+// Logs actual sets performed during a session → PerformanceLogs.
+// Requires student to be checked-in (TrainingPlan row must exist today).
+// Auto-detects Personal Records (IsPR flag).
+// ============================================================
+router.post('/api/student/log-performance', async (req, res) => {
+    const { TR, Branch, Gender } = req.session.user || {};
+    if (!TR || !Branch || !Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { plannedID, exerciseID, sets, rpe } = req.body;
+
+    if (!exerciseID || !Array.isArray(sets) || sets.length === 0) {
+        return res.status(400).json({ success: false, message: 'exerciseID and sets[] are required' });
+    }
+
+    try {
+        // 1. Find today's TrainingPlan (check-in header)
+        const todayStr = moment.tz('Asia/Kolkata').format('YYYY-MM-DD');
+        const planResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('Today', sql.Date, todayStr)
+            .query(`
+                SELECT TOP 1 PlanID FROM TrainingPlan
+                WHERE TR = @TR
+                  AND CAST(CreatedAt AS DATE) = @Today
+                ORDER BY CreatedAt DESC
+            `);
+
+        if (planResult.recordset.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No active check-in found for today. Please check in first.'
+            });
+        }
+
+        const planID = planResult.recordset[0].PlanID;
+
+        // 2. Get current PR for this exercise (max weight ever logged)
+        const prResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('ExerciseID', sql.Int, exerciseID)
+            .query(`
+                SELECT ISNULL(MAX(WeightUsed), 0) AS CurrentPR
+                FROM PerformanceLogs
+                WHERE TR = @TR AND ExerciseID = @ExerciseID
+            `);
+
+        let currentPR = parseFloat(prResult.recordset[0]?.CurrentPR || 0);
+        let newPRDetected = false;
+
+        // 3. Insert each set
+        for (const set of sets) {
+            const { setNumber, repsPerformed, weightUsed, durationMinutes } = set;
+            const weight = parseFloat(weightUsed || 0);
+            const isPR = weight > 0 && weight > currentPR ? 1 : 0;
+
+            if (isPR) {
+                currentPR = weight; // update PR baseline for subsequent sets in this session
+                newPRDetected = true;
+            }
+
+            const request = pool.request();
+            request.input('PlanID',           sql.Int,           planID);
+            request.input('PlannedID',        sql.Int,           plannedID || null);
+            request.input('ExerciseID',       sql.Int,           exerciseID);
+            request.input('SetNumber',        sql.Int,           setNumber || 1);
+            request.input('RepsPerformed',    sql.Int,           repsPerformed || null);
+            request.input('WeightUsed',       sql.Decimal(10,2), weight || null);
+            request.input('DurationMinutes',  sql.Int,           durationMinutes || null);
+            request.input('RPE',              sql.Int,           rpe || null);
+            request.input('IsPR',             sql.Bit,           isPR);
+            request.input('Branch',           sql.VarChar(7),    Branch);
+            request.input('Gender',           sql.VarChar(6),    Gender);
+            request.input('TR',               sql.Int,           TR);
+
+            await request.query(`
+                INSERT INTO PerformanceLogs
+                    (PlanID, PlannedID, ExerciseID, SetNumber, RepsPerformed,
+                     WeightUsed, DurationMinutes, RPE, IsPR, Branch, Gender, TR)
+                VALUES
+                    (@PlanID, @PlannedID, @ExerciseID, @SetNumber, @RepsPerformed,
+                     @WeightUsed, @DurationMinutes, @RPE, @IsPR, @Branch, @Gender, @TR)
+            `);
+        }
+
+        // 4. Bust caches
+        cache.del(`workout_${TR}`);
+        cache.del(`planner_insights_${TR}`);
+
+        res.json({
+            success: true,
+            message: sets.length + ' set(s) logged successfully.',
+            newPR: newPRDetected,
+            planID
+        });
+
+    } catch (err) {
+        console.error('log-performance error:', err);
+        res.status(500).json({ success: false, message: 'Failed to log performance' });
+    }
+});
+
+
+
 module.exports = router; // Export the router
 

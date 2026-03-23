@@ -831,7 +831,12 @@
           <div class="tips-accordion-container">
             <div class="container my-5">
               <h2 class="text-center mb-4">🏋️‍♀️ Gym Workout List</h2>
+              <div id="exerciseListLoading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="text-muted mt-2 small">Loading exercises...</p>
+              </div>
               <div class="accordion" id="workoutAccordion">
+                <!-- Dynamically populated by exerciseModule.renderWorkoutList() -->
 
                 <!-- 🔁 CARDIO -->
                 <div class="accordion-item">

@@ -10,21 +10,16 @@ import { showXpInfoModal } from './student-modules/gamification.js';
 import { navigateToSection, routeFromHash } from './student-modules/navigation.js';
 import { handleWeightLogSubmit, handleWeightLogDelete, loadFitnessProgress, loadWeightLogHistory } from './student-modules/progression.js';
 import { initializeWeekPicker } from './student-modules/attendance.js';
-import {
-    savePlan,
-    clearPlanner,
-    applyLastWeeksPlan,
-    openQuickAddDialog,
-    initializePlannerInteractions,
-    autoFillWeek,
-    reuseBestWeekday,
-    applyLastCompletedMonday,
-    smartFillToday
-} from './student-modules/planner.js';
+
 import { loadStudentPlans, loadTrainingAnalytics, loadHistoryAnalytics, loadWorkoutConsistency, loadOverviewAnalytics, applyChartTheme } from './student-modules/analysis.js';
 import { loadLeaveData, handleLeaveSubmit, handleLeaveCancel } from './student-modules/leaves.js';
 import { loadBodyPartTips } from './student-modules/tips.js';
 import { initializeFitness, showFitnessTab } from './student-modules/fitness.js';
+import {
+    savePlan, clearPlanner, applyLastWeeksPlan, openQuickAddDialog,
+    initializePlannerInteractions, autoFillWeek, reuseBestWeekday,
+    applyLastCompletedMonday, smartFillToday, exerciseModule
+} from './student-modules/planner.js';
 
 /* =================================================================== */
 /* MOBILE NAVBAR COLLAPSE HANDLER
