@@ -31,6 +31,7 @@ Endpoints for student progress, weight tracking, and workout analytics.
 | GET | `/api/student/analytics/overview` | Student | Average workout duration and weekly total hours. | None |
 | GET | `/api/student/analytics/history` | Student | Recent session history (timestamps and duration). | None |
 | GET | `/api/student/workout-calendar` | Student | 6-month workout consistency dates for heatmap. | None |
+| POST | `/api/student/set-goal` | Student | Update student's fitness goal in `TestMaster`. | `{ goal }` |
 
 ## 📅 Workout Planner (V2) & Logs (`routes/stu-routes.js` & `routes/staff.js`)
 Endpoints for managing weekly workout schedules and daily exercise logs.
@@ -74,9 +75,9 @@ Endpoints for gym operations, attendance, enrollment, and leave management.
 | POST | `/api/checkout` | Trainer | Mark a student's checkout and award XP for duration. | `{ TR }` |
 | GET | `/api/active-sessions` | Trainer | Fetch all students currently checked in (not checked out). | None |
 | GET | `/api/verify-tr/:tr` | Trainer | Verify a student TR is active and belongs to the section. | None |
-| GET | `/api/waiting-list` | Staff | Fetch the waiting list (includes PreferredSlotID and Goal) for the current section. | None |
-| POST | `/api/add-student` | Staff | Add/preview a student in `TestMaster` and add to `WaitingList`. | `{ TR, ITS, Name, Darajah, SlotID, Goal, preview }` |
-| POST | `/api/assign-student-slot` | Staff | Activate a waiting list student and assign a time slot. | `{ WaitingID, SlotID }` |
+| GET | `/api/recent-activations` | Staff | Fetch students activated today in IST. | None |
+| POST | `/api/add-student` | Staff | Register and directly activate a student in `TestMaster`. | `{ TR, ITS, Name, Darajah, SlotID, Goal, ForceActive, preview }` |
+| POST | `/api/assign-student-slot` | Staff | Update an active student's time slot. | `{ WaitingID, SlotID }` |
 | GET | `/api/weekly-attendance/:weekId` | Staff | Fetch a grid of attendance for a specific week. | None |
 | PUT | `/api/attendance-record` | Staff | Manually update attendance/leave status for a student. | `{ TR, CreatedAt, IsPresent, OnLeave }` |
 | POST | `/api/attendance/bulk-leave` | Staff | Mark all active students as "On Leave" for a specific date. | `{ date }` |
@@ -91,6 +92,7 @@ High-level administrative and system configuration endpoints.
 | GET | `/api/admin/users/:branch` | Admin | Fetch all users (Staff, Trainers, Evaluators) for a branch. | None |
 | POST | `/api/admin/add-user` | Admin | Create a new system user account. | `{ username, gender, role, branch }` |
 | DELETE | `/api/admin/delete-user/:username` | Admin | Delete a user account from `PassBank`. | None |
+| PUT | `/api/admin/revoke-student/:tr` | Admin | Mark a student as 'Revoked' and clear their slot. | None |
 | PUT | `/api/admin/reset-testmaster-password/:tr` | Admin | Reset a student's password to their TR/ITS. | None |
 | POST | `/api/admin/batches` | Admin | Create a new active evaluation batch. | `{ BatchName, Gender }` |
 | GET | `/api/admin/evaluation-logs` | Admin | Audit log of all evaluator comments. | `?gender=Male` |

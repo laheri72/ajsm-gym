@@ -51,6 +51,8 @@ Logic is predominantly co-located with route handlers in `routes/`. Key features
 - **Gamification Engine (`routes/gamification.js`):** Calculates XP, levels, and awards achievements (Consistency King, Social Butterfly, etc.) based on attendance and workouts.
 - **Fitness Evaluation:** Experts (`Evaluators`) provide categorized comments on trainer-logged fitness tests.
 - **Attendance Management:** Handled in `routes/staff.js`, including "On Leave" bulk updates and manual attendance correction.
+- **Direct Entry Workflow:** Student registration bypasses the legacy `WaitingList` table. Students are activated directly in `TestMaster` upon entry, with optional "Waiting for Slot" support.
+- **Student Revocation:** Admin-level student removal uses a "Revoke" status instead of permanent deletion to preserve historical analytics and records.
 - **Workout Planner (V2):** Students compose weekly plans via a structured day-by-day UI. Plans are persisted in the normalized `WorkoutPrograms → WorkoutWeeks → WorkoutDays → PlannedExercises` tables. Exercises are fetched dynamically via `/api/exercises` from the master `Exercises` table (98 entries with Video URLs). Planner insights (adherence, weekday history, duration baseline) are derived from `AttendanceWeek`, `WorkoutDays`, and `TrainingPlan/TrainingLog`.
 - **Performance Logging (Phase 3C):** Students can log set-by-set execution (reps, weight, RPE) for any exercise in the master list. This data is stored in `PerformanceLogs`, which feeds into the Personal Record (PR) engine for real-time achievement notifications.
 - **Planner Rollout Control:** Student session payload includes `FeatureFlags.planner_v2_ui` to support phased rollout by TR/environment flags.

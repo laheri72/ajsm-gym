@@ -14,7 +14,9 @@ The system supports several user roles:
 - **Workout Planner V2 Core:** Fully transitioned from legacy JSON-based planning to a normalized 6-table relational schema for granular tracking.
 - **Dynamic Exercise Library:** Replaced 800+ lines of static HTML with a cached, API-driven exercise accordion including video tutorial links.
 - **In-Session Logging (Phase 3C):** Launched real-time performance logging, allowing students to record sets, reps, and weight during their sessions.
-- **PR Detection Engine:** Automated backend logic to detect and flag Personal Records (PRs) based on historical performance data.
+- **Direct Entry Workflow:** Simplified student registration by removing the "Waiting List" holding pattern in favor of direct activation and slot assignment.
+- **Data Integrity (Revocation):** Replaced permanent student deletion with a "Revoke" status, preserving historical data while disabling active access.
+- **Gym Leaderboards:** Integrated live Achievement and Performance leaderboards into both student and staff dashboards.
 
 ## Tech Stack
 ### Backend

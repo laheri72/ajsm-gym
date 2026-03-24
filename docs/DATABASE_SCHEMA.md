@@ -26,7 +26,7 @@ The central identity table for Students.
 - `Password` (NVARCHAR(100)) - Hashed with bcrypt. NULL for first-time login.
 - `FitnessLevel` (INT) - Current gamification level (starts at 1).
 - `CurrentXP` (INT) - Current XP towards next level.
-- `Status` (VARCHAR(8)) - 'Active', 'Inactive'.
+- `Status` (VARCHAR(8)) - 'Active', 'Inactive', 'Revoked'.
 - `SlotID` (INT, FK) -> `Slots.SlotID`
 - `JoinedAt` (DATETIME)
 - `BestStreak` (INT) - Student's personal best workout streak.
@@ -65,17 +65,20 @@ Defines the ISO week boundaries for attendance tracking.
 - `WeekStartDate` (DATE)
 - `WeekEndDate` (DATE)
 
-### `WaitingList`
+### `WaitingList` (Legacy Support)
+> **Note:** As of March 2026, the system has shifted to a **Direct Entry** model. Students are registered and activated directly in `TestMaster`. This table remains for historical data and backward compatibility.
 Students waiting to be assigned to a gym slot.
 - `WaitingID` (INT, PK, IDENTITY)
-- `LeaveStartDate` (DATE)
-- `LeaveEndDate` (DATE)
-- `Reason` (NVARCHAR(500))
-- `Status` (VARCHAR(10)) - 'Pending', 'Approved', 'Rejected'.
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `Name` (NVARCHAR(100))
+- `Darajah` (VARCHAR(15))
+- `Goal` (VARCHAR(50))
+- `Branch` (VARCHAR(7))
+- `Gender` (VARCHAR(6))
 - `RequestedAt` (DATETIME)
-- `ReviewedBy` (VARCHAR(50))
-- `ReviewedAt` (DATETIME)
-- `Remarks` (NVARCHAR(500))
+- `SlotID` (INT, FK) -> `Slots.SlotID`
+- `PreferredSlotID` (INT, FK) -> `Slots.SlotID`
+
 
 ## Fitness & Medical
 
