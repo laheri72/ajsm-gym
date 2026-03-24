@@ -1,10 +1,10 @@
-import { setStudentAuthData, setStudentHeight, isPlannerDirty, setStudentGoal, studentTR } from './state.js';
+import { setStudentAuthData, setStudentHeight, isPlannerDirty, setStudentGoal, studentTR, studentGoal } from './state.js';
 import { showLeaderboard, updateXPBarUI, showLevelUpAnimation } from './gamification.js';
 import { loadTip } from './tips.js';
 import { loadWeeklyPlan } from './planner.js';
 import { loadDashboardStats } from './dashboard.js';
 import { loadCurrentWeightStat } from './progression.js';
-import { initializeHeaderPopovers } from './new-header.js'; // <-- This is crucial
+import { initializeHeaderPopovers } from './new-header.js'; 
 
 /**
  * Helper to get the current student TR
@@ -79,6 +79,9 @@ export async function getStudentSession() {
     setStudentGoal(stu.Goal);
     // --- End State Set ---
 
+    // --- Update Goal Displays ---
+    updateGoalUI(stu.Goal);
+
     // --- XP & Level ---
     document.getElementById('xpBarText').textContent = 'Loading...';
     const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
@@ -91,27 +94,7 @@ export async function getStudentSession() {
     // 1. Set the visible student name
     document.getElementById('studentName').innerText = stu.Name || 'Student';
     
-    const title =
-      stu.Gender?.toLowerCase() === 'male' ? 'Talabat'
-      : stu.Gender?.toLowerCase() === 'female' ? 'Talebaat'
-      : 'Student';
-    
-    // Create the full popover content with all 4 info items
-    const popoverContent = `
-        <p class="mb-1"><strong>Member Since:</strong> ${memberSinceDate}</p>
-        <p class="mb-1"><strong>Branch:</strong> ${stu.Branch} | ${title}</p>
-        <hr class="my-2">
-        <p class="mb-1"><strong>Goal:</strong> ${stu.Goal || 'N/A'}</p>
-        <p class="mb-1"><strong>Slot:</strong> ${stu.SlotName || 'N/A'}</p>
-        <p class="mb-1"><strong>Class:</strong> ${stu.Darajah || 'N/A'}</p>
-        <p class="mb-0"><strong>TR:</strong> ${stu.TR}</p>
-    `;
-    
-    const brandTrigger = document.getElementById('brand-info-trigger');
-    if (brandTrigger) {
-        brandTrigger.setAttribute('data-bs-content', popoverContent);
-    }
-    // --- END OF FIX ---
+    refreshHeaderPopover(stu, memberSinceDate);
 
     // --- Password Check ---
     if (stu.HasLoggedInBefore === false) {
@@ -135,7 +118,113 @@ export async function getStudentSession() {
   }
 }
 
-// --- (rest of auth.js file) ---
+function refreshHeaderPopover(stu, memberSince) {
+    const title =
+      stu.Gender?.toLowerCase() === 'male' ? 'Talabat'
+      : stu.Gender?.toLowerCase() === 'female' ? 'Talebaat'
+      : 'Student';
+    
+    const popoverContent = `
+        <p class="mb-1"><strong>Member Since:</strong> ${memberSince}</p>
+        <p class="mb-1"><strong>Branch:</strong> ${stu.Branch} | ${title}</p>
+        <hr class="my-2">
+        <p class="mb-1"><strong>Goal:</strong> ${stu.Goal || 'N/A'}</p>
+        <p class="mb-1"><strong>Slot:</strong> ${stu.SlotName || 'N/A'}</p>
+        <p class="mb-1"><strong>Class:</strong> ${stu.Darajah || 'N/A'}</p>
+        <p class="mb-0"><strong>TR:</strong> ${stu.TR}</p>
+    `;
+    
+    const brandTrigger = document.getElementById('brand-info-trigger');
+    if (brandTrigger) {
+        brandTrigger.setAttribute('data-bs-content', popoverContent);
+        // Re-init popover if it already exists
+        const instance = bootstrap.Popover.getInstance(brandTrigger);
+        if (instance) {
+            instance.setContent({ '.popover-body': popoverContent });
+        }
+    }
+}
+
+function updateGoalUI(goal) {
+    const displayGoalText = document.getElementById('displayGoalText');
+    if (displayGoalText) {
+        displayGoalText.textContent = goal || 'Not Set';
+    }
+}
+
+export async function handleGoalUpdate() {
+    const goals = [
+        'General Fitness', 'Weight Loss', 'Muscle Gain', 
+        'Strength', 'Endurance', 'Flexibility', 
+        'Energy Boost', 'Stress Relief', 'Overall Health'
+    ];
+
+    const { value: newGoal } = await Swal.fire({
+        title: 'Select Your Fitness Goal',
+        input: 'select',
+        inputOptions: goals.reduce((acc, g) => ({ ...acc, [g]: g }), {}),
+        inputValue: studentGoal || 'General Fitness',
+        showCancelButton: true,
+        inputPlaceholder: 'Select a goal',
+        confirmButtonText: 'Update Goal',
+        confirmButtonColor: 'var(--primary)',
+        inputValidator: (value) => {
+            return new Promise((resolve) => {
+                if (value) resolve();
+                else resolve('You must select a goal');
+            });
+        }
+    });
+
+    if (newGoal) {
+        try {
+            const res = await fetch('/api/student/set-goal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ goal: newGoal })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                setStudentGoal(newGoal);
+                updateGoalUI(newGoal);
+                
+                // Refresh personal tips based on new goal
+                loadTip(newGoal);
+
+                // Update popover content
+                const brandTrigger = document.getElementById('brand-info-trigger');
+                if (brandTrigger) {
+                    const stuData = {
+                        Name: document.getElementById('studentName').innerText,
+                        TR: studentTR,
+                        Goal: newGoal,
+                        Branch: 'Current', // placeholder or get from state
+                        Gender: 'Student', // placeholder or get from state
+                        SlotName: 'Current', // placeholder or get from state
+                        Darajah: 'Current' // placeholder or get from state
+                    };
+                    // Instead of complex logic, just re-fetch session or update string partially
+                    // Quickest is to re-trigger getStudentSession or just inform user
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Goal Updated!',
+                        text: 'Your dashboard has been personalized for your new goal.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload(); // Hard refresh to sync everything easily
+                    });
+                }
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (err) {
+            Swal.fire('Error', err.message || 'Failed to update goal', 'error');
+        }
+    }
+}
 
 export function handleInitialPasswordSet() {
      const form = document.getElementById('setPasswordForm');
@@ -194,7 +283,6 @@ export async function logout(e) {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
             confirmButtonText: 'Logout Anyway',
             cancelButtonText: 'Cancel'
         });

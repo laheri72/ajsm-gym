@@ -5,7 +5,7 @@ const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 // Import all functional modules
 import { initializeHeaderPopovers } from './student-modules/new-header.js';
-import { getStudentSession, handleInitialPasswordSet, logout } from './student-modules/auth.js';
+import { getStudentSession, handleInitialPasswordSet, logout, handleGoalUpdate } from './student-modules/auth.js';
 import { showXpInfoModal } from './student-modules/gamification.js';
 import { navigateToSection, routeFromHash } from './student-modules/navigation.js';
 import { handleWeightLogSubmit, handleWeightLogDelete, loadFitnessProgress, loadWeightLogHistory } from './student-modules/progression.js';
@@ -46,6 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
         await closeMobileMenu();
         logout(e);
     });
+
+    document.getElementById('updateGoalBtn')?.addEventListener('click', handleGoalUpdate);
+    document.getElementById('snapshotUpdateGoalBtn')?.addEventListener('click', handleGoalUpdate);
 
     // --- Theme Toggle ---
     const rootEl = document.documentElement;

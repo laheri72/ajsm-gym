@@ -1154,6 +1154,33 @@ router.get(
 
 //---🏋️ Weight & Height Logging (Progression Tab)
 
+router.post('/api/student/set-goal', async (req, res) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const { TR } = req.session.user;
+    const { goal } = req.body;
+
+    if (!goal) {
+        return res.status(400).json({ success: false, message: 'Goal is required' });
+    }
+
+    try {
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('Goal', sql.NVarChar(50), goal)
+            .query('UPDATE TestMaster SET Goal = @Goal WHERE TR = @TR');
+        
+        // Update session user object as well
+        req.session.user.Goal = goal;
+        
+        res.json({ success: true, message: 'Goal updated successfully' });
+    } catch (err) {
+        console.error("Error updating goal:", err);
+        res.status(500).json({ success: false, message: 'Failed to update goal' });
+    }
+});
+
 router.post('/api/student/log-weight', async (req, res) => {
     if (!req.session.user?.TR)
         return res.status(401).json({ success: false, message: 'Unauthorized' });

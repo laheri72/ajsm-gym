@@ -124,6 +124,12 @@
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
+              <button id="updateGoalBtn" class="dropdown-item" type="button">
+                <i class="bi bi-target"></i> Update Fitness Goal
+              </button>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
               <button id="logoutBtn" class="dropdown-item" type="button">
                 <i class="bi bi-box-arrow-right"></i> Logout
               </button>
@@ -622,7 +628,7 @@
         <div class="tab-pane fitness-tab-pane active" id="fit-tab-overview">
           <div class="row g-4">
             <div class="col-md-6">
-              <div class="stat-module">
+              <div class="stat-module mb-4">
                 <h4><i class="bi bi-file-medical"></i> Medical History</h4>
                 <div class="d-flex justify-content-end mb-2">
                   <button class="btn btn-sm btn-outline-secondary" id="editMedicalBtn">Edit</button>
@@ -654,6 +660,17 @@
                     <button type="button" class="btn btn-sm btn-primary" id="saveMedicalBtn">Save</button>
                   </div>
                 </form>
+              </div>
+
+              <div class="stat-module">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h4 class="mb-0"><i class="bi bi-target"></i> Your Fitness Goal</h4>
+                  <button class="btn btn-sm btn-outline-primary" id="snapshotUpdateGoalBtn">Update</button>
+                </div>
+                <div id="current-goal-display" class="p-3 bg-light rounded-3 text-center">
+                  <span class="fs-5 fw-bold text-primary" id="displayGoalText">Loading...</span>
+                </div>
+                <p class="small text-muted mt-2 mb-0">Your workouts and tips are personalized based on this goal.</p>
               </div>
             </div>
             <div class="col-md-6">
