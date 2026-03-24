@@ -31,8 +31,9 @@
         }
     </script>
     
-<link rel="stylesheet" href="/assets/css/bootstrap.min.css">
-<link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="/assets/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/dashboard.css">
@@ -106,7 +107,40 @@
         <main class="main-content">
             <div class="content">
                 <section class="card" style="padding: 20px; margin-bottom: 20px;">
-                    <div class="container mt-5">
+                    <div class="container mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="mb-0">🏆 Gym Leaderboards</h2>
+                            <div class="text-muted small">Updated live based on activity</div>
+                        </div>
+                        
+                        <div class="row g-4">
+                            <!-- Achievement Leaderboard -->
+                            <div class="col-lg-6">
+                                <div class="leaderboard-container card h-100 p-3 border-0 shadow-sm" style="background: #f8f9fa;">
+                                    <h4 class="mb-3 text-center"><i class="fas fa-medal text-warning"></i> Achievement Hall of Fame</h4>
+                                    <p class="text-muted small text-center">Top 10 members by total badges earned</p>
+                                    <ol id="achievementLeaderboardList" class="leaderboard-list">
+                                        <li class="loading">Loading Leaderboard...</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <!-- Today's Leaderboard -->
+                            <div class="col-lg-6">
+                                <div class="leaderboard-container card h-100 p-3 border-0 shadow-sm" style="background: #f8f9fa;">
+                                    <h4 class="mb-3 text-center"><i class="fas fa-fire text-danger"></i> Today's Top Performers</h4>
+                                    <p class="text-muted small text-center">Top performers based on yesterday's activity</p>
+                                    <ol id="todayLeaderboardList" class="leaderboard-list">
+                                        <li class="loading">Loading...</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card" style="padding: 20px; margin-bottom: 20px;">
+                    <div class="container mt-4">
                         <h2>📅 Training Plan Analytics</h2>
                         <div class="stat-cards-container mb-5">
                             <div class="stat-card">

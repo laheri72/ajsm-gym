@@ -32,6 +32,10 @@ async function loadAllProgressData() {
         renderTrainingPlansTable(data.allTrainingPlans); // Pass data directly
         renderEngagementTable(data.engagementReport);   // Pass data directly
 
+        // --- NEW: Load Leaderboards ---
+        loadAchievementLeaderboard();
+        loadTodayLeaderboard();
+
     } catch (err) {
         console.error('Failed to load progress page data:', err);
         Swal.fire('Error', `Could not load page data: ${err.message}`, 'error');
@@ -112,7 +116,7 @@ function toggleView(viewName) {
 
 // Populates all dropdown filters on the page with unique IDs
 function populateFilters() {
-    const goals = ['Muscle Gain', 'Fat Loss', 'Increase Fitness Level'];
+    const goals = ['General Fitness', 'Weight Loss', 'Muscle Gain', 'Strength', 'Endurance', 'Flexibility', 'Energy Boost', 'Stress Relief', 'Overall Health'];
     const bodyParts = ['Cardio', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Core'];
     
     // ✅ Use the new unique ID for the training summary filter
@@ -360,4 +364,67 @@ function exportTable(tableInstance, fileName) {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
     XLSX.writeFile(workbook, fileName);
+}
+
+// --- NEW: Leaderboard Functions ---
+
+async function loadAchievementLeaderboard() {
+    const listElement = document.getElementById('achievementLeaderboardList');
+    if (!listElement) return;
+    
+    try {
+        const res = await fetch('/api/achievements/leaderboard', { credentials: 'include' });
+        const result = await res.json();
+        
+        if (result.success && result.data.length > 0) {
+            listElement.innerHTML = '';
+            const medals = ['🥇', '🥈', '🥉'];
+            
+            result.data.forEach((player, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="rank">${medals[index] || index + 1}</div>
+                    <div class="name">${player.Name}</div>
+                    <div class="score">${player.TotalAchievements} Badges</div>
+                `;
+                listElement.appendChild(li);
+            });
+        } else {
+            listElement.innerHTML = '<li class="loading text-muted py-4">No leaderboard data available yet.</li>';
+        }
+    } catch (err) {
+        console.error("Could not load achievement leaderboard:", err);
+        listElement.innerHTML = '<li class="loading text-danger py-4">Error loading leaderboard.</li>';
+    }
+}
+
+async function loadTodayLeaderboard() {
+    const list = document.getElementById('todayLeaderboardList');
+    if (!list) return;
+    
+    try {
+        const res = await fetch('/api/leaderboard');
+        const result = await res.json();
+
+        if (result.success && result.data.length > 0) {
+            const medals = ['🥇', '🥈', '🥉'];
+            list.innerHTML = '';
+
+            result.data.forEach((student, index) => {
+                const medal = medals[index] || index + 1;
+                const li = `
+                    <li>
+                        <span class="rank">${medal}</span>
+                        <span class="name">${student.Name}</span>
+                        <span class="score">${student.Score || 0} mins</span>
+                    </li>`;
+                list.insertAdjacentHTML('beforeend', li);
+            });
+        } else {
+            list.innerHTML = '<li class="loading text-muted py-4">No performance data available for today.</li>';
+        }
+    } catch (err) {
+        console.error('Error loading today leaderboard:', err);
+        list.innerHTML = '<li class="loading text-danger py-4">Error loading data.</li>';
+    }
 }

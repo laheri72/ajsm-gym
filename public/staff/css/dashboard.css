@@ -1548,3 +1548,58 @@ body.nav-open .nav-overlay {
     margin-top: -4px;
     display: block;
 }
+
+/* =========================================================
+   LEADERBOARD STYLES (MATCHING STUDENT DASHBOARD)
+   ========================================================= */
+.leaderboard-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.leaderboard-list li {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    transition: transform 0.2s ease;
+}
+
+.leaderboard-list li:hover {
+    transform: translateX(5px);
+}
+
+.leaderboard-list li .rank {
+    font-size: 1.2rem;
+    font-weight: 700;
+    width: 40px;
+    text-align: center;
+    margin-right: 15px;
+    color: var(--primary);
+}
+
+.leaderboard-list li .name {
+    flex-grow: 1;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--dark);
+}
+
+.leaderboard-list li .score {
+    font-weight: 700;
+    color: var(--secondary);
+    background: rgba(76, 175, 80, 0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.leaderboard-list li.loading {
+    justify-content: center;
+    background: transparent;
+    box-shadow: none;
+}
