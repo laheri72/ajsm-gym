@@ -1308,6 +1308,39 @@ const result = await request.query(`
 // ----------- ➕ Student Entry & Waiting List Routes
 //======================================================
 
+router.get('/api/recent-activations', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ error: "Unauthorized: No session user" });
+    }
+
+    const { Branch, Gender } = req.session.user;
+    
+    // Define the boundaries for "Today" in IST
+    const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day').utc().toDate();
+
+    const result = await pool.request()
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .input('TodayStart', sql.DateTime, startOfTodayIST)
+      .query(`
+        SELECT M.TR, M.Name, M.Darajah, M.JoinedAt, M.Goal, S.SlotName
+        FROM TestMaster M
+        LEFT JOIN Slots S ON M.SlotID = S.SlotID
+        WHERE M.Branch = @Branch 
+          AND M.Gender = @Gender 
+          AND M.Status = 'Active'
+          AND M.JoinedAt >= @TodayStart
+        ORDER BY M.JoinedAt DESC
+      `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error("Error fetching recent activations:", err);
+    res.status(500).json({ error: "Failed to load recent activations" });
+  }
+});
+
 router.get('/api/waiting-list', async (req, res) => {
   try {
     // Ensure user is logged in
@@ -1335,7 +1368,7 @@ router.get('/api/waiting-list', async (req, res) => {
   }
 });
 
-// ➕ Add Student (always goes to WaitingList)
+// ➕ Add Student (Direct Entry / Activation)
 router.post('/api/add-student', async (req, res) => {
     try {
         if (!req.session.user) {
@@ -1370,7 +1403,7 @@ router.post('/api/add-student', async (req, res) => {
         if (preview) {
             if (student) {
                 if (student.Status === 'Active') {
-                     return res.status(400).json({ success: false, message: 'Student already assigned to gym' });
+                     return res.status(400).json({ success: false, message: 'Student is already Active' });
                 }
                 return res.json({
                     success: true,
@@ -1381,6 +1414,8 @@ router.post('/api/add-student', async (req, res) => {
                  return res.status(404).json({ success: false, message: 'Student not found in TestMaster, need input' });
             }
         }
+
+        const slotIdInt = SlotID ? parseInt(SlotID, 10) : null;
 
         // 2️⃣ If student does not exist, insert them as new
         if (!student) {
@@ -1395,43 +1430,36 @@ router.post('/api/add-student', async (req, res) => {
                 .input('Darajah', sql.NVarChar(50), Darajah)
                 .input('Branch', sql.VarChar(7), Branch)
                 .input('Gender', sql.VarChar(6), Gender)
+                .input('Status', sql.VarChar(8), slotIdInt ? 'Active' : 'Inactive')
+                .input('SlotID', sql.Int, slotIdInt)
+                .input('Goal', sql.VarChar(50), Goal || null)
                 .query(`
-                    INSERT INTO TestMaster (TR, ITS, Name, Darajah, Branch, Gender, Status)
-                    VALUES (@TR, @ITS, @Name, @Darajah, @Branch, @Gender, 'Inactive')
+                    INSERT INTO TestMaster (TR, ITS, Name, Darajah, Branch, Gender, Status, SlotID, JoinedAt, Goal)
+                    VALUES (@TR, @ITS, @Name, @Darajah, @Branch, @Gender, @Status, @SlotID, 
+                            CASE WHEN @Status = 'Active' THEN GETDATE() ELSE NULL END, @Goal)
                 `);
-            
-            student = { Name, Darajah, Status: 'Inactive' };
+        } else {
+            // Update existing student
+            await pool.request()
+                .input('TR', sql.Int, trInt)
+                .input('Status', sql.VarChar(8), slotIdInt ? 'Active' : student.Status)
+                .input('SlotID', sql.Int, slotIdInt || null)
+                .input('Goal', sql.VarChar(50), Goal || null)
+                .input('Name', sql.NVarChar(100), Name || student.Name)
+                .input('Darajah', sql.NVarChar(50), Darajah || student.Darajah)
+                .query(`
+                    UPDATE TestMaster 
+                    SET Status = @Status, 
+                        SlotID = @SlotID, 
+                        JoinedAt = CASE WHEN @Status = 'Active' AND JoinedAt IS NULL THEN GETDATE() ELSE JoinedAt END,
+                        Goal = @Goal,
+                        Name = @Name,
+                        Darajah = @Darajah
+                    WHERE TR = @TR
+                `);
         }
 
-        // 3️⃣ Reject if already active gym member
-        if (student.Status === 'Active') {
-            return res.status(400).json({ success: false, message: 'Student already assigned to gym' });
-        }
-
-        // 4️⃣ Prevent duplicate waiting list entry
-        const waitingCheck = await pool.request()
-            .input('TR', sql.Int, trInt)
-            .query(`SELECT 1 FROM WaitingList WHERE TR = @TR`);
-
-        if (waitingCheck.recordset.length > 0) {
-            return res.status(400).json({ success: false, message: 'Student already in waiting list' });
-        }
-
-        // 5️⃣ Insert into WaitingList
-        await pool.request()
-            .input('TR', sql.Int, trInt)
-            .input('Name', sql.NVarChar(100), student.Name)
-            .input('Darajah', sql.NVarChar(50), student.Darajah)
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(10), Gender)
-            .input('Goal', sql.VarChar(50), Goal || null)
-            .input('SlotID', sql.Int, SlotID || null)
-            .query(`
-                INSERT INTO WaitingList (TR, Name, Darajah, Branch, Gender, Goal, PreferredSlotID)
-                VALUES (@TR, @Name, @Darajah, @Branch, @Gender, @Goal, @SlotID)
-            `);
-
-        res.json({ success: true, message: 'Student added to Waiting List.' });
+        res.json({ success: true, message: slotIdInt ? 'Student activated successfully.' : 'Student record updated.' });
 
     } catch (err) {
         if (err.message && err.message.includes('Violation of UNIQUE KEY constraint')) {

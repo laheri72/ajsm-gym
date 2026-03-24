@@ -102,28 +102,15 @@
         <main class="main-content">
             <div class="content">
                 <section id="student-entry" class="card">
-                    <h2>Student Entry - waiting list</h2>
-                        <div class="bulk-import-container mb-4 border-bottom pb-3">
-                        <h5>Bulk Import from Excel</h5>
-                        <p class="text-muted small">Import multiple students at once (TR only). Use the template below to format your data.</p>
-                            <div class="btn-group" role="group">
-                                <button id="bulkAddBtn" class="btn btn-secondary">
-                                    Import Students
-                                </button>
-                                <span class="mx-2 align-self-center"></span>
-                                <button id="downloadTemplateBtn" class="btn btn-outline-secondary" style="background-color: rgb(79, 130, 197);">
-                                    Download Template
-                                </button>
-                            </div>
-                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display: none;" />
-                    </div>
+                    <h2>Direct Student Entry</h2>
                     <h4 id="welcomeText"></h4>
 
                      <form id="studentEntryForm">
-                         <h4> Manual Entry</h4>
+                         <h4> Registration & Slot Assignment</h4>
                          <div class="form-group">
                              <label for="trNo">Tr No</label>
                              <input type="text" id="trNo" class="form-control" required />
+                             <div id="trLookupError" class="text-danger small mt-1 d-none"></div>
                          </div>
                          <div id="existingStudentDisplay" class="d-none alert alert-info p-2 mt-2 mb-3">
                              <strong>Found:</strong> <span id="studentNameLabel">...</span> - <span id="darajahLabel">...</span>
@@ -144,14 +131,14 @@
                              <small class="text-muted d-block mb-3">Student not found in TestMaster. Fill details to register.</small>
                          </div>
                          <div class="form-group mt-2">
-                             <label for="preferredSlot">Preferred Slot <span class="text-danger">*</span></label>
+                             <label for="preferredSlot">Assign Slot <span class="text-danger">*</span></label>
                              <select id="preferredSlot" class="form-control" required>
-                                 <option value="" disabled selected>Select a preferred slot...</option>
+                                 <option value="" disabled selected>Select a slot to assign...</option>
                              </select>
                              <small class="text-danger d-none" id="noSlotsWarning">No slots available. Please create a slot first.</small>
                          </div>
                          <div class="form-group mt-2">
-                             <label for="preferredGoal">Preferred Goal</label>
+                             <label for="preferredGoal">Fitness Goal</label>
                              <select id="preferredGoal" class="form-control">
                                  <option value="" selected>Not Set</option>
                                  <option value="General Fitness">General Fitness</option>
@@ -166,26 +153,24 @@
                              </select>
                          </div>
                          <button type="submit" class="btn btn-primary mt-3" id="addStudentBtn" disabled>
-                             <span class="button-text">Add Student</span>
+                             <span class="button-text">Register & Activate</span>
                              <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                          </button>
                      </form>
                 </section>
 
                 <section id="waiting-list" class="card">
-                    <h2>Waiting List</h2>
+                    <h2>Recently Activated (Today)</h2>
                     <div style="overflow-x:auto;">
                     <table id="waitingListTable" class="table table-striped table-bordered stacking-card-table" style="width:100%">
                         <thead>
                             <tr>
-                                <th class="col-id">ID</th>
                                 <th class="col-tr">TR</th>
                                 <th class="col-name">Name</th>
                                 <th class="col-darajah">Darajah</th>
-                                <th class="col-goal">Preferred Goal</th>
-                                <th class="col-slot">Preferred Slot</th>
-                                <th class="col-req">Requested</th>
-                                <th class="col-act">Action</th>
+                                <th class="col-goal">Goal</th>
+                                <th class="col-slot">Assigned Slot</th>
+                                <th class="col-req">Joined At</th>
                             </tr>
                         </thead>
                         <tbody>

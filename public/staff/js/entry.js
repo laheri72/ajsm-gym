@@ -1,847 +1,307 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // This block now contains ALL code that interacts with the page.
-    // It will only run after the HTML is fully loaded.
-
     let cachedSlots = null;
-    let waitingListDataTable = null;
-    let lastPreviewedTR = null;
+    let waitingListTable = null;
+    let lookupTimeout = null;
 
-    // --- CORE FUNCTIONS for Slot and List Management ---
+    const trInput = document.getElementById('trNo');
+    const trLookupError = document.getElementById('trLookupError');
+    const existingStudentDisplay = document.getElementById('existingStudentDisplay');
+    const studentNameLabel = document.getElementById('studentNameLabel');
+    const darajahLabel = document.getElementById('darajahLabel');
+    const newStudentFields = document.getElementById('newStudentFields');
+    const addStudentBtn = document.getElementById('addStudentBtn');
+    const studentEntryForm = document.getElementById('studentEntryForm');
+    const preferredSlotSelect = document.getElementById('preferredSlot');
 
-    function makeTableResponsive(tableId) {
-        const table = document.getElementById(tableId);
-        if (!table) return;
-        const headers = [];
-        table.querySelectorAll('thead th').forEach(th => {
-            headers.push(th.textContent.trim());
-        });
-        table.querySelectorAll('tbody tr').forEach(row => {
-            row.querySelectorAll('td').forEach((td, index) => {
-                if (headers[index]) {
-                    td.setAttribute('data-label', headers[index]);
-                }
-            });
-        });
-    }
-
-    async function getSlots() {
-        if (cachedSlots) return cachedSlots;
-        const res = await fetch('/api/slots');
-        const data = await res.json();
-        const slots = data.slots || data;
-        if (!Array.isArray(slots)) {
-            console.error("Slots API did not return array:", data);
-            return [];
-        }
-        cachedSlots = slots;
-        return cachedSlots;
-    }
-
-    async function refreshSlotEntryPage() {
-        cachedSlots = null;
-        if (waitingListDataTable) {
-            waitingListDataTable.ajax.reload();
-        }
-        await loadSlotTable();
-    }
-
-    // --- STUDENT ENTRY AND WAITING LIST ---
-
-    async function loadWaitingList() {
-        if (waitingListDataTable) {
-            waitingListDataTable.ajax.reload();
+    // 1. TR Lookup logic with Debounce
+    trInput.addEventListener('input', () => {
+        clearTimeout(lookupTimeout);
+        const tr = trInput.value.trim();
+        
+        // Reset immediate states
+        trLookupError.classList.add('d-none');
+        trLookupError.textContent = '';
+        
+        if (tr.length < 3) {
+            resetEntryForm();
             return;
         }
 
-        const availableSlots = await getSlots();
-        
-        waitingListDataTable = $('#waitingListTable').DataTable({
-            ajax: { url: '/api/waiting-list', dataSrc: '' },
-            columns: [
-                { data: 'WaitingID' },
-                { data: 'TR' },
-                { data: 'Name' },
-                { data: 'Darajah' },
-                { data: 'Goal', render: data => data || '-' },
-                { 
-                    data: 'SlotID', 
-                    render: (data) => {
-                        if (!data) return 'Any';
-                        const sl = availableSlots.find(s => s.SlotID === data);
-                        return sl ? sl.SlotName : 'Unknown';
-                    }
-                },
-                { data: 'RequestedAt', render: (data) => new Date(data).toLocaleString() },
-                { 
-                    data: 'WaitingID', 
-                    orderable: false,
-                    // --- 1. MODIFIED RENDER FUNCTION ---
-                    render: function(data, type, row) { // Added 'row' to get student name
-                        let slotOptions = availableSlots.map(slot => 
-                            `<option value="${slot.SlotID}" ${slot.AvailableSeats <= 0 ? 'disabled' : ''}>
-                                ${slot.SlotName} (${slot.AvailableSeats} seats)
-                            </option>`
-                        ).join('');
-                        
-                        // NEW: Added a wrapper div and the delete button
-                        return `
-                            <div class="action-buttons-wrapper">
-                                <select class="assign-slot-dropdown form-control" style="width: auto; display: inline-block;">
-                                    <option value="" disabled selected>Select Slot</option>
-                                    ${slotOptions}
-                                </select>
-                                <button class="btn assign-btn" data-id="${data}">Assign</button>
-                                
-                                <button class="btn btn-sm btn-danger delete-btn" data-id="${data}" data-name="${String(row.Name).replace(/"/g, '&quot;')}" title="Remove from list">
-                                    <i class="bi bi-trash">Delete</i>
-                                </button>
-                            </div>
-                        `;
-                    }
-                }
-            ],
-            responsive: true,
-            destroy: true,
-            language: {
-                emptyTable: "No students in the waiting list."
-            },
-            drawCallback: function(settings) {
-                makeTableResponsive('waitingListTable');
-            }
-        });
-    }
-
-    // --- 🔨 SLOT MANAGEMENT --- //
-    // ---------------------------- //
-
-    let slotDataTable; // new data table ref
-
-    async function loadSlotTable() {
-        if (slotDataTable) {
-            slotDataTable.ajax.reload(() => populatePreferredSlotDropdown(slotDataTable.ajax.json().slots), false);
-            return;
-        }
-        
-        slotDataTable = $('#slotTable').DataTable({
-            ajax: { url: '/api/slots', dataSrc: 'slots' },
-            columns: [
-                { data: 'SlotID' },
-                { data: 'SlotName' },
-                { data: 'MaxCapacity' },
-                { 
-                    data: null, 
-                    render: (data, type, row) => row.MaxCapacity - row.AvailableSeats 
-                },
-                { data: 'AvailableSeats' },
-                {
-                    data: 'SlotID',
-                    orderable: false,
-                    render: function (data, type, row) {
-                        return `
-                            <button class="btn btn-sm btn-warning edit-slot-btn" 
-                                data-id="${data}" 
-                                data-name="${String(row.SlotName).replace(/"/g, '&quot;')}" 
-                                data-capacity="${row.MaxCapacity}">
-                                Edit
-                            </button>
-                            <button class="btn btn-sm btn-danger delete-slot-btn" data-id="${data}">Delete</button>
-                        `;
-                    }
-                }
-            ],
-            responsive: true,
-            destroy: true,
-            initComplete: function(settings, json) {
-                populatePreferredSlotDropdown(json.slots);
-            },
-            drawCallback: function(settings) {
-                makeTableResponsive('slotTable');
-            }
-        });
-    }
-
-    function populatePreferredSlotDropdown(slots) {
-        slots = slots || [];
-        const select = $('#preferredSlot');
-        select.find('option:not(:first)').remove(); // Keep the placeholder
-        
-        if (slots.length === 0) {
-            $('#noSlotsWarning').removeClass('d-none');
-            $('#preferredSlot').prop('disabled', true);
-            $('#addStudentBtn').prop('disabled', true);
-        } else {
-            $('#noSlotsWarning').addClass('d-none');
-            $('#preferredSlot').prop('disabled', false);
-            slots.forEach(slot => {
-                select.append(`<option value="${slot.SlotID}">${slot.SlotName} (${slot.AvailableSeats} seats)</option>`);
-            });
-        }
-    }
-
-    // Assign Slot Edit Event
-    $('#slotTable').on('click', '.edit-slot-btn', async function() {
-        const slotId = $(this).data('id');
-        const currentName = $(this).data('name');
-        const currentCapacity = $(this).data('capacity');
-
-        const { value: formValues } = await Swal.fire({
-            title: 'Edit Slot Properties',
-            html:
-                `<div class="text-start mb-3">` +
-                `   <label for="swal-input1" class="form-label text-muted small mb-1">Slot Name / Time</label>` +
-                `   <input id="swal-input1" class="form-control" placeholder="e.g., 4:00-4:40 PM" value="${currentName}">` +
-                `</div>` +
-                `<div class="text-start">` +
-                `   <label for="swal-input2" class="form-label text-muted small mb-1">Max Capacity</label>` +
-                `   <input id="swal-input2" class="form-control" type="number" min="1" placeholder="Max Capacity" value="${currentCapacity}">` +
-                `</div>`,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Save Changes',
-            preConfirm: () => {
-                const name = document.getElementById('swal-input1').value.trim();
-                const capacity = document.getElementById('swal-input2').value;
-                if (!name || !capacity || capacity <= 0) {
-                    Swal.showValidationMessage('Please enter a valid Name and Capacity');
-                }
-                return [name, capacity];
-            }
-        });
-
-        if (formValues) {
-            const [newName, newCapacity] = formValues;
+        lookupTimeout = setTimeout(async () => {
             try {
-                const response = await fetch(`/api/slots/${slotId}`, {
-                    method: 'PUT',
+                const response = await fetch('/api/add-student', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ SlotName: newName, MaxCapacity: parseInt(newCapacity, 10) })
+                    body: JSON.stringify({ TR: tr, preview: true })
                 });
-                const result = await response.json();
-                if (result.success) {
-                    Swal.fire('Updated!', result.message, 'success');
-                    loadSlotTable();
-                    loadWaitingList();
+
+                const data = await response.json();
+
+                if (response.ok && data.success && data.canAdd) {
+                    // Existing student found in TestMaster
+                    existingStudentDisplay.classList.remove('d-none');
+                    studentNameLabel.textContent = data.student.Name;
+                    darajahLabel.textContent = data.student.Darajah;
+                    newStudentFields.classList.add('d-none');
+                    addStudentBtn.disabled = false;
+                } else if (response.status === 404) {
+                    // New student (Not in TestMaster)
+                    existingStudentDisplay.classList.add('d-none');
+                    newStudentFields.classList.remove('d-none');
+                    addStudentBtn.disabled = false;
                 } else {
-                    Swal.fire('Error', result.message || 'Failed to update slot', 'error');
+                    // Validation error (Wrong branch, already active, etc.)
+                    resetEntryForm();
+                    trLookupError.textContent = data.message || 'Validation failed';
+                    trLookupError.classList.remove('d-none');
                 }
             } catch (err) {
-                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+                console.error('TR lookup error:', err);
+                trLookupError.textContent = 'Connection error. Please try again.';
+                trLookupError.classList.remove('d-none');
             }
-        }
+        }, 300); // 300ms debounce
     });
 
-    $('#slotTable').on('click', '.delete-slot-btn', function() {
-        deleteSlot($(this).data('id'));
-    });
-
-    window.deleteSlot = async function(slotId) { // Attached to window to be accessible from inline onclick
-        Swal.fire({
-            title: 'Are you sure?', text: "This will permanently delete the slot!",
-            icon: 'warning', showCancelButton: true, confirmButtonColor: '#4CAF50',
-            cancelButtonColor: '#d33', confirmButtonText: 'Yes, delete it!'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                const res = await fetch(`/api/slots/${slotId}`, { method: 'DELETE' });
-                if (res.ok) {
-                    Swal.fire('Deleted!', 'The slot has been deleted.', 'success');
-                    refreshSlotEntryPage();
-                } else {
-                    const data = await res.json();
-                    Swal.fire('Error!', 'Error: ' + data.error, 'error');
-                }
-            }
-        });
+    function resetEntryForm() {
+        existingStudentDisplay.classList.add('d-none');
+        newStudentFields.classList.add('d-none');
+        addStudentBtn.disabled = true;
     }
 
-    // --- EVENT LISTENERS (NOW SAFELY INSIDE DOMCONTENTLOADED) ---
-
-    async function previewStudentByTR(tr) {
-        tr = parseInt(tr, 10);
-        
-        const existingDisplay = $('#existingStudentDisplay');
-        const newFields = $('#newStudentFields');
-        const addBtn = $('#addStudentBtn');
-
-        if (!tr || isNaN(tr) || tr <= 0) {
-            existingDisplay.addClass('d-none');
-            newFields.addClass('d-none');
-            addBtn.prop('disabled', true);
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/add-student', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ TR: tr, preview: true })
-            });
-            const result = await response.json();
-
-            if (result.success && result.canAdd) {
-                // Student exists and can be added
-                $('#studentNameLabel').text(result.student.Name);
-                $('#darajahLabel').text(result.student.Darajah);
-                existingDisplay.removeClass('d-none');
-                newFields.addClass('d-none');
-                
-                // Clear new fields just in case
-                $('#itsNo').val('');
-                $('#studentName').val('');
-                $('#darajah').val('');
-                
-                addBtn.prop('disabled', false);
-            } else if (response.status === 404) {
-                // Student does NOT exist. Show new student fields.
-                existingDisplay.addClass('d-none');
-                newFields.removeClass('d-none');
-                $('#studentName').val('');
-                $('#darajah').val('');
-                $('#itsNo').val('');
-                addBtn.prop('disabled', false);
-            } else {
-                // Other error (e.g. already active)
-                existingDisplay.addClass('d-none');
-                newFields.addClass('d-none');
-                addBtn.prop('disabled', true);
-                Swal.fire('Note', result.message || 'Cannot add this student.', 'info');
-            }
-        } catch (err) {
-            console.error('Preview Error:', err);
-            existingDisplay.addClass('d-none');
-            newFields.addClass('d-none');
-            addBtn.prop('disabled', true);
-        }
-    }
-
-    let searchTimeout;
-    $('#trNo').on('input', function () {
-        clearTimeout(searchTimeout);
-        const tr = $(this).val().trim();
-        searchTimeout = setTimeout(() => {
-            previewStudentByTR(tr);
-        }, 500); // 500ms debounce
-    });
-
-    $('#studentEntryForm').on('submit', async function (e) {
+    // 2. Submit Entry Form (Direct Activation)
+    studentEntryForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const tr = $('#trNo').val().trim();
-        const preferredSlot = $('#preferredSlot').val();
-        const goal = $('#preferredGoal').val().trim();
-        
-        // Fields for new students
-        const its = $('#itsNo').val() ? parseInt($('#itsNo').val(), 10) : null;
-        const name = $('#studentName').val().trim();
-        const darajah = $('#darajah').val().trim();
 
-        if (!tr || !preferredSlot) {
-            Swal.fire('Required', 'Please enter TR and select a preferred slot', 'warning');
-            return;
-        }
+        const tr = trInput.value.trim();
+        const slotId = preferredSlotSelect.value;
+        const goal = document.getElementById('preferredGoal').value;
 
-        const data = {
+        const payload = {
             TR: tr,
-            SlotID: preferredSlot,
-            Goal: goal,
-            ITS: its,
-            Name: name,
-            Darajah: darajah
+            SlotID: slotId,
+            Goal: goal
         };
 
-        const $btn = $('#addStudentBtn');
-        const $text = $btn.find('.button-text');
-        const $spinner = $btn.find('.spinner-border');
-
-        $btn.prop('disabled', true);
-        $text.addClass('d-none');
-        $spinner.removeClass('d-none');
-
-        try {
-            const response = await fetch('/api/add-student', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Student added' + (result.message.includes('Waiting List') ? ' to Waiting List' : ''),
-                    showConfirmButton: false,
-                    timer: 3000
-                });
-                $('#studentEntryForm')[0].reset();
-                $('#existingStudentDisplay').addClass('d-none');
-                $('#newStudentFields').addClass('d-none');
-                $('#addStudentBtn').prop('disabled', true);
-                refreshSlotEntryPage(); // Refreshes tables
-            } else {
-                 Swal.fire('Error', result.message || 'Failed to add student', 'error');
+        // If new student fields are visible, add them to payload
+        if (!newStudentFields.classList.contains('d-none')) {
+            payload.ITS = document.getElementById('itsNo').value;
+            payload.Name = document.getElementById('studentName').value;
+            payload.Darajah = document.getElementById('darajah').value;
+            
+            if (!payload.ITS || !payload.Name || !payload.Darajah) {
+                return Swal.fire('Error', 'Please fill all new student details.', 'error');
             }
-        } catch (err) {
-             console.error('Add student error:', err);
-             Swal.fire('Error', 'An unexpected error occurred.', 'error');
-        } finally {
-            $btn.prop('disabled', false);
-            $text.removeClass('d-none');
-            $spinner.addClass('d-none');
-        }
-    });
-
-    // ... (waitingListTable click listener is unchanged) ...
-    $('#waitingListTable tbody').on('click', '.assign-btn', async function () {
-        const assignBtn = $(this); // Get the jQuery object for the clicked button
-        const originalBtnText = assignBtn.html(); // Store the original button content (e.g., "Assign")
-        
-        const waitingID = assignBtn.data('id');
-        const slotDropdown = assignBtn.closest('td').find('.assign-slot-dropdown');
-        const slotID = slotDropdown.val();
-
-        if (!slotID) {
-            return Swal.fire('No Slot Selected', 'Please select a slot first!', 'warning');
         }
 
-        try {
-            // --- START LOADER EFFECT ---
-            assignBtn.prop('disabled', true);
-            assignBtn.html(
-                `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Assigning...`
-            );
-
-            const res = await fetch("/api/assign-student-slot", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ WaitingID: parseInt(waitingID), SlotID: parseInt(slotID) })
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                Swal.fire({ 
-                    toast: true, 
-                    position: 'top-end', 
-                    icon: 'success', 
-                    title: 'Student Assigned!', 
-                    showConfirmButton: false, 
-                    timer: 3000 
-                });
-                refreshSlotEntryPage(); // On success, the table redraws, removing the loader automatically.
-            } else {
-                Swal.fire('Assignment Failed', `Error: ${data.message}`, 'error');
-                // --- STOP LOADER (on failure) ---
-                assignBtn.prop('disabled', false);
-                assignBtn.html(originalBtnText);
-            }
-        } catch (err) {
-            console.error("Assign student error:", err);
-            Swal.fire('Server Error', 'Failed to assign student', 'error');
-            // --- STOP LOADER (on error) ---
-            assignBtn.prop('disabled', false);
-            assignBtn.html(originalBtnText);
-        }
-    });
-
-    // --- 2. NEW EVENT LISTENER FOR DELETE BUTTON ---
-    $('#waitingListTable tbody').on('click', '.delete-btn', function () {
-        const waitingID = $(this).data('id');
-        const studentName = $(this).data('name'); // Get name for the alert
-
-        Swal.fire({
-            title: 'Are you sure?',
-            html: `This will permanently remove <strong>${studentName}</strong> from the waiting list.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    const res = await fetch(`/api/waiting-list/${waitingID}`, {
-                        method: 'DELETE'
-                    });
-
-                    const data = await res.json();
-
-                    if (res.ok) {
-                        Swal.fire({
-                            toast: true,
-                            position: 'top-end',
-                            icon: 'success',
-                            title: 'Student deleted.',
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-                        waitingListDataTable.ajax.reload(); // Refresh the table
-                    } else {
-                        Swal.fire('Error!', data.message || 'Could not delete student.', 'error');
-                    }
-                } catch (err) {
-                    console.error('Delete student fetch error:', err);
-                    Swal.fire('Error!', 'A network error occurred. Please try again.', 'error');
-                }
-            }
-        });
-    });
-
-    // ... (createSlotForm submit listener is unchanged) ...
-    document.getElementById('createSlotForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        // 1. Get references to the button and its parts
-        const submitBtn = document.getElementById('createSlotBtn'); // Use the ID we added
-        const buttonText = submitBtn.querySelector('.button-text');
-        const spinner = submitBtn.querySelector('.spinner-border');
-
-        // 2. Start Loader: Disable button, show spinner
-        submitBtn.disabled = true;
-        buttonText.classList.add('d-none');
+        // UI Loading state
+        const btnText = addStudentBtn.querySelector('.button-text');
+        const spinner = addStudentBtn.querySelector('.spinner-border');
+        addStudentBtn.disabled = true;
+        btnText.classList.add('d-none');
         spinner.classList.remove('d-none');
 
-        // 3. Prepare payload (same as before)
-        const payload = {
-            SlotName: document.getElementById('slot').value.trim(),
-            MaxCapacity: parseInt(document.getElementById('maxCapacity').value, 10)
-        };
-
         try {
-            // 4. Make the API call (same as before)
-            const res = await fetch('/api/slots', {
-                method: 'POST', 
+            const response = await fetch('/api/add-student', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json(); //
 
-            // 5. Handle response (same as before)
-            if (res.ok) {
-                Swal.fire({ 
-                    toast: true, 
-                    position: 'top-end', 
-                    icon: 'success', 
-                    title: 'Slot created!', 
-                    showConfirmButton: false, 
-                    timer: 2000 
-                }); //
-                this.reset(); //
-                refreshSlotEntryPage(); //
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Student Activated!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                studentEntryForm.reset();
+                resetEntryForm();
+                loadRecentActivations();
+                loadSlotTable(); // Refresh availability
             } else {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'Oops...', 
-                    text: 'Error: ' + data.error 
-                }); //
+                Swal.fire('Error', data.message || 'Failed to add student', 'error');
             }
         } catch (err) {
-            // Handle potential network errors
-            console.error("Create slot error:", err);
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'Server Error', 
-                text: 'Could not create slot. Please try again later.' 
-            });
+            console.error('Add student error:', err);
+            Swal.fire('Error', 'Server connection failed', 'error');
         } finally {
-            // 6. Stop Loader: Re-enable button, hide spinner (ALWAYS runs)
-            submitBtn.disabled = false;
-            buttonText.classList.remove('d-none');
+            addStudentBtn.disabled = false;
+            btnText.classList.remove('d-none');
             spinner.classList.add('d-none');
         }
     });
 
-
-    // --- PAGE INITIALIZATION ---
-
-    // Manual entry now requires TR lookup first.
-    // clearPreviewFields();
-
-
-    // --- START: MODIFIED BULK IMPORT LOGIC ---
-
-    const bulkAddBtn = document.getElementById('bulkAddBtn');
-    const fileInput = document.getElementById('fileInput');
-
-    // 1. When "Import" button is clicked, trigger the hidden file input
-    bulkAddBtn.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    // js/entry.js
-
-    // 2. When a file is selected, process it
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const students = XLSX.utils.sheet_to_json(firstSheet);
-                
-                if (students.length === 0) {
-                    Swal.fire('Empty File', 'The selected file has no student data.', 'warning');
-                    return;
-                }
-
-                // --- START: NEW Client-Side TR Validation ---
-                const invalidTRRows = [];
-                // Regex to ensure the string contains only whole numbers from start to finish.
-                const integerRegex = /^\d+$/; 
-
-                students.forEach((student, index) => {
-                    // Check if TR exists and if it's a valid integer string.
-                    // We use .toString() to safely handle cases where Excel might interpret a number as a numeric type.
-                    if (!student.TR || !integerRegex.test(student.TR.toString())) {
-                        // Add 2 to index to match the actual row number in the Excel file (1-based + header row)
-                        invalidTRRows.push(index + 2);
+    // 3. Load Slots for Dropdown
+    async function loadSlots() {
+        try {
+            const response = await fetch('/api/slots');
+            const data = await response.json();
+            if (data.success) {
+                cachedSlots = data.slots;
+                preferredSlotSelect.innerHTML = '<option value="" disabled selected>Select a slot to assign...</option>';
+                data.slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = slot.SlotID;
+                    option.textContent = `${slot.SlotName} (${slot.AvailableSeats} left)`;
+                    if (slot.AvailableSeats <= 0) {
+                        option.disabled = true;
+                        option.textContent += ' - FULL';
                     }
+                    preferredSlotSelect.appendChild(option);
                 });
-
-                // If any invalid TRs were found, show an error and stop everything.
-                if (invalidTRRows.length > 0) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid TR Number Format',
-                        html: `The following rows in your file have an invalid TR number. <br><b>TR must be a whole number only (e.g., 12345).</b><br><br>Invalid row(s): <strong>${invalidTRRows.join(', ')}</strong>`,
-                    });
-                    return; // Stop processing before calling the backend
-                }
-                // --- END: NEW Client-Side TR Validation ---
-
-
-                // If we get here, all TRs are in the correct format, so we can proceed to the backend.
-                await validateAndPreview(students);
-
-            } catch (err) {
-                console.error('File parsing error:', err);
-                Swal.fire('Error', 'Could not read or parse the file. Please ensure it is a valid Excel file.', 'error');
-            } finally {
-                // Reset file input to allow re-selection of the same file
-                fileInput.value = '';
             }
-        };
-        reader.readAsArrayBuffer(file);
-    });
-
-    async function mapWithConcurrency(items, limit, mapper) {
-        const results = new Array(items.length);
-        let nextIndex = 0;
-
-        async function worker() {
-            while (true) {
-                const index = nextIndex++;
-                if (index >= items.length) return;
-                results[index] = await mapper(items[index], index);
-            }
+        } catch (err) {
+            console.error('Error loading slots:', err);
         }
-
-        const workerCount = Math.max(1, Math.min(limit, items.length));
-        await Promise.all(Array.from({ length: workerCount }, () => worker()));
-        return results;
     }
 
-    async function previewTR(tr) {
-        const res = await fetch('/api/add-student', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ TR: tr, preview: true })
-        });
+    // 4. Load Recent Activations (Today)
+    async function loadRecentActivations() {
+        try {
+            const response = await fetch('/api/recent-activations');
+            const data = await response.json();
 
-        let data = null;
-        try { data = await res.json(); } catch { /* ignore */ }
-
-        if (res.ok && data?.success) {
-            return { tr, status: 'ok', name: data.student?.Name, darajah: data.student?.Darajah };
-        }
-
-        const message = data?.message || data?.error || 'Unknown error';
-        if (res.status === 404) return { tr, status: 'not_found', message };
-        if (res.status === 400) {
-            if (message.includes('already assigned')) return { tr, status: 'already_active', message };
-            if (message.includes('already in waiting list')) return { tr, status: 'already_waiting', message };
-            return { tr, status: 'blocked', message };
-        }
-        return { tr, status: 'error', message };
-    }
-
-    async function addTRToWaitingList(tr) {
-        const res = await fetch('/api/add-student', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ TR: tr })
-        });
-
-        let data = null;
-        try { data = await res.json(); } catch { /* ignore */ }
-
-        if (res.ok && data?.success) {
-            return { tr, status: 'added' };
-        }
-        return { tr, status: 'failed', message: data?.message || data?.error || 'Unknown error' };
-    }
-
-    // MODIFIED function inside the DOMContentLoaded listener
-    async function validateAndPreview(students) {
-        const rawTRs = students
-            .map(s => (s.TR ?? '').toString().trim())
-            .filter(Boolean);
-
-        const seen = new Set();
-        const uniqueTRs = [];
-        const duplicateInFile = new Set();
-        rawTRs.forEach(tr => {
-            if (seen.has(tr)) duplicateInFile.add(tr);
-            else {
-                seen.add(tr);
-                uniqueTRs.push(tr);
+            if (waitingListTable) {
+                waitingListTable.destroy();
             }
-        });
 
-        Swal.fire({
-            title: 'Validating TRs...',
-            text: 'Please wait while we fetch Name/Darajah from TestMaster.',
-            didOpen: () => { Swal.showLoading(); }
-        });
+            const tbody = document.querySelector('#waitingListTable tbody');
+            tbody.innerHTML = '';
 
-        const previews = await mapWithConcurrency(uniqueTRs, 6, (tr) => previewTR(tr));
-
-        const toAdd = previews.filter(p => p.status === 'ok');
-        const alreadyActive = previews.filter(p => p.status === 'already_active');
-        const alreadyWaiting = previews.filter(p => p.status === 'already_waiting');
-        const notFound = previews.filter(p => p.status === 'not_found');
-        const blocked = previews.filter(p => p.status === 'blocked');
-        const errors = previews.filter(p => p.status === 'error');
-
-        const list = (items, formatter) => {
-            const max = 12;
-            const shown = items.slice(0, max);
-            const more = items.length - shown.length;
-            const html = shown.map(formatter).join('');
-            return more > 0 ? `${html}<li>...and ${more} more</li>` : html;
-        };
-
-        let summaryHtml = `<div style="text-align: left; margin-top: 1rem;">`;
-        summaryHtml += `<p class="text-success"><strong>✅ Ready to add: ${toAdd.length}</strong></p>`;
-
-        if (duplicateInFile.size > 0) {
-            const dupes = Array.from(duplicateInFile);
-            summaryHtml += `
-                <hr>
-                <p class="text-warning"><strong>⚠️ Duplicate TRs in file: ${dupes.length}</strong></p>
-                <ul class="swal-list">${list(dupes, (tr) => `<li>TR <strong>${tr}</strong></li>`)}</ul>
-            `;
-        }
-
-        if (alreadyWaiting.length > 0) {
-            summaryHtml += `
-                <hr>
-                <p class="text-warning"><strong>⚠️ Already in waiting list: ${alreadyWaiting.length}</strong></p>
-                <ul class="swal-list">${list(alreadyWaiting, (s) => `<li>TR <strong>${s.tr}</strong></li>`)}</ul>
-            `;
-        }
-
-        if (alreadyActive.length > 0) {
-            summaryHtml += `
-                <hr>
-                <p class="text-warning"><strong>⚠️ Already Active: ${alreadyActive.length}</strong></p>
-                <ul class="swal-list">${list(alreadyActive, (s) => `<li>TR <strong>${s.tr}</strong></li>`)}</ul>
-            `;
-        }
-
-        if (notFound.length > 0) {
-            summaryHtml += `
-                <hr>
-                <p class="text-danger"><strong>❌ Not found in TestMaster: ${notFound.length}</strong></p>
-                <ul class="swal-list">${list(notFound, (s) => `<li>TR <strong>${s.tr}</strong></li>`)}</ul>
-            `;
-        }
-
-        if (blocked.length > 0 || errors.length > 0) {
-            summaryHtml += `
-                <hr>
-                <p class="text-danger"><strong>❌ Errors: ${blocked.length + errors.length}</strong></p>
-                <ul class="swal-list">${list([...blocked, ...errors], (s) => `<li>TR <strong>${s.tr}</strong> - ${s.message}</li>`)}</ul>
-            `;
-        }
-
-        summaryHtml += `</div>`;
-
-        Swal.fire({
-            title: 'Import Summary',
-            html: summaryHtml,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonColor: '#4CAF50',
-            cancelButtonColor: '#d33',
-            confirmButtonText: `Yes, add ${toAdd.length} students!`,
-            preConfirm: () => {
-                if (toAdd.length === 0) {
-                    Swal.showValidationMessage('There are no students ready to import.');
-                    return false;
-                }
-                return true;
-            }
-        }).then((action) => {
-            if (action.isConfirmed) {
-                commitBulkAdd(toAdd.map(s => s.tr));
-            }
-        });
-    }
-
-    async function commitBulkAdd(trs) {
-        Swal.fire({
-            title: 'Adding students...',
-            text: 'Please wait while we add students to the waiting list.',
-            didOpen: () => { Swal.showLoading(); }
-        });
-
-        const results = await mapWithConcurrency(trs, 6, (tr) => addTRToWaitingList(tr));
-        const added = results.filter(r => r.status === 'added');
-        const failed = results.filter(r => r.status === 'failed');
-
-        if (failed.length === 0) {
-            Swal.fire('Success!', `${added.length} students have been added to the waiting list.`, 'success');
-        } else {
-            const max = 10;
-            const details = failed.slice(0, max).map(f => `<li>TR <strong>${f.tr}</strong> - ${f.message}</li>`).join('');
-            const more = failed.length - Math.min(max, failed.length);
-            Swal.fire({
-                icon: 'warning',
-                title: 'Completed with issues',
-                html: `Added <strong>${added.length}</strong>. Failed <strong>${failed.length}</strong>.<br><br><ul class="swal-list">${details}${more > 0 ? `<li>...and ${more} more</li>` : ''}</ul>`
+            data.forEach(item => {
+                const joinedAt = new Date(item.JoinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const row = `
+                    <tr>
+                        <td>${item.TR}</td>
+                        <td>${item.Name}</td>
+                        <td>${item.Darajah}</td>
+                        <td>${item.Goal || 'N/A'}</td>
+                        <td>${item.SlotName}</td>
+                        <td>${joinedAt}</td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
             });
-        }
 
-        refreshSlotEntryPage();
+            waitingListTable = $('#waitingListTable').DataTable({
+                pageLength: 5,
+                lengthMenu: [5, 10, 25],
+                order: [[5, 'desc']] // Sort by Joined At
+            });
+
+        } catch (err) {
+            console.error('Error loading recent activations:', err);
+        }
     }
 
+    // 5. Slot Management Logic
+    const createSlotForm = document.getElementById('createSlotForm');
+    createSlotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const slotName = document.getElementById('slot').value;
+        const maxCapacity = document.getElementById('maxCapacity').value;
 
-    const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+        const btn = document.getElementById('createSlotBtn');
+        const btnText = btn.querySelector('.button-text');
+        const spinner = btn.querySelector('.spinner-border');
 
-    downloadTemplateBtn.addEventListener('click', () => {
-        // Define the headers for the template file
-        const headers = [
-            ["TR"]
-        ];
+        btn.disabled = true;
+        btnText.classList.add('d-none');
+        spinner.classList.remove('d-none');
 
-        // Create a new worksheet from the headers
-        const ws = XLSX.utils.aoa_to_sheet(headers);
-        
-        // Create a new workbook
-        const wb = XLSX.utils.book_new();
+        try {
+            const response = await fetch('/api/slots', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ SlotName: slotName, MaxCapacity: maxCapacity })
+            });
 
-        // Append the worksheet to the workbook
-        XLSX.utils.book_append_sheet(wb, ws, "WaitingList");
-
-        // Trigger the download of the file
-        XLSX.writeFile(wb, "Fittracker_WL_Template.xlsx");
+            const data = await response.json();
+            if (data.success) {
+                Swal.fire('Success', 'Slot created!', 'success');
+                createSlotForm.reset();
+                loadSlotTable();
+                loadSlots(); // Update entry dropdown
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (err) {
+            console.error('Slot creation error:', err);
+        } finally {
+            btn.disabled = false;
+            btnText.classList.remove('d-none');
+            spinner.classList.add('d-none');
+        }
     });
-    // --- END: MODIFIED BULK IMPORT LOGIC ---
 
-    loadWaitingList();
+    async function loadSlotTable() {
+        try {
+            const response = await fetch('/api/slots');
+            const data = await response.json();
+
+            const tbody = document.querySelector('#slotTable tbody');
+            tbody.innerHTML = '';
+
+            data.slots.forEach(slot => {
+                const assigned = slot.MaxCapacity - slot.AvailableSeats;
+                const row = `
+                    <tr>
+                        <td>${slot.SlotID}</td>
+                        <td>${slot.SlotName}</td>
+                        <td>${slot.MaxCapacity}</td>
+                        <td>${assigned}</td>
+                        <td>${slot.AvailableSeats}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm delete-slot-btn" data-id="${slot.SlotID}">Delete</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+
+            // Re-attach delete listeners
+            document.querySelectorAll('.delete-slot-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteSlot(btn.dataset.id));
+            });
+
+        } catch (err) {
+            console.error('Error loading slot table:', err);
+        }
+    }
+
+    async function deleteSlot(id) {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: "This will unassign all active students from this slot!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`/api/slots/${id}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    Swal.fire('Deleted!', data.message, 'success');
+                    loadSlotTable();
+                    loadSlots();
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            } catch (err) {
+                console.error('Error deleting slot:', err);
+            }
+        }
+    }
+
+    // Initialize
+    loadSlots();
+    loadRecentActivations();
     loadSlotTable();
 });

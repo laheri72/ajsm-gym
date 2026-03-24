@@ -130,6 +130,88 @@
                             <p class="mt-2">Loading student records...</p>
                         </div>
                     </div>
+                    
+                    <div class="print-watermark print-only">
+                        <img src="../images/favicon.png" alt="Logo" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; opacity: 0.4;">
+                        Fit-Tracker
+                    </div>
+
+                    <style>
+                        @media print {
+                            /* Softboard refinements - Squeezed for 1 Slot per Page */
+                            @page {
+                                margin: 0.5cm;
+                            }
+
+                            .slot-card-header {
+                                font-size: 18pt !important;
+                                color: #000 !important;
+                                border-bottom: 2px solid #000 !important;
+                                margin-bottom: 10pt !important;
+                                padding-bottom: 5pt !important;
+                                text-transform: uppercase;
+                                text-align: center;
+                            }
+                            
+                            .stacking-card-table th {
+                                font-size: 12pt !important;
+                                background-color: #f2f2f2 !important;
+                                border: 1.5px solid #000 !important;
+                                padding: 6pt !important;
+                            }
+                            
+                            .stacking-card-table td {
+                                font-size: 11pt !important;
+                                border: 1px solid #666 !important;
+                                padding: 5pt 8pt !important;
+                                line-height: 1.2 !important;
+                            }
+
+                            .col-tr { width: 15%; font-weight: bold; }
+                            .col-name { width: 55%; }
+                            .col-darajah { width: 30%; }
+
+                            /* Hide DataTable extras during print */
+                            .dataTables_length, 
+                            .dataTables_filter, 
+                            .dataTables_info, 
+                            .dataTables_paginate {
+                                display: none !important;
+                            }
+
+                            /* Watermark - Small and Professional */
+                            .print-watermark {
+                                position: fixed;
+                                bottom: 15pt;
+                                right: 15pt;
+                                font-size: 10pt;
+                                font-weight: 600;
+                                opacity: 0.35;
+                                color: #333 !important;
+                                transform: rotate(-10deg);
+                                border: 1px solid #888;
+                                padding: 2pt 6pt;
+                                border-radius: 3px;
+                                font-family: sans-serif;
+                            }
+                            
+                            /* Force one slot per page */
+                            .slot-card {
+                                page-break-after: always !important;
+                                page-break-inside: avoid !important;
+                                margin: 0 0 20pt 0 !important;
+                                border: none !important;
+                                padding: 0 !important;
+                            }
+
+                            /* Hide unnecessary print elements */
+                            #print-header {
+                                margin-bottom: 15pt !important;
+                            }
+                            #print-header h1 { font-size: 16pt !important; }
+                            #print-header p { font-size: 10pt !important; }
+                        }
+                    </style>
 
 
                 </section>

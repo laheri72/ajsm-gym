@@ -8,30 +8,32 @@ const bcrypt = require('bcrypt'); // This file needs bcrypt
 
 // --- All your admin routes will go here ---
 
-router.delete('/api/admin/delete-student/:tr', async (req, res, next) => {
+router.put('/api/admin/revoke-student/:tr', async (req, res, next) => {
   if (!req.session.user || req.session.user.Role !== 'Admin') {
     return res.status(403).json({ success: false, message: 'Forbidden: Admin access required.' });
   }
 
   const { tr } = req.params;
-  const transaction = new sql.Transaction(pool);
+  const { Branch: adminBranch } = req.session.user;
 
   try {
-    await transaction.begin();
-    const request = new sql.Request(transaction);
+    const request = pool.request();
     request.input('TR', sql.Int, tr);
+    request.input('Branch', sql.NVarChar(50), adminBranch);
 
-    const result = await request.query('DELETE FROM TestMaster WHERE TR = @TR');
-    await transaction.commit();
+    const result = await request.query(`
+        UPDATE TestMaster 
+        SET Status = 'Revoked', SlotID = NULL 
+        WHERE TR = @TR AND Branch = @Branch
+    `);
 
     if (result.rowsAffected[0] > 0)
-      res.json({ success: true, message: `Student TR ${tr} and all associated data have been permanently deleted.` });
+      res.json({ success: true, message: `Student TR ${tr} has been revoked and removed from their slot.` });
     else
-      res.status(404).json({ success: false, message: 'Student TR not found.' });
+      res.status(404).json({ success: false, message: 'Student TR not found in your branch.' });
 
   } catch (err) {
-    await transaction.rollback();
-    console.error('Error during cascade delete:', err);
+    console.error('Error during student revoke:', err);
     next(err);
   }
 });

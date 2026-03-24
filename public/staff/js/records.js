@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <th class="col-tr">Tr No</th>
                                     <th class="col-name">Name</th>
                                     <th class="col-darajah">Darajah</th>
-                                    <th class="col-goal">Preferred Goal</th> 
+                                    <th class="col-goal">Goal</th> 
                                     <th class="col-slot">Slot</th>
                                     <th class="col-actions">Actions</th>
                                 </tr>
@@ -381,8 +381,9 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // 2. Iterate all table instances
         allDataTables.forEach(table => {
-            // Programmatically hide the "Goal" and "Actions" columns
+            // Programmatically hide the "Goal", "Slot", and "Actions" columns
             table.column('.col-goal').visible(false);
+            table.column('.col-slot').visible(false);
             table.column('.col-actions').visible(false);
             
             // Set page length to "All" (-1)
@@ -395,6 +396,7 @@ document.addEventListener("DOMContentLoaded", () => {
         allDataTables.forEach(table => {
             // Programmatically show the columns again
             table.column('.col-goal').visible(true);
+            table.column('.col-slot').visible(true);
             table.column('.col-actions').visible(true);
             
             // Revert page length to 5
