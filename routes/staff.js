@@ -1416,6 +1416,7 @@ router.post('/api/add-student', async (req, res) => {
         }
 
         const slotIdInt = SlotID ? parseInt(SlotID, 10) : null;
+        const forceActive = req.body.ForceActive === true;
 
         // 2️⃣ If student does not exist, insert them as new
         if (!student) {
@@ -1423,6 +1424,8 @@ router.post('/api/add-student', async (req, res) => {
                  return res.status(400).json({ success: false, message: 'Student is new. ITS, Name, and Darajah are required.' });
             }
             
+            const finalStatus = (slotIdInt || forceActive) ? 'Active' : 'Inactive';
+
             await pool.request()
                 .input('TR', sql.Int, trInt)
                 .input('ITS', sql.BigInt, parseInt(ITS, 10))
@@ -1430,7 +1433,7 @@ router.post('/api/add-student', async (req, res) => {
                 .input('Darajah', sql.NVarChar(50), Darajah)
                 .input('Branch', sql.VarChar(7), Branch)
                 .input('Gender', sql.VarChar(6), Gender)
-                .input('Status', sql.VarChar(8), slotIdInt ? 'Active' : 'Inactive')
+                .input('Status', sql.VarChar(8), finalStatus)
                 .input('SlotID', sql.Int, slotIdInt)
                 .input('Goal', sql.VarChar(50), Goal || null)
                 .query(`
@@ -1440,9 +1443,11 @@ router.post('/api/add-student', async (req, res) => {
                 `);
         } else {
             // Update existing student
+            const finalStatus = (slotIdInt || forceActive) ? 'Active' : student.Status;
+
             await pool.request()
                 .input('TR', sql.Int, trInt)
-                .input('Status', sql.VarChar(8), slotIdInt ? 'Active' : student.Status)
+                .input('Status', sql.VarChar(8), finalStatus)
                 .input('SlotID', sql.Int, slotIdInt || null)
                 .input('Goal', sql.VarChar(50), Goal || null)
                 .input('Name', sql.NVarChar(100), Name || student.Name)

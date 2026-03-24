@@ -74,13 +74,17 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
 
         const tr = trInput.value.trim();
-        const slotId = preferredSlotSelect.value;
+        const slotIdValue = preferredSlotSelect.value;
         const goal = document.getElementById('preferredGoal').value;
+
+        // If "waiting" is selected, SlotID is null but we still activate
+        const slotId = slotIdValue === 'waiting' ? null : slotIdValue;
 
         const payload = {
             TR: tr,
             SlotID: slotId,
-            Goal: goal
+            Goal: goal,
+            ForceActive: true // Tell backend to always activate
         };
 
         // If new student fields are visible, add them to payload
@@ -142,7 +146,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
             if (data.success) {
                 cachedSlots = data.slots;
-                preferredSlotSelect.innerHTML = '<option value="" disabled selected>Select a slot to assign...</option>';
+                
+                // Reset dropdown with "Waiting..." always at the top
+                preferredSlotSelect.innerHTML = `
+                    <option value="" disabled selected>Select a slot to assign...</option>
+                    <option value="waiting" style="color: #666; font-style: italic;">Waiting / Pending Slot</option>
+                `;
+
                 data.slots.forEach(slot => {
                     const option = document.createElement('option');
                     option.value = slot.SlotID;
@@ -173,15 +183,17 @@ document.addEventListener("DOMContentLoaded", () => {
             tbody.innerHTML = '';
 
             data.forEach(item => {
-                const joinedAt = new Date(item.JoinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                // Use Moment.js for IST Display
+                const istTime = moment.utc(item.JoinedAt).tz("Asia/Kolkata").format("hh:mm A");
+                
                 const row = `
                     <tr>
                         <td>${item.TR}</td>
                         <td>${item.Name}</td>
                         <td>${item.Darajah}</td>
                         <td>${item.Goal || 'N/A'}</td>
-                        <td>${item.SlotName}</td>
-                        <td>${joinedAt}</td>
+                        <td>${item.SlotName || '<span class="text-muted italic">Waiting...</span>'}</td>
+                        <td>${istTime}</td>
                     </tr>
                 `;
                 tbody.insertAdjacentHTML('beforeend', row);
