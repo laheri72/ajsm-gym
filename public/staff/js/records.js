@@ -198,6 +198,110 @@ document.addEventListener("DOMContentLoaded", () => {
         XLSX.writeFile(wb, `FitTracker_Slots_Export_${staffBranch}_${today}.xlsx`);
     }
 
+    /**
+     * --- Export to PDF Function ---
+     * Uses pdfMake for a controlled, repeatable layout on all pages.
+     */
+    function exportToPDF() {
+        if (Object.keys(groupedSlotsData).length === 0) {
+            return Swal.fire('No Data', 'There is no student data to export.', 'info');
+        }
+
+        if (typeof window.pdfMake === 'undefined') {
+            return Swal.fire('PDF Engine Missing', 'Could not load PDF generator. Please refresh and try again.', 'error');
+        }
+
+        const printDate = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
+        const fileDate = new Date().toISOString().split('T')[0];
+        const sortedSlotNames = Object.keys(groupedSlotsData).sort();
+
+        const content = [];
+
+        sortedSlotNames.forEach((slotName, index) => {
+            const studentsInSlot = groupedSlotsData[slotName] || [];
+
+            content.push({
+                text: `Slot: ${slotName} (${studentsInSlot.length} Members)`,
+                style: 'slotHeader',
+                margin: [0, 0, 0, 6],
+                pageBreak: index === 0 ? undefined : 'before'
+            });
+
+            const tableBody = [
+                [
+                    { text: 'TR No', style: 'tableHeader', alignment: 'center' },
+                    { text: 'Name', style: 'tableHeader', alignment: 'left' },
+                    { text: 'Darajah', style: 'tableHeader', alignment: 'center' }
+                ],
+                ...studentsInSlot.map((student) => ([
+                    { text: String(student.TR ?? ''), style: 'tableCell', alignment: 'center' },
+                    { text: String(student.Name ?? ''), style: 'tableCell', alignment: 'left' },
+                    { text: String(student.Darajah ?? ''), style: 'tableCell', alignment: 'center' }
+                ]))
+            ];
+
+            content.push({
+                table: {
+                    headerRows: 1,
+                    widths: [58, '*', 52], // Darajah is intentionally narrow; Name gets remaining width.
+                    body: tableBody
+                },
+                layout: {
+                    fillColor: function (rowIndex) {
+                        return rowIndex === 0 ? '#f2f2f2' : null;
+                    },
+                    hLineColor: function () { return '#777'; },
+                    vLineColor: function () { return '#777'; }
+                }
+            });
+        });
+
+        const docDefinition = {
+            pageSize: 'A4',
+            pageMargins: [26, 78, 26, 40],
+            header: function () {
+                return {
+                    margin: [26, 18, 26, 0],
+                    stack: [
+                        { text: 'Khaima al-Riyada - GYM', style: 'docTitle', alignment: 'center' },
+                        { text: 'Active Gym Members', style: 'docSubTitle', alignment: 'center' },
+                        { text: `Branch: ${staffBranch}`, style: 'docSubTitle', alignment: 'center' }
+                    ]
+                };
+            },
+            footer: function (currentPage, pageCount) {
+                return {
+                    margin: [26, 0, 26, 12],
+                    columns: [
+                        { text: `Date: ${printDate}`, style: 'footerText', alignment: 'left' },
+                        {
+                            alignment: 'right',
+                            stack: [
+                                { text: 'Fit-Tracker', style: 'footerStamp' },
+                                { text: `Page ${currentPage} of ${pageCount}`, style: 'footerText' }
+                            ]
+                        }
+                    ]
+                };
+            },
+            content,
+            styles: {
+                docTitle: { fontSize: 14, bold: true },
+                docSubTitle: { fontSize: 10 },
+                slotHeader: { fontSize: 11, bold: true },
+                tableHeader: { fontSize: 9, bold: true },
+                tableCell: { fontSize: 9 },
+                footerText: { fontSize: 9, color: '#444' },
+                footerStamp: { fontSize: 9, bold: true, color: '#666' }
+            },
+            defaultStyle: {
+                fontSize: 9
+            }
+        };
+
+        window.pdfMake.createPdf(docDefinition).download(`Active_Gym_Members_${staffBranch}_${fileDate}.pdf`);
+    }
+
     // --- DELEGATED EVENT LISTENERS (Unchanged) ---
 
     $('#student-record').on('click', '.deactivate-btn', function () {
@@ -367,42 +471,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     $('#print-btn').on('click', () => {
-        window.print();
+        exportToPDF();
     });
-
-
-    // --- (!!!) NEW AND IMPROVED PRINT EVENTS (!!!) ---
-
-    // BEFORE printing: Hide columns and show all rows
-    window.onbeforeprint = () => {
-        // 1. Set the print header values
-        $('#print-branch-name').text(staffBranch);
-        $('#print-date').text(new Date().toLocaleDateString('en-US', { dateStyle: 'long' }));
-
-        // 2. Iterate all table instances
-        allDataTables.forEach(table => {
-            // Programmatically hide the "Goal", "Slot", and "Actions" columns
-            table.column('.col-goal').visible(false);
-            table.column('.col-slot').visible(false);
-            table.column('.col-actions').visible(false);
-
-            // Set page length to "All" (-1)
-            table.page.len(-1).draw();
-        });
-    };
-
-    // AFTER printing: Revert to normal
-    window.onafterprint = () => {
-        allDataTables.forEach(table => {
-            // Programmatically show the columns again
-            table.column('.col-goal').visible(true);
-            table.column('.col-slot').visible(true);
-            table.column('.col-actions').visible(true);
-
-            // Revert page length to 5
-            table.page.len(5).draw();
-        });
-    };
 
     // --- PAGE INITIALIZATION ---
     loadAndGroupStudentRecords();
