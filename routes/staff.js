@@ -1029,9 +1029,9 @@ router.post('/api/log-training-plan', async (req, res) => {
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
             .query(`
-                INSERT INTO TrainingPlan (TR, Branch, Gender)
+                INSERT INTO TrainingPlan (TR, Branch, Gender, CreatedAt)
                 OUTPUT INSERTED.PlanID
-                VALUES (@TR, @Branch, @Gender);
+                VALUES (@TR, @Branch, @Gender, GETUTCDATE());
             `);
 
         const newPlanID = planResult.recordset[0].PlanID;
@@ -1892,7 +1892,7 @@ router.get('/api/attendance-record/:tr/:date', async (req, res) => {
                 AttendanceID, TR, WeekID, IsPresent, CreatedAt, 
                 OnLeave -- <-- THE FIX IS HERE
             FROM Attendance
-            WHERE TR = @TR AND CAST(CreatedAt AS DATE) = @Date
+            WHERE TR = @TR AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS DATE) = @Date
         `);
 
         if (result.recordset.length > 0) {
@@ -1950,7 +1950,7 @@ router.put('/api/attendance-record', async (req, res, next) => {
         await request.query(`
             MERGE Attendance AS target
             USING (SELECT @TR AS TR, @Date AS CreatedAt) AS source
-            ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = source.CreatedAt)
+            ON (target.TR = source.TR AND CAST(DATEADD(MINUTE, 330, target.CreatedAt) AS DATE) = source.CreatedAt)
             WHEN MATCHED THEN
                 UPDATE SET 
                     IsPresent = @IsPresent, 
@@ -2007,7 +2007,7 @@ router.post('/api/attendance/bulk-leave', async (req, res) => {
                 SELECT TR FROM TestMaster 
                 WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND JoinedAt <= @Date
             ) AS source
-            ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = @Date)
+            ON (target.TR = source.TR AND CAST(DATEADD(MINUTE, 330, target.CreatedAt) AS DATE) = @Date)
             
             -- If a student already has a record for this day (e.g., marked present accidentally):
             WHEN MATCHED THEN
@@ -2082,7 +2082,7 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
             .query(`
                 SELECT 
                     M.TR, M.Name, M.JoinedAt, S.SlotName,
-                    DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
+                    DATENAME(WEEKDAY, DATEADD(MINUTE, 330, A.CreatedAt)) AS DayName,
                     A.IsPresent, A.OnLeave
                 FROM TestMaster M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
@@ -2274,7 +2274,7 @@ router.put('/api/staff/leaves/:id/status', async (req, res) => {
                 await mergeRequest.query(`
                     MERGE Attendance AS target
                     USING (SELECT @TR AS TR, @Date AS CreatedAt) AS source
-                    ON (target.TR = source.TR AND CAST(target.CreatedAt AS DATE) = source.CreatedAt)
+                    ON (target.TR = source.TR AND CAST(DATEADD(MINUTE, 330, target.CreatedAt) AS DATE) = source.CreatedAt)
                     WHEN MATCHED THEN
                         UPDATE SET IsPresent = 0, OnLeave = 1, Branch = @Branch, Gender = @Gender, WeekID = @WeekID
                     WHEN NOT MATCHED THEN

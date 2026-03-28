@@ -1605,9 +1605,9 @@ router.post('/api/student/planner/v2/complete-item', async (req, res) => {
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(50), Gender)
       .query(`
-        INSERT INTO TrainingPlan (TR, Branch, Gender)
+        INSERT INTO TrainingPlan (TR, Branch, Gender, CreatedAt)
         OUTPUT INSERTED.PlanID
-        VALUES (@TR, @Branch, @Gender);
+        VALUES (@TR, @Branch, @Gender, GETUTCDATE());
       `);
 
     const planID = planInsert.recordset[0].PlanID;
@@ -1845,7 +1845,7 @@ router.get(
             .query(`
                 SELECT 
                     M.Name, M.JoinedAt,
-                    DATENAME(WEEKDAY, A.CreatedAt) AS DayName,
+                    DATENAME(WEEKDAY, DATEADD(MINUTE, 330, A.CreatedAt)) AS DayName,
                     A.IsPresent, A.OnLeave
                 FROM TestMaster M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
