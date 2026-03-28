@@ -2548,20 +2548,50 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
         const durationSummaryQuery = `
             DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
             SELECT
-                (SELECT ISNULL(AVG(CAST(DurationInMinutes AS FLOAT)), 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND DurationInMinutes IS NOT NULL) as avgDuration,
-                (SELECT TOP 1 S.SlotName FROM Attendance A JOIN TestMaster M ON A.TR = M.TR JOIN Slots S ON M.SlotID = S.SlotID WHERE A.Branch = @Branch AND A.Gender = @Gender AND A.DurationInMinutes IS NOT NULL GROUP BY S.SlotName ORDER BY SUM(A.DurationInMinutes) DESC) as busiestSlot,
-                (SELECT ISNULL(SUM(DurationInMinutes) / 60.0, 0) FROM Attendance WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as totalHoursThisWeek;
+                (
+                    SELECT ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0)
+                    FROM Attendance A
+                    JOIN TestMaster M ON A.TR = M.TR
+                    WHERE M.Branch = @Branch
+                      AND M.Gender = @Gender
+                      AND A.DurationInMinutes IS NOT NULL
+                ) as avgDuration,
+                (
+                    SELECT TOP 1 S.SlotName
+                    FROM Attendance A
+                    JOIN TestMaster M ON A.TR = M.TR
+                    JOIN Slots S ON M.SlotID = S.SlotID
+                    WHERE M.Branch = @Branch
+                      AND M.Gender = @Gender
+                      AND S.Branch = @Branch
+                      AND S.Gender = @Gender
+                      AND A.DurationInMinutes IS NOT NULL
+                    GROUP BY S.SlotName
+                    ORDER BY SUM(A.DurationInMinutes) DESC
+                ) as busiestSlot,
+                (
+                    SELECT ISNULL(SUM(A.DurationInMinutes) / 60.0, 0)
+                    FROM Attendance A
+                    JOIN TestMaster M ON A.TR = M.TR
+                    WHERE M.Branch = @Branch
+                      AND M.Gender = @Gender
+                      AND A.CreatedAt >= @WeekStart
+                ) as totalHoursThisWeek;
         `;
         const durationSummaryResult = await request.query(durationSummaryQuery);
 
         // Query 4: Peak Hours
         const peakHoursQuery = `
-            SELECT DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) AS hour, COUNT(*) AS count
-            FROM Attendance
-            WHERE Branch = @Branch AND Gender = @Gender AND IsPresent = 1
-              AND MONTH(DATEADD(MINUTE, 330, CreatedAt)) = MONTH(DATEADD(MINUTE, 330, GETUTCDATE()))
-              AND YEAR(DATEADD(MINUTE, 330, CreatedAt)) = YEAR(DATEADD(MINUTE, 330, GETUTCDATE()))
-            GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, CreatedAt)) ORDER BY hour ASC;
+            SELECT DATEPART(hour, DATEADD(MINUTE, 330, A.CreatedAt)) AS hour, COUNT(*) AS count
+            FROM Attendance A
+            JOIN TestMaster M ON A.TR = M.TR
+            WHERE M.Branch = @Branch
+              AND M.Gender = @Gender
+              AND A.IsPresent = 1
+              AND MONTH(DATEADD(MINUTE, 330, A.CreatedAt)) = MONTH(DATEADD(MINUTE, 330, GETUTCDATE()))
+              AND YEAR(DATEADD(MINUTE, 330, A.CreatedAt)) = YEAR(DATEADD(MINUTE, 330, GETUTCDATE()))
+            GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, A.CreatedAt))
+            ORDER BY hour ASC;
         `;
         const peakHoursResult = await request.query(peakHoursQuery);
 

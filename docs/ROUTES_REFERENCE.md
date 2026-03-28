@@ -83,6 +83,9 @@ Endpoints for gym operations, attendance, enrollment, and leave management.
 | POST | `/api/attendance/bulk-leave` | Staff | Mark all active students as "On Leave" for a specific date. | `{ date }` |
 | GET | `/api/staff/leaves/pending` | Staff | Fetch all pending and on-hold leave requests. | None |
 | PUT | `/api/staff/leaves/:id/status` | Staff | Approve, reject, or put a leave request on hold. | `{ status, remarks }` |
+| GET | `/api/staff/progress-page-data` | Staff | Fetch bundled analytics payload for Progress page cards/charts/tables. | None |
+| GET | `/api/staff/workout-summary-by-bodypart` | Staff | Rank students by workouts for selected body part in staff section. | `?partName=Legs` |
+| GET | `/api/staff/goal-alignment` | Staff | Goal vs body-part alignment table for students in staff section. | `?goal=Weight Loss&partName=Cardio` |
 
 ## 👑 Admin Control (`routes/admin.js`)
 High-level administrative and system configuration endpoints.
