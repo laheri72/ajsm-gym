@@ -53,6 +53,47 @@
         searchChoices.containerOuter?.element?.classList.remove('dropdown-up');
     }
 
+    function isStudentMarkedPresent(student) {
+        const status = String(student?.IsPresentToday ?? '').trim().toLowerCase();
+        if (status === 'present' || status === 'checked in') return true;
+
+        const presentFlag = student?.IsPresent;
+        if (presentFlag === true || presentFlag === 1) return true;
+        if (typeof presentFlag === 'string') {
+            const normalized = presentFlag.trim().toLowerCase();
+            if (normalized === '1' || normalized === 'true' || normalized === 'present') return true;
+        }
+        return false;
+    }
+
+    function getPendingAttendanceStudents(attendanceList) {
+        if (!Array.isArray(attendanceList)) return [];
+
+        const byTR = new Map();
+
+        attendanceList.forEach((student) => {
+            const tr = String(student?.TR ?? '').trim();
+            if (!tr) return;
+
+            const currentPresent = isStudentMarkedPresent(student);
+            const existing = byTR.get(tr);
+
+            if (!existing) {
+                byTR.set(tr, { student, isPresent: currentPresent });
+                return;
+            }
+
+            if (!existing.isPresent && currentPresent) {
+                byTR.set(tr, { student, isPresent: true });
+            }
+        });
+
+        return Array.from(byTR.values())
+            .filter((entry) => !entry.isPresent)
+            .map((entry) => entry.student)
+            .sort((a, b) => String(a?.Name ?? '').localeCompare(String(b?.Name ?? ''), undefined, { sensitivity: 'base' }));
+    }
+
     async function validateTrainerSession() {
         try {
             // First get basic session info
@@ -225,7 +266,7 @@ function renderHomePage() {
         if (!sessionsData.success) throw new Error(sessionsData.error);
 
         dailyAttendanceCache = attendanceData;
-        searchStudentsCache = Array.isArray(attendanceData) ? attendanceData : [];
+        searchStudentsCache = getPendingAttendanceStudents(attendanceData);
         activeSessionsCache = sessionsData.data;
 
         // Now update components with shared data
@@ -724,6 +765,7 @@ async function loadQuickStats() {
         if (!sessionsData.success) throw new Error(sessionsData.error || 'Failed to load sessions'); 
 
         dailyAttendanceCache = attendanceData;
+        searchStudentsCache = getPendingAttendanceStudents(attendanceData);
         activeSessionsCache = sessionsData.data;
 
         const active = activeSessionsCache.length;
@@ -751,7 +793,11 @@ async function loadQuickStats() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Failed to load attendance');
             dailyAttendanceCache = data;
+            searchStudentsCache = getPendingAttendanceStudents(data);
             renderDailyAttendance(data);
+            if (document.getElementById('tr-input')) {
+                await initializeSearchSelector(searchStudentsCache);
+            }
         } catch (err) {
             console.error('Failed to load daily attendance:', err);
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Could not load attendance.</td></tr>';
@@ -988,6 +1034,7 @@ async function initializeSearchSelector(students) {
             searchChoices = null;
         }
         const keyboardSearchEnabled = !prefersTouchDropdown || touchKeyboardSearchEnabled;
+        const hasPendingStudents = students.length > 0;
         searchChoices = new Choices('#tr-input', {
             removeItemButton: true,
             maxItemCount: 1,
@@ -997,8 +1044,10 @@ async function initializeSearchSelector(students) {
             searchFields: ['label', 'value'],
             itemSelectText: '',
             noResultsText: 'No matching student',
-            noChoicesText: 'No students available',
-            placeholderValue: keyboardSearchEnabled ? 'Search by name or TR...' : 'Browse and select student...',
+            noChoicesText: 'All students in this slot are already marked present',
+            placeholderValue: keyboardSearchEnabled
+                ? (hasPendingStudents ? 'Search pending by name or TR...' : 'No pending students')
+                : (hasPendingStudents ? 'Browse pending students...' : 'No pending students'),
             choices: students.map(student => ({
                 value: String(student.TR),
                 label: `${student.Name} [${student.TR}]`

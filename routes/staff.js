@@ -400,10 +400,13 @@ router.get('/api/daily-attendance', async (req, res) => {
                         ELSE 'Absent'
                     END AS IsPresentToday
                 FROM TestMaster M
-                LEFT JOIN Attendance A
-                    ON M.TR = A.TR 
-                    -- 4. Find attendance records that fall within the UTC range of the IST day.
-                    AND A.CreatedAt BETWEEN @StartUTC AND @EndUTC
+                OUTER APPLY (
+                    SELECT TOP 1 A1.IsPresent, A1.OnLeave
+                    FROM Attendance A1
+                    WHERE A1.TR = M.TR
+                    AND A1.CreatedAt BETWEEN @StartUTC AND @EndUTC
+                    ORDER BY A1.CreatedAt DESC, A1.AttendanceID DESC
+                ) A
                 WHERE M.Status = 'Active'
                 AND M.Branch = @Branch
                 AND M.Gender = @Gender
