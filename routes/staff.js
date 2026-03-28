@@ -1790,6 +1790,45 @@ router.get('/api/slots', async (req, res) => {
 });
 
 
+// ✏️ Edit a slot's name and max capacity
+router.put('/api/slots/:id', async (req, res) => {
+  const SlotID = req.params.id;
+  const { SlotName, MaxCapacity } = req.body;
+
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
+
+    if (!SlotName || !MaxCapacity) {
+      return res.status(400).json({ success: false, message: 'Slot name and max capacity are required.' });
+    }
+
+    const { Branch, Gender } = req.session.user;
+    const result = await pool.request()
+      .input('SlotID', sql.Int, SlotID)
+      .input('SlotName', sql.NVarChar(50), SlotName)
+      .input('MaxCapacity', sql.Int, MaxCapacity)
+      .input('Branch', sql.NVarChar(50), Branch)
+      .input('Gender', sql.NVarChar(10), Gender)
+      .query(`
+        UPDATE Slots
+        SET SlotName = @SlotName, MaxCapacity = @MaxCapacity
+        WHERE SlotID = @SlotID AND Branch = @Branch AND Gender = @Gender
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ success: false, message: 'Slot not found or not in your branch.' });
+    }
+
+    res.json({ success: true, message: 'Slot updated successfully.' });
+  } catch (err) {
+    console.error('Update slot error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update slot.' });
+  }
+});
+
+
 // CORRECTED VERSION
 router.delete('/api/slots/:id', async (req, res) => {
     const SlotID = req.params.id;

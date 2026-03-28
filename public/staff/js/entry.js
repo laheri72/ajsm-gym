@@ -268,11 +268,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${assigned}</td>
                         <td>${slot.AvailableSeats}</td>
                         <td>
+                            <button class="btn btn-warning btn-sm edit-slot-btn" data-id="${slot.SlotID}" data-name="${slot.SlotName}" data-capacity="${slot.MaxCapacity}">Edit</button>
                             <button class="btn btn-danger btn-sm delete-slot-btn" data-id="${slot.SlotID}">Delete</button>
                         </td>
                     </tr>
                 `;
                 tbody.insertAdjacentHTML('beforeend', row);
+            });
+
+            // Re-attach edit listeners
+            document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+                btn.addEventListener('click', () => editSlot(btn.dataset.id, btn.dataset.name, btn.dataset.capacity));
             });
 
             // Re-attach delete listeners
@@ -284,6 +290,52 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error('Error loading slot table:', err);
         }
     }
+
+    async function editSlot(id, currentName, currentCapacity) {
+        const { value: formValues } = await Swal.fire({
+            title: 'Edit Slot',
+            html:
+                `<label class="swal2-label" style="display:block;text-align:left;margin-bottom:4px;font-weight:600;">Slot Name</label>` +
+                `<input id="swal-slot-name" class="swal2-input" placeholder="Slot Name" value="${currentName}" style="margin-top:0;">` +
+                `<label class="swal2-label" style="display:block;text-align:left;margin-bottom:4px;margin-top:12px;font-weight:600;">Max Capacity</label>` +
+                `<input id="swal-max-capacity" class="swal2-input" type="number" min="1" placeholder="Max Capacity" value="${currentCapacity}" style="margin-top:0;">`,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Save Changes',
+            confirmButtonColor: '#3085d6',
+            preConfirm: () => {
+                const name = document.getElementById('swal-slot-name').value.trim();
+                const capacity = document.getElementById('swal-max-capacity').value.trim();
+                if (!name || !capacity || parseInt(capacity) < 1) {
+                    Swal.showValidationMessage('Please fill in both fields with valid values.');
+                    return false;
+                }
+                return { SlotName: name, MaxCapacity: parseInt(capacity) };
+            }
+        });
+
+        if (formValues) {
+            try {
+                const response = await fetch(`/api/slots/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formValues)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Updated!', text: data.message, timer: 1500, showConfirmButton: false });
+                    loadSlotTable();
+                    loadSlots(); // Refresh the dropdown too
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            } catch (err) {
+                console.error('Edit slot error:', err);
+                Swal.fire('Error', 'Failed to update slot.', 'error');
+            }
+        }
+    }
+
 
     async function deleteSlot(id) {
         const result = await Swal.fire({
