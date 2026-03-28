@@ -19,10 +19,14 @@
     let selectedSlotID = localStorage.getItem('trainerSelectedSlotID') || null;
     let activeSessionsCache = [];
     let dailyAttendanceCache = [];
+    let searchStudentsCache = [];
     let currentStudent = null;
     let studentChoices = null;
     let cachedStudents = null;
     let searchChoices = null;
+    let cleanupSearchDropdownListeners = null;
+    const prefersTouchDropdown = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    let touchKeyboardSearchEnabled = false;
 
     // --- Utility Functions ---
     function toggleButtonSpinner(button, showSpinner) {
@@ -39,6 +43,14 @@
             if (spinner) spinner.remove();
             btnText.style.display = 'inline';
         }
+    }
+
+    function closeSearchDropdown() {
+        if (!searchChoices) return;
+        if (typeof searchChoices.hideDropdown === 'function') {
+            searchChoices.hideDropdown();
+        }
+        searchChoices.containerOuter?.element?.classList.remove('dropdown-up');
     }
 
     async function validateTrainerSession() {
@@ -131,6 +143,7 @@
             }
 
             const modal = new bootstrap.Modal(elements.profileModal);
+            closeSearchDropdown();
             modal.show();
         } catch (error) {
             Swal.fire('Error', error.message, 'error');
@@ -141,10 +154,11 @@
 // show username after welcome ,and display "Talabat" when Gender is Male and "Talebaat" when Gender is Female instead of just Gender
 function renderHomePage() {
     const displayName = currentUser?.Name || currentUser?.Username || 'Trainer';
+    const istDate = moment().tz("Asia/Kolkata").format('YYYY-MM-DD');
     elements.mainContent.innerHTML = `
         <div class="card fade-in">
             <h3 id="welcomeText">Welcome, <span id="welcomeNameDisplay">${displayName}</span>! <br> <span>${currentUser?.Branch} - ${currentUser?.Gender === 'Male' ? 'Talabat' : 'Talebaat'}</span></h3>
-            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${new Date().toISOString().split('T')[0]}</span></p>
+            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${istDate}</span></p>
         </div>
         <div class="card" id="slot-selection-card">
             <h4>Filter by Slot</h4>
@@ -160,8 +174,14 @@ function renderHomePage() {
         <div class="card" id="student-search-card">
             <h4>Student Search</h4>
             <div class="search-group">
-                <select id="tr-input" class="form-control"></select>
-                <button id="search-btn" class="btn"><span class="btn-text">Search</span></button>
+                <select id="tr-input" class="form-control trainer-search-select"></select>
+                <div class="search-actions">
+                    <button id="search-btn" class="btn search-submit-btn"><span class="btn-text">Search</span></button>
+                    <button id="search-input-mode-btn" type="button" class="btn search-mode-btn" aria-pressed="false" title="Enable keyboard search">
+                        <i class="fas fa-keyboard" aria-hidden="true"></i>
+                        <span class="btn-text">Type</span>
+                    </button>
+                </div>
             </div>
         </div> 
         <div class="card" id="daily-attendance-section">
@@ -205,11 +225,12 @@ function renderHomePage() {
         if (!sessionsData.success) throw new Error(sessionsData.error);
 
         dailyAttendanceCache = attendanceData;
+        searchStudentsCache = Array.isArray(attendanceData) ? attendanceData : [];
         activeSessionsCache = sessionsData.data;
 
         // Now update components with shared data
         renderDailyAttendance(dailyAttendanceCache); 
-        initializeSearchSelector(dailyAttendanceCache); // Pass the data instead of fetching again
+        initializeSearchSelector(searchStudentsCache); // Pass the data instead of fetching again
         
         // --- MODIFICATION: Calculate present count ---
         const presentCount = dailyAttendanceCache.filter(s => s.IsPresentToday === 'Present').length;
@@ -223,21 +244,30 @@ function renderHomePage() {
         document.getElementById('quick-stats').innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>'; 
     });
 
+    updateSearchInputModeButton();
     initHomeListeners();
 }
 
 // Updated renderQuickStats to show Present/Total and add ID for click, with good styling for highlighting data
 function renderQuickStats(presentCount, totalAttendance, active) {
+    const attendancePct = totalAttendance > 0
+        ? ((presentCount / totalAttendance) * 100).toFixed(1)
+        : '0.0';
+
     document.getElementById('quick-stats').innerHTML = `
-        <div class="row">
+        <div class="row g-2 trainer-quick-stats">
             <div class="col-6">
-                <div class="card" id="active-stats-card" style="cursor: pointer;" title="Go to Check-out">
-                    <p>Active: <br> <strong style="font-size: 1.2em;">${active}</strong> Live session${active !== 1 ? 's' : ''}</p>
-                </div>
+                <button type="button" class="card quick-stat-card is-clickable" id="active-stats-card" title="Go to Check-out">
+                    <span class="quick-stat-label">Active Sessions</span>
+                    <span class="quick-stat-value">${active}</span>
+                    <span class="quick-stat-meta">Live session${active !== 1 ? 's' : ''}</span>
+                </button>
             </div>
             <div class="col-6">
-                <div class="card">
-                    <p>Present Today: <br> ${presentCount} out of  ${totalAttendance} <strong style="font-size: 1.2em;">(${((presentCount / totalAttendance) * 100).toFixed(2)}%)</strong></p>
+                <div class="card quick-stat-card">
+                    <span class="quick-stat-label">Present Today</span>
+                    <span class="quick-stat-value">${presentCount}/${totalAttendance}</span>
+                    <span class="quick-stat-meta">${attendancePct}% attendance</span>
                 </div>
             </div>
         </div>
@@ -703,20 +733,7 @@ async function loadQuickStats() {
         const presentCount = dailyAttendanceCache.filter(s => s.IsPresentToday === 'Present').length;
         // --- End Modification ---
 
-        statsContainer.innerHTML = `
-            <div class="row">
-                <div class="col-6">
-                    <div class="card" id="active-stats-card" style="cursor: pointer;" title="Go to Check-out">
-                        <p>Active: ${active} Live session</p>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card">
-                        <p>Attendance: ${presentCount} / ${totalAttendance}</p>
-                    </div>
-                </div>
-            </div>
-        `;
+        renderQuickStats(presentCount, totalAttendance, active);
         
 
     } catch (err) {
@@ -898,18 +915,98 @@ async function initializeSelector(preSelectedTR = null) {
 
 
 // Updated initializeSearchSelector to use passed data
+function bindSearchDropdownAdaptivePosition(choiceInstance) {
+    const outerElement = choiceInstance?.containerOuter?.element;
+    if (!outerElement) return () => {};
+
+    const selectElement = choiceInstance?.passedElement?.element || document.getElementById('tr-input');
+
+    const updateDropdownDirection = () => {
+        const nav = document.querySelector('.bottom-nav');
+        const navHeight = nav ? nav.getBoundingClientRect().height : 0;
+        const rect = outerElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        const spaceBelow = viewportHeight - rect.bottom - navHeight - 12;
+        const spaceAbove = rect.top - 12;
+        const shouldOpenUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+
+        outerElement.classList.toggle('dropdown-up', shouldOpenUp);
+    };
+
+    const onViewportChange = () => updateDropdownDirection();
+    const onDropdownShow = () => updateDropdownDirection();
+
+    updateDropdownDirection();
+
+    if (selectElement) {
+        selectElement.addEventListener('showDropdown', onDropdownShow);
+        selectElement.addEventListener('search', onDropdownShow);
+    }
+    window.addEventListener('resize', onViewportChange, { passive: true });
+    window.addEventListener('scroll', onViewportChange, { passive: true });
+
+    return () => {
+        if (selectElement) {
+            selectElement.removeEventListener('showDropdown', onDropdownShow);
+            selectElement.removeEventListener('search', onDropdownShow);
+        }
+        window.removeEventListener('resize', onViewportChange);
+        window.removeEventListener('scroll', onViewportChange);
+    };
+}
+
+function updateSearchInputModeButton() {
+    const modeBtn = document.getElementById('search-input-mode-btn');
+    if (!modeBtn) return;
+
+    if (!prefersTouchDropdown) {
+        modeBtn.classList.add('is-hidden');
+        return;
+    }
+
+    modeBtn.classList.remove('is-hidden');
+    modeBtn.classList.toggle('is-active', touchKeyboardSearchEnabled);
+    modeBtn.setAttribute('aria-pressed', String(touchKeyboardSearchEnabled));
+    modeBtn.title = touchKeyboardSearchEnabled ? 'Switch to browse mode' : 'Enable keyboard search';
+
+    const textEl = modeBtn.querySelector('.btn-text');
+    if (textEl) {
+        textEl.textContent = touchKeyboardSearchEnabled ? 'Browse' : 'Type';
+    }
+}
+
 async function initializeSearchSelector(students) {
     try {
         if (!Array.isArray(students)) throw new Error('Invalid student list format');
+        if (cleanupSearchDropdownListeners) {
+            cleanupSearchDropdownListeners();
+            cleanupSearchDropdownListeners = null;
+        }
+        if (searchChoices) {
+            searchChoices.destroy();
+            searchChoices = null;
+        }
+        const keyboardSearchEnabled = !prefersTouchDropdown || touchKeyboardSearchEnabled;
         searchChoices = new Choices('#tr-input', {
             removeItemButton: true,
             maxItemCount: 1,
-            placeholderValue: 'Search by name or TR...',
+            searchEnabled: keyboardSearchEnabled,
+            shouldSort: false,
+            searchResultLimit: 15,
+            searchFields: ['label', 'value'],
+            itemSelectText: '',
+            noResultsText: 'No matching student',
+            noChoicesText: 'No students available',
+            placeholderValue: keyboardSearchEnabled ? 'Search by name or TR...' : 'Browse and select student...',
             choices: students.map(student => ({
                 value: String(student.TR),
                 label: `${student.Name} [${student.TR}]`
             }))
         });
+        searchChoices.containerOuter.element.classList.add('trainer-search-choices');
+        cleanupSearchDropdownListeners = bindSearchDropdownAdaptivePosition(searchChoices);
+        updateSearchInputModeButton();
     } catch (err) {
         console.error('Failed to initialize search selector:', err);
         Swal.fire('Error', 'Failed to load student list for search.', 'error');
@@ -921,6 +1018,7 @@ async function initializeSearchSelector(students) {
 function initHomeListeners() {
     const trInput = document.getElementById('tr-input');
     const searchBtn = document.getElementById('search-btn');
+    const searchModeBtn = document.getElementById('search-input-mode-btn');
     const slotSelector = document.getElementById('slot-selector');
 
     // --- MODIFICATION: Listener for Slot Selector ---
@@ -963,16 +1061,41 @@ function initHomeListeners() {
     }
     // --- End Modification ---
 
+    if (searchModeBtn) {
+        searchModeBtn.addEventListener('click', async () => {
+            if (!prefersTouchDropdown) return;
+
+            const rawSelected = searchChoices ? searchChoices.getValue(true) : '';
+            const selectedValue = Array.isArray(rawSelected) ? rawSelected[0] : rawSelected;
+
+            touchKeyboardSearchEnabled = !touchKeyboardSearchEnabled;
+            await initializeSearchSelector(searchStudentsCache);
+
+            if (selectedValue && searchChoices) {
+                searchChoices.setChoiceByValue(String(selectedValue));
+            }
+
+            if (touchKeyboardSearchEnabled && searchChoices) {
+                searchChoices.showDropdown();
+                window.setTimeout(() => {
+                    const inputEl = searchChoices?.input?.element;
+                    if (inputEl) inputEl.focus();
+                }, 40);
+            }
+        });
+    }
+
     const handleSearch = debounce(async () => {
-        const query = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
+        const rawValue = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
+        const query = Array.isArray(rawValue) ? rawValue[0] : rawValue;
         if (query) {
             toggleButtonSpinner(searchBtn, true);
             try {
+                closeSearchDropdown();
                 await showMiniProfile(query);
                 if (searchChoices) {
-    
+                    searchChoices.removeActiveItems();
                     searchChoices.clearInput();
-                    dailyAttendanceCache = []; // Clear cache after selection
                 }
             } finally 
             {

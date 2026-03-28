@@ -343,7 +343,8 @@
 
         .choices__list--dropdown {
             z-index: 5000;
-            position: relative;
+            position: absolute;
+            width: 100%;
             color: var(--text-color);
             background-color: var(--card-bg);
         }
@@ -400,8 +401,78 @@
         /* Inside your <style> block */
 
 .search-group .choices {
-    flex-grow: 1;  /* This tells the element to fill the available space */
-    width: 1%;     /* This is a flexbox trick to ensure 'flex-grow' works properly */
+    width: 100%;
+    min-width: 0;
+}
+
+#student-search-card {
+    position: relative;
+    z-index: 1200;
+    isolation: isolate;
+}
+
+#daily-attendance-section {
+    position: relative;
+    z-index: 1;
+}
+
+.search-group {
+    position: relative;
+    z-index: 1201;
+}
+
+.search-group .choices,
+.search-group .choices__inner,
+.search-group .choices__list--single {
+    min-height: 44px;
+}
+
+.search-group .choices {
+    margin-bottom: 0;
+}
+
+.search-group .choices__inner {
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)), var(--card-bg);
+    box-shadow: 0 4px 14px -12px rgba(0, 0, 0, 0.55);
+    padding: 6px 10px 6px 10px;
+}
+
+.search-group .choices.is-focused .choices__inner,
+.search-group .choices.is-open .choices__inner {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.search-group .choices__list--single .choices__item {
+    font-weight: 500;
+}
+
+.search-group .choices__list--dropdown {
+    position: absolute;
+    z-index: 2500;
+    width: 100%;
+    margin-top: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    box-shadow: 0 14px 28px -18px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+}
+
+.search-group .choices__list--dropdown .choices__list {
+    max-height: min(40vh, 300px);
+    overflow-y: auto;
+}
+
+.search-group .choices__list--dropdown .choices__item--selectable {
+    padding: 10px 12px;
+}
+
+.search-group .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--text-color);
 }
 
 body.dark-mode label {
@@ -647,4 +718,366 @@ body.dark-mode label {
 /* Ensure modal backdrop is darker */
 #forcePasswordChangeModal.show .modal-backdrop {
     background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* -------------------------------------------------------------------------- */
+/* App-like UX hardening for trainer flow                                     */
+/* -------------------------------------------------------------------------- */
+
+:root {
+    --nav-height: 70px;
+}
+
+body {
+    margin: 0;
+    overscroll-behavior-y: contain;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.content {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0.9rem;
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 14px);
+}
+
+.card {
+    text-align: left;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px -20px rgba(0, 0, 0, 0.6);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: none;
+}
+
+.btn {
+    min-height: 44px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    transform: none;
+}
+
+.btn:hover {
+    transform: none;
+}
+
+.btn:focus-visible {
+    outline: 3px solid rgba(16, 185, 129, 0.35);
+    outline-offset: 1px;
+}
+
+.search-group {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+}
+
+.search-group .btn {
+    width: auto;
+    min-width: 108px;
+    padding: 0.75rem 1rem;
+}
+
+.bottom-nav {
+    height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(8px);
+    align-items: stretch;
+    gap: 4px;
+}
+
+.nav-link {
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 10px;
+    justify-content: center;
+    font-size: 0.72rem;
+    padding: 5px 2px;
+}
+
+.nav-link i {
+    font-size: 1.25rem;
+    margin-bottom: 0.2rem;
+}
+
+.nav-link span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+table {
+    table-layout: fixed;
+}
+
+th,
+td {
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+#dailyAttendanceTable th,
+#dailyAttendanceTable td,
+#activeSessionsTable th,
+#activeSessionsTable td,
+#planHistoryTable th,
+#planHistoryTable td,
+.log-table th,
+.log-table td {
+    padding: 0.65rem 0.55rem;
+}
+
+.quick-stat-card {
+    margin-bottom: 0;
+    min-height: 118px;
+    width: 100%;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0.8rem 0.7rem;
+}
+
+button.quick-stat-card {
+    appearance: none;
+    background: var(--glass-bg);
+}
+
+.quick-stat-card.is-clickable {
+    cursor: pointer;
+}
+
+.quick-stat-label {
+    font-size: 0.78rem;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.quick-stat-value {
+    font-size: clamp(1.25rem, 2.3vw, 1.55rem);
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.quick-stat-meta {
+    font-size: 0.82rem;
+    opacity: 0.88;
+}
+
+.body-part-chip:hover,
+.batch-header:hover,
+.menu-item:hover,
+.list-group-item-action:hover {
+    transform: none;
+}
+
+/* Keep hover feedback only where hover actually exists (desktop pointers). */
+@media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+        background-color: var(--primary-hover);
+        box-shadow: 0 8px 20px -14px rgba(16, 185, 129, 0.8);
+    }
+
+    .quick-stat-card.is-clickable:hover {
+        border-color: rgba(16, 185, 129, 0.55);
+        box-shadow: 0 10px 24px -18px rgba(16, 185, 129, 0.75);
+    }
+}
+
+@media (max-width: 768px) {
+    .content {
+        padding: 0.75rem;
+    }
+
+    .search-group {
+        grid-template-columns: 1fr;
+    }
+
+    .search-group .btn {
+        width: 100%;
+    }
+
+    .mini-profile-modal .action-buttons {
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .mini-profile-modal .action-buttons .btn {
+        width: 100%;
+    }
+
+    .table-wrapper table {
+        min-width: 520px;
+    }
+}
+
+@media (max-width: 420px) {
+    .nav-link {
+        font-size: 0.64rem;
+    }
+
+    .nav-link i {
+        font-size: 1.1rem;
+    }
+
+    .quick-stat-card {
+        min-height: 108px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Student Search Select: scoped, app-grade dropdown behavior                  */
+/* -------------------------------------------------------------------------- */
+
+#student-search-card,
+#student-search-card .search-group,
+#student-search-card .trainer-search-choices {
+    overflow: visible;
+}
+
+#student-search-card {
+    position: relative;
+    z-index: 1035;
+    isolation: isolate;
+}
+
+#student-search-card .search-group {
+    position: relative;
+    z-index: 1036;
+    align-items: stretch;
+}
+
+#student-search-card .trainer-search-choices {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+#student-search-card .trainer-search-choices .choices__inner {
+    min-height: 46px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)), var(--card-bg);
+    box-shadow: 0 8px 18px -14px rgba(0, 0, 0, 0.55);
+    padding: 7px 12px;
+}
+
+#student-search-card .trainer-search-choices.is-focused .choices__inner,
+#student-search-card .trainer-search-choices.is-open .choices__inner {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22), 0 10px 24px -18px rgba(0, 0, 0, 0.6);
+}
+
+#student-search-card .trainer-search-choices .choices__list--single .choices__item {
+    font-weight: 600;
+}
+
+#student-search-card .trainer-search-choices .choices__list--dropdown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    bottom: auto;
+    z-index: 1040;
+    margin-top: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    box-shadow: 0 22px 34px -24px rgba(0, 0, 0, 0.72);
+    overflow: hidden;
+}
+
+#student-search-card .trainer-search-choices.dropdown-up .choices__list--dropdown {
+    top: auto;
+    bottom: calc(100% + 8px);
+}
+
+#student-search-card .trainer-search-choices .choices__list--dropdown .choices__list {
+    max-height: min(44vh, 320px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#student-search-card .trainer-search-choices .choices__list--dropdown .choices__item--selectable {
+    padding: 10px 12px;
+    line-height: 1.35;
+}
+
+#student-search-card .trainer-search-choices .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: rgba(16, 185, 129, 0.14);
+    color: var(--text-color);
+}
+
+@media (max-width: 768px) {
+    #student-search-card .trainer-search-choices .choices__list--dropdown .choices__list {
+        max-height: min(50vh, 300px);
+    }
+}
+
+/* Search actions for touch-friendly browse/type mode */
+#student-search-card .search-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+#student-search-card .search-submit-btn {
+    min-width: 108px;
+}
+
+#student-search-card .search-mode-btn {
+    min-width: 94px;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-color);
+    box-shadow: none;
+    white-space: nowrap;
+}
+
+#student-search-card .search-mode-btn i {
+    font-size: 0.95rem;
+}
+
+#student-search-card .search-mode-btn.is-active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+#student-search-card .search-mode-btn.is-hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    #student-search-card .search-actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        width: 100%;
+    }
+
+    #student-search-card .search-submit-btn {
+        width: 100%;
+    }
 }
