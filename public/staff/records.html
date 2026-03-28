@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Student Records</title> <link rel="icon" href="../images/favicon.png" type="image/png">
+    <title>Student Records</title>
+    <link rel="icon" href="../images/favicon.png" type="image/png">
 
-        <script>
+    <script>
         // This script runs instantly, before anything is displayed.
         try {
             const userString = localStorage.getItem('staffUser');
@@ -27,7 +29,7 @@
             console.error('Bootstrap script failed:', e);
         }
     </script>
-    
+
 
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
@@ -36,6 +38,7 @@
 
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
+
 <body style="visibility: hidden;">
     <div class="dashboard-container">
         <header class="app-header">
@@ -47,65 +50,70 @@
                 <span></span>
                 <span></span>
             </button>
-<nav class="navbar" id="navbar">
-    <div class="sidebar-header">
-        <span id="staff-username-display" class="navbar-username-mobile" 
-              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
-            Loading...
-        </span>
-    </div>
+            <nav class="navbar" id="navbar">
+                <div class="sidebar-header">
+                    <span id="staff-username-display" class="navbar-username-mobile" data-bs-toggle="popover"
+                        data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
 
-    <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-    <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
 
-    <div class="nav-item dropdown" id="students-dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Student Records
-        </a>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
-            <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
-        </ul>
-    </div>
-    
-    <div class="nav-item dropdown" id="time-dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Attendance
-        </a>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
-            <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
-            <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
-        </ul>
-    </div>
+                <div class="nav-item dropdown" id="students-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Student Records
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
+                        <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+                    </ul>
+                </div>
 
-    <div class="nav-item dropdown" id="analytics-dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Analytics
-        </a>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
-            <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a></li>
-        </ul>
-    </div>
+                <div class="nav-item dropdown" id="time-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Attendance
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
+                        <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness
+                                Test Attendance</a></li>
+                        <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
+                    </ul>
+                </div>
 
-    <div class="nav-item" id="user-menu-desktop">
-        <span id="staff-username-display-desktop" class="navbar-username-desktop"
-              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
-            Loading...
-        </span>
-    </div>
+                <div class="nav-item dropdown" id="analytics-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Analytics
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
+                        <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a>
+                        </li>
+                    </ul>
+                </div>
 
-    <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+                <div class="nav-item" id="user-menu-desktop">
+                    <span id="staff-username-display-desktop" class="navbar-username-desktop" data-bs-toggle="popover"
+                        data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
 
-    <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
-</nav>
+                <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+
+                <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
+            </nav>
         </header>
 
-<main class="main-content">
+        <main class="main-content">
             <div class="content">
                 <section id="student-record" class="container-fluid mt-4">
-                    
+
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <h2>Active Students</h2>
                         <div class="btn-group" role="group" aria-label="Export Options">
@@ -114,11 +122,12 @@
                             <button id="excel-btn" class="btn btn-outline-success">📄 Export to Excel</button>
                         </div>
                     </div>
-                    
-                    <p class="text-muted">Students are grouped by their assigned slot. Use the ✏️ to change a student's goal or slot.</p>
+
+                    <p class="text-muted">Students are grouped by their assigned slot. Use the ✏️ to change a student's
+                        goal or slot.</p>
 
                     <div id="print-header" class="print-only">
-                        <h1><strong>Al Jamea tus Saifiyah - GYM</strong></h1>
+                        <h1><strong>Khaimat Al-Riyadah - GYM</strong></h1>
                         <p>Active Gym Members</p>
                         <p><strong>Branch:</strong> <span id="print-branch-name"></span></p>
                         <p><strong>Date:</strong> <span id="print-date"></span></p>
@@ -126,18 +135,22 @@
 
                     <div id="slot-cards-container">
                         <div class="card p-4 text-center">
-                            <div class="loader-cell"><div class="loader" style="display: inline-block;"></div></div>
+                            <div class="loader-cell">
+                                <div class="loader" style="display: inline-block;"></div>
+                            </div>
                             <p class="mt-2">Loading student records...</p>
                         </div>
                     </div>
-                    
+
                     <div class="print-watermark print-only">
-                        <img src="../images/favicon.png" alt="Logo" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; opacity: 0.4;">
+                        <img src="../images/favicon.png" alt="Logo"
+                            style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; opacity: 0.4;">
                         Fit-Tracker
                     </div>
 
                     <style>
                         @media print {
+
                             /* Softboard refinements - Squeezed for 1 Slot per Page */
                             @page {
                                 margin: 0.5cm;
@@ -152,14 +165,14 @@
                                 text-transform: uppercase;
                                 text-align: center;
                             }
-                            
+
                             .stacking-card-table th {
                                 font-size: 12pt !important;
                                 background-color: #f2f2f2 !important;
                                 border: 1.5px solid #000 !important;
                                 padding: 6pt !important;
                             }
-                            
+
                             .stacking-card-table td {
                                 font-size: 11pt !important;
                                 border: 1px solid #666 !important;
@@ -167,14 +180,23 @@
                                 line-height: 1.2 !important;
                             }
 
-                            .col-tr { width: 15%; font-weight: bold; }
-                            .col-name { width: 55%; }
-                            .col-darajah { width: 30%; }
+                            .col-tr {
+                                width: 15%;
+                                font-weight: bold;
+                            }
+
+                            .col-name {
+                                width: 55%;
+                            }
+
+                            .col-darajah {
+                                width: 30%;
+                            }
 
                             /* Hide DataTable extras during print */
-                            .dataTables_length, 
-                            .dataTables_filter, 
-                            .dataTables_info, 
+                            .dataTables_length,
+                            .dataTables_filter,
+                            .dataTables_info,
                             .dataTables_paginate {
                                 display: none !important;
                             }
@@ -194,7 +216,7 @@
                                 border-radius: 3px;
                                 font-family: sans-serif;
                             }
-                            
+
                             /* Force one slot per page */
                             .slot-card {
                                 page-break-after: always !important;
@@ -208,20 +230,26 @@
                             #print-header {
                                 margin-bottom: 15pt !important;
                             }
-                            #print-header h1 { font-size: 16pt !important; }
-                            #print-header p { font-size: 10pt !important; }
+
+                            #print-header h1 {
+                                font-size: 16pt !important;
+                            }
+
+                            #print-header p {
+                                font-size: 10pt !important;
+                            }
                         }
                     </style>
 
 
                 </section>
-                </div>
+            </div>
         </main>
     </div>
 
     <div class="nav-overlay" id="nav-overlay"></div>
 
-  <script src="/assets/js/jquery.min.js"></script>
+    <script src="/assets/js/jquery.min.js"></script>
     <script src="/assets/js/dataTables.min.js"></script>
     <script src="/assets/js/dataTables.bootstrap5.min.js"></script>
     <script src="/assets/js/xlsx.full.min.js"></script>
@@ -229,12 +257,12 @@
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
 
     <script type="module" src="js/auth.js"></script>
-    <script type="module" src="js/records.js"></script> 
-    <script type ="module">
+    <script type="module" src="js/records.js"></script>
+    <script type="module">
         document.addEventListener('DOMContentLoaded', function () {
             const hamburgerBtn = document.getElementById('hamburger-btn');
             const navOverlay = document.getElementById('nav-overlay');
-            
+
             function toggleNav() {
                 document.body.classList.toggle('nav-open');
             }
@@ -250,28 +278,30 @@
 
         });
     </script>
-    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Create Your New Password</h5>
-            </div>
-            <div class="modal-body">
-                <p>Welcome! For your security, you must create a new password for your account.</p>
-                <form id="setPasswordForm">
-                    <div class="mb-3">
-                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
-                        <input type="password" class="form-control" id="newPassword" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirmPassword" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
-                </form>
+    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false"
+        tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Your New Password</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Welcome! For your security, you must create a new password for your account.</p>
+                    <form id="setPasswordForm">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 </body>
+
 </html>

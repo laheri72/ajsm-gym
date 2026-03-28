@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="images/favicon.png" type="image/png">
-  <title>Marol-Jamea Gym Website</title>
+  <title>Khaimat Al-Riyadah Gym Website</title>
 
   <!-- Preload optimized background for faster LCP -->
   <link rel="preload" as="image" href="/images/optimized/background_intro.webp">
 
   <style>
-    body, html {
+    body,
+    html {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -47,7 +49,7 @@
       font-weight: bold;
       color: white;
       margin: 0;
-      text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
     }
 
     .tagline {
@@ -61,7 +63,7 @@
     .gym-splash {
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.5);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -98,7 +100,7 @@
       position: absolute;
       bottom: 30px;
       right: 30px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       border: 2px solid #fff;
       color: #fff;
       padding: 10px 20px;
@@ -110,46 +112,62 @@
     }
 
     .skip-button:hover {
-      background: rgba(255,255,255,0.3);
+      background: rgba(255, 255, 255, 0.3);
     }
 
     @keyframes logo-animation {
-      from { opacity: 0; transform: scale(0.5); }
-      to { opacity: 1; transform: scale(1); }
+      from {
+        opacity: 0;
+        transform: scale(0.5);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
-    @keyframes fadeInTagline { to { opacity: 1; } }
+
+    @keyframes fadeInTagline {
+      to {
+        opacity: 1;
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<div class="background-container"></div>
+  <div class="background-container"></div>
 
-<div class="text-overlay" id="textOverlay">
-  <div class="title"><h1>Welcome to FitTracker</h1></div>
-  <div class="tagline">Strength • Discipline • Power</div>
-</div>
-
-<div class="gym-splash" id="splash">
-  <div class="image-container" id="imageContainer">
-    <picture>
-      <source srcset="/images/optimized/logo.webp" type="image/webp">
-      <img src="images/Unted.png" alt="University Logo" class="logo-image" id="utedImage" loading="lazy">
-    </picture>
+  <div class="text-overlay" id="textOverlay">
+    <div class="title">
+      <h1>Welcome to FitTracker</h1>
+    </div>
+    <div class="tagline">Strength • Discipline • Power</div>
   </div>
-  <button class="skip-button" onclick="skipIntro()">Skip Intro</button>
-</div>
 
-<script>
-  const autoRedirect = setTimeout(startTransition, 4000);
-  function skipIntro() { clearTimeout(autoRedirect); startTransition(); }
+  <div class="gym-splash" id="splash">
+    <div class="image-container" id="imageContainer">
+      <picture>
+        <source srcset="/images/optimized/logo.webp" type="image/webp">
+        <img src="images/Unted.png" alt="University Logo" class="logo-image" id="utedImage" loading="lazy">
+      </picture>
+    </div>
+    <button class="skip-button" onclick="skipIntro()">Skip Intro</button>
+  </div>
 
-  function startTransition() {
-    document.getElementById('splash').classList.add('fade-out');
-    document.getElementById('imageContainer').classList.add('fade-elements');
-    document.getElementById('textOverlay').classList.add('fade-elements');
-    setTimeout(() => { window.location.href = "homepage.html"; }, 1000);
-  }
-</script>
+  <script>
+    const autoRedirect = setTimeout(startTransition, 4000);
+    function skipIntro() { clearTimeout(autoRedirect); startTransition(); }
+
+    function startTransition() {
+      document.getElementById('splash').classList.add('fade-out');
+      document.getElementById('imageContainer').classList.add('fade-elements');
+      document.getElementById('textOverlay').classList.add('fade-elements');
+      setTimeout(() => { window.location.href = "homepage.html"; }, 1000);
+    }
+  </script>
 
 </body>
+
 </html>

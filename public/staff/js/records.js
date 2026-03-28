@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-    
+
     // --- GLOBAL VARIABLES ---
-    let groupedSlotsData = {}; 
-    let staffBranch = 'Unknown'; 
+    let groupedSlotsData = {};
+    let staffBranch = 'Unknown';
     let allDataTables = []; // Stores all table instances
 
     const GOAL_OPTIONS = [
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadAndGroupStudentRecords() {
         const container = document.getElementById('slot-cards-container');
         if (!container) return;
-        
+
         // Clear the table instances array on reload
         allDataTables = [];
 
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!json.success || !json.data) {
                 throw new Error(json.error || 'Failed to load data');
             }
-            
+
             const students = json.data;
 
             // 3. Group students by SlotName
@@ -66,26 +66,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 slots[slotName].push(student);
             });
-            
-            groupedSlotsData = slots; 
+
+            groupedSlotsData = slots;
 
             // 4. Clear loader
             container.innerHTML = '';
             const sortedSlotNames = Object.keys(slots).sort();
 
             if (sortedSlotNames.length === 0) {
-                 container.innerHTML = '<div class="card p-3"><p class="text-muted mb-0">No active students found.</p></div>';
-                 return;
+                container.innerHTML = '<div class="card p-3"><p class="text-muted mb-0">No active students found.</p></div>';
+                return;
             }
 
             // 5. Create HTML for each slot card
             sortedSlotNames.forEach((slotName, index) => {
                 const studentsInSlot = slots[slotName];
                 const tableId = `slot-table-${index}`;
-                
+
                 const card = document.createElement('div');
-                card.className = 'card slot-card p-3 p-md-4'; 
-                
+                card.className = 'card slot-card p-3 p-md-4';
+
                 // --- MODIFIED: Added classes to TH elements ---
                 card.innerHTML = `
                     <h4 class="slot-card-header">Slot: ${slotName} (${studentsInSlot.length} Members)</h4>
@@ -108,15 +108,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // 6. Initialize DataTable
                 const newTable = $(`#${tableId}`).DataTable({
-                    data: studentsInSlot, 
+                    data: studentsInSlot,
                     columns: [
                         { data: 'TR', className: 'col-tr' },
                         { data: 'Name', className: 'col-name' },
                         { data: 'Darajah', className: 'col-darajah' },
-                        { 
+                        {
                             data: 'Goal',
-                            className: 'col-goal', 
-                            render: function(data, type, row) {
+                            className: 'col-goal',
+                            render: function (data, type, row) {
                                 let goalText = data ? data : 'Not Set';
                                 return `<span class="goal-text">${goalText}</span>
                                         <button class="btn btn-sm btn-outline-secondary edit-goal-btn" data-tr="${row.TR}">✏️</button>`;
@@ -125,31 +125,31 @@ document.addEventListener("DOMContentLoaded", () => {
                         {
                             data: 'SlotName',
                             className: 'col-slot',
-                            render: function(data, type, row) {
+                            render: function (data, type, row) {
                                 let displayText = !row.SlotID
                                     ? `<span class="text-muted">No slot assigned</span>`
                                     : `<span class="slot-text">${data}</span>`;
                                 return `${displayText} <button class="btn btn-sm btn-outline-secondary edit-slot-btn" data-tr="${row.TR}">✏️</button>`;
                             }
                         },
-                        { 
+                        {
                             data: 'TR',
                             className: 'col-actions',
                             orderable: false,
-                            render: function(data) {
+                            render: function (data) {
                                 return `<button class="btn btn-sm btn-danger deactivate-btn" data-tr="${data}">🚫 Deactivate</button>`;
                             }
                         }
                     ],
                     responsive: true,
                     destroy: true,
-                    pageLength: 5, 
-                    lengthMenu: [ [5, 10, 25, -1], [5, 10, 25, "All"] ], 
-                    drawCallback: function(settings) {
+                    pageLength: 5,
+                    lengthMenu: [[5, 10, 25, -1], [5, 10, 25, "All"]],
+                    drawCallback: function (settings) {
                         makeTableResponsive(tableId);
                     }
                 });
-                
+
                 // Add the instance to our array
                 allDataTables.push(newTable);
             });
@@ -171,11 +171,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const wb = XLSX.utils.book_new();
         const today = new Date().toLocaleDateString('en-GB');
-        const title = `Al Jamea tus Saifiyah - ${staffBranch} - ${today}`;
+        const title = `Khaimat Al-Riyadah - ${staffBranch} - ${today}`;
 
         Object.keys(groupedSlotsData).sort().forEach(slotName => {
             const studentsInSlot = groupedSlotsData[slotName];
-            
+
             // Map data to 4 columns
             const sheetData = studentsInSlot.map(student => ({
                 'TR No': student.TR,
@@ -199,13 +199,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- DELEGATED EVENT LISTENERS (Unchanged) ---
-    
+
     $('#student-record').on('click', '.deactivate-btn', function () {
         // ... (function unchanged) [cite: 45-55]
         const deactivateBtn = $(this);
         const originalBtnText = deactivateBtn.html();
         const tr = deactivateBtn.data('tr');
-        
+
         Swal.fire({
             title: 'Deactivate Student?',
             text: `Are you sure you want to deactivate student TR ${tr}? Their slot will be freed up.`,
@@ -216,16 +216,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     deactivateBtn.prop('disabled', true);
                     deactivateBtn.html('<span class="spinner-border spinner-border-sm"></span>');
-                    
+
                     const res = await fetch(`/api/students/status/${tr}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ Status: 'Inactive' })
                     });
-                    
+
                     if (res.ok) {
                         Swal.fire('Deactivated!', 'The student has been deactivated.', 'success');
-                        loadAndGroupStudentRecords(); 
+                        loadAndGroupStudentRecords();
                     } else {
                         throw new Error('Failed to update student');
                     }
@@ -250,14 +250,14 @@ document.addEventListener("DOMContentLoaded", () => {
         GOAL_OPTIONS.forEach(goal => {
             select.append(`<option value="${goal}" ${goal === currentGoal ? 'selected' : ''}>${goal}</option>`);
         });
-        
+
         if (currentGoal === "Not Set" || !GOAL_OPTIONS.includes(currentGoal)) {
-             select.prepend(`<option value="${currentGoal}" selected>${currentGoal}</option>`);
+            select.prepend(`<option value="${currentGoal}" selected>${currentGoal}</option>`);
         }
 
         const saveBtn = $('<button class="btn btn-sm btn-success" style="margin-left: 5px;">💾</button>');
         const cancelBtn = $('<button class="btn btn-sm btn-secondary" style="margin-left: 5px;">❌</button>');
-        
+
         goalCell.empty().append(select, saveBtn, cancelBtn);
 
         saveBtn.on('click', async () => {
@@ -277,9 +277,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!data.success) throw new Error(data.message);
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Goal updated!', showConfirmButton: false, timer: 2000 });
                 loadAndGroupStudentRecords();
-            } catch(err) {
-                 Swal.fire('Error', 'Error updating goal: ' + err.message, 'error');
-                 loadAndGroupStudentRecords();
+            } catch (err) {
+                Swal.fire('Error', 'Error updating goal: ' + err.message, 'error');
+                loadAndGroupStudentRecords();
             }
         });
 
@@ -304,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             return Swal.fire('Error', `Could not load slots: ${err.message}`, 'error');
         }
-        
+
         const currentText = slotCell.find('.slot-text').text();
 
         const select = $('<select class="form-select form-select-sm" style="width: auto; display: inline-block; margin-right: 5px;"></select>').append(
@@ -316,22 +316,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 </option>`
             ).join('')
         );
-        
+
         if (slotCell.find('.text-muted').length > 0) {
-             select.prepend(`<option value="" selected>No slot assigned</option>`);
+            select.prepend(`<option value="" selected>No slot assigned</option>`);
         }
 
         const saveBtn = $('<button class="btn btn-sm btn-success" style="margin-left: 5px;">💾</button>');
         const cancelBtn = $('<button class="btn btn-sm btn-secondary" style="margin-left: 5px;">❌</button>');
-        
+
         slotCell.empty().append(select, saveBtn, cancelBtn);
-        
+
         saveBtn.on('click', async () => {
             const newSlotID = parseInt(select.val());
             if (isNaN(newSlotID) || !newSlotID) {
                 return Swal.fire('Warning', 'Please select a valid slot.', 'warning');
             }
-            
+
             saveBtn.prop('disabled', true);
             cancelBtn.prop('disabled', true);
             select.prop('disabled', true);
@@ -345,12 +345,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.message);
-                
+
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Slot updated!', showConfirmButton: false, timer: 2000 });
                 loadAndGroupStudentRecords();
-            } catch(err) {
-                 Swal.fire('Error', 'Error updating slot: ' + err.message, 'error');
-                 loadAndGroupStudentRecords();
+            } catch (err) {
+                Swal.fire('Error', 'Error updating slot: ' + err.message, 'error');
+                loadAndGroupStudentRecords();
             }
         });
 
@@ -361,31 +361,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --- Export Button Listeners ---
-    
+
     $('#excel-btn').on('click', () => {
         exportToExcel();
     });
-    
+
     $('#print-btn').on('click', () => {
         window.print();
     });
 
 
     // --- (!!!) NEW AND IMPROVED PRINT EVENTS (!!!) ---
-    
+
     // BEFORE printing: Hide columns and show all rows
     window.onbeforeprint = () => {
         // 1. Set the print header values
         $('#print-branch-name').text(staffBranch);
         $('#print-date').text(new Date().toLocaleDateString('en-US', { dateStyle: 'long' }));
-        
+
         // 2. Iterate all table instances
         allDataTables.forEach(table => {
             // Programmatically hide the "Goal", "Slot", and "Actions" columns
             table.column('.col-goal').visible(false);
             table.column('.col-slot').visible(false);
             table.column('.col-actions').visible(false);
-            
+
             // Set page length to "All" (-1)
             table.page.len(-1).draw();
         });
@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
             table.column('.col-goal').visible(true);
             table.column('.col-slot').visible(true);
             table.column('.col-actions').visible(true);
-            
+
             // Revert page length to 5
             table.page.len(5).draw();
         });
