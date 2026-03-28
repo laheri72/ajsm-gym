@@ -126,6 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 resetEntryForm();
                 loadRecentActivations();
                 loadSlotTable(); // Refresh availability
+                loadSlots(); // Refresh dropdown counts
             } else {
                 Swal.fire('Error', data.message || 'Failed to add student', 'error');
             }
