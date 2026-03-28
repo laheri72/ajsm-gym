@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const wb = XLSX.utils.book_new();
         const today = new Date().toLocaleDateString('en-GB');
-        const title = `Khaimat Al-Riyadah - ${staffBranch} - ${today}`;
+        const title = `Khaima al-Riyada - ${staffBranch} - ${today}`;
 
         Object.keys(groupedSlotsData).sort().forEach(slotName => {
             const studentsInSlot = groupedSlotsData[slotName];
