@@ -210,7 +210,6 @@ function renderHomePage() {
             </div>
         </div>
         <div class="card" id="quick-stats">
-            <p style="text-align:center;">Loading stats...</p> 
         </div>
         <div class="card" id="student-search-card">
             <h4>Student Search</h4>
@@ -257,6 +256,7 @@ function renderHomePage() {
 
     // Fetch data once and share, including SlotID filter
     const attendanceUrl = selectedSlotID ? `/api/daily-attendance?SlotID=${selectedSlotID}` : '/api/daily-attendance';
+    renderQuickStats(null, null, null, { isLoading: true });
     
     Promise.all([ 
         fetch(attendanceUrl).then(res => res.json()),
@@ -282,7 +282,7 @@ function renderHomePage() {
         console.error('Failed to load home data:', err);
         // Handle error in UI
         document.getElementById('dailyAttendanceTable').querySelector('tbody').innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Could not load attendance.</td></tr>';
-        document.getElementById('quick-stats').innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>'; 
+        renderQuickStats(null, null, null, { isError: true }); 
     });
 
     updateSearchInputModeButton();
@@ -290,25 +290,50 @@ function renderHomePage() {
 }
 
 // Updated renderQuickStats to show Present/Total and add ID for click, with good styling for highlighting data
-function renderQuickStats(presentCount, totalAttendance, active) {
-    const attendancePct = totalAttendance > 0
-        ? ((presentCount / totalAttendance) * 100).toFixed(1)
-        : '0.0';
+function renderQuickStats(presentCount, totalAttendance, active, options = {}) {
+    const { isLoading = false, isError = false } = options;
+    const quickStatsEl = document.getElementById('quick-stats');
+    if (!quickStatsEl) return;
 
-    document.getElementById('quick-stats').innerHTML = `
+    const hasValidCounts = Number.isFinite(presentCount) && Number.isFinite(totalAttendance);
+    const hasValidActive = Number.isFinite(active);
+
+    const attendancePct = hasValidCounts && totalAttendance > 0
+        ? ((presentCount / totalAttendance) * 100).toFixed(1)
+        : '--';
+
+    const activeValue = hasValidActive ? active : '--';
+    const presentValue = hasValidCounts ? `${presentCount}/${totalAttendance}` : '--/--';
+
+    const activeMeta = isError
+        ? 'Could not refresh'
+        : isLoading
+            ? 'Refreshing...'
+            : `Live session${active === 1 ? '' : 's'}`;
+
+    const presentMeta = isError
+        ? 'Could not refresh stats'
+        : isLoading
+            ? 'Refreshing...'
+            : `${attendancePct}% attendance`;
+
+    quickStatsEl.classList.toggle('quick-stats-loading', isLoading);
+    quickStatsEl.classList.toggle('quick-stats-error', isError);
+
+    quickStatsEl.innerHTML = `
         <div class="row g-2 trainer-quick-stats">
             <div class="col-6">
-                <button type="button" class="card quick-stat-card is-clickable" id="active-stats-card" title="Go to Check-out">
+                <button type="button" class="card quick-stat-card is-clickable" id="active-stats-card" title="Go to Check-out" ${isLoading || isError ? 'disabled' : ''}>
                     <span class="quick-stat-label">Active Sessions</span>
-                    <span class="quick-stat-value">${active}</span>
-                    <span class="quick-stat-meta">Live session${active !== 1 ? 's' : ''}</span>
+                    <span class="quick-stat-value">${activeValue}</span>
+                    <span class="quick-stat-meta">${activeMeta}</span>
                 </button>
             </div>
             <div class="col-6">
                 <div class="card quick-stat-card">
                     <span class="quick-stat-label">Present Today</span>
-                    <span class="quick-stat-value">${presentCount}/${totalAttendance}</span>
-                    <span class="quick-stat-meta">${attendancePct}% attendance</span>
+                    <span class="quick-stat-value">${presentValue}</span>
+                    <span class="quick-stat-meta">${presentMeta}</span>
                 </div>
             </div>
         </div>
@@ -391,7 +416,7 @@ function renderQuickStats(presentCount, totalAttendance, active) {
 function renderLogsPage() {
     elements.mainContent.innerHTML = `
         <div class="card fade-in">
-            <h3>📋 My Test Logs</h3>
+            <h3>My Test Logs</h3>
 
             <input type="text" id="logSearchInput" class="glass-input" placeholder="Search by TR / Grade / Total" style="margin-bottom:10px;">
 
@@ -751,7 +776,8 @@ async function updateTrainerProfile(event) {
 // --- Component Init & Load Functions ---
 async function loadQuickStats() {
     const statsContainer = document.getElementById('quick-stats');
-    statsContainer.innerHTML = '<p style="text-align:center;">Loading stats...</p>'; 
+    if (!statsContainer) return;
+    renderQuickStats(null, null, null, { isLoading: true }); 
     try {
         const attendanceUrl = selectedSlotID ? `/api/daily-attendance?SlotID=${selectedSlotID}` : '/api/daily-attendance';
         const [attendanceRes, sessionsRes] = await Promise.all([
@@ -780,7 +806,7 @@ async function loadQuickStats() {
 
     } catch (err) {
         console.error('Failed to load quick stats:', err);
-        statsContainer.innerHTML = '<p style="text-align:center; color: var(--error-text);">Could not load stats.</p>'; 
+        renderQuickStats(null, null, null, { isError: true }); 
     }
 }
 
@@ -1724,11 +1750,9 @@ function initHomeListeners() {
     // --- Initial Load ---
     document.addEventListener('DOMContentLoaded', async () => {
         const user = await validateTrainerSession();
-        document.body.classList.add("dark-mode");
         if (user) {
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.body.classList.add('dark-mode');
-            }
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('darkMode', 'false');
             renderHomePage();
             initProfileModalListeners();
             if (sessionStorage.getItem('isDefaultPassword') === 'true') {
