@@ -159,17 +159,28 @@ console.error('Bootstrap script failed:', e);
 
                     <section id="bulk-attendance" class="card mt-4 p-3">
                         <h2>Mark Holidays - At Gym</h2>
-                        <div class="row">
-                
-            <div class="col-md-4">
-                                <label for="bulkLeaveDate">Select Date for University Event/Holiday</label>
-                                <input type="date" class="form-control" id="bulkLeaveDate">
-               
-             </div>
-                            <div class="col-md-4 d-flex align-items-end">
+                        <div class="row align-items-end">
+                            <div class="col-md-3 mb-3">
+                                <label for="bulkLeaveDarajah">Filter by Darajah</label>
+                                <select class="form-control" id="bulkLeaveDarajah">
+                                    <option value="All">All Students</option>
+                                    <!-- Darajahs populated here -->
+                                </select>
+                                <div id="bulkLeaveStudentSummary" class="mt-1" style="font-size: 0.85em;">
+                                    <span id="bulkLeaveStudentCount" class="text-primary fw-bold" style="cursor: pointer; text-decoration: underline;">Loading students...</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="bulkLeaveStartDate">Start Date</label>
+                                <input type="date" class="form-control" id="bulkLeaveStartDate">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="bulkLeaveEndDate">End Date</label>
+                                <input type="date" class="form-control" id="bulkLeaveEndDate">
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <button class="btn btn-warning w-100" id="bulkLeaveBtn">Declare Holiday</button>
-                
-            </div>
+                            </div>
                         </div>
                     </section>
 

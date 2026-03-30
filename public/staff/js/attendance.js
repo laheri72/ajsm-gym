@@ -90,17 +90,111 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --- BULK ATTENDANCE ACTIONS ---
-    document.getElementById('bulkLeaveBtn').addEventListener('click', () => {
-        const dateInput = document.getElementById('bulkLeaveDate');
-        const selectedDate = dateInput.value;
-
-        if (!selectedDate) {
-            return Swal.fire('No Date Selected', 'Please select a date for the event.', 'warning');
+    async function loadDarajahs() {
+        try {
+            const res = await fetch('/api/darajahs');
+            const data = await res.json();
+            if (data.success && data.data) {
+                const select = document.getElementById('bulkLeaveDarajah');
+                if (!select) return;
+                data.data.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d;
+                    opt.textContent = d;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error('Failed to load darajahs', e);
         }
+    }
+    loadDarajahs();
+
+    // Variable to hold the current fetched students to easily show in modal
+    let currentDarajahStudents = [];
+
+    async function updateStudentCount() {
+        const darajah = document.getElementById('bulkLeaveDarajah')?.value || 'All';
+        const countSpan = document.getElementById('bulkLeaveStudentCount');
+        if (!countSpan) return;
+
+        try {
+            countSpan.textContent = 'Loading...';
+            const res = await fetch(`/api/attendance/darajah-students?darajah=${encodeURIComponent(darajah)}`);
+            const data = await res.json();
+            if (data.success) {
+                currentDarajahStudents = data.data;
+                countSpan.textContent = `${data.data.length} student(s) selected (Tap to view)`;
+            } else {
+                countSpan.textContent = 'Error loading count';
+            }
+        } catch (e) {
+            console.error('Failed to load darajah students count', e);
+            countSpan.textContent = 'Error loading count';
+        }
+    }
+
+    document.getElementById('bulkLeaveDarajah')?.addEventListener('change', updateStudentCount);
+    
+    // Call once initially to get the count for "All"
+    // Wait for a tiny timeout to ensure loadDarajahs may have finished if we rely on its first option
+    setTimeout(() => updateStudentCount(), 100);
+
+    document.getElementById('bulkLeaveStudentCount')?.addEventListener('click', () => {
+        if (currentDarajahStudents.length === 0) {
+            Swal.fire('No Students', 'There are no students for this selection.', 'info');
+            return;
+        }
+
+        let tableHtml = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-sm table-striped text-start">
+                    <thead><tr><th>TR</th><th>Name</th><th>Darajah</th></tr></thead>
+                    <tbody>
+        `;
+        currentDarajahStudents.forEach(s => {
+            tableHtml += `<tr><td>${s.TR}</td><td>${s.Name}</td><td>${s.Darajah || '-'}</td></tr>`;
+        });
+        tableHtml += `</tbody></table></div>`;
+
+        Swal.fire({
+            title: 'Selected Students',
+            html: tableHtml,
+            width: '600px',
+            confirmButtonText: 'Close'
+        });
+    });
+
+    document.getElementById('bulkLeaveBtn').addEventListener('click', async () => {
+        const darajah = document.getElementById('bulkLeaveDarajah')?.value || 'All';
+        const startDate = document.getElementById('bulkLeaveStartDate').value;
+        const endDate = document.getElementById('bulkLeaveEndDate').value;
+
+        if (!startDate || !endDate) {
+            return Swal.fire('Missing Dates', 'Please select both start and end dates.', 'warning');
+        }
+        if (new Date(endDate) < new Date(startDate)) {
+            return Swal.fire('Invalid Dates', 'End date cannot be before start date.', 'warning');
+        }
+
+        const { value: reason } = await Swal.fire({
+            title: 'Enter Reason for Leave',
+            input: 'text',
+            inputLabel: 'Reason (e.g., Raihaan Leave)',
+            inputPlaceholder: 'Type your reason here...',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'You need to write a reason!'
+                }
+            },
+            showCancelButton: true
+        });
+
+        if (!reason) return; // User cancelled
 
         Swal.fire({
             title: 'Are you sure?',
-            text: `This will mark ALL active students in your section as "On Leave" for ${selectedDate}.`,
+            text: `This will mark leaves from ${startDate} to ${endDate} for ${darajah === 'All' ? 'ALL active students' : 'students in ' + darajah}.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
@@ -112,13 +206,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     const res = await fetch('/api/attendance/bulk-leave', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ date: selectedDate })
+                        body: JSON.stringify({ darajah, startDate, endDate, reason })
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || 'An unknown error occurred.');
 
                     Swal.fire('Success!', data.message, 'success');
-                    dateInput.value = '';
+                    if (document.getElementById('bulkLeaveStartDate')) document.getElementById('bulkLeaveStartDate').value = '';
+                    if (document.getElementById('bulkLeaveEndDate')) document.getElementById('bulkLeaveEndDate').value = '';
                 } catch (err) {
                     Swal.fire('Operation Failed', err.message, 'error');
                 }

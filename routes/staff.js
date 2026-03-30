@@ -687,6 +687,62 @@ router.get('/api/students-list', async (req, res) => {
     }
 });
 
+router.get('/api/darajahs', async (req, res) => {
+    // Get staff's info from session
+    const { Branch, Gender } = req.session.user || {};
+    if (!Branch || !Gender) {
+        return res.status(401).json({ error: 'Unauthorized. Session missing branch or gender.' });
+    }
+
+    try {
+        const request = pool.request();
+        request.input('Branch', sql.NVarChar(50), Branch);
+        request.input('Gender', sql.NVarChar(10), Gender);
+
+        const result = await request.query(`
+            SELECT DISTINCT Darajah
+            FROM TestMaster
+            WHERE Branch = @Branch AND Gender = @Gender
+              AND Status = 'Active'
+              AND Darajah IS NOT NULL AND Darajah <> ''
+            ORDER BY Darajah
+        `);
+        
+        res.json({ success: true, data: result.recordset.map(r => r.Darajah) });
+    } catch (err) {
+        console.error('Error fetching darajahs:', err);
+        res.status(500).json({ error: 'Failed to fetch darajah list' });
+    }
+});
+
+
+router.get('/api/attendance/darajah-students', async (req, res) => {
+    const { Branch, Gender } = req.session.user || {};
+    if (!Branch || !Gender) return res.status(401).json({ error: 'Unauthorized.' });
+    
+    const { darajah } = req.query;
+
+    try {
+        const pool = require('../utils/db.js').pool;
+        const sql = require('mssql');
+        const request = pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender);
+        
+        let query = "SELECT TR, Name, Darajah FROM TestMaster WHERE Branch = @Branch AND Gender = @Gender AND Status = 'Active'";
+        if (darajah && darajah !== 'All') {
+            query += " AND Darajah = @Darajah";
+            request.input('Darajah', sql.NVarChar(50), darajah);
+        }
+        query += " ORDER BY Name";
+
+        const result = await request.query(query);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch students by darajah' });
+    }
+});
+
 // --- End of routes ---
 
 // UPDATED: Fetches student details, verifies branch/gender, uses current schema
@@ -1973,62 +2029,83 @@ router.put('/api/attendance-record', async (req, res, next) => {
 
 // This new route handles marking all students as "On Leave" for a specific date
 router.post('/api/attendance/bulk-leave', async (req, res) => {
-    const { date } = req.body;
-    const { Branch, Gender } = req.session.user;
+    const { darajah, startDate, endDate, reason } = req.body;
+    const { Branch, Gender, Username, Role } = req.session.user;
 
-    if (!date) {
-        return res.status(400).json({ success: false, error: 'A date is required.' });
-    }
+    if (!startDate || !endDate) return res.status(400).json({ success: false, error: 'Start date and End date are required.' });
+
+    const start = moment(startDate);
+    const end = moment(endDate);
+    if (end.isBefore(start)) return res.status(400).json({ success: false, error: 'End Date cannot be before Start Date.' });
+
+    let remarks = Role === 'Admin' ? 'Bulk Leaves - generated via Admin' : 'Bulk Leaves - generated via Staff';
 
     const transaction = new sql.Transaction(pool);
     try {
         await transaction.begin();
 
-        // Step 1: Find the correct WeekID for the given date.
-        const weekResult = await new sql.Request(transaction)
-            .input('Date', sql.Date, date)
-            .query('SELECT WeekID FROM AttendanceWeek WHERE @Date BETWEEN WeekStartDate AND WeekEndDate');
-
-        if (weekResult.recordset.length === 0) {
-            throw new Error('No valid week found for the selected date.');
+        const dates = [];
+        let curr = start.clone();
+        while(curr.isSameOrBefore(end)) {
+            dates.push(curr.format('YYYY-MM-DD'));
+            curr.add(1, 'day');
         }
-        const weekId = weekResult.recordset[0].WeekID;
 
-        // Step 2: Use a single, powerful MERGE statement to update or insert records
-        // for ALL active students in the specified branch/gender.
-        const mergeRequest = new sql.Request(transaction);
-        mergeRequest.input('Date', sql.Date, date);
-        mergeRequest.input('WeekID', sql.Int, weekId);
-        mergeRequest.input('Branch', sql.NVarChar(50), Branch);
-        mergeRequest.input('Gender', sql.NVarChar(10), Gender);
+        for (const dateStr of dates) {
+            const weekId = await getOrCreateWeekIdByDate(dateStr, transaction);
+            const mergeRequest = new sql.Request(transaction);
+            mergeRequest.input('Date', sql.Date, dateStr);
+            mergeRequest.input('WeekID', sql.Int, weekId);
+            mergeRequest.input('Branch', sql.NVarChar(50), Branch);
+            mergeRequest.input('Gender', sql.NVarChar(10), Gender);
+            let darajahClause = "";
+            if (darajah && darajah !== 'All') {
+                mergeRequest.input('Darajah', sql.NVarChar(50), darajah);
+                darajahClause = " AND Darajah = @Darajah";
+            }
+            await mergeRequest.query(`
+                MERGE Attendance AS target
+                USING (
+                    SELECT TR FROM TestMaster 
+                    WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND JoinedAt <= @Date ${darajahClause}
+                ) AS source
+                ON (target.TR = source.TR AND CAST(DATEADD(MINUTE, 330, target.CreatedAt) AS DATE) = @Date)
+                WHEN MATCHED THEN UPDATE SET IsPresent = 0, OnLeave = 1
+                WHEN NOT MATCHED BY TARGET THEN
+                    INSERT (TR, WeekID, IsPresent, CreatedAt, Branch, Gender, OnLeave)
+                    VALUES (source.TR, @WeekID, 0, @Date, @Branch, @Gender, 1);
+            `);
+        }
+
+        const lrRequest = new sql.Request(transaction);
+        lrRequest.input('LeaveStartDate', sql.Date, startDate);
+        lrRequest.input('LeaveEndDate', sql.Date, endDate);
+        lrRequest.input('Reason', sql.NVarChar(500), reason || 'Holiday');
+        lrRequest.input('Status', sql.VarChar(10), 'Approved');
+        lrRequest.input('ReviewedBy', sql.VarChar(50), Username || 'Staff');
+        lrRequest.input('Remarks', sql.NVarChar(500), remarks);
+        lrRequest.input('Branch', sql.NVarChar(50), Branch);
+        lrRequest.input('Gender', sql.NVarChar(10), Gender);
         
-        await mergeRequest.query(`
-            -- Use MERGE to handle both existing and non-existing attendance records
-            MERGE Attendance AS target
-            USING (
-                -- Select all active students who had joined by the event date
-                SELECT TR FROM TestMaster 
-                WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender AND JoinedAt <= @Date
-            ) AS source
-            ON (target.TR = source.TR AND CAST(DATEADD(MINUTE, 330, target.CreatedAt) AS DATE) = @Date)
-            
-            -- If a student already has a record for this day (e.g., marked present accidentally):
-            WHEN MATCHED THEN
-                UPDATE SET IsPresent = 0, OnLeave = 1
-            
-            -- If a student does NOT have a record for this day:
-            WHEN NOT MATCHED BY TARGET THEN
-                INSERT (TR, WeekID, IsPresent, CreatedAt, Branch, Gender, OnLeave)
-                VALUES (source.TR, @WeekID, 0, @Date, @Branch, @Gender, 1);
+        let lrDarajahClause = "";
+        if (darajah && darajah !== 'All') {
+            lrRequest.input('Darajah', sql.NVarChar(50), darajah);
+            lrDarajahClause = " AND Darajah = @Darajah";
+        }
+        await lrRequest.query(`
+            INSERT INTO LeaveRequests (TR, LeaveStartDate, LeaveEndDate, Reason, Status, RequestedAt, ReviewedBy, ReviewedAt, Remarks)
+            SELECT TR, @LeaveStartDate, @LeaveEndDate, @Reason, @Status, GETUTCDATE(), @ReviewedBy, GETUTCDATE(), @Remarks
+            FROM TestMaster
+            WHERE Status = 'Active' AND Branch = @Branch AND Gender = @Gender ${lrDarajahClause}
         `);
 
         await transaction.commit();
-        res.json({ success: true, message: 'All active students have been marked as "On Leave".' });
+        res.json({ success: true, message: 'Bulk leave scheduled successfully.' });
 
     } catch (err) {
-        await transaction.rollback();
-        console.error('Error in bulk "On Leave" action:', err);
-        res.status(500).json({ success: false, error: err.message || 'Failed to update attendance records.' });
+        if (transaction._aborted === false) await transaction.rollback();
+        console.error('Error in bulk bulk-leave:', err);
+        res.status(500).json({ success: false, error: 'Failed to apply bulk leave.' });
     }
 });
 
