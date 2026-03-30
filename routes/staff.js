@@ -4163,7 +4163,7 @@ router.get('/api/trainer/student-plan/:tr', isTrainer, async (req, res) => {
         const dayMap = {};
         for (const row of planResult.recordset) {
             if (!dayMap[row.Day]) {
-                dayMap[row.Day] = { Day: row.Day, items: [], notes: row.DayNotes || '', displayText: '' };
+                dayMap[row.Day] = { Day: row.Day, items: [], notes: row.DayNotes || '', displayText: row.DayNotes || '' };
             }
             if (row.ExerciseName) {
                 const label = [
