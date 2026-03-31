@@ -25,6 +25,8 @@
     let cachedStudents = null;
     let searchChoices = null;
     let cleanupSearchDropdownListeners = null;
+    let slotsCache = null;
+    let slotFetchPromise = null;
     const prefersTouchDropdown = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
     let touchKeyboardSearchEnabled = false;
     const SESSION_WARNING_MINUTES = 45;
@@ -387,6 +389,50 @@
         }
     }
 
+    function getSlotData() {
+        if (slotsCache) return Promise.resolve(slotsCache);
+        if (slotFetchPromise) return slotFetchPromise;
+
+        slotFetchPromise = fetch('/api/slots', { credentials: 'include' })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success && Array.isArray(data.slots)) {
+                    slotsCache = data.slots;
+                    return slotsCache;
+                }
+                throw new Error(data.message || data.error || 'Failed to load slots');
+            })
+            .finally(() => {
+                slotFetchPromise = null;
+            });
+
+        return slotFetchPromise;
+    }
+
+    function populateSlotSelector(slotSelect) {
+        if (!slotSelect) return;
+        slotSelect.innerHTML = '<option value="">All Slots</option>';
+
+        getSlotData()
+            .then((slots) => {
+                if (!Array.isArray(slots)) return;
+            slotSelect.innerHTML = '<option value="">All Slots</option>';
+                slots.forEach((slot) => {
+                    const option = document.createElement('option');
+                    option.value = slot.SlotID;
+                    option.textContent = slot.SlotName;
+                    if (String(slot.SlotID) === String(selectedSlotID)) option.selected = true;
+                    slotSelect.appendChild(option);
+                });
+            })
+            .catch((err) => {
+                console.error('Failed to load slots:', err);
+            })
+            .finally(() => {
+                renderSlotSelectionWarning();
+            });
+    }
+
 // Updated renderHomePage to fetch data once and add collapsible attendance
 // show username after welcome ,and display "Talabat" when Gender is Male and "Talebaat" when Gender is Female instead of just Gender
 function renderHomePage() {
@@ -435,23 +481,8 @@ function renderHomePage() {
             </div>
         </div>
     `;
-
-    // Fetch Slots first
-    fetch('/api/slots')
-        .then(res => res.json())
-        .then(data => {
-            const slotSelect = document.getElementById('slot-selector');
-            if (data.success && data.slots) {
-                data.slots.forEach(slot => {
-                    const option = document.createElement('option');
-                    option.value = slot.SlotID;
-                    option.textContent = slot.SlotName;
-                    if (String(slot.SlotID) === String(selectedSlotID)) option.selected = true;
-                    slotSelect.appendChild(option);
-                });
-            }
-            renderSlotSelectionWarning();
-        });
+    const slotSelect = document.getElementById('slot-selector');
+    populateSlotSelector(slotSelect);
 
     // Fetch data once and share, including SlotID filter
     const attendanceUrl = selectedSlotID ? `/api/daily-attendance?SlotID=${selectedSlotID}` : '/api/daily-attendance';
