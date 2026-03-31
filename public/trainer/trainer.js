@@ -27,6 +27,10 @@
     let cleanupSearchDropdownListeners = null;
     const prefersTouchDropdown = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
     let touchKeyboardSearchEnabled = false;
+    const SESSION_WARNING_MINUTES = 45;
+    const SESSION_HARD_CAP_MINUTES = 60;
+    const OVERDUE_TOAST_COOLDOWN_MS = 3 * 60 * 1000;
+    let lastOverdueToastAt = Number(localStorage.getItem('trainerLastOverdueToastAt') || 0);
 
     // --- Utility Functions ---
     function toggleButtonSpinner(button, showSpinner) {
@@ -92,6 +96,198 @@
             .filter((entry) => !entry.isPresent)
             .map((entry) => entry.student)
             .sort((a, b) => String(a?.Name ?? '').localeCompare(String(b?.Name ?? ''), undefined, { sensitivity: 'base' }));
+    }
+
+    function getSessionElapsedMinutes(session) {
+        if (Number.isFinite(Number(session?.ElapsedMinutes))) {
+            return Math.max(0, Number(session.ElapsedMinutes));
+        }
+        if (!session?.CreatedAt) return 0;
+        return Math.max(0, moment().diff(moment.utc(session.CreatedAt), 'minutes'));
+    }
+
+    function getSessionRiskBand(session) {
+        const explicitRisk = String(session?.RiskBand || '').trim().toLowerCase();
+        if (explicitRisk === 'critical' || explicitRisk === 'warning' || explicitRisk === 'normal') {
+            return explicitRisk;
+        }
+        const elapsed = getSessionElapsedMinutes(session);
+        if (elapsed >= SESSION_HARD_CAP_MINUTES) return 'critical';
+        if (elapsed >= SESSION_WARNING_MINUTES) return 'warning';
+        return 'normal';
+    }
+
+    function formatElapsedMinutes(minutes) {
+        const safe = Math.max(0, Number(minutes) || 0);
+        const hrs = Math.floor(safe / 60);
+        const mins = safe % 60;
+        if (!hrs) return `${mins}m`;
+        return `${hrs}h ${mins}m`;
+    }
+
+    function getSessionRiskSummary(data = activeSessionsCache) {
+        const summary = {
+            total: 0,
+            warning: 0,
+            critical: 0
+        };
+
+        if (!Array.isArray(data)) return summary;
+
+        data.forEach((session) => {
+            summary.total += 1;
+            const band = getSessionRiskBand(session);
+            if (band === 'warning') summary.warning += 1;
+            if (band === 'critical') summary.critical += 1;
+        });
+
+        return summary;
+    }
+
+    function navigateToCheckoutPage() {
+        const checkoutLink = document.querySelector('.nav-link[data-page="checkout"]');
+        if (checkoutLink) checkoutLink.click();
+    }
+
+    function maybeShowOverdueReminderToast(summary) {
+        if (!summary || summary.critical <= 0) return;
+        const now = Date.now();
+        if (now - lastOverdueToastAt < OVERDUE_TOAST_COOLDOWN_MS) return;
+
+        lastOverdueToastAt = now;
+        localStorage.setItem('trainerLastOverdueToastAt', String(now));
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'warning',
+            title: `${summary.critical} session${summary.critical === 1 ? '' : 's'} reached ${SESSION_HARD_CAP_MINUTES}m cap`,
+            timer: 2400,
+            showConfirmButton: false
+        });
+    }
+
+    async function checkoutSessionsBulk(mode, slotID = null) {
+        const payload = { mode };
+        if (slotID !== null && slotID !== undefined && slotID !== '') payload.slotID = Number(slotID);
+
+        const res = await fetch('/api/checkout/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Bulk checkout failed.');
+        }
+        return data;
+    }
+
+    function renderSessionReminderBanner() {
+        const host = document.getElementById('session-reminder-host');
+        if (!host) return;
+
+        const summary = getSessionRiskSummary(activeSessionsCache);
+        if (summary.total === 0) {
+            host.innerHTML = '';
+            return;
+        }
+
+        const severityClass = summary.critical > 0 ? 'is-critical' : summary.warning > 0 ? 'is-warning' : 'is-normal';
+        host.innerHTML = `
+            <div class="session-reminder-banner ${severityClass}">
+                <div class="session-reminder-copy">
+                    <strong>${summary.total} active session${summary.total === 1 ? '' : 's'}</strong>
+                    <span>${summary.warning} between ${SESSION_WARNING_MINUTES}-${SESSION_HARD_CAP_MINUTES - 1}m, ${summary.critical} at ${SESSION_HARD_CAP_MINUTES}+m</span>
+                </div>
+                <div class="session-reminder-actions">
+                    <button type="button" class="btn session-reminder-btn" id="session-reminder-open-checkout">
+                        <span class="btn-text">Review Check-out</span>
+                    </button>
+                    <button type="button" class="btn session-reminder-btn secondary" id="session-reminder-close-overdue">
+                        <span class="btn-text">Checkout Overdue</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const openBtn = document.getElementById('session-reminder-open-checkout');
+        if (openBtn) {
+            openBtn.addEventListener('click', () => navigateToCheckoutPage());
+        }
+
+        const overdueBtn = document.getElementById('session-reminder-close-overdue');
+        if (overdueBtn) {
+            overdueBtn.disabled = summary.critical === 0;
+            overdueBtn.addEventListener('click', async () => {
+                try {
+                    const result = await checkoutSessionsBulk('overdue');
+                    const checkedOut = result?.summary?.checkedOut || 0;
+                    Swal.fire('Done', `Checked out ${checkedOut} overdue session${checkedOut === 1 ? '' : 's'}.`, 'success');
+                    if (document.getElementById('active-sessions-body')) {
+                        await loadActiveSessions();
+                    } else {
+                        await loadQuickStats();
+                    }
+                } catch (err) {
+                    Swal.fire('Error', err.message, 'error');
+                }
+            });
+        }
+
+        maybeShowOverdueReminderToast(summary);
+    }
+
+    function setCheckInControlsEnabled(enabled) {
+        const searchBtn = document.getElementById('search-btn');
+        const searchModeBtn = document.getElementById('search-input-mode-btn');
+        const searchCard = document.getElementById('student-search-card');
+
+        if (searchBtn) searchBtn.disabled = !enabled;
+        if (searchModeBtn) searchModeBtn.disabled = !enabled;
+        if (searchCard) searchCard.classList.toggle('is-slot-required', !enabled);
+
+        if (searchChoices && typeof searchChoices.enable === 'function' && typeof searchChoices.disable === 'function') {
+            if (enabled) searchChoices.enable();
+            else searchChoices.disable();
+            return;
+        }
+
+        const trInput = document.getElementById('tr-input');
+        if (trInput) trInput.disabled = !enabled;
+    }
+
+    function renderSlotSelectionWarning() {
+        const host = document.getElementById('slot-selection-warning-host');
+        if (!host) return;
+
+        if (selectedSlotID) {
+            host.innerHTML = '';
+            setCheckInControlsEnabled(true);
+            return;
+        }
+
+        host.innerHTML = `
+            <div class="slot-selection-warning">
+                <div>
+                    <strong>Select a specific slot before check-in.</strong>
+                    <p class="slot-required-note">All Slots keeps slot-change triggers inactive, so check-in/search is locked until one slot is selected.</p>
+                </div>
+                <button type="button" class="btn secondary" id="focus-slot-selector-btn">
+                    <span class="btn-text">Select Slot</span>
+                </button>
+            </div>
+        `;
+
+        const focusBtn = document.getElementById('focus-slot-selector-btn');
+        if (focusBtn) {
+            focusBtn.addEventListener('click', () => {
+                const slotSelector = document.getElementById('slot-selector');
+                if (slotSelector) slotSelector.focus();
+            });
+        }
+
+        setCheckInControlsEnabled(false);
     }
 
     async function validateTrainerSession() {
@@ -209,8 +405,10 @@ function renderHomePage() {
                 </select>
             </div>
         </div>
+        <div id="slot-selection-warning-host"></div>
         <div class="card" id="quick-stats">
         </div>
+        <div id="session-reminder-host"></div>
         <div class="card" id="student-search-card">
             <h4>Student Search</h4>
             <div class="search-group">
@@ -252,6 +450,7 @@ function renderHomePage() {
                     slotSelect.appendChild(option);
                 });
             }
+            renderSlotSelectionWarning();
         });
 
     // Fetch data once and share, including SlotID filter
@@ -261,7 +460,7 @@ function renderHomePage() {
     Promise.all([ 
         fetch(attendanceUrl).then(res => res.json()),
         fetch('/api/active-sessions', { credentials: 'include' }).then(res => res.json())
-    ]).then(([attendanceData, sessionsData]) => {
+    ]).then(async ([attendanceData, sessionsData]) => {
         if (attendanceData.error) throw new Error(attendanceData.error);
         if (!sessionsData.success) throw new Error(sessionsData.error);
 
@@ -271,11 +470,13 @@ function renderHomePage() {
 
         // Now update components with shared data
         renderDailyAttendance(dailyAttendanceCache); 
-        initializeSearchSelector(searchStudentsCache); // Pass the data instead of fetching again
+        await initializeSearchSelector(searchStudentsCache); // Pass the data instead of fetching again
+        renderSlotSelectionWarning();
         
         // --- MODIFICATION: Calculate present count ---
         const presentCount = dailyAttendanceCache.filter(s => s.IsPresentToday === 'Present').length;
         renderQuickStats(presentCount, dailyAttendanceCache.length, activeSessionsCache.length);
+        renderSessionReminderBanner();
         // --- End Modification ---
 
     }).catch(err => {
@@ -283,10 +484,13 @@ function renderHomePage() {
         // Handle error in UI
         document.getElementById('dailyAttendanceTable').querySelector('tbody').innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--error-text);">Could not load attendance.</td></tr>';
         renderQuickStats(null, null, null, { isError: true }); 
+        renderSessionReminderBanner();
+        renderSlotSelectionWarning();
     });
 
     updateSearchInputModeButton();
     initHomeListeners();
+    renderSlotSelectionWarning();
 }
 
 // Updated renderQuickStats to show Present/Total and add ID for click, with good styling for highlighting data
@@ -342,14 +546,23 @@ function renderQuickStats(presentCount, totalAttendance, active, options = {}) {
 
     function renderCheckoutPage() {
         elements.mainContent.innerHTML = `
-            <div class="card fade-in">
-                <h3>Active Sessions</h3>
-                <table id="activeSessionsTable">
-                    <thead><tr><th>TR</th><th>Name</th><th>Check-in</th><th>Action</th></tr></thead>
-                    <tbody id="active-sessions-body"></tbody>
-                </table>
+            <div class="card fade-in checkout-actions-card">
+                <h3>Checkout Controls</h3>
+                <div class="checkout-summary-line" id="checkout-summary-text">Loading active sessions...</div>
+                <div class="checkout-actions-row">
+                    <button id="bulk-overdue-btn" class="btn">
+                        <span class="btn-text">Checkout Overdue (${SESSION_HARD_CAP_MINUTES}+m)</span>
+                    </button>
+                </div>
+                <p class="checkout-actions-hint">Prioritize longest sessions first, then tap the buttons above to tidy the floor.</p>
+            </div>
+            <div class="card fade-in" id="departure-queue-card">
+                <h3>Departure Queue</h3>
+                <p class="departure-queue-subtext">Active Check-ins below: sorted by the longest duration.</p>
+                <div id="departure-queue-list"></div>
             </div>
         `;
+        initCheckoutListeners();
         loadActiveSessions();
     }
 
@@ -531,7 +744,7 @@ async function loadLogsTable() {
                     document.querySelectorAll(".delete-log").forEach(btn => {
                 btn.addEventListener("click", e => {
                     const id = e.currentTarget.dataset.id;
-                    deleteLog(id);   // ✅ your existing delete function
+                    deleteLog(id);   // âœ… your existing delete function
                 });
             });
         
@@ -614,7 +827,7 @@ async function showLogDetails(logId) {
         ${r.BatchName || "Test Log"}
     </h4>
     <p style="text-align:center; margin-bottom:8px; font-size:12px; opacity:.7;">
-        ${r.Name} • TR ${r.TR}
+        ${r.Name} â€¢ TR ${r.TR}
     </p>
 
     <div class="section-title">Body</div>
@@ -628,7 +841,7 @@ async function showLogDetails(logId) {
         <div class="log-item"><span class="log-label">BodyFat</span><div class="log-value">${r.BodyFat}</div></div>
         <div class="log-item"><span class="log-label">BMR</span><div class="log-value">${r.BMR}</div></div>
         <div class="log-item"><span class="log-label">Calories</span><div class="log-value">${r.CalorieIntake}</div></div>
-        <div class="log-item"><span class="log-label">VO₂Max</span><div class="log-value">${r.VO2Max}</div></div>
+        <div class="log-item"><span class="log-label">VOâ‚‚Max</span><div class="log-value">${r.VO2Max}</div></div>
     </div>
 
     <div class="section-title">Performance & Result</div>
@@ -643,7 +856,7 @@ async function showLogDetails(logId) {
     </div>
 
     <p style="text-align:center; margin-top:6px; opacity:.6; font-size:11px;">
-        ${moment(r.CreatedAt).format("DD MMM YYYY • hh:mm A")}
+        ${moment(r.CreatedAt).format("DD MMM YYYY â€¢ hh:mm A")}
     </p>
 </div>
 `,
@@ -802,11 +1015,13 @@ async function loadQuickStats() {
         // --- End Modification ---
 
         renderQuickStats(presentCount, totalAttendance, active);
+        renderSessionReminderBanner();
         
 
     } catch (err) {
         console.error('Failed to load quick stats:', err);
         renderQuickStats(null, null, null, { isError: true }); 
+        renderSessionReminderBanner();
     }
 }
 
@@ -823,6 +1038,7 @@ async function loadQuickStats() {
             renderDailyAttendance(data);
             if (document.getElementById('tr-input')) {
                 await initializeSearchSelector(searchStudentsCache);
+                renderSlotSelectionWarning();
             }
         } catch (err) {
             console.error('Failed to load daily attendance:', err);
@@ -853,101 +1069,184 @@ async function loadQuickStats() {
     async function loadActiveSessions() {
         const tbody = document.getElementById('active-sessions-body');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading sessions...</td></tr>';
-            try {
-                const res = await fetch('/api/active-sessions', { credentials: 'include' });
-                const result = await res.json();
-                if (!result.success) throw new Error(result.error);
-                activeSessionsCache = result.data;
-                renderActiveSessions(result.data);
-            } catch (err) {
-                console.error('Failed to load active sessions:', err);
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--error-text);">Could not load active sessions.</td></tr>';
-            }
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading sessions...</td></tr>';
         }
+        try {
+            const res = await fetch('/api/active-sessions', { credentials: 'include' });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error || result.message || 'Failed to load sessions');
+            activeSessionsCache = Array.isArray(result.data) ? result.data : [];
+            if (tbody) renderActiveSessions(activeSessionsCache);
+            renderDepartureQueue(activeSessionsCache);
+            updateCheckoutSummaryInfo();
+            renderSessionReminderBanner();
+        } catch (err) {
+            console.error('Failed to load active sessions:', err);
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--error-text);">Could not load active sessions.</td></tr>';
+            }
+            renderSessionReminderBanner();
+        }
+    }
+
+    function renderDepartureQueue(data) {
+        const queueList = document.getElementById('departure-queue-list');
+        if (!queueList) return;
+
+        if (!Array.isArray(data) || !data.length) {
+            queueList.innerHTML = '<p class="checkout-muted">No active departures pending.</p>';
+            return;
+        }
+
+        const sorted = [...data].sort((a, b) => getSessionElapsedMinutes(b) - getSessionElapsedMinutes(a));
+        queueList.innerHTML = '';
+
+        sorted.forEach((session, index) => {
+            const elapsed = getSessionElapsedMinutes(session);
+            const riskBand = getSessionRiskBand(session);
+            const checkInTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format("h:mm A");
+            const slotTag = session.SlotName ? ` • ${session.SlotName}` : '';
+            const card = document.createElement('div');
+            card.className = 'departure-queue-item';
+            const rankLabel = index === 0 ? 'Longest running' : `#${index + 1}`;
+            const rankTitle = index === 0 ? 'Longest running session in queue' : `Rank ${index + 1}`;
+            card.classList.toggle('departure-queue-item-primary', index === 0);
+            card.setAttribute('data-rank', String(index + 1));
+            card.innerHTML = `
+                <div class="departure-queue-meta">
+                    <div class="departure-queue-meta-line">
+                        <div class="departure-queue-meta-title">
+                            <strong>${session.Name}</strong>
+                            <span class="departure-queue-rank" title="${rankTitle}">${rankLabel}</span>
+                        </div>
+                        <span class="departure-queue-elapsed-chip risk-${riskBand}">
+                            <i class="fas fa-clock" aria-hidden="true"></i>
+                            <span>${formatElapsedMinutes(elapsed)}</span>
+                            <small>elapsed</small>
+                        </span>
+                    </div>
+                    <span class="departure-queue-meta-sub">
+                        TR ${session.TR} • Checked in ${checkInTime}${slotTag}
+                    </span>
+                </div>
+                <button class="btn departure-queue-checkout" aria-label="Check out ${session.Name}">
+                    <span class="btn-text">Check Out</span>
+                </button>
+            `;
+
+            const checkoutBtn = card.querySelector('.departure-queue-checkout');
+            checkoutBtn.addEventListener('click', () => handleCheckout(session, checkoutBtn));
+            queueList.appendChild(card);
+        });
     }
 
     function renderActiveSessions(data) {
         const tbody = document.getElementById('active-sessions-body');
-        if (tbody) {
-            tbody.innerHTML = '';
-            if (!data.length) {
-                tbody.innerHTML = '<tr><td colspan="4">No active sessions.</td></tr>';
-                return;
-            }
-            data.forEach(session => {
-                const checkInTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format("h:mm A");
-                const row = document.createElement('tr');
-                row.innerHTML = `<td>${session.TR}</td><td>${session.Name}</td><td>${checkInTime}</td>`;
-                const btn = document.createElement('td');
-                const checkoutBtn = document.createElement('button');
-                checkoutBtn.classList.add('btn');
-                checkoutBtn.innerHTML = '<span class="btn-text">Check Out</span>';
-                checkoutBtn.onclick = () => handleCheckout(session.TR, session.Name, session.CreatedAt, row, checkoutBtn);
-                btn.appendChild(checkoutBtn);
-                row.appendChild(btn);
-                tbody.appendChild(row);
-            });
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="5">No active sessions.</td></tr>';
+            return;
         }
+
+        data.forEach((session) => {
+            const checkInTime = moment.utc(session.CreatedAt).tz("Asia/Kolkata").format("h:mm A");
+            const elapsed = getSessionElapsedMinutes(session);
+            const riskBand = getSessionRiskBand(session);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${session.TR}</td>
+                <td>${session.Name}</td>
+                <td>${checkInTime}</td>
+                <td><span class="elapsed-pill risk-${riskBand}">${formatElapsedMinutes(elapsed)}</span></td>
+            `;
+
+            const buttonCell = document.createElement('td');
+            const checkoutBtn = document.createElement('button');
+            checkoutBtn.classList.add('btn');
+            checkoutBtn.innerHTML = '<span class="btn-text">Check Out</span>';
+            checkoutBtn.onclick = () => handleCheckout(session, checkoutBtn);
+            buttonCell.appendChild(checkoutBtn);
+            row.appendChild(buttonCell);
+            tbody.appendChild(row);
+        });
     }
 
-async function handleCheckout(tr, studentName, checkInTime, row, button) {
-    toggleButtonSpinner(button, true);
+    function updateCheckoutSummaryInfo() {
+        const summaryHost = document.getElementById('checkout-summary-text');
+        if (!summaryHost) return;
+
+        const summary = getSessionRiskSummary(activeSessionsCache);
+        summaryHost.classList.remove('summary-normal', 'summary-warning', 'summary-critical');
+
+        if (summary.total === 0) {
+            summaryHost.textContent = 'No active sessions right now.';
+            summaryHost.classList.add('summary-normal');
+            return;
+        }
+
+        const severityClass = summary.critical > 0 ? 'summary-critical'
+            : summary.warning > 0 ? 'summary-warning'
+            : 'summary-normal';
+        summaryHost.classList.add(severityClass);
+        summaryHost.innerHTML = `<strong>${summary.total}</strong> active session${summary.total === 1 ? '' : 's'} • ${summary.warning} warning • ${summary.critical} critical`;
+    }
+
+async function handleCheckout(session, button) {
+    if (button) toggleButtonSpinner(button, true);
 
     try {
         const res = await fetch('/api/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ TR: tr })
+            body: JSON.stringify({ TR: session.TR })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
+        if (!res.ok) {
+            if (data.code === 'ALREADY_CLOSED') {
+                await loadActiveSessions();
+                if (document.getElementById('quick-stats')) await loadQuickStats();
+                Swal.fire('Already Closed', data.message || 'Session is already checked out.', 'info');
+                return;
+            }
+            throw new Error(data.message || 'Checkout failed');
+        }
 
-        const checkIn = moment.utc(checkInTime).tz("Asia/Kolkata");
-        const checkOut = moment().tz("Asia/Kolkata");
-        const durationMinutes = Math.round(checkOut.diff(checkIn, 'minutes'));
-
-        // ✅ New: XP Info
-        const awardedXP = data.awardedXP || durationMinutes * 10; // fallback in case backend doesn’t send
+        const durationMinutes = Number.isFinite(Number(data.duration))
+            ? Number(data.duration)
+            : getSessionElapsedMinutes(session);
+        const awardedXP = Number.isFinite(Number(data.awardedXP))
+            ? Number(data.awardedXP)
+            : durationMinutes * 10;
         const xpText = data.levelUpInfo?.levelledUp
-            ? `🏅 Earned ${awardedXP} XP and leveled up to Level ${data.levelUpInfo.newLevel}!`
-            : `💪 Earned ${awardedXP} XP this session.`;
+            ? `Earned ${awardedXP} XP and reached Level ${data.levelUpInfo.newLevel}.`
+            : `Earned ${awardedXP} XP this session.`;
+        const capText = data.wasCapped ? `<br><small>Duration capped at ${SESSION_HARD_CAP_MINUTES} minutes for data safety.</small>` : '';
 
         await Swal.fire({
-            title: 'Checked Out!',
-            html: `
-                <strong>${studentName}</strong> completed a 
-                <b>${durationMinutes}-minute</b> workout.<br>
-                ${xpText}
-            `,
+            title: 'Checked Out',
+            html: `<strong>${session.Name}</strong> completed a <b>${durationMinutes}-minute</b> workout.<br>${xpText}${capText}`,
             icon: 'success',
-            timer: 2500,
+            timer: 2400,
             showConfirmButton: false
         });
 
-        // ✅ Smooth removal of the row
-        row.classList.add('fade-in');
-        row.style.backgroundColor = 'var(--success-bg)';
-        setTimeout(() => row.remove(), 1000);
-
-        // ✅ Update local cache & stats
-        activeSessionsCache = activeSessionsCache.filter(s => s.TR !== tr);
-        renderActiveSessions(activeSessionsCache);
-
+        await loadActiveSessions();
         if (document.getElementById('quick-stats')) {
-            loadQuickStats();
+            await loadQuickStats();
         }
-
     } catch (err) {
         Swal.fire('Error', err.message, 'error');
     } finally {
-        toggleButtonSpinner(button, false);
+        if (button && button.isConnected) {
+            toggleButtonSpinner(button, false);
+        }
     }
 }
-
 async function initializeSelector(preSelectedTR = null) {
     try {
-        // 🔥 Use cached data if available
+        // ًں”¥ Use cached data if available
         if (!cachedStudents) {
             const stored = localStorage.getItem("studentsList");
             if (stored) cachedStudents = JSON.parse(stored);
@@ -1088,6 +1387,84 @@ async function initializeSearchSelector(students) {
     }
 }
 
+function persistSelectedSlot(slotID) {
+    selectedSlotID = slotID || null;
+    if (selectedSlotID) {
+        localStorage.setItem('trainerSelectedSlotID', selectedSlotID);
+    } else {
+        localStorage.removeItem('trainerSelectedSlotID');
+    }
+}
+
+async function handleSlotChangeWithGuardrail(previousSlotID, nextSlotID) {
+    persistSelectedSlot(nextSlotID);
+
+    if (!previousSlotID || String(previousSlotID) === String(nextSlotID)) {
+        renderHomePage();
+        return;
+    }
+
+    const activeInPreviousSlot = activeSessionsCache.filter(
+        (session) => String(session?.SlotID || '') === String(previousSlotID)
+    );
+
+    if (!activeInPreviousSlot.length) {
+        renderHomePage();
+        return;
+    }
+
+    const prompt = await Swal.fire({
+        title: 'Previous Slot Check-out',
+        html: `${activeInPreviousSlot.length} active session${activeInPreviousSlot.length === 1 ? '' : 's'} found in the previous slot.`,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Auto checkout previous slot',
+        denyButtonText: 'Go to check-out',
+        cancelButtonText: 'Skip'
+    });
+
+    if (prompt.isConfirmed) {
+        try {
+            const result = await checkoutSessionsBulk('slot', previousSlotID);
+            const checkedOut = result?.summary?.checkedOut || 0;
+            Swal.fire('Done', `Checked out ${checkedOut} session${checkedOut === 1 ? '' : 's'} from previous slot.`, 'success');
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+        renderHomePage();
+        return;
+    }
+
+    if (prompt.isDenied) {
+        navigateToCheckoutPage();
+        return;
+    }
+
+    renderHomePage();
+}
+
+function initCheckoutListeners() {
+    const overdueBtn = document.getElementById('bulk-overdue-btn');
+
+    if (overdueBtn) {
+        overdueBtn.addEventListener('click', async () => {
+            toggleButtonSpinner(overdueBtn, true);
+            try {
+                const result = await checkoutSessionsBulk('overdue');
+                const checkedOut = result?.summary?.checkedOut || 0;
+                Swal.fire('Done', `Checked out ${checkedOut} overdue session${checkedOut === 1 ? '' : 's'}.`, 'success');
+                await loadActiveSessions();
+                if (document.getElementById('quick-stats')) await loadQuickStats();
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            } finally {
+                toggleButtonSpinner(overdueBtn, false);
+            }
+        });
+    }
+}
+
     // --- Listeners Init ---
 // Updated initHomeListeners for new click events
 function initHomeListeners() {
@@ -1098,14 +1475,23 @@ function initHomeListeners() {
 
     // --- MODIFICATION: Listener for Slot Selector ---
     if (slotSelector) {
-        slotSelector.addEventListener('change', (e) => {
-            selectedSlotID = e.target.value || null;
-            if (selectedSlotID) {
-                localStorage.setItem('trainerSelectedSlotID', selectedSlotID);
-            } else {
-                localStorage.removeItem('trainerSelectedSlotID');
+        slotSelector.addEventListener('change', async (e) => {
+            const previousSlotID = selectedSlotID;
+            const nextSlotID = e.target.value || null;
+
+            if (!Array.isArray(activeSessionsCache) || activeSessionsCache.length === 0) {
+                try {
+                    const res = await fetch('/api/active-sessions', { credentials: 'include' });
+                    const result = await res.json();
+                    if (result.success) {
+                        activeSessionsCache = Array.isArray(result.data) ? result.data : [];
+                    }
+                } catch (_) {
+                    // keep current cache if fetch fails
+                }
             }
-            renderHomePage(); // Refresh everything with the new slot filter
+
+            await handleSlotChangeWithGuardrail(previousSlotID, nextSlotID);
         });
     }
     // --- End Modification ---
@@ -1161,6 +1547,10 @@ function initHomeListeners() {
     }
 
     const handleSearch = debounce(async () => {
+        if (!selectedSlotID) {
+            Swal.fire('Select Slot', 'Choose a specific slot before searching/checking-in students.', 'info');
+            return;
+        }
         const rawValue = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
         const query = Array.isArray(rawValue) ? rawValue[0] : rawValue;
         if (query) {
@@ -1185,7 +1575,7 @@ function initHomeListeners() {
     searchBtn.addEventListener('click', handleSearch);
 }
 
-            // --- 🧠 Unit Validation Helper for Trainer Fitness Test ---
+            // --- ًں§  Unit Validation Helper for Trainer Fitness Test ---
         function detectInchLikeValues(form) {
         const tr = form.dataset.tr;
         const waist = parseFloat(form.querySelector('[name="Waist"]').value);
@@ -1281,11 +1671,11 @@ function initHomeListeners() {
             let warningHTML = `<p>You are about to submit <b>${allRecordsPayload.length}</b> fitness records.</p>`;
             if (mismatchRecords.length > 0) {
             warningHTML += `<div style="margin-top:10px; text-align:left; color:#b91c1c;">
-                ⚠️ <b>Possible Unit Mismatch Detected:</b><br>
+                âڑ ï¸ڈ <b>Possible Unit Mismatch Detected:</b><br>
                 <ul style="margin:0; padding-left:20px;">${mismatchRecords
                     .map(
                     (m) =>
-                        `<li><b>TR ${m.tr}</b> — check ${m.fields.join(", ")} values (too small for cm; may be in inches)</li>`
+                        `<li><b>TR ${m.tr}</b> â€” check ${m.fields.join(", ")} values (too small for cm; may be in inches)</li>`
                     )
                     .join("")}</ul>
                 <br><b>Please verify before final submission.</b>
@@ -1465,6 +1855,11 @@ function initHomeListeners() {
     }
 
     async function promptForWorkoutAndSubmit(tr, studentName) {
+        if (!selectedSlotID) {
+            Swal.fire('Select Slot', 'Choose a specific slot before marking attendance/check-in.', 'info');
+            return;
+        }
+
         const bodyParts = ['Cardio', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Core'];
         const bodyPartsHtml = bodyParts.map(part => 
             `<div class="body-part-chip" data-part="${part}">${part}</div>`

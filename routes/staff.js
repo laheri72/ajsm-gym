@@ -364,6 +364,196 @@ async function awardXP(tr, xpAmount, transaction) {
     return { levelledUp, newLevel: FitnessLevel, newXP: CurrentXP };
 }
 
+const SESSION_WARNING_MINUTES = 45;
+const SESSION_HARD_CAP_MINUTES = 60;
+const OVERDUE_FALLBACK_DURATION_MINUTES = 30; // auto checkout records 30m even though sweep triggers at 60m
+const XP_PER_MINUTE = 10;
+
+function getRiskBandByElapsed(elapsedMinutes) {
+    if (elapsedMinutes >= SESSION_HARD_CAP_MINUTES) return 'critical';
+    if (elapsedMinutes >= SESSION_WARNING_MINUTES) return 'warning';
+    return 'normal';
+}
+
+function computeCappedCheckout(createdAt, nowUtc = moment.utc()) {
+    const inTime = moment.utc(createdAt);
+    const nowMoment = moment.isMoment(nowUtc) ? nowUtc.clone() : moment.utc(nowUtc);
+    const hardCapOutTime = inTime.clone().add(SESSION_HARD_CAP_MINUTES, 'minutes');
+    const effectiveOutTime = moment.min(nowMoment, hardCapOutTime);
+    const durationMinutes = Math.max(
+        0,
+        Math.min(SESSION_HARD_CAP_MINUTES, effectiveOutTime.diff(inTime, 'minutes'))
+    );
+
+    return {
+        outTime: effectiveOutTime,
+        durationMinutes,
+        wasCapped: effectiveOutTime.isSame(hardCapOutTime)
+    };
+}
+
+async function closeAttendanceSession({
+    transaction,
+    attendanceID,
+    tr,
+    createdAt,
+    forcedDurationMinutes = null,
+    forcedOutTimeUtc = null
+}) {
+    const computed = computeCappedCheckout(createdAt);
+    const durationMinutes = Number.isFinite(Number(forcedDurationMinutes))
+        ? Math.max(0, Math.min(SESSION_HARD_CAP_MINUTES, Number(forcedDurationMinutes)))
+        : computed.durationMinutes;
+    const outTime = forcedOutTimeUtc ? moment.utc(forcedOutTimeUtc) : computed.outTime;
+    const updateQuery = `
+        UPDATE Attendance
+        SET OutTime = @OutTime,
+            DurationInMinutes = @Duration
+        WHERE AttendanceID = @AttendanceID
+          AND OutTime IS NULL;
+    `;
+
+    const updateReq = new sql.Request(transaction);
+    updateReq.input('AttendanceID', sql.Int, attendanceID);
+    updateReq.input('OutTime', sql.DateTime, outTime.toDate());
+    updateReq.input('Duration', sql.Int, durationMinutes);
+
+    const updateResult = await updateReq.query(updateQuery);
+    if (!updateResult.rowsAffected?.[0]) {
+        return { closed: false, status: 'already_closed' };
+    }
+
+    if (durationMinutes > 0) {
+        await new sql.Request(transaction)
+            .input('TR', sql.Int, tr)
+            .input('Duration', sql.Int, durationMinutes)
+            .query(`
+                UPDATE TestMaster
+                SET TotalMinutesLogged = ISNULL(TotalMinutesLogged, 0) + @Duration
+                WHERE TR = @TR;
+            `);
+    }
+
+    const awardedXP = durationMinutes * XP_PER_MINUTE;
+    const levelUpInfo = awardedXP > 0
+        ? await awardXP(tr, awardedXP, transaction)
+        : { levelledUp: false };
+
+    return {
+        closed: true,
+        status: 'closed',
+        durationMinutes,
+        awardedXP,
+        levelUpInfo,
+        outTimeUtc: outTime.toDate(),
+        wasCapped: durationMinutes >= SESSION_HARD_CAP_MINUTES || computed.wasCapped
+    };
+}
+
+async function runCheckoutSafetySweep({
+    branch = null,
+    gender = null
+}) {
+    const transaction = new sql.Transaction(pool);
+    const results = [];
+
+    try {
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+        const nowUtc = moment.utc().toDate();
+        request.input('NowUTC', sql.DateTime, nowUtc);
+        request.input('HardCapMinutes', sql.Int, SESSION_HARD_CAP_MINUTES);
+        request.input('Branch', sql.NVarChar(50), branch);
+        request.input('Gender', sql.NVarChar(10), gender);
+
+        const overdueResult = await request.query(`
+            SELECT
+                A.AttendanceID,
+                A.TR,
+                A.CreatedAt
+            FROM Attendance A WITH (UPDLOCK, READPAST)
+            JOIN TestMaster M ON M.TR = A.TR
+            WHERE A.OutTime IS NULL
+              AND ISNULL(A.OnLeave, 0) = 0
+              AND (@Branch IS NULL OR M.Branch = @Branch)
+              AND (@Gender IS NULL OR M.Gender = @Gender)
+              AND DATEDIFF(MINUTE, A.CreatedAt, @NowUTC) >= @HardCapMinutes
+            ORDER BY A.CreatedAt ASC, A.AttendanceID ASC;
+        `);
+
+        for (const row of overdueResult.recordset) {
+            const forcedOutTimeUtc = moment.utc(row.CreatedAt).add(SESSION_HARD_CAP_MINUTES, 'minutes').toDate();
+            const closeResult = await closeAttendanceSession({
+                transaction,
+                attendanceID: row.AttendanceID,
+                tr: row.TR,
+                createdAt: row.CreatedAt,
+                forcedDurationMinutes: OVERDUE_FALLBACK_DURATION_MINUTES,
+                forcedOutTimeUtc
+            });
+            results.push({
+                TR: row.TR,
+                AttendanceID: row.AttendanceID,
+                ...closeResult
+            });
+        }
+
+        await transaction.commit();
+        return {
+            closedCount: results.filter((r) => r.closed).length,
+            skippedCount: results.filter((r) => !r.closed).length,
+            results
+        };
+    } catch (err) {
+        if (transaction.active && !transaction._aborted) {
+            await transaction.rollback();
+        }
+        throw err;
+    }
+}
+
+async function fetchActiveSessionsScoped({ branch, gender, slotID = null }) {
+    const request = pool.request()
+        .input('Branch', sql.NVarChar(50), branch)
+        .input('Gender', sql.NVarChar(10), gender)
+        .input('NowUTC', sql.DateTime, moment.utc().toDate());
+
+    let query = `
+        SELECT
+            A.AttendanceID,
+            A.TR,
+            M.Name,
+            M.SlotID,
+            S.SlotName,
+            A.CreatedAt,
+            DATEDIFF(MINUTE, A.CreatedAt, @NowUTC) AS ElapsedMinutes
+        FROM Attendance A
+        JOIN TestMaster M ON M.TR = A.TR
+        LEFT JOIN Slots S ON S.SlotID = M.SlotID
+        WHERE M.Branch = @Branch
+          AND M.Gender = @Gender
+          AND ISNULL(A.OnLeave, 0) = 0
+          AND A.OutTime IS NULL
+    `;
+
+    if (slotID !== null && slotID !== undefined && slotID !== '') {
+        query += ' AND M.SlotID = @SlotID';
+        request.input('SlotID', sql.Int, Number(slotID));
+    }
+
+    query += ' ORDER BY A.CreatedAt ASC, A.AttendanceID ASC;';
+    const result = await request.query(query);
+
+    return result.recordset.map((row) => {
+        const elapsedMinutes = Math.max(0, Number(row.ElapsedMinutes) || 0);
+        return {
+            ...row,
+            ElapsedMinutes: elapsedMinutes,
+            RiskBand: getRiskBandByElapsed(elapsedMinutes)
+        };
+    });
+}
+
 
 // --- Paste all the routes from the list below here ---
 
@@ -436,39 +626,26 @@ router.get('/api/daily-attendance', async (req, res) => {
 
 // API to get all students currently checked in (active sessions)
 router.get('/api/active-sessions', async (req, res) => {
-    // 1. Enforce login and get trainer's branch/gender from session
-    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
-        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    if (!req.session.user || req.session.user.Role !== 'Trainer' || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Trainers only.' });
     }
     const { Branch, Gender } = req.session.user;
 
     try {
-        // 2. Define the current IST day and convert it to a UTC range for the query
-        const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day').utc().toDate();
-        const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day').utc().toDate();
+        const sweep = await runCheckoutSafetySweep({ branch: Branch, gender: Gender });
+        const sessions = await fetchActiveSessionsScoped({ branch: Branch, gender: Gender });
+        const warningCount = sessions.filter((s) => s.RiskBand === 'warning').length;
+        const criticalCount = sessions.filter((s) => s.RiskBand === 'critical').length;
 
-        const result = await pool.request()
-            .input('Branch', sql.NVarChar(50), Branch)
-            .input('Gender', sql.NVarChar(10), Gender)
-            .input('StartUTC', sql.DateTime, startOfTodayIST)
-            .input('EndUTC', sql.DateTime, endOfTodayIST)
-            .query(`
-                SELECT 
-                    A.TR,
-                    M.Name,
-                    A.CreatedAt -- The check-in timestamp
-                FROM Attendance A
-                JOIN TestMaster M ON A.TR = M.TR
-                WHERE 
-                    M.Branch = @Branch 
-                    AND M.Gender = @Gender
-                    AND A.Onleave = 0 -- Not on leave
-                    AND A.OutTime IS NULL -- The key condition: they haven't checked out
-                    AND A.CreatedAt BETWEEN @StartUTC AND @EndUTC -- They checked in today (IST)
-                ORDER BY A.CreatedAt ASC; -- Show earliest check-ins first
-            `);
-
-        res.json({ success: true, data: result.recordset });
+        res.json({
+            success: true,
+            data: sessions,
+            meta: {
+                warningCount,
+                criticalCount,
+                autoClosedCount: sweep.closedCount
+            }
+        });
 
     } catch (err) {
         console.error("Error fetching active sessions:", err.message);
@@ -568,88 +745,120 @@ router.get('/api/training-plans/:tr', async (req, res) => {
 
 // ✅ Checkout API with XP integration (existing logic preserved)
 router.post('/api/checkout', async (req, res) => {
-    const { TR } = req.body;
+    if (!req.session.user || req.session.user.Role !== 'Trainer' || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Trainers only.' });
+    }
 
-    if (!TR) {
+    const { Branch, Gender } = req.session.user;
+    const tr = Number(req.body?.TR);
+
+    if (!Number.isInteger(tr) || tr <= 0) {
         return res.status(400).json({ success: false, message: 'TR number is required.' });
     }
 
-    // Transaction for safety
     const transaction = new sql.Transaction(pool);
-
     try {
+        await runCheckoutSafetySweep({ branch: Branch, gender: Gender });
         await transaction.begin();
-        const request = new sql.Request(transaction);
 
-        request.input('TR', sql.Int, TR);
+        const openSessionResult = await new sql.Request(transaction)
+            .input('TR', sql.Int, tr)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT TOP 1
+                    A.AttendanceID,
+                    A.CreatedAt,
+                    A.TR,
+                    M.Name
+                FROM Attendance A
+                JOIN TestMaster M ON M.TR = A.TR
+                WHERE A.TR = @TR
+                  AND A.OutTime IS NULL
+                  AND ISNULL(A.OnLeave, 0) = 0
+                  AND M.Branch = @Branch
+                  AND M.Gender = @Gender
+                ORDER BY A.CreatedAt DESC, A.AttendanceID DESC;
+            `);
 
-        // --- ORIGINAL TIME LOGIC ---
-        const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day');
-        const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day');
-        const startUTC = startOfTodayIST.utc().toDate();
-        const endUTC = endOfTodayIST.utc().toDate();
+        if (!openSessionResult.recordset.length) {
+            const studentScopeResult = await new sql.Request(transaction)
+                .input('TR', sql.Int, tr)
+                .input('Branch', sql.NVarChar(50), Branch)
+                .input('Gender', sql.NVarChar(10), Gender)
+                .query(`
+                    SELECT 1 AS ExistsInScope
+                    FROM TestMaster
+                    WHERE TR = @TR
+                      AND Branch = @Branch
+                      AND Gender = @Gender;
+                `);
 
-        request.input('StartUTC', sql.DateTime, startUTC);
-        request.input('EndUTC', sql.DateTime, endUTC);
-
-        // Find open session
-        const openSession = await request.query(`
-            SELECT AttendanceID, CreatedAt FROM Attendance
-            WHERE TR = @TR 
-              AND OutTime IS NULL 
-              AND CreatedAt BETWEEN @StartUTC AND @EndUTC;
-        `);
-
-        if (openSession.recordset.length === 0) {
             await transaction.rollback();
-            return res.status(404).json({ success: false, message: 'This student is not currently checked in. Please mark their attendance first.' });
+            if (!studentScopeResult.recordset.length) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'OUT_OF_SCOPE',
+                    message: 'This TR does not belong to your branch/gender scope.'
+                });
+            }
+
+            const recentSessionResult = await pool.request()
+                .input('TR', sql.Int, tr)
+                .query(`
+                    SELECT TOP 1 AttendanceID, OutTime
+                    FROM Attendance
+                    WHERE TR = @TR
+                    ORDER BY AttendanceID DESC;
+                `);
+
+            if (recentSessionResult.recordset.length && recentSessionResult.recordset[0].OutTime) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'ALREADY_CLOSED',
+                    message: 'Session is already checked out.'
+                });
+            }
+
+            return res.status(404).json({
+                success: false,
+                code: 'NO_ACTIVE_SESSION',
+                message: 'No active session found for this student.'
+            });
         }
 
-        // Original duration logic
-        const { AttendanceID, CreatedAt } = openSession.recordset[0];
-        const inTime = moment.utc(CreatedAt);
-        const outTime = moment.utc();  
-        const duration = outTime.diff(inTime, 'minutes');
-
-        // Update attendance record
-        await request
-            .input('OutTime', sql.DateTime, outTime.toDate())
-            .input('Duration', sql.Int, duration)
-            .input('AttendanceID', sql.Int, AttendanceID)
-            .query(`
-                UPDATE Attendance 
-                SET OutTime = @OutTime, DurationInMinutes = @Duration
-                WHERE AttendanceID = @AttendanceID;
-            `);
-        // Update total minutes in TestMaster table
-        await request.input('TR_Update', sql.Int, TR)
-            .input('Duration_Update', sql.Int, duration)
-            .query('UPDATE TestMaster SET TotalMinutesLogged = TotalMinutesLogged + @Duration_Update WHERE TR = @TR_Update');
-
-
-        // --- ✅ NEW XP Integration (10 XP per minute) ---
-        const xpToAward = duration * 10; // ← Each minute gives 10 XP
-        const levelUpInfo = await awardXP(TR, xpToAward, transaction);
-
-        // Commit transaction
-        await transaction.commit();
-
-        // Format times
-        const inTimeFormatted = inTime.tz("Asia/Kolkata").format("h:mm A");
-        const outTimeFormatted = outTime.tz("Asia/Kolkata").format("h:mm A");
-
-        // Send response
-        res.json({ 
-            success: true, 
-            duration: duration,
-            inTime: inTimeFormatted,
-            outTime: outTimeFormatted,
-            awardedXP: xpToAward, // ← Added for clarity
-            levelUpInfo // ← Extra info about XP/level up
+        const openSession = openSessionResult.recordset[0];
+        const closeResult = await closeAttendanceSession({
+            transaction,
+            attendanceID: openSession.AttendanceID,
+            tr: openSession.TR,
+            createdAt: openSession.CreatedAt
         });
 
+        if (!closeResult.closed) {
+            await transaction.rollback();
+            return res.status(409).json({
+                success: false,
+                code: 'ALREADY_CLOSED',
+                message: 'This session was already checked out.'
+            });
+        }
+
+        await transaction.commit();
+
+        const inTime = moment.utc(openSession.CreatedAt);
+        const outTime = moment.utc(closeResult.outTimeUtc);
+        res.json({
+            success: true,
+            duration: closeResult.durationMinutes,
+            inTime: inTime.tz("Asia/Kolkata").format("h:mm A"),
+            outTime: outTime.tz("Asia/Kolkata").format("h:mm A"),
+            awardedXP: closeResult.awardedXP,
+            levelUpInfo: closeResult.levelUpInfo,
+            wasCapped: closeResult.wasCapped
+        });
     } catch (err) {
-        if (transaction._aborted === false) {
+        if (transaction.active && !transaction._aborted) {
             await transaction.rollback();
         }
         console.error('Check-out error:', err);
@@ -657,6 +866,116 @@ router.post('/api/checkout', async (req, res) => {
     }
 });
 
+router.post('/api/checkout/bulk', async (req, res) => {
+    if (!req.session.user || req.session.user.Role !== 'Trainer' || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Trainers only.' });
+    }
+
+    const { Branch, Gender } = req.session.user;
+    const mode = String(req.body?.mode || '').trim().toLowerCase();
+    const slotID = req.body?.slotID !== undefined && req.body?.slotID !== null && req.body?.slotID !== ''
+        ? Number(req.body.slotID)
+        : null;
+
+    if (!['overdue', 'slot'].includes(mode)) {
+        return res.status(400).json({ success: false, message: 'Invalid checkout mode.' });
+    }
+
+    if (mode === 'slot' && (!Number.isInteger(slotID) || slotID <= 0)) {
+        return res.status(400).json({ success: false, message: 'slotID is required for slot mode.' });
+    }
+
+    let transaction = null;
+    try {
+        if (mode === 'overdue') {
+            const sweep = await runCheckoutSafetySweep({
+                branch: Branch,
+                gender: Gender
+            });
+
+            return res.json({
+                success: true,
+                mode,
+                summary: {
+                    processed: sweep.results.length,
+                    checkedOut: sweep.closedCount,
+                    skipped: sweep.skippedCount
+                },
+                results: sweep.results.map((item) => ({
+                    TR: item.TR,
+                    AttendanceID: item.AttendanceID,
+                    status: item.status,
+                    durationMinutes: item.durationMinutes || 0,
+                    awardedXP: item.awardedXP || 0
+                }))
+            });
+        }
+
+        await runCheckoutSafetySweep({ branch: Branch, gender: Gender });
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        const activeBySlot = await new sql.Request(transaction)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .input('SlotID', sql.Int, slotID)
+            .query(`
+                SELECT
+                    A.AttendanceID,
+                    A.TR,
+                    A.CreatedAt
+                FROM Attendance A
+                JOIN TestMaster M ON M.TR = A.TR
+                WHERE A.OutTime IS NULL
+                  AND ISNULL(A.OnLeave, 0) = 0
+                  AND M.Branch = @Branch
+                  AND M.Gender = @Gender
+                  AND M.SlotID = @SlotID
+                ORDER BY A.CreatedAt ASC, A.AttendanceID ASC;
+            `);
+
+        const results = [];
+        for (const row of activeBySlot.recordset) {
+            const closeResult = await closeAttendanceSession({
+                transaction,
+                attendanceID: row.AttendanceID,
+                tr: row.TR,
+                createdAt: row.CreatedAt
+            });
+            results.push({
+                TR: row.TR,
+                AttendanceID: row.AttendanceID,
+                status: closeResult.status,
+                durationMinutes: closeResult.durationMinutes || 0,
+                awardedXP: closeResult.awardedXP || 0
+            });
+        }
+
+        await transaction.commit();
+
+        const checkedOut = results.filter((r) => r.status === 'closed').length;
+        const skipped = results.length - checkedOut;
+
+        return res.json({
+            success: true,
+            mode,
+            slotID,
+            summary: {
+                processed: results.length,
+                checkedOut,
+                skipped
+            },
+            results
+        });
+    } catch (err) {
+        if (transaction?.active && !transaction._aborted) {
+            await transaction.rollback();
+        }
+        console.error('Bulk check-out error:', err);
+        return res.status(500).json({ success: false, message: 'Server error during bulk check-out.' });
+    }
+});
 
 // UPDATED: Fetches students ONLY for the trainer's branch/gender
 router.get('/api/students-list', async (req, res) => {
@@ -1003,12 +1322,14 @@ router.post('/api/get-or-create-week', async (req, res) => {
 router.post('/api/attendance-manual', async (req, res) => {
     const { TR, WeekID, IsPresent } = req.body;
 
-    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+    if (!req.session.user || req.session.user.Role !== 'Trainer' || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ error: 'Unauthorized access. Please log in.' });
     }
     const { Branch, Gender } = req.session.user;
 
     try {
+        await runCheckoutSafetySweep({ branch: Branch, gender: Gender });
+
         const studentCheck = await pool.request()
             .input('TR', sql.Int, TR)
             .input('Branch', sql.NVarChar(50), Branch)
@@ -2966,6 +3287,7 @@ router.put('/api/slots/:id', async (req, res) => {
 
 // Secret key for cron job authentication (use the same strong key as before)
 const CRON_SECRET_KEY_WEEK = process.env.CRON_SECRET_WEEK || 'AjsmGetWeek'; // Or your preferred key
+const CRON_SECRET_KEY_CHECKOUT = process.env.CRON_SECRET_CHECKOUT || 'AjsmCheckoutSweep';
 
 router.post('/api/cron/create-next-week', async (req, res) => { // Renamed for clarity
     // --- Corrected Security Check ---
@@ -3023,6 +3345,33 @@ router.post('/api/cron/create-next-week', async (req, res) => { // Renamed for c
         if (transaction.active) await transaction.rollback(); // Rollback on error
         console.error('❌ Error in scheduled create-next-week API:', err);
         res.status(500).json({ success: false, message: 'Internal server error during week creation.' });
+    }
+});
+
+router.post('/api/cron/checkout-safety-sweep', async (req, res) => {
+    const providedKey = req.headers['x-internal-secret'] || req.query.secret;
+    if (providedKey !== CRON_SECRET_KEY_CHECKOUT) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Invalid secret key.' });
+    }
+
+    try {
+        const sweep = await runCheckoutSafetySweep({
+            branch: null,
+            gender: null
+        });
+
+        return res.json({
+            success: true,
+            message: 'Checkout safety sweep completed.',
+            summary: {
+                processed: sweep.results.length,
+                checkedOut: sweep.closedCount,
+                skipped: sweep.skippedCount
+            }
+        });
+    } catch (err) {
+        console.error('Checkout safety sweep failed:', err);
+        return res.status(500).json({ success: false, message: 'Checkout safety sweep failed.' });
     }
 });
 
