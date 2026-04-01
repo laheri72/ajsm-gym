@@ -259,33 +259,45 @@
         if (trInput) trInput.disabled = !enabled;
     }
 
+    function openSlotSelectorDropdown() {
+        const slotSelector = document.getElementById('slot-selector');
+        if (!slotSelector) return;
+        slotSelector.focus();
+        if (typeof slotSelector.showPicker === 'function') {
+            slotSelector.showPicker();
+            return;
+        }
+        if (typeof slotSelector.click === 'function') {
+            slotSelector.click();
+        }
+    }
+
     function renderSlotSelectionWarning() {
-        const host = document.getElementById('slot-selection-warning-host');
-        if (!host) return;
+        const warningContainer = document.getElementById('slot-selection-warning-container');
+        if (!warningContainer) return;
 
         if (selectedSlotID) {
-            host.innerHTML = '';
+            warningContainer.innerHTML = '';
+            warningContainer.classList.add('hidden');
             setCheckInControlsEnabled(true);
             return;
         }
 
-        host.innerHTML = `
-            <div class="slot-selection-warning">
-                <div>
-                    <strong>Select a specific slot before check-in.</strong>
-                    <p class="slot-required-note">All Slots keeps slot-change triggers inactive, so check-in/search is locked until one slot is selected.</p>
-                </div>
-                <button type="button" class="btn secondary" id="focus-slot-selector-btn">
-                    <span class="btn-text">Select Slot</span>
-                </button>
+        warningContainer.classList.remove('hidden');
+        warningContainer.innerHTML = `
+            <div>
+                <strong>Select a specific slot before check-in.</strong>
+                <p class="slot-required-note">All Slots keeps slot-change triggers inactive, so check-in/search is locked until one slot is selected.</p>
             </div>
+            <button type="button" class="btn secondary" id="focus-slot-selector-btn">
+                <span class="btn-text">Select Slot</span>
+            </button>
         `;
 
         const focusBtn = document.getElementById('focus-slot-selector-btn');
         if (focusBtn) {
             focusBtn.addEventListener('click', () => {
-                const slotSelector = document.getElementById('slot-selector');
-                if (slotSelector) slotSelector.focus();
+                openSlotSelectorDropdown();
             });
         }
 
@@ -450,8 +462,8 @@ function renderHomePage() {
                     <option value="">All Slots</option>
                 </select>
             </div>
+            <div id="slot-selection-warning-container" class="slot-selection-warning hidden"></div>
         </div>
-        <div id="slot-selection-warning-host"></div>
         <div class="card" id="quick-stats">
         </div>
         <div id="session-reminder-host"></div>

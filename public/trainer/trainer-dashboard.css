@@ -23,6 +23,7 @@
 
             --border-light: rgba(0,0,0,0.15);
             --border-dark: rgba(255,255,255,0.25);
+            --trainer-footer-height: 70px;
         }
 
         body.dark-mode {
@@ -53,12 +54,13 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--secondary-color);
             color: var(--text-color);
-            margin: 0 0 60px 0;
+            margin: 0 0 calc(var(--trainer-footer-height) + 10px) 0;
             transition: background-color 0.3s, color 0.3s;
         }
 
         .content {
             padding: 1rem;
+            padding-bottom: calc(var(--trainer-footer-height) + 16px);
             max-width: 100%;
             margin: 0 auto;
         }
@@ -180,6 +182,7 @@
             border-top: 1px solid var(--border-color);
             display: flex;
             justify-content: space-around;
+            min-height: var(--trainer-footer-height);
             padding: 0.5rem 0;
             box-shadow: var(--shadow);
             z-index: 1000;
@@ -306,6 +309,9 @@
             margin: 0.5rem 0;
             font-size: 1rem;
             color: var(--text-color);
+        }
+        #slot-selection-warning-container {
+            margin-top: 0.5rem;
         }
 
         .mini-profile-modal .recent-activity {
@@ -787,6 +793,11 @@ body {
 }
 
 .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
     height: calc(var(--nav-height) + env(safe-area-inset-bottom));
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     backdrop-filter: blur(8px);
