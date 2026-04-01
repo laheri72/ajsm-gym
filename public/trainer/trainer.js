@@ -169,22 +169,6 @@
         });
     }
 
-    async function checkoutSessionsBulk(mode, slotID = null) {
-        const payload = { mode };
-        if (slotID !== null && slotID !== undefined && slotID !== '') payload.slotID = Number(slotID);
-
-        const res = await fetch('/api/checkout/bulk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-            throw new Error(data.message || 'Bulk checkout failed.');
-        }
-        return data;
-    }
-
     function renderSessionReminderBanner() {
         const host = document.getElementById('session-reminder-host');
         if (!host) return;
@@ -202,40 +186,8 @@
                     <strong>${summary.total} active session${summary.total === 1 ? '' : 's'}</strong>
                     <span>${summary.warning} between ${SESSION_WARNING_MINUTES}-${SESSION_HARD_CAP_MINUTES - 1}m, ${summary.critical} at ${SESSION_HARD_CAP_MINUTES}+m</span>
                 </div>
-                <div class="session-reminder-actions">
-                    <button type="button" class="btn session-reminder-btn" id="session-reminder-open-checkout">
-                        <span class="btn-text">Review Check-out</span>
-                    </button>
-                    <button type="button" class="btn session-reminder-btn secondary" id="session-reminder-close-overdue">
-                        <span class="btn-text">Checkout Overdue</span>
-                    </button>
-                </div>
             </div>
         `;
-
-        const openBtn = document.getElementById('session-reminder-open-checkout');
-        if (openBtn) {
-            openBtn.addEventListener('click', () => navigateToCheckoutPage());
-        }
-
-        const overdueBtn = document.getElementById('session-reminder-close-overdue');
-        if (overdueBtn) {
-            overdueBtn.disabled = summary.critical === 0;
-            overdueBtn.addEventListener('click', async () => {
-                try {
-                    const result = await checkoutSessionsBulk('overdue');
-                    const checkedOut = result?.summary?.checkedOut || 0;
-                    Swal.fire('Done', `Checked out ${checkedOut} overdue session${checkedOut === 1 ? '' : 's'}.`, 'success');
-                    if (document.getElementById('active-sessions-body')) {
-                        await loadActiveSessions();
-                    } else {
-                        await loadQuickStats();
-                    }
-                } catch (err) {
-                    Swal.fire('Error', err.message, 'error');
-                }
-            });
-        }
 
         maybeShowOverdueReminderToast(summary);
     }
@@ -451,45 +403,46 @@ function renderHomePage() {
     const displayName = currentUser?.Name || currentUser?.Username || 'Trainer';
     const istDate = moment().tz("Asia/Kolkata").format('YYYY-MM-DD');
     elements.mainContent.innerHTML = `
-        <div class="card fade-in">
-            <h3 id="welcomeText">Welcome, <span id="welcomeNameDisplay">${displayName}</span>! <br> <span>${currentUser?.Branch} - ${currentUser?.Gender === 'Male' ? 'Talabat' : 'Talebaat'}</span></h3>
-            <p style="text-align:center; font-size: 0.9rem; color: #6b7280;"><strong>Today's Date:</strong> <span>${istDate}</span></p>
-        </div>
-        <div class="card" id="slot-selection-card">
-            <h4>Filter by Slot</h4>
-            <div class="form-group">
-                <select id="slot-selector" class="form-control">
-                    <option value="">All Slots</option>
-                </select>
+        <div class="home-flow-stack">
+            <div class="card home-welcome-slot">
+                <div class="welcome-copy">
+                    <h3 id="welcomeText">Welcome, <span id="welcomeNameDisplay">${displayName}</span>! <br> <span>${currentUser?.Branch} - ${currentUser?.Gender === 'Male' ? 'Talabat' : 'Talebaat'}</span></h3>
+                    <p><strong>Today's Date:</strong> <span>${istDate}</span></p>
+                </div>
+                <div class="slot-row">
+                    <label for="slot-selector">Filter by Slot</label>
+                    <select id="slot-selector" class="form-control">
+                        <option value="">All Slots</option>
+                    </select>
+                </div>
+                <div id="slot-selection-warning-container" class="slot-selection-warning hidden"></div>
             </div>
-            <div id="slot-selection-warning-container" class="slot-selection-warning hidden"></div>
-        </div>
-        <div class="card" id="quick-stats">
-        </div>
-        <div id="session-reminder-host"></div>
-        <div class="card" id="student-search-card">
-            <h4>Student Search</h4>
-            <div class="search-group">
-                <select id="tr-input" class="form-control trainer-search-select"></select>
-                <div class="search-actions">
-                    <button id="search-btn" class="btn search-submit-btn"><span class="btn-text">Search</span></button>
-                    <button id="search-input-mode-btn" type="button" class="btn search-mode-btn" aria-pressed="false" title="Enable keyboard search">
-                        <i class="fas fa-keyboard" aria-hidden="true"></i>
-                        <span class="btn-text">Type</span>
-                    </button>
+            <div class="card" id="quick-stats"></div>
+            <div id="session-reminder-host"></div>
+            <div class="card" id="student-search-card">
+                <h4>Student Search</h4>
+                <div class="search-group">
+                    <select id="tr-input" class="form-control trainer-search-select"></select>
+                    <div class="search-actions">
+                        <button id="search-btn" class="btn search-submit-btn"><span class="btn-text">Search</span></button>
+                        <button id="search-input-mode-btn" type="button" class="btn search-mode-btn" aria-pressed="false" title="Enable keyboard search">
+                            <i class="fas fa-keyboard" aria-hidden="true"></i>
+                            <span class="btn-text">Type</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div> 
-        <div class="card" id="daily-attendance-section">
-            <div class="accordion-header" id="attendance-accordion-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                <h4>Today's Attendance</h4>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="accordion-body hidden" id="attendance-accordion-body">
-                <table id="dailyAttendanceTable">
-                    <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
-                    <tbody></tbody>
-                </table>
+            <div class="card" id="daily-attendance-section">
+                <div class="accordion-header" id="attendance-accordion-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <h4>Today's Attendance <span id="attendance-count-badge" class="attendance-count-badge">&nbsp;</span></h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="accordion-body hidden" id="attendance-accordion-body">
+                    <table id="dailyAttendanceTable">
+                        <thead><tr><th>TR</th><th>Name</th><th>Status</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
@@ -574,6 +527,7 @@ function renderQuickStats(presentCount, totalAttendance, active, options = {}) {
                     <span class="quick-stat-label">Active Sessions</span>
                     <span class="quick-stat-value">${activeValue}</span>
                     <span class="quick-stat-meta">${activeMeta}</span>
+                    <span class="quick-stat-cta">Go to Check-out</span>
                 </button>
             </div>
             <div class="col-6">
@@ -1094,6 +1048,8 @@ async function loadQuickStats() {
         tbody.innerHTML = '';
         if (!data.length) {
             tbody.innerHTML = '<tr><td colspan="3">No attendance records.</td></tr>';
+            const badge = document.getElementById('attendance-count-badge');
+            if (badge) badge.textContent = 'No entries';
             return;
         }
         data.forEach(student => {
@@ -1107,6 +1063,8 @@ async function loadQuickStats() {
             const row = `<tr><td>${student.TR}</td><td>${student.Name}</td><td style="${statusStyle}">${statusText}</td></tr>`;
             tbody.insertAdjacentHTML('beforeend', row);
         });
+        const badge = document.getElementById('attendance-count-badge');
+        if (badge) badge.textContent = `${data.length} entries`;
     }
 
     async function loadActiveSessions() {
