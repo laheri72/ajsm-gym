@@ -770,7 +770,8 @@ router.post('/api/checkout', async (req, res) => {
                     A.AttendanceID,
                     A.CreatedAt,
                     A.TR,
-                    M.Name
+                    M.Name,
+                    DATEDIFF(MINUTE, A.CreatedAt, GETUTCDATE()) AS ElapsedMinutes
                 FROM Attendance A
                 JOIN TestMaster M ON M.TR = A.TR
                 WHERE A.TR = @TR
@@ -832,7 +833,8 @@ router.post('/api/checkout', async (req, res) => {
             transaction,
             attendanceID: openSession.AttendanceID,
             tr: openSession.TR,
-            createdAt: openSession.CreatedAt
+            createdAt: openSession.CreatedAt,
+            forcedDurationMinutes: openSession.ElapsedMinutes
         });
 
         if (!closeResult.closed) {
@@ -924,7 +926,8 @@ router.post('/api/checkout/bulk', async (req, res) => {
                 SELECT
                     A.AttendanceID,
                     A.TR,
-                    A.CreatedAt
+                    A.CreatedAt,
+                    DATEDIFF(MINUTE, A.CreatedAt, GETUTCDATE()) AS ElapsedMinutes
                 FROM Attendance A
                 JOIN TestMaster M ON M.TR = A.TR
                 WHERE A.OutTime IS NULL
@@ -941,7 +944,8 @@ router.post('/api/checkout/bulk', async (req, res) => {
                 transaction,
                 attendanceID: row.AttendanceID,
                 tr: row.TR,
-                createdAt: row.CreatedAt
+                createdAt: row.CreatedAt,
+                forcedDurationMinutes: row.ElapsedMinutes
             });
             results.push({
                 TR: row.TR,
@@ -1363,10 +1367,12 @@ router.post('/api/attendance-manual', async (req, res) => {
             .input('TR', sql.Int, TR)
             .input('WeekID', sql.Int, WeekID)
             .input('IsPresent', sql.Bit, IsPresent)
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
             // 2. Explicitly use the current UTC time for the timestamp.
             .query(`
-                INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, OutTime, DurationInMinutes)
-                VALUES (@TR, @WeekID, @IsPresent, GETUTCDATE(), NULL, NULL)
+                INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, OutTime, DurationInMinutes, Branch, Gender)
+                VALUES (@TR, @WeekID, @IsPresent, GETUTCDATE(), NULL, NULL, @Branch, @Gender)
             `);
             
         res.status(200).json({ message: '✅ Attendance marked successfully' });
