@@ -1401,6 +1401,11 @@ async function initializeSearchSelector(students) {
             searchChoices.destroy();
             searchChoices = null;
         }
+        const rawSearchSelect = document.getElementById('tr-input');
+        if (rawSearchSelect) {
+            // Clear raw select so recreated Choices doesn't append duplicate entries.
+            rawSearchSelect.innerHTML = '';
+        }
         const keyboardSearchEnabled = !prefersTouchDropdown || touchKeyboardSearchEnabled;
         const hasPendingStudents = students.length > 0;
         searchChoices = new Choices('#tr-input', {
