@@ -1485,16 +1485,22 @@ function initHomeListeners() {
             const previousSlotID = selectedSlotID;
             const nextSlotID = e.target.value || null;
 
-            if (!Array.isArray(activeSessionsCache) || activeSessionsCache.length === 0) {
-                try {
-                    const res = await fetch('/api/active-sessions', { credentials: 'include' });
-                    const result = await res.json();
-                    if (result.success) {
-                        activeSessionsCache = Array.isArray(result.data) ? result.data : [];
-                    }
-                } catch (_) {
-                    // keep current cache if fetch fails
+            // Guard against redundant events
+            if (String(previousSlotID) === String(nextSlotID)) return;
+
+            // Update state immediately
+            selectedSlotID = nextSlotID;
+            persistSelectedSlot(nextSlotID);
+
+            // Fetch current active sessions for the guardrail check
+            try {
+                const res = await fetch('/api/active-sessions', { credentials: 'include' });
+                const result = await res.json();
+                if (result.success) {
+                    activeSessionsCache = Array.isArray(result.data) ? result.data : [];
                 }
+            } catch (err) {
+                console.error('Failed to refresh sessions for guardrail:', err);
             }
 
             await handleSlotChangeWithGuardrail(previousSlotID, nextSlotID);
@@ -1509,7 +1515,8 @@ function initHomeListeners() {
             // Check if the click was on the active card or its child elements
             const activeCard = e.target.closest('#active-stats-card');
             if (activeCard) {
-                document.querySelector('.nav-link[data-page="checkout"]').click();
+                const checkoutLink = document.querySelector('.nav-link[data-page="checkout"]');
+                if (checkoutLink) checkoutLink.click();
             }
         });
     }
@@ -1521,9 +1528,11 @@ function initHomeListeners() {
         attendanceHeader.addEventListener('click', () => {
             const body = document.getElementById('attendance-accordion-body');
             const icon = attendanceHeader.querySelector('i');
-            body.classList.toggle('hidden');
-            icon.classList.toggle('fa-chevron-down');
-            icon.classList.toggle('fa-chevron-up');
+            if (body) body.classList.toggle('hidden');
+            if (icon) {
+                icon.classList.toggle('fa-chevron-down');
+                icon.classList.toggle('fa-chevron-up');
+            }
         });
     }
     // --- End Modification ---
@@ -1557,8 +1566,16 @@ function initHomeListeners() {
             Swal.fire('Select Slot', 'Choose a specific slot before searching/checking-in students.', 'info');
             return;
         }
-        const rawValue = searchChoices ? searchChoices.getValue(true) : trInput.value.trim();
-        const query = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+        
+        // Always try to get value from Choices first, fallback to raw input if needed
+        let query = '';
+        if (searchChoices) {
+            const val = searchChoices.getValue(true);
+            query = Array.isArray(val) ? val[0] : val;
+        } else {
+            query = trInput.value.trim();
+        }
+
         if (query) {
             toggleButtonSpinner(searchBtn, true);
             try {
@@ -1574,11 +1591,18 @@ function initHomeListeners() {
             }
         }
     }, 300);
-    trInput.addEventListener('change', async () => {
-        await handleSearch();
+    
+    // trInput change might be triggered by Choices.js internal events, 
+    // so we mainly rely on Choice's internal selection or the Search button.
+    trInput.addEventListener('change', () => {
+        // We can keep it but handleSearch already debounces
+        handleSearch();
     });
 
-    searchBtn.addEventListener('click', handleSearch);
+    searchBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        handleSearch();
+    });
 }
 
             // --- ًں§  Unit Validation Helper for Trainer Fitness Test ---
