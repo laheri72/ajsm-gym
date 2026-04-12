@@ -481,11 +481,20 @@ document.addEventListener("DOMContentLoaded", () => {
         Swal.fire({
             title: 'Deactivate Student?',
             text: `Are you sure you want to deactivate student TR ${tr}? Their slot will be freed up.`,
+            input: 'textarea',
+            inputLabel: 'Reason for deactivation',
+            inputPlaceholder: 'Enter the reason shown in the audit log...',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: 'var(--primary)',
             cancelButtonColor: 'var(--danger)',
-            confirmButtonText: 'Yes, deactivate.'
+            confirmButtonText: 'Yes, deactivate.',
+            inputValidator: (value) => {
+                if (!String(value || '').trim()) {
+                    return 'Reason is required.';
+                }
+                return null;
+            }
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
@@ -495,15 +504,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     const res = await fetch(`/api/students/status/${tr}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ Status: 'Inactive' })
+                        body: JSON.stringify({ Status: 'Inactive', Reason: result.value })
                     });
 
+                    const data = await res.json();
                     if (res.ok) {
-                        Swal.fire('Deactivated!', 'The student has been deactivated.', 'success');
+                        Swal.fire('Deactivated!', data.message || 'The student has been deactivated.', 'success');
                         const currentDate = staffFlatpickrInstance?.selectedDates[0] || new Date();
                         findAndLoadStaffAttendanceForDate(currentDate);
                     } else {
-                        throw new Error('Failed to update student.');
+                        throw new Error(data.error || data.message || 'Failed to update student.');
                     }
                 } catch (err) {
                     Swal.fire('Error', err.message || 'A network error occurred.', 'error');

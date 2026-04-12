@@ -5,6 +5,7 @@ const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const moment = require('moment-timezone'); // This file needs moment
 const { cacheMiddleware, cache } = require('../utils/cache.js');
+const { getStudentStatusHistory } = require('../utils/studentStatusAudit.js');
 
 const VALID_PLANNER_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const PLANNER_SCHEMA_VERSION = 1;
@@ -1786,20 +1787,23 @@ router.get(
     const { TR } = req.session.user;
 
     try {
-        // Query 1: Get recent session history
-        const historyResult = await pool.request()
-            .input('TR', sql.Int, TR)
-            .query(`
-                SELECT TOP 100 CreatedAt, OutTime, DurationInMinutes, AttendanceID
-                FROM Attendance 
-                WHERE TR = @TR AND OutTime IS NOT NULL 
-                ORDER BY AttendanceID DESC;
-            `);
+        const [historyResult, statusHistory] = await Promise.all([
+            pool.request()
+                .input('TR', sql.Int, TR)
+                .query(`
+                    SELECT TOP 100 CreatedAt, OutTime, DurationInMinutes, AttendanceID
+                    FROM Attendance 
+                    WHERE TR = @TR AND OutTime IS NOT NULL 
+                    ORDER BY AttendanceID DESC;
+                `),
+            getStudentStatusHistory(pool, TR)
+        ]);
         
         res.json({
             success: true,
             data: {
                 history: historyResult.recordset,
+                statusHistory
             }
         });
 

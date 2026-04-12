@@ -4,6 +4,11 @@ const router = express.Router();
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const moment = require('moment-timezone');
+const {
+    getStudentStatusHistory,
+    logActivationForCurrentStudent,
+    updateStudentStatusWithAudit
+} = require('../utils/studentStatusAudit.js');
 
 function decodeHtmlEntities(input = '') {
     return String(input)
@@ -1756,6 +1761,8 @@ router.get('/api/waiting-list', async (req, res) => {
 
 // ➕ Add Student (Direct Entry / Activation)
 router.post('/api/add-student', async (req, res) => {
+    const transaction = new sql.Transaction(pool);
+
     try {
         if (!req.session.user) {
             return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
@@ -1791,6 +1798,9 @@ router.post('/api/add-student', async (req, res) => {
                 if (student.Status === 'Active') {
                      return res.status(400).json({ success: false, message: 'Student is already Active' });
                 }
+                if (student.Status === 'Revoked') {
+                    return res.status(400).json({ success: false, message: 'Revoked students cannot be activated through direct entry.' });
+                }
                 return res.json({
                     success: true,
                     canAdd: true,
@@ -1803,16 +1813,24 @@ router.post('/api/add-student', async (req, res) => {
 
         const slotIdInt = SlotID ? parseInt(SlotID, 10) : null;
         const forceActive = req.body.ForceActive === true;
+        const previousStatus = student ? student.Status : null;
+
+        if (student?.Status === 'Revoked') {
+            return res.status(400).json({ success: false, message: 'Revoked students cannot be activated through direct entry.' });
+        }
+
+        await transaction.begin();
 
         // 2️⃣ If student does not exist, insert them as new
         if (!student) {
             if (!ITS || !Name || !Darajah) {
-                 return res.status(400).json({ success: false, message: 'Student is new. ITS, Name, and Darajah are required.' });
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Student is new. ITS, Name, and Darajah are required.' });
             }
             
             const finalStatus = (slotIdInt || forceActive) ? 'Active' : 'Inactive';
 
-            await pool.request()
+            await new sql.Request(transaction)
                 .input('TR', sql.Int, trInt)
                 .input('ITS', sql.BigInt, parseInt(ITS, 10))
                 .input('Name', sql.NVarChar(100), Name)
@@ -1827,11 +1845,20 @@ router.post('/api/add-student', async (req, res) => {
                     VALUES (@TR, @ITS, @Name, @Darajah, @Branch, @Gender, @Status, @SlotID, 
                             CASE WHEN @Status = 'Active' THEN GETDATE() ELSE NULL END, @Goal)
                 `);
+
+            if (finalStatus === 'Active') {
+                await logActivationForCurrentStudent({
+                    connection: transaction,
+                    tr: trInt,
+                    previousStatus: null,
+                    sessionUser: req.session.user
+                });
+            }
         } else {
             // Update existing student
             const finalStatus = (slotIdInt || forceActive) ? 'Active' : student.Status;
 
-            await pool.request()
+            await new sql.Request(transaction)
                 .input('TR', sql.Int, trInt)
                 .input('Status', sql.VarChar(8), finalStatus)
                 .input('SlotID', sql.Int, slotIdInt || null)
@@ -1848,16 +1875,33 @@ router.post('/api/add-student', async (req, res) => {
                         Darajah = @Darajah
                     WHERE TR = @TR
                 `);
+
+            if (previousStatus === 'Inactive' && finalStatus === 'Active') {
+                await logActivationForCurrentStudent({
+                    connection: transaction,
+                    tr: trInt,
+                    previousStatus,
+                    sessionUser: req.session.user
+                });
+            }
         }
 
-        res.json({ success: true, message: slotIdInt ? 'Student activated successfully.' : 'Student record updated.' });
+        await transaction.commit();
+        res.json({
+            success: true,
+            message: (forceActive || slotIdInt) ? 'Student activated successfully.' : 'Student record updated.'
+        });
 
     } catch (err) {
+        if (transaction.active) {
+            await transaction.rollback();
+        }
         if (err.message && err.message.includes('Violation of UNIQUE KEY constraint')) {
             return res.status(400).json({ success: false, message: 'ITS number already exists for another student.' });
         }
         console.error('Add student error:', err);
-        res.status(500).json({ success: false, message: 'Failed to add student. ' + (err.message || '') });
+        const statusCode = err.statusCode || 500;
+        res.status(statusCode).json({ success: false, message: err.message || 'Failed to add student.' });
     }
 });
 
@@ -2554,33 +2598,41 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
 
 router.put('/api/students/status/:TR', async (req, res) => {
     const { TR } = req.params;
-    const { Status } = req.body;
+    const { Status, Reason } = req.body;
+    const transaction = new sql.Transaction(pool);
+    const trInt = parseInt(TR, 10);
 
-    if (!TR || !Status) {
+    if (!TR || Number.isNaN(trInt) || !Status) {
         return res.status(400).json({ error: 'TR and Status are required' });
     }
 
     try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Unauthorized.' });
+        }
 
+        await transaction.begin();
 
-        // --- CHANGE THIS LINE ---
-        const request = pool.request(); // Use the global sql object
+        const result = await updateStudentStatusWithAudit({
+            transaction,
+            tr: trInt,
+            newStatus: Status,
+            reason: Reason,
+            sessionUser: req.session.user
+        });
 
-        request.input('TR', sql.Int, TR);
-        request.input('Status', sql.NVarChar(20), Status);
-
-        await request.query(`
-            UPDATE TestMaster
-            SET
-                Status = @Status,
-                SlotID = CASE WHEN @Status = 'Inactive' THEN NULL ELSE SlotID END
-            WHERE TR = @TR
-        `);
-
-        res.json({ success: true, message: `Student marked as ${Status}` });
+        await transaction.commit();
+        res.json({
+            success: true,
+            changed: result.changed,
+            message: result.message
+        });
     } catch (err) {
+        if (transaction.active) {
+            await transaction.rollback();
+        }
         console.error('Error updating student status:', err.message);
-        res.status(500).json({ error: 'Failed to update student status' });
+        res.status(err.statusCode || 500).json({ error: err.message || 'Failed to update student status' });
     }
 });
 
@@ -2790,25 +2842,36 @@ router.get('/api/staff/student-search', async (req, res) => {
     }
 
     const { q } = req.query; // The search term from the frontend
-    const { Branch, Gender } = req.session.user;
+    const { Branch, Gender, Role } = req.session.user;
 
     if (!q || q.length < 2) {
         return res.json({ success: true, data: [] }); // Return empty if query is too short
     }
 
     try {
-        const result = await pool.request()
-            .input('SearchTerm', sql.NVarChar, `%${q}%`) // Use wildcards for partial matching
-            .input('Branch', sql.NVarChar, Branch)
-            .input('Gender', sql.NVarChar, Gender)
-            .query(`
-                SELECT TOP 10 TR, Name 
-                FROM TestMaster
-                WHERE (CAST(TR AS NVARCHAR(20)) LIKE @SearchTerm OR Name LIKE @SearchTerm)
-                  AND Branch = @Branch
-                  AND Gender = @Gender
-                ORDER BY Name ASC;
-            `);
+        const request = pool.request()
+            .input('SearchTerm', sql.NVarChar, `%${q}%`)
+            .input('Branch', sql.NVarChar, Branch);
+
+        let query = `
+            SELECT TOP 10 TR, Name
+            FROM TestMaster
+            WHERE (CAST(TR AS NVARCHAR(20)) LIKE @SearchTerm OR Name LIKE @SearchTerm)
+              AND Branch = @Branch
+        `;
+
+        if (Role !== 'Admin') {
+            request.input('Gender', sql.NVarChar, Gender);
+            query += `
+              AND Gender = @Gender
+            `;
+        }
+
+        query += `
+            ORDER BY Name ASC;
+        `;
+
+        const result = await request.query(query);
         
         res.json({ success: true, data: result.recordset });
 
@@ -2825,16 +2888,22 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const { tr } = req.params;
-    const { Branch, Gender } = req.session.user;
+    const { Branch, Gender, Role } = req.session.user;
 
     try {
         // First, verify this staff member is allowed to view this student
-        const authRequest = pool.request();
-        const authResult = await authRequest
+        const authRequest = pool.request()
             .input('TR', sql.Int, tr)
-            .input('Branch', sql.NVarChar, Branch)
-            .input('Gender', sql.NVarChar, Gender)
-            .query(`SELECT 1 FROM TestMaster WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender`);
+            .input('Branch', sql.NVarChar, Branch);
+
+        let authQuery = `SELECT 1 FROM TestMaster WHERE TR = @TR AND Branch = @Branch`;
+
+        if (Role !== 'Admin') {
+            authRequest.input('Gender', sql.NVarChar, Gender);
+            authQuery += ` AND Gender = @Gender`;
+        }
+
+        const authResult = await authRequest.query(authQuery);
         
         if (authResult.recordset.length === 0) {
             return res.status(403).json({ success: false, message: 'You are not authorized to view this student.' });
@@ -2849,7 +2918,8 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
             workoutLogsRes,
             fitnessTestsRes,
             attendanceHistoryRes,
-            leaveHistoryRes
+            leaveHistoryRes,
+            statusHistory
         ] = await Promise.all([
             // 1. Get Progress Data (re-using our helper functions)
             Promise.all([
@@ -2879,7 +2949,10 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
             pool.request().input('TR', sql.Int, tr).query(`SELECT CreatedAt, IsPresent, OnLeave, DurationInMinutes FROM Attendance WHERE TR = @TR ORDER BY CreatedAt DESC;`),
             
             // 8. Get Leave Request History
-            pool.request().input('TR', sql.Int, tr).query(`SELECT * FROM LeaveRequests WHERE TR = @TR ORDER BY LeaveStartDate DESC;`)
+            pool.request().input('TR', sql.Int, tr).query(`SELECT * FROM LeaveRequests WHERE TR = @TR ORDER BY LeaveStartDate DESC;`),
+
+            // 9. Get activation/deactivation history
+            getStudentStatusHistory(pool, tr)
         ]);
 
         res.json({
@@ -2892,7 +2965,8 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
                 workoutLogs: workoutLogsRes.recordset,
                 fitnessTests: fitnessTestsRes.recordset,
                 attendanceHistory: attendanceHistoryRes.recordset,
-                leaveHistory: leaveHistoryRes.recordset
+                leaveHistory: leaveHistoryRes.recordset,
+                statusHistory
             }
         });
 

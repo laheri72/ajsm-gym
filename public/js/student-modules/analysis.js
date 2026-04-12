@@ -4,6 +4,8 @@ import {
 } from './state.js';
 import { generateColors } from './utils.js';
 
+const escapeHtmlValue = (value) => $('<div>').text(value ?? '').html();
+
 // --- (loadStudentPlans, renderTrainingPlans, loadTrainingAnalytics are unchanged) ---
 /**
  * Fetches and renders the saved workout plan history table.
@@ -174,6 +176,7 @@ export async function loadHistoryAnalytics() {
 
         if (result.success) {
             renderSessionHistory(result.data.history);
+            renderStudentStatusHistory(result.data.statusHistory);
         } else {
             console.error('Failed to load session history');
         }
@@ -338,4 +341,43 @@ function renderSessionHistory(historyData) {
 
     });
     
+}
+
+function renderStudentStatusHistory(historyData) {
+    if ($.fn.DataTable.isDataTable('#statusHistoryTable')) {
+        $('#statusHistoryTable').DataTable().destroy();
+    }
+
+    const tbody = document.getElementById('statusHistoryBody');
+    tbody.innerHTML = '';
+
+    if (!historyData || historyData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No activation history found.</td></tr>';
+        return;
+    }
+
+    $('#statusHistoryTable').DataTable({
+        data: historyData,
+        columns: [
+            {
+                data: 'ChangedAt',
+                render: function (data, type) {
+                    if (!data) return type === 'sort' ? 0 : 'N/A';
+                    const utcValue = moment.utc(data);
+                    return type === 'display'
+                        ? utcValue.tz("Asia/Kolkata").format('ddd, DD MMM YYYY h:mm A')
+                        : utcValue.valueOf();
+                }
+            },
+            { data: 'ActionType', render: (data) => escapeHtmlValue(data || 'N/A') },
+            { data: 'PreviousStatus', render: (data) => escapeHtmlValue(data || 'New Record') },
+            { data: 'NewStatus', render: (data) => escapeHtmlValue(data || 'N/A') },
+            { data: 'ChangedByRole', render: (data) => escapeHtmlValue(data || 'N/A') },
+            { data: 'PreviousSlotName', render: (data) => escapeHtmlValue(data || 'N/A') },
+            { data: 'ChangeReason', render: (data) => escapeHtmlValue(data || 'N/A') }
+        ],
+        order: [[0, 'desc']],
+        destroy: true,
+        responsive: true
+    });
 }

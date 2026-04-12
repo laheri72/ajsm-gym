@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let debounceTimer;
     let fitnessChartInstance = null;
+    const escapeHtml = (value) => $('<div>').text(value ?? '').html();
 
     // === INITIAL PAGE LOAD ===
     const urlParams = new URLSearchParams(window.location.search);
@@ -92,8 +93,10 @@ document.addEventListener("DOMContentLoaded", () => {
             renderFitnessHistory(data.fitnessTests || []);
             renderAttendanceHistory(data.attendanceHistory || []);
             renderLeaveHistory(data.leaveHistory || []);
+            renderStatusHistory(data.statusHistory || []);
 
-            setupTabEvents();
+            const requestedTab = new URLSearchParams(window.location.search).get('tab') || 'overview-pane';
+            setupTabEvents(requestedTab);
 
         } catch (err) {
             console.error(err);
@@ -321,21 +324,71 @@ function renderFitnessChart(tests) {
         });
     }
 
-    function setupTabEvents() {
+    function renderStatusHistory(history) {
+        $('#profile-status-history-table').DataTable({
+            data: history || [],
+            columns: [
+                {
+                    title: 'Changed At',
+                    data: 'ChangedAt',
+                    render: d => d
+                        ? new Date(d).toLocaleString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })
+                        : 'N/A'
+                },
+                { title: 'Action', data: 'ActionType' },
+                { title: 'From', data: 'PreviousStatus', render: d => escapeHtml(d || 'New Record') },
+                { title: 'To', data: 'NewStatus', render: d => escapeHtml(d || 'N/A') },
+                { title: 'Previous Slot', data: 'PreviousSlotName', render: d => escapeHtml(d || 'N/A') },
+                { title: 'New Slot', data: 'NewSlotName', render: d => escapeHtml(d || 'N/A') },
+                {
+                    title: 'By',
+                    data: null,
+                    render: row => escapeHtml([row.ChangedByRole, row.ChangedByUsername].filter(Boolean).join(' - ') || 'N/A')
+                },
+                { title: 'Reason', data: 'ChangeReason', render: d => escapeHtml(d || 'N/A') }
+            ],
+            order: [[0, 'desc']],
+            destroy: true,
+            pageLength: 10
+        });
+    }
+
+    function activateTab(tabContainer, tabPanes, tabId) {
+        const safeTabId = tabPanes.some((pane) => pane.id === tabId) ? tabId : 'overview-pane';
+
+        tabContainer.querySelectorAll('.tab-link').forEach((button) => {
+            button.classList.toggle('active', button.dataset.tab === safeTabId);
+        });
+
+        tabPanes.forEach((pane) => {
+            const isActive = pane.id === safeTabId;
+            pane.style.display = isActive ? 'block' : 'none';
+            pane.classList.toggle('active', isActive);
+        });
+    }
+
+    function setupTabEvents(initialTabId = 'overview-pane') {
         const tabContainer = detailsSection.querySelector('.profile-tabs');
         if (!tabContainer) return;
         const tabPanes = Array.from(detailsSection.querySelectorAll('.tab-pane'));
+        activateTab(tabContainer, tabPanes, initialTabId);
 
         tabContainer.addEventListener('click', (e) => {
             if (e.target.matches('.tab-link')) {
                 const tabId = e.target.dataset.tab;
-                tabContainer.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
-                e.target.classList.add('active');
+                const currentTr = document.getElementById('profileTR')?.textContent;
+                activateTab(tabContainer, tabPanes, tabId);
 
-                tabPanes.forEach(p => {
-                    p.style.display = (p.id === tabId) ? 'block' : 'none';
-                    p.classList.toggle('active', p.id === tabId);
-                });
+                if (currentTr) {
+                    window.history.replaceState({ tr: currentTr }, `Profile for ${currentTr}`, `?tr=${currentTr}&tab=${tabId}`);
+                }
             }
         });
     }

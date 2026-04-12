@@ -4,6 +4,7 @@ const router = express.Router();
 const { pool } = require('../utils/db.js'); // Get the DB pool
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); // This file needs bcrypt
+const { hasStudentStatusHistoryTable } = require('../utils/studentStatusAudit.js');
 
 
 // --- All your admin routes will go here ---
@@ -253,6 +254,7 @@ router.get('/api/students/inactive', async (req, res) => {
     const request = pool.request();
     request.input('Branch', sql.NVarChar(50), branch);
 
+    const hasHistoryTable = await hasStudentStatusHistoryTable(pool);
     let query = `
       SELECT m.*, s.SlotName 
       FROM TestMaster m
@@ -273,6 +275,71 @@ router.get('/api/students/inactive', async (req, res) => {
       `;
     }
 
+    if (hasHistoryTable) {
+      const whereClause = Role === 'Staff'
+        ? `
+            WHERE m.Branch = @Branch
+              AND m.Gender = @Gender
+              AND m.Status = 'Inactive'
+          `
+        : `
+            WHERE m.Branch = @Branch
+              AND m.Status = 'Inactive'
+          `;
+
+      query = `
+        SELECT
+          m.*,
+          s.SlotName,
+          latest.ChangedAt AS LatestDeactivatedAt,
+          latest.ChangeReason AS LatestDeactivationReason,
+          latest.ChangedByUsername AS LatestDeactivatedBy,
+          ISNULL(logStats.LogCount, 0) AS LogCount
+        FROM TestMaster m
+        LEFT JOIN Slots s ON m.SlotID = s.SlotID
+        OUTER APPLY (
+          SELECT TOP 1
+            h.ChangedAt,
+            h.ChangeReason,
+            h.ChangedByUsername
+          FROM dbo.StudentStatusHistory h
+          WHERE h.TR = m.TR
+            AND h.ActionType = 'Deactivated'
+          ORDER BY h.ChangedAt DESC, h.StatusHistoryID DESC
+        ) latest
+        OUTER APPLY (
+          SELECT COUNT(*) AS LogCount
+          FROM dbo.StudentStatusHistory h2
+          WHERE h2.TR = m.TR
+        ) logStats
+        ${whereClause}
+      `;
+    } else {
+      const whereClause = Role === 'Staff'
+        ? `
+            WHERE m.Branch = @Branch
+              AND m.Gender = @Gender
+              AND m.Status = 'Inactive'
+          `
+        : `
+            WHERE m.Branch = @Branch
+              AND m.Status = 'Inactive'
+          `;
+
+      query = `
+        SELECT
+          m.*,
+          s.SlotName,
+          CAST(NULL AS DATETIME2) AS LatestDeactivatedAt,
+          CAST(NULL AS NVARCHAR(500)) AS LatestDeactivationReason,
+          CAST(NULL AS NVARCHAR(50)) AS LatestDeactivatedBy,
+          CAST(0 AS INT) AS LogCount
+        FROM TestMaster m
+        LEFT JOIN Slots s ON m.SlotID = s.SlotID
+        ${whereClause}
+      `;
+    }
+
     const result = await request.query(query);
     res.json({ success: true, data: result.recordset });
 
@@ -280,39 +347,6 @@ router.get('/api/students/inactive', async (req, res) => {
     console.error('Error fetching inactive students:', err);
     res.status(500).json({ error: 'Failed to fetch inactive students' });
   }
-});
-
-// CORRECTED VERSION
-router.put('/api/students/status/:TR', async (req, res) => {
-    const { TR } = req.params;
-    const { Status } = req.body;
-
-    if (!TR || !Status) {
-        return res.status(400).json({ error: 'TR and Status are required' });
-    }
-
-    try {
-
-
-        // --- CHANGE THIS LINE ---
-        const request = pool.request(); // Use the global sql object
-
-        request.input('TR', sql.Int, TR);
-        request.input('Status', sql.NVarChar(20), Status);
-
-        await request.query(`
-            UPDATE TestMaster
-            SET
-                Status = @Status,
-                SlotID = CASE WHEN @Status = 'Inactive' THEN NULL ELSE SlotID END
-            WHERE TR = @TR
-        `);
-
-        res.json({ success: true, message: `Student marked as ${Status}` });
-    } catch (err) {
-        console.error('Error updating student status:', err.message);
-        res.status(500).json({ error: 'Failed to update student status' });
-    }
 });
 
 // =================================================================== //

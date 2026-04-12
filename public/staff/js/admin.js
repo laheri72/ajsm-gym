@@ -1217,6 +1217,22 @@ const { value: formData } = await Swal.fire({
             return;
         }
 
+        const formatAuditDate = (value) => {
+            if (!value) return 'No logs yet';
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return 'No logs yet';
+            return parsed.toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        const escapeHtml = (value) => $('<div>').text(value ?? '').html();
+
         // Initialize DataTable
         inactiveStudentDataTable = $('#inactiveStudentTable').DataTable({
             ajax: {
@@ -1231,6 +1247,29 @@ const { value: formData } = await Swal.fire({
                 { 
                     data: 'SlotName', 
                     render: (data) => data || '-' 
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    render: function(data, type, row) {
+                        const latestStamp = formatAuditDate(row.LatestDeactivatedAt);
+                        const latestBy = row.LatestDeactivatedBy ? `<div><strong>By:</strong> ${escapeHtml(row.LatestDeactivatedBy)}</div>` : '';
+                        const latestReason = row.LatestDeactivationReason
+                            ? `<div><strong>Reason:</strong> ${escapeHtml(row.LatestDeactivationReason)}</div>`
+                            : '<div class="text-muted">No deactivation log recorded yet.</div>';
+                        const logCount = Number(row.LogCount || 0);
+
+                        return `
+                            <div class="small">
+                                <div><strong>Latest:</strong> ${latestStamp}</div>
+                                ${latestBy}
+                                ${latestReason}
+                                <a class="btn btn-link btn-sm p-0 mt-1" href="profile.html?tr=${row.TR}&tab=admin-pane">
+                                    ${logCount} log${logCount === 1 ? '' : 's'}
+                                </a>
+                            </div>
+                        `;
+                    }
                 },
                 { 
                     data: 'TR', 
@@ -1284,7 +1323,7 @@ const { value: formData } = await Swal.fire({
                     Swal.fire('Activated!', data.message || 'Student status updated.', 'success');
                     inactiveStudentDataTable.ajax.reload(); // Refresh the DataTable
                 } else {
-                    Swal.fire('Error', 'Failed to update student: ' + data.message, 'error');
+                    Swal.fire('Error', 'Failed to update student: ' + (data.error || data.message), 'error');
                 }
             }
         });
