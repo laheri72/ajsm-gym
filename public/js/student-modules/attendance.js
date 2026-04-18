@@ -52,7 +52,7 @@ export function loadAttendance(selectedWeekId) {
                   } else if (status === 'On Leave') {
                       onLeaveCount++;
                       return `<td class="on-leave">On Leave</td>`;
-                  } else if (currentDate <= today) {
+                  } else if (currentDate < today) {
                       absentCount++;
                       return `<td class="absent">Absent</td>`;
                   } else {

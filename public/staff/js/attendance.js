@@ -342,6 +342,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const startDate = result.weekStartDate ? new Date(result.weekStartDate) : null;
             if (!startDate) throw new Error('Week start date missing from API response.');
 
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
             container.innerHTML = '';
             if (!data || data.length === 0) {
                 container.innerHTML = `<p class="text-center text-muted">No attendance records found for this week.</p>`;
@@ -390,7 +393,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         const currentDate = new Date(startDate);
                         currentDate.setDate(startDate.getDate() + i);
                         if (currentDate < joinedDate) return `<td>-</td>`;
+                        
                         const status = student[day];
+
+                        // If it's today or in the future, don't show as absent if unmarked
+                        if (status === 'Absent' && currentDate >= today) {
+                            return `<td>-</td>`;
+                        }
+
                         if (status === 'Absent') absentCount++;
                         return renderAttendanceCell(status);
                     });
