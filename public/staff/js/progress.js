@@ -99,7 +99,7 @@ function toggleView(viewName) {
         document.getElementById('viewSummaryBtn').classList.add('active');
         document.getElementById('viewLogsBtn').classList.remove('active');
         const part = document.getElementById('trainingBodyPartFilter').value;
-        if(part) loadTrainingSummaryData(part);
+        if (part) loadTrainingSummaryData(part);
     } else if (viewName === 'engagement') {
         document.getElementById('engagement-view').style.display = 'block';
         document.getElementById('goal-view').style.display = 'none';
@@ -117,8 +117,8 @@ function toggleView(viewName) {
 // Populates all dropdown filters on the page with unique IDs
 function populateFilters() {
     const goals = ['General Fitness', 'Weight Loss', 'Muscle Gain', 'Strength', 'Endurance', 'Flexibility', 'Energy Boost', 'Stress Relief', 'Overall Health'];
-    const bodyParts = ['Cardio', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Core'];
-    
+    const bodyParts = ['Cardio', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Core', 'Full Body', 'Upper Body', 'Lower Body'];
+
     // ✅ Use the new unique ID for the training summary filter
     const trainingFilter = document.getElementById('trainingBodyPartFilter');
     trainingFilter.innerHTML = '<option value="" disabled selected>Select a part...</option>';
@@ -188,17 +188,17 @@ function renderBodyPartChart(trends) {
         bodyPartChartInstance.destroy(); // Destroy previous chart
     }
 
-if (!trends || trends.length === 0) {
-    const container = document.getElementById('bodyPartChartContainer');
-    if (container) {
-        container.innerHTML = '<p class="text-muted p-5 text-center">No body part data yet.</p>';
+    if (!trends || trends.length === 0) {
+        const container = document.getElementById('bodyPartChartContainer');
+        if (container) {
+            container.innerHTML = '<p class="text-muted p-5 text-center">No body part data yet.</p>';
+        }
+        return;
     }
-    return;
-}
 
 
     hideLoadingIndicator(containerId, canvasId);
-    
+
     const ctx = document.getElementById('bodyPartChart')?.getContext('2d');
     if (!ctx) return;
 
@@ -237,13 +237,13 @@ function renderPeakHoursChart(peakHours) {
         peakHoursChartInstance.destroy(); // Destroy previous chart
     }
 
-if (!peakHours || peakHours.length === 0) {
-    const container = document.getElementById('peakHoursChartContainer');
-    if (container) {
-        container.innerHTML = '<p class="text-muted p-5 text-center">No peak hours data available yet.</p>';
+    if (!peakHours || peakHours.length === 0) {
+        const container = document.getElementById('peakHoursChartContainer');
+        if (container) {
+            container.innerHTML = '<p class="text-muted p-5 text-center">No peak hours data available yet.</p>';
+        }
+        return;
     }
-    return;
-}
 
 
     hideLoadingIndicator(containerId, canvasId); // Add canvas back
@@ -281,12 +281,14 @@ function initializeTrainingPlansTable() {
             { data: 'TR' },
             { data: 'Name' },
             { data: 'BodyParts', render: data => data ? data.split(', ').map(part => `<span class="body-part-pill">${part}</span>`).join(' ') : '' },
-            { data: 'CreatedAt', render: data => {
-                if (!data) return 'N/A'; // Added check for null
-                const daysSince = Math.floor((new Date() - new Date(data)) / (1000 * 3600 * 24));
-                let color = daysSince <= 6 ? 'green' : (daysSince <= 13 ? 'orange' : 'red');
-                return `<span style="color: ${color}; font-weight: bold;">${daysSince} days ago</span>`;
-            }}
+            {
+                data: 'CreatedAt', render: data => {
+                    if (!data) return 'N/A'; // Added check for null
+                    const daysSince = Math.floor((new Date() - new Date(data)) / (1000 * 3600 * 24));
+                    let color = daysSince <= 6 ? 'green' : (daysSince <= 13 ? 'orange' : 'red');
+                    return `<span style="color: ${color}; font-weight: bold;">${daysSince} days ago</span>`;
+                }
+            }
         ],
         data: [], // Start with empty data
         order: [[0, 'desc']], pageLength: 25, responsive: true,
@@ -309,11 +311,13 @@ function initializeEngagementTable() {
             { data: 'Name' },
             { data: 'TotalHours', render: d => d?.toFixed(1) || '0.0' }, // Added check for null
             { data: 'AvgDuration', render: d => d?.toFixed(0) || '0' },   // Added check for null
-            { data: 'DaysSinceLastVisit', render: data => {
-                const days = data != null ? data : Infinity; // Treat null as very long ago
-                let color = days <= 6 ? 'green' : (days <= 13 ? 'orange' : 'red');
-                return `<span style="color: ${color}; font-weight: bold;">${days === Infinity ? 'N/A' : days}</span>`;
-            }}
+            {
+                data: 'DaysSinceLastVisit', render: data => {
+                    const days = data != null ? data : Infinity; // Treat null as very long ago
+                    let color = days <= 6 ? 'green' : (days <= 13 ? 'orange' : 'red');
+                    return `<span style="color: ${color}; font-weight: bold;">${days === Infinity ? 'N/A' : days}</span>`;
+                }
+            }
         ],
         data: [], // Start with empty data
         order: [[1, 'desc']], responsive: true,
@@ -371,15 +375,15 @@ function exportTable(tableInstance, fileName) {
 async function loadAchievementLeaderboard() {
     const listElement = document.getElementById('achievementLeaderboardList');
     if (!listElement) return;
-    
+
     try {
         const res = await fetch('/api/achievements/leaderboard', { credentials: 'include' });
         const result = await res.json();
-        
+
         if (result.success && result.data.length > 0) {
             listElement.innerHTML = '';
             const medals = ['🥇', '🥈', '🥉'];
-            
+
             result.data.forEach((player, index) => {
                 const li = document.createElement('li');
                 li.innerHTML = `
@@ -401,7 +405,7 @@ async function loadAchievementLeaderboard() {
 async function loadTodayLeaderboard() {
     const list = document.getElementById('todayLeaderboardList');
     if (!list) return;
-    
+
     try {
         const res = await fetch('/api/leaderboard');
         const result = await res.json();

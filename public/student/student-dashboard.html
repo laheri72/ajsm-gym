@@ -128,7 +128,9 @@
                 <i class="bi bi-target"></i> Update Fitness Goal
               </button>
             </li>
-            <li><hr class="dropdown-divider"></li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
             <li>
               <button id="logoutBtn" class="dropdown-item" type="button">
                 <i class="bi bi-box-arrow-right"></i> Logout
@@ -220,7 +222,8 @@
             </div>
             <div class="today-actions">
               <button class="btn btn-sm btn-outline-primary quick-add-btn" id="today-quick-add">Add Exercise</button>
-              <button class="btn btn-sm btn-outline-success" id="today-autofill-btn" type="button">Smart Fill Today</button>
+              <button class="btn btn-sm btn-outline-success" id="today-autofill-btn" type="button">Smart Fill
+                Today</button>
             </div>
           </div>
 
@@ -352,15 +355,22 @@
 
       <div class="text-center mt-4 planner-actions">
         <div class="dropdown d-inline-block">
-          <button class="btn btn-outline-primary dropdown-toggle" type="button" id="magicFillDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" id="magicFillDropdown"
+            data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-magic"></i> Magic Fill
           </button>
           <ul class="dropdown-menu" aria-labelledby="magicFillDropdown">
-            <li><a class="dropdown-item" href="#" id="autoFillWeekBtn"><i class="bi bi-calendar-range"></i> Auto-fill Entire Week</a></li>
-            <li><a class="dropdown-item" href="#" id="reuseBestWeekdayBtn"><i class="bi bi-star"></i> Reuse Best Weekday</a></li>
-            <li><a class="dropdown-item" href="#" id="applyLastCompletedMondayBtn"><i class="bi bi-rewind"></i> Repeat Last Monday Pattern</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="#" id="clearPlanBtn"><i class="bi bi-trash"></i> Clear All Items</a></li>
+            <li><a class="dropdown-item" href="#" id="autoFillWeekBtn"><i class="bi bi-calendar-range"></i> Auto-fill
+                Entire Week</a></li>
+            <li><a class="dropdown-item" href="#" id="reuseBestWeekdayBtn"><i class="bi bi-star"></i> Reuse Best
+                Weekday</a></li>
+            <li><a class="dropdown-item" href="#" id="applyLastCompletedMondayBtn"><i class="bi bi-rewind"></i> Repeat
+                Last Monday Pattern</a></li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li><a class="dropdown-item text-danger" href="#" id="clearPlanBtn"><i class="bi bi-trash"></i> Clear All
+                Items</a></li>
           </ul>
         </div>
 
@@ -888,39 +898,42 @@
               <div class="accordion" id="workoutAccordion">
                 <!-- Dynamically populated by exerciseModule.renderWorkoutList() -->
               </div>
-              </div>
             </div>
           </div>
         </div>
-        <!-- 2️⃣ Tips by Body Part -->
-        <div class="tab-pane" id="tab-body">
-          <div class="body-tips-container">
-            <div class="form-group" style="margin-top: 20px;">
-              <h2>Need guidance on specific body part workouts?</h2>
-              <label for="bodyPartSelect" class="form-label">Select a Body Part for Tips:</label>
-              <select id="bodyPartSelect" class="form-select">
-                <option value="">-- Select Body Part --</option>
-                <option value="Cardio">Cardio</option>
-                <option value="Chest">Chest</option>
-                <option value="Back">Back</option>
-                <option value="Shoulders">Shoulders</option>
-                <option value="Biceps">Biceps</option>
-                <option value="Triceps">Triceps</option>
-                <option value="Legs">Legs</option>
-                <option value="Core">Core</option>
-              </select>
-              <div id="bodyPartTips" class="mt-4"></div>
-              <hr>
-            </div>
+      </div>
+      <!-- 2️⃣ Tips by Body Part -->
+      <div class="tab-pane" id="tab-body">
+        <div class="body-tips-container">
+          <div class="form-group" style="margin-top: 20px;">
+            <h2>Need guidance on specific body part workouts?</h2>
+            <label for="bodyPartSelect" class="form-label">Select a Body Part for Tips:</label>
+            <select id="bodyPartSelect" class="form-select">
+              <option value="">-- Select Body Part --</option>
+              <option value="Cardio">Cardio</option>
+              <option value="Chest">Chest</option>
+              <option value="Back">Back</option>
+              <option value="Shoulders">Shoulders</option>
+              <option value="Biceps">Biceps</option>
+              <option value="Triceps">Triceps</option>
+              <option value="Legs">Legs</option>
+              <option value="Core">Core</option>
+              <option value="Full Body">Full Body</option>
+              <option value="Upper Body">Upper Body</option>
+              <option value="Lower Body">Lower Body</option>
+            </select>
+            <div id="bodyPartTips" class="mt-4"></div>
+            <hr>
           </div>
         </div>
-        <!-- 3️⃣ Personalized Tips -->
-        <div class="tab-pane" id="tab-personal">
-          <div class="personal-tips-container">
-            <h2>Recommended Tip</h2>
-            <div id="tipArea" class="tipArea">Loading tip...</div>
-          </div>
+      </div>
+      <!-- 3️⃣ Personalized Tips -->
+      <div class="tab-pane" id="tab-personal">
+        <div class="personal-tips-container">
+          <h2>Recommended Tip</h2>
+          <div id="tipArea" class="tipArea">Loading tip...</div>
         </div>
+      </div>
       </div>
     </section>
 
