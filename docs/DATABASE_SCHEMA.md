@@ -35,6 +35,20 @@ The central identity table for Students.
 - `Height` (DECIMAL(5,2)) - Height in meters.
 - `HasLoggedInBefore` (BIT)
 
+### `StudentStatusHistory`
+Audit log tracking activation, deactivation, and slot changes for students. Used for calculating true attendance validity.
+- `StatusHistoryID` (INT, PK, IDENTITY)
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `ActionType` (VARCHAR(12)) - 'Activated', 'Deactivated', 'SlotChange'
+- `PreviousStatus` (VARCHAR(8))
+- `NewStatus` (VARCHAR(8))
+- `PreviousSlotID` (INT), `PreviousSlotName` (NVARCHAR(50))
+- `NewSlotID` (INT), `NewSlotName` (NVARCHAR(50))
+- `ChangeReason` (NVARCHAR(500))
+- `ChangedAt` (DATETIME) - Default GETDATE()
+- `ChangedByUserID`, `ChangedByUsername`, `ChangedByRole`
+- `BranchSnapshot`, `GenderSnapshot`
+
 ## Gym Operations
 
 ### `Slots`
