@@ -16,9 +16,9 @@ BEGIN
         BranchSnapshot VARCHAR(7) NOT NULL,
         GenderSnapshot VARCHAR(6) NOT NULL,
         PreviousSlotID INT NULL,
-        PreviousSlotName NVARCHAR(25) NULL,
+        PreviousSlotName NVARCHAR(50) NULL,
         NewSlotID INT NULL,
-        NewSlotName NVARCHAR(25) NULL,
+        NewSlotName NVARCHAR(50) NULL,
         CONSTRAINT FK_StudentStatusHistory_TestMaster
             FOREIGN KEY (TR) REFERENCES dbo.TestMaster(TR),
         CONSTRAINT FK_StudentStatusHistory_PassBank

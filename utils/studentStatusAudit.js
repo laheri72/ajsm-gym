@@ -106,9 +106,9 @@ async function insertStatusHistory(connection, {
     request.input('BranchSnapshot', sql.VarChar(7), student.Branch);
     request.input('GenderSnapshot', sql.VarChar(6), student.Gender);
     request.input('PreviousSlotID', sql.Int, previousSlotID ?? null);
-    request.input('PreviousSlotName', sql.NVarChar(25), previousSlotName || null);
+    request.input('PreviousSlotName', sql.NVarChar(50), previousSlotName || null);
     request.input('NewSlotID', sql.Int, newSlotID ?? null);
-    request.input('NewSlotName', sql.NVarChar(25), newSlotName || null);
+    request.input('NewSlotName', sql.NVarChar(50), newSlotName || null);
 
     await request.query(`
         INSERT INTO dbo.StudentStatusHistory (
