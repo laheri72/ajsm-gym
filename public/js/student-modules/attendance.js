@@ -46,6 +46,8 @@ export function loadAttendance(selectedWeekId) {
                   currentDate.setDate(weekStartDate.getDate() + i);
 
                   if (currentDate < joinedDate) return `<td>-</td>`;
+                  if (status === 'Not Expected') return `<td>-</td>`;
+
                   if (status === 'Present') {
                       presentCount++;
                       return `<td class="present">Present</td>`;

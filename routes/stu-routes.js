@@ -1848,15 +1848,16 @@ router.get(
             .input('WeekEndDate', sql.Date, WeekEndDate) // Use the end date for the filter
             .query(`
                 SELECT 
-                    M.Name, M.JoinedAt,
+                    M.Name, M.JoinedAt, S.SlotName,
                     DATENAME(WEEKDAY, DATEADD(MINUTE, 330, A.CreatedAt)) AS DayName,
                     A.IsPresent, A.OnLeave
                 FROM TestMaster M
                 LEFT JOIN Attendance A ON M.TR = A.TR AND A.WeekID = @WeekID
+                LEFT JOIN Slots S ON M.SlotID = S.SlotID
                 WHERE M.TR = @TR AND M.JoinedAt <= @WeekEndDate -- <-- THE FIX IS HERE
             `);
 
-        const studentData = result.recordset[0] || { Name: '', JoinedAt: null };
+        const studentData = result.recordset[0] || { Name: '', JoinedAt: null, SlotName: null };
 
         // Create a clean record for the student
         const record = {
@@ -1876,6 +1877,51 @@ router.get(
                 }
             }
         }
+        
+        // --- NEW: Mask absences for pending/deactivated days ---
+        const historyQuery = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT ChangedAt, NewStatus, NewSlotName 
+                FROM StudentStatusHistory 
+                WHERE TR = @TR 
+                ORDER BY ChangedAt ASC
+            `);
+        
+        const history = historyQuery.recordset || [];
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const startDate = new Date(WeekStartDate);
+        
+        dayNames.forEach((day, i) => {
+            if (record[day] === '') { // Means it wasn't Present or On Leave
+                const currentDate = new Date(startDate);
+                currentDate.setDate(startDate.getDate() + i);
+                currentDate.setHours(23, 59, 59, 999);
+
+                let isExpected = true;
+                let latestRecord = null;
+                
+                for (const h of history) {
+                    if (new Date(h.ChangedAt) <= currentDate) {
+                        latestRecord = h;
+                    }
+                }
+
+                if (latestRecord) {
+                    if (latestRecord.NewStatus === 'Inactive') isExpected = false;
+                    if (!latestRecord.NewSlotName || latestRecord.NewSlotName.toLowerCase().includes('pending')) isExpected = false;
+                } else {
+                    if (!studentData.SlotName || studentData.SlotName.toLowerCase().includes('pending') || studentData.SlotName === 'N/A' || studentData.SlotName === 'Unassigned') {
+                        isExpected = false;
+                    }
+                }
+
+                if (!isExpected) {
+                    record[day] = 'Not Expected';
+                }
+            }
+        });
+        // --- END NEW ---
         
         // 3. Send a structured response with all necessary info
         res.json({

@@ -7,7 +7,8 @@ const moment = require('moment-timezone');
 const {
     getStudentStatusHistory,
     logActivationForCurrentStudent,
-    updateStudentStatusWithAudit
+    updateStudentStatusWithAudit,
+    logSlotChangeForCurrentStudent
 } = require('../utils/studentStatusAudit.js');
 
 function decodeHtmlEntities(input = '') {
@@ -1883,6 +1884,14 @@ router.post('/api/add-student', async (req, res) => {
                     previousStatus,
                     sessionUser: req.session.user
                 });
+            } else if (previousStatus === 'Active' && finalStatus === 'Active' && student.SlotID !== (slotIdInt || null)) {
+                await logSlotChangeForCurrentStudent({
+                    connection: transaction,
+                    tr: trInt,
+                    previousSlotID: student.SlotID,
+                    previousSlotName: student.SlotName,
+                    sessionUser: req.session.user
+                });
             }
         }
 
@@ -2582,6 +2591,60 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                 }
             }
         });
+
+        // --- NEW: Mask absences for pending/deactivated days ---
+        const trs = Array.from(resultMap.keys());
+        if (trs.length > 0) {
+            const historyQuery = await pool.request()
+                .query(`
+                    SELECT TR, ChangedAt, NewStatus, NewSlotName 
+                    FROM StudentStatusHistory 
+                    WHERE TR IN (${trs.join(',')}) 
+                    ORDER BY ChangedAt ASC
+                `);
+            
+            const historyByTR = {};
+            historyQuery.recordset.forEach(row => {
+                if (!historyByTR[row.TR]) historyByTR[row.TR] = [];
+                historyByTR[row.TR].push(row);
+            });
+
+            trs.forEach(tr => {
+                const record = resultMap.get(tr);
+                const history = historyByTR[tr] || [];
+                
+                dayNames.forEach((day, i) => {
+                    if (record[day] === 'Absent') {
+                        const currentDate = new Date(startDate);
+                        currentDate.setDate(startDate.getDate() + i);
+                        currentDate.setHours(23, 59, 59, 999);
+
+                        let isExpected = true;
+                        let latestRecord = null;
+                        
+                        for (const h of history) {
+                            if (new Date(h.ChangedAt) <= currentDate) {
+                                latestRecord = h;
+                            }
+                        }
+
+                        if (latestRecord) {
+                            if (latestRecord.NewStatus === 'Inactive') isExpected = false;
+                            if (!latestRecord.NewSlotName || latestRecord.NewSlotName.toLowerCase().includes('pending')) isExpected = false;
+                        } else {
+                            if (!record.SlotName || record.SlotName.toLowerCase().includes('pending') || record.SlotName === 'N/A' || record.SlotName === 'Unassigned') {
+                                isExpected = false;
+                            }
+                        }
+
+                        if (!isExpected) {
+                            record[day] = null;
+                        }
+                    }
+                });
+            });
+        }
+        // --- END NEW ---
 
         // MODIFIED RESPONSE:
         res.json({

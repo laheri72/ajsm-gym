@@ -272,6 +272,40 @@ async function logActivationForCurrentStudent({
     return true;
 }
 
+async function logSlotChangeForCurrentStudent({
+    connection,
+    tr,
+    previousSlotID,
+    previousSlotName,
+    sessionUser
+}) {
+    const student = await getStudentWithSlot(connection, tr);
+    if (!student || student.Status !== 'Active') {
+        return false;
+    }
+
+    // Only log if the slot actually changed
+    if (student.SlotID === previousSlotID) {
+        return false;
+    }
+
+    await insertStatusHistory(connection, {
+        tr,
+        actionType: 'SlotChange',
+        previousStatus: student.Status,
+        newStatus: student.Status,
+        reason: 'Slot updated manually',
+        student,
+        previousSlotID: previousSlotID ?? null,
+        previousSlotName: previousSlotName || null,
+        newSlotID: student.SlotID ?? null,
+        newSlotName: student.SlotName || null,
+        sessionUser
+    });
+
+    return true;
+}
+
 async function getStudentStatusHistory(connection, tr) {
     if (!(await hasStudentStatusHistoryTable(connection))) {
         return [];
@@ -313,5 +347,6 @@ module.exports = {
     getStudentStatusHistory,
     insertStatusHistory,
     updateStudentStatusWithAudit,
-    logActivationForCurrentStudent
+    logActivationForCurrentStudent,
+    logSlotChangeForCurrentStudent
 };
