@@ -8,6 +8,7 @@ const DRAFT_KEY = 'plannerDraftV2';
 let plannerState = buildEmptyWeekState();
 let plannerInsights = null;
 let plannerEventsBound = false;
+let focusedDay = null;
 
 function isPlannerV2Enabled() {
   return studentFeatureFlags?.planner_v2_ui !== false;
@@ -268,13 +269,29 @@ function renderDay(day) {
   });
 }
 
+function updateSingleDayView() {
+  if (!focusedDay) focusedDay = getTodayName();
+  const heading = document.getElementById('today-date-heading');
+  const todayName = getTodayName();
+  if (heading) {
+    if (focusedDay === todayName) {
+      heading.textContent = `Today's Plan (${focusedDay})`;
+    } else {
+      heading.textContent = `${focusedDay}'s Plan`;
+    }
+  }
+  const todayCard = document.getElementById('today-day-card');
+  if (todayCard) todayCard.dataset.day = focusedDay;
+
+  const autofillBtn = document.getElementById('today-autofill-btn');
+  if (autofillBtn) autofillBtn.innerHTML = `Smart Fill ${focusedDay}`;
+
+  renderDay(focusedDay);
+}
+
 function renderAllDays() {
   DAYS.forEach(renderDay);
-  const todayName = getTodayName();
-  const heading = document.getElementById('today-date-heading');
-  if (heading) heading.textContent = `Today's Plan (${todayName})`;
-  const todayCard = document.getElementById('today-day-card');
-  if (todayCard) todayCard.dataset.day = todayName;
+  updateSingleDayView();
 }
 
 function updateCoachStrip() {
@@ -371,6 +388,22 @@ function bindPlannerEvents() {
     plannerSection.addEventListener('click', clickHandler);
     plannerSection.addEventListener('input', noteInputHandler);
   }
+
+  document.getElementById('prevDayBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!focusedDay) focusedDay = getTodayName();
+    const idx = DAYS.indexOf(focusedDay);
+    focusedDay = DAYS[(idx - 1 + 7) % 7];
+    updateSingleDayView();
+  });
+
+  document.getElementById('nextDayBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!focusedDay) focusedDay = getTodayName();
+    const idx = DAYS.indexOf(focusedDay);
+    focusedDay = DAYS[(idx + 1) % 7];
+    updateSingleDayView();
+  });
 
   // Bind magic fill buttons
   document.getElementById('autoFillWeekBtn')?.addEventListener('click', (e) => { e.preventDefault(); autoFillWeek(); });
@@ -732,15 +765,15 @@ export async function smartFillToday() {
     return;
   }
 
-  const today = getTodayName();
-  const candidates = deriveSuggestionsForDay(today);
+  if (!focusedDay) focusedDay = getTodayName();
+  const candidates = deriveSuggestionsForDay(focusedDay);
   if (!candidates.length) {
     Swal.fire({ icon: 'info', title: 'No Suggestions Yet', text: 'Log a few sessions to unlock smart suggestions.' });
     return;
   }
 
   candidates.slice(0, 2).forEach((bodyPart) => {
-    addExerciseToCard(today, {
+    addExerciseToCard(focusedDay, {
       exercise: `${bodyPart} Focus`,
       bodyPart,
       sets: 3,

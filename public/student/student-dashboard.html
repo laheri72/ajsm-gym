@@ -211,14 +211,18 @@
       <div id="daily-view">
         <div class="today-grid">
           <div class="today-plan-card">
-            <h3 id="today-date-heading">Loading...</h3>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <button id="prevDayBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></button>
+              <h3 id="today-date-heading" class="mb-0" style="margin-top: 0;">Loading...</h3>
+              <button id="nextDayBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></button>
+            </div>
             <div class="day-card structured-day-card" id="today-day-card" data-day="">
               <div class="planner-chip-row history-chip-row" data-role="history"></div>
               <div class="planner-chip-row suggestion-chip-row" data-role="suggestions"></div>
               <ul class="planner-item-list" data-role="items"></ul>
-              <p class="planner-empty-text">No workout planned for today yet.</p>
+              <p class="planner-empty-text">No workout planned for this day yet.</p>
               <textarea class="planner-note-input" data-role="notes" rows="2"
-                placeholder="Optional note for today..."></textarea>
+                placeholder="Optional note for this day..."></textarea>
             </div>
             <div class="today-actions">
               <button class="btn btn-sm btn-outline-primary quick-add-btn" id="today-quick-add">Add Exercise</button>
