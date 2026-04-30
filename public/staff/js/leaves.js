@@ -57,10 +57,11 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
         { 
             data: 'StudentName',
             render: (data, type, row) => {
-                if (row.Status === 'On Hold') {
-                    return `${data} <span class="badge bg-warning text-dark">On Hold</span>`;
-                }
-                return data;
+                const taken = row.LeavesTakenThisMonth || 0;
+                const badgeClass = taken >= 4 ? 'bg-danger' : taken >= 3 ? 'bg-warning text-dark' : 'bg-info text-dark';
+                const quotaBadge = `<span class="badge ${badgeClass} ms-1" title="Personal leaves used this month (excl. holidays)">${taken}/4 Leaves</span>`;
+                const holdBadge = row.Status === 'On Hold' ? ` <span class="badge bg-warning text-dark">On Hold</span>` : '';
+                return `${data}${holdBadge}<br><small>${quotaBadge}</small>`;
             }
         },
         { data: 'TR' },

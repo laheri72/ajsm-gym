@@ -2718,11 +2718,28 @@ router.get('/api/staff/leaves/pending', async (req, res) => {
             .query(`
                 SELECT 
                     L.LeaveID, L.TR, L.LeaveStartDate, L.LeaveEndDate, L.Reason, L.RequestedAt,
-                    L.Status, -- <<-- 1. ADDED THIS LINE
-                    M.Name AS StudentName
+                    L.Status,
+                    M.Name AS StudentName,
+                    -- Count only non-bulk approved leaves in the current calendar month
+                    ISNULL((
+                        SELECT SUM(DATEDIFF(day,
+                            CASE WHEN LH.LeaveStartDate < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+                                 THEN DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+                                 ELSE LH.LeaveStartDate END,
+                            CASE WHEN LH.LeaveEndDate > EOMONTH(GETDATE())
+                                 THEN EOMONTH(GETDATE())
+                                 ELSE LH.LeaveEndDate END
+                        ) + 1)
+                        FROM LeaveRequests LH
+                        WHERE LH.TR = L.TR
+                          AND LH.Status = 'Approved'
+                          AND (LH.Remarks IS NULL OR LH.Remarks NOT LIKE '%Bulk Leaves%')
+                          AND (LH.LeaveStartDate <= EOMONTH(GETDATE())
+                               AND LH.LeaveEndDate >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
+                    ), 0) AS LeavesTakenThisMonth
                 FROM LeaveRequests L
                 JOIN TestMaster M ON L.TR = M.TR
-                WHERE L.Status IN ('Pending', 'On Hold') AND M.Branch = @Branch AND M.Gender = @Gender -- <<-- 2. MODIFIED THIS LINE
+                WHERE L.Status IN ('Pending', 'On Hold') AND M.Branch = @Branch AND M.Gender = @Gender
                 ORDER BY L.RequestedAt ASC
             `);
         

@@ -947,17 +947,25 @@
       <div class="leave-grid">
         <div class="leave-form-container">
           <h4>Request a Leave of Absence</h4>
+
+          <!-- 🕒 Dynamic window-status badge -->
+          <div id="leaveWindowBadge" class="leave-window-badge closed mb-3">
+            <i class="bi bi-clock"></i> Checking window status...
+          </div>
+
           <form id="leaveRequestForm">
             <div class="mb-3">
               <label for="leaveStartDate" class="form-label">Start Date</label>
-              <input type="date" class="form-control" id="leaveStartDate" required>
+              <input type="text" class="form-control" id="leaveStartDate" placeholder="Pick a start date" required readonly>
             </div>
             <div class="mb-3">
               <label for="leaveEndDate" class="form-label">End Date</label>
-              <input type="date" class="form-control" id="leaveEndDate" required>
+              <input type="text" class="form-control" id="leaveEndDate" placeholder="Pick an end date" required readonly>
             </div>
             <div class="mb-3">
               <label for="leaveReason" class="form-label">Reason for Leave</label>
+              <!-- Quick-reason chips -->
+              <div id="leaveReasonChips" class="reason-chips mb-2"></div>
               <textarea class="form-control" id="leaveReason" rows="3" required
                 placeholder="e.g., University exam, family event..."></textarea>
             </div>
@@ -966,7 +974,7 @@
               <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
             </button>
             <p class="form-text text-center mt-3">
-              Note: Leave can only be requested for the next 15 days, between <strong>3 PM and 8 PM</strong>.
+              Leave can only be requested for the next 15 days, between <strong>3 PM and 10:30 PM</strong>.
             </p>
           </form>
         </div>
@@ -974,7 +982,14 @@
         <div class="leave-status-container">
           <div class="leave-counter-card">
             <div class="counter-value"><span id="leavesTakenCount">0</span> / 4</div>
-            <div class="counter-label">Leaves Taken This Month</div>
+            <div class="counter-label">Personal Leaves Used This Month</div>
+            <!-- Quota progress bar -->
+            <div class="leave-quota-bar-wrap mt-2">
+              <div class="leave-quota-bar-bg">
+                <div id="leaveQuotaBar" class="leave-quota-bar-fill" style="width: 0%;"></div>
+              </div>
+              <small id="leaveQuotaLabel" class="text-muted"></small>
+            </div>
           </div>
 
           <h4>Your Leave Requests</h4>

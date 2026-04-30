@@ -45,3 +45,106 @@
 .status-rejected { background-color: var(--danger); }
 .status-on-hold { background-color: #ffc107; color: #212529; }
 .status-pending { background-color: #6c757d; }
+
+/* =================================================================== */
+/* Leave Window Badge                                                    */
+/* =================================================================== */
+.leave-window-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.3s, color 0.3s;
+}
+.leave-window-badge.open {
+    background: rgba(25, 135, 84, 0.12);
+    color: #146c43;
+    border: 1px solid rgba(25, 135, 84, 0.3);
+}
+.leave-window-badge.open .bi { color: #198754; }
+.leave-window-badge.closed {
+    background: rgba(220, 53, 69, 0.1);
+    color: #842029;
+    border: 1px solid rgba(220, 53, 69, 0.25);
+}
+.leave-window-badge.closed .bi { color: #dc3545; }
+
+/* =================================================================== */
+/* Quick-Reason Chips                                                    */
+/* =================================================================== */
+.reason-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.reason-chip {
+    padding: 0.3rem 0.75rem;
+    border-radius: 2rem;
+    border: 1px solid #ced4da;
+    background: #fff;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    color: #495057;
+}
+.reason-chip:hover {
+    background: #e9ecef;
+}
+.reason-chip.active {
+    background: #4b6cb7;
+    border-color: #4b6cb7;
+    color: #fff;
+}
+
+/* =================================================================== */
+/* Leave Quota Progress Bar                                              */
+/* =================================================================== */
+.leave-quota-bar-wrap {
+    text-align: left;
+}
+.leave-quota-bar-bg {
+    height: 6px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.3rem;
+}
+.leave-quota-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease, background-color 0.3s ease;
+}
+.leave-quota-bar-wrap small {
+    font-size: 0.75rem;
+    opacity: 0.85;
+    color: rgba(255,255,255,0.9);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .leave-form-container,
+[data-theme="dark"] .leave-status-container {
+    background-color: #1e1e2e;
+    border-color: #2d2d3f;
+}
+[data-theme="dark"] .reason-chip {
+    background: #2d2d3f;
+    border-color: #3d3d5c;
+    color: #cdd6f4;
+}
+[data-theme="dark"] .reason-chip:hover {
+    background: #3d3d5c;
+}
+[data-theme="dark"] .leave-window-badge.open {
+    background: rgba(25,135,84,0.2);
+    border-color: rgba(25,135,84,0.4);
+    color: #75c99c;
+}
+[data-theme="dark"] .leave-window-badge.closed {
+    background: rgba(220,53,69,0.18);
+    border-color: rgba(220,53,69,0.35);
+    color: #f1a7ae;
+}
+

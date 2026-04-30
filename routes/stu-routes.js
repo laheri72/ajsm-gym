@@ -800,14 +800,17 @@ async function computeStudentLeaveSummary(TR) {
             historyRequests.push(request);
         }
 
-        // Count approved days (same logic as your GET)
+        // Count approved days -- skip system-generated bulk leaves
         if (request.Status === 'Approved') {
-            let current = leaveStart.clone();
-            while (current.isSameOrBefore(leaveEnd, 'day')) {
-                if (current.isBetween(startOfMonth, endOfMonth, null, '[]')) {
-                    approvedLeaveDaysThisMonth++;
+            const isBulk = request.Remarks && request.Remarks.includes('Bulk Leaves');
+            if (!isBulk) {
+                let current = leaveStart.clone();
+                while (current.isSameOrBefore(leaveEnd, 'day')) {
+                    if (current.isBetween(startOfMonth, endOfMonth, null, '[]')) {
+                        approvedLeaveDaysThisMonth++;
+                    }
+                    current.add(1, 'day');
                 }
-                current.add(1, 'day');
             }
         }
     });
@@ -2035,8 +2038,13 @@ router.post('/api/student/leaves', async (req, res) => {
     const now = moment.tz("Asia/Kolkata");
     const hour = now.hour();
 
-    if (hour < 15 || hour >= 20) { // 3 PM to 8 PM (20:00)
-        return res.status(403).json({ success: false, message: 'You can only apply for leave between 3 PM and 8 PM.' });
+    const minute = now.minute();
+
+    // Allow 3:00 PM (15:00) up to and including 10:30 PM (22:30)
+    const isBeforeOpen = hour < 15;
+    const isAfterClose = hour > 22 || (hour === 22 && minute > 30);
+    if (isBeforeOpen || isAfterClose) {
+        return res.status(403).json({ success: false, message: 'You can only apply for leave between 3 PM and 10:30 PM.' });
     }
 
     const requestedStartDate = moment.tz(leaveStartDate, "Asia/Kolkata").startOf('day');
@@ -2064,17 +2072,20 @@ router.post('/api/student/leaves', async (req, res) => {
             .input('StartOfMonth', sql.Date, startOfMonth)
             .input('EndOfMonth', sql.Date, endOfMonth)
             .query(`
-                SELECT LeaveStartDate, LeaveEndDate FROM LeaveRequests 
+                SELECT LeaveStartDate, LeaveEndDate, Remarks FROM LeaveRequests 
                 WHERE TR = @TR AND Status = 'Approved' 
                 AND (LeaveStartDate BETWEEN @StartOfMonth AND @EndOfMonth OR LeaveEndDate BETWEEN @StartOfMonth AND @EndOfMonth)
             `);
         
         let approvedDaysCount = 0;
-        // This logic correctly handles multi-day leaves spanning across months
+        // Exclude bulk/system-generated leaves from the student's personal 4/month quota
         leavesResult.recordset.forEach(leave => {
-            let current = moment.max(moment(leave.LeaveStartDate), moment(startOfMonth));
-            let end = moment.min(moment(leave.LeaveEndDate), moment(endOfMonth));
-            approvedDaysCount += end.diff(current, 'days') + 1;
+            const isBulk = leave.Remarks && leave.Remarks.includes('Bulk Leaves');
+            if (!isBulk) {
+                let current = moment.max(moment(leave.LeaveStartDate), moment(startOfMonth));
+                let end = moment.min(moment(leave.LeaveEndDate), moment(endOfMonth));
+                approvedDaysCount += end.diff(current, 'days') + 1;
+            }
         });
 
         if (approvedDaysCount + newLeaveDays > 4) {

@@ -12,7 +12,7 @@ import { handleWeightLogSubmit, handleWeightLogDelete, loadFitnessProgress, load
 import { initializeWeekPicker } from './student-modules/attendance.js';
 
 import { loadStudentPlans, loadTrainingAnalytics, loadHistoryAnalytics, loadWorkoutConsistency, loadOverviewAnalytics, applyChartTheme } from './student-modules/analysis.js';
-import { loadLeaveData, handleLeaveSubmit, handleLeaveCancel } from './student-modules/leaves.js';
+import { loadLeaveData, handleLeaveSubmit, handleLeaveCancel, initLeaveUX } from './student-modules/leaves.js';
 import { loadBodyPartTips } from './student-modules/tips.js';
 import { initializeFitness, showFitnessTab } from './student-modules/fitness.js';
 import {
@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
 
     // --- Leave Management ---
+    initLeaveUX(); // Flatpickr + window badge + reason chips
     document.getElementById('leaveRequestForm').addEventListener('submit', handleLeaveSubmit);
     document.querySelector('#leaveStatusTable tbody').addEventListener('click', handleLeaveCancel);
 
