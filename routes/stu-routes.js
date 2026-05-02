@@ -740,7 +740,7 @@ const getOrCreateWeekIdByDate = async (date, transactionOrPool) => {
     const request = transactionOrPool.request();
 
     // moment.js calculates the start and end of the week (ISO week: Monday to Sunday)
-    const leaveDate = moment(date);
+    const leaveDate = moment(date).startOf('day');
     const weekStart = leaveDate.clone().startOf('isoWeek').format('YYYY-MM-DD');
     const weekEnd = leaveDate.clone().endOf('isoWeek').format('YYYY-MM-DD');
 
@@ -790,8 +790,8 @@ async function computeStudentLeaveSummary(TR) {
     const historyRequests = [];
 
     result.recordset.forEach(request => {
-        const leaveStart = moment.tz(request.LeaveStartDate, "Asia/Kolkata");
-        const leaveEnd = moment.tz(request.LeaveEndDate, "Asia/Kolkata");
+        const leaveStart = moment.tz(request.LeaveStartDate, "Asia/Kolkata").startOf('day');
+        const leaveEnd = moment.tz(request.LeaveEndDate, "Asia/Kolkata").startOf('day');
 
         // Split into current month + history
         if (leaveStart.isBetween(startOfMonth, endOfMonth, null, '[]')) {
@@ -861,7 +861,7 @@ async function computeWeightHistory(TR) {
  * @returns {boolean} - True if the gap is 1 day or less, or if all days in the gap are Sundays or leave days.
  */
 function isGapExcused(newerDate, olderDate, leaveDateSet) {
-    const gapDays = newerDate.diff(olderDate, 'days');
+    const gapDays = newerDate.clone().startOf('day').diff(olderDate.clone().startOf('day'), 'days');
 
     // 1-day gap (e.g., Mon -> Tue) or 0-day gap (same day) is always valid.
     if (gapDays <= 1) {
