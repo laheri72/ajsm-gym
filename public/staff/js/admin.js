@@ -1303,7 +1303,55 @@ const { value: formData } = await Swal.fire({
                 emptyTable: "No inactive students found."
             },
             initComplete: function () {
-                // Optional: Add any custom initialization logic here
+                const api = this.api();
+
+                // Custom search function to filter 'Today' vs 'All'
+                if (!window.inactiveFilterAdded) {
+                    window.inactiveFilterAdded = true;
+                    
+                    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex, rowData) {
+                        if (settings.nTable.id !== 'inactiveStudentTable') return true;
+
+                        const filterValue = $('input[name="inactive-filter"]:checked').val();
+                        if (filterValue === 'all') return true;
+
+                        if (filterValue === 'today') {
+                            if (!rowData.LatestDeactivatedAt) return false;
+                            
+                            // Check if date is today in the local timezone
+                            const deactDate = moment(rowData.LatestDeactivatedAt);
+                            const startOfToday = moment().startOf('day');
+                            return deactDate.isSameOrAfter(startOfToday);
+                        }
+                        return true;
+                    });
+
+                    // Re-draw table when radio button changes
+                    $('.inactive-filter-radio').on('change', function () {
+                        inactiveStudentDataTable.draw();
+                    });
+                }
+            },
+            drawCallback: function(settings) {
+                const api = this.api();
+                
+                // Recalculate counts dynamically using the underlying data
+                let todayCount = 0;
+                let allCount = 0;
+                const startOfToday = moment().startOf('day');
+
+                // Loop over ALL data (not just the filtered view)
+                api.data().each(function(rowData) {
+                    allCount++;
+                    if (rowData.LatestDeactivatedAt) {
+                        if (moment(rowData.LatestDeactivatedAt).isSameOrAfter(startOfToday)) {
+                            todayCount++;
+                        }
+                    }
+                });
+
+                $('#count-today').text(todayCount);
+                $('#count-all').text(allCount);
             }
         });
     }
