@@ -1239,6 +1239,7 @@ const { value: formData } = await Swal.fire({
                 url: '/api/students/inactive',
                 dataSrc: 'data' // Adjust based on your API response structure
             },
+            order: [[5, 'desc']],
             columns: [
                 { data: 'TR' },
                 { data: 'Name' },
@@ -1249,10 +1250,18 @@ const { value: formData } = await Swal.fire({
                     render: (data) => data || '-' 
                 },
                 {
+                    data: 'LatestDeactivatedAt',
+                    render: function(data, type) {
+                        if (type === 'display' || type === 'filter') {
+                            return formatAuditDate(data);
+                        }
+                        return data || ''; // Raw date string for proper sorting
+                    }
+                },
+                {
                     data: null,
                     orderable: false,
                     render: function(data, type, row) {
-                        const latestStamp = formatAuditDate(row.LatestDeactivatedAt);
                         const latestBy = row.LatestDeactivatedBy ? `<div><strong>By:</strong> ${escapeHtml(row.LatestDeactivatedBy)}</div>` : '';
                         const latestReason = row.LatestDeactivationReason
                             ? `<div><strong>Reason:</strong> ${escapeHtml(row.LatestDeactivationReason)}</div>`
@@ -1261,7 +1270,6 @@ const { value: formData } = await Swal.fire({
 
                         return `
                             <div class="small">
-                                <div><strong>Latest:</strong> ${latestStamp}</div>
                                 ${latestBy}
                                 ${latestReason}
                                 <a class="btn btn-link btn-sm p-0 mt-1" href="profile.html?tr=${row.TR}&tab=admin-pane">
