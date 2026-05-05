@@ -2621,6 +2621,7 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
 
                         let isExpected = true;
                         let latestRecord = null;
+                        let oldestRecord = history.length > 0 ? history[0] : null;
                         
                         for (const h of history) {
                             if (new Date(h.ChangedAt) <= currentDate) {
@@ -2631,6 +2632,9 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                         if (latestRecord) {
                             if (latestRecord.NewStatus === 'Inactive') isExpected = false;
                             if (!latestRecord.NewSlotName || latestRecord.NewSlotName.toLowerCase().includes('pending')) isExpected = false;
+                        } else if (oldestRecord) {
+                            if (oldestRecord.PreviousStatus === 'Inactive') isExpected = false;
+                            if (!oldestRecord.PreviousSlotName || oldestRecord.PreviousSlotName.toLowerCase().includes('pending')) isExpected = false;
                         } else {
                             if (!record.SlotName || record.SlotName.toLowerCase().includes('pending') || record.SlotName === 'N/A' || record.SlotName === 'Unassigned') {
                                 isExpected = false;
@@ -3360,12 +3364,38 @@ router.put('/api/change-student-slot', async (req, res) => {
       return res.json({ success: false, message: 'Slot is full! Cannot assign more students.' });
     }
 
+        // 🔹 Fetch previous slot info
+    const prevCheck = await request.query(`
+        SELECT M.SlotID, M.Status, S.SlotName 
+        FROM TestMaster M 
+        LEFT JOIN Slots S ON M.SlotID = S.SlotID 
+        WHERE M.TR = @TR
+    `);
+    
+    if (prevCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    
+    const prevStudent = prevCheck.recordset[0];
+
     // 🔹 Update student's slot
     await request.query(`
       UPDATE TestMaster
       SET SlotID = @SlotID
       WHERE TR = @TR
     `);
+
+    // 🔹 Log the slot change if student is active
+    if (prevStudent.Status === 'Active') {
+        const { logSlotChangeForCurrentStudent } = require('../utils/studentStatusAudit.js');
+        await logSlotChangeForCurrentStudent({
+            connection: pool,
+            tr: TR,
+            previousSlotID: prevStudent.SlotID,
+            previousSlotName: prevStudent.SlotName,
+            sessionUser: req.session.user
+        });
+    }
 
     res.json({ success: true, message: 'Slot updated successfully!' });
   } catch (err) {

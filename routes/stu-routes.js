@@ -1903,6 +1903,7 @@ router.get(
 
                 let isExpected = true;
                 let latestRecord = null;
+                let oldestRecord = history.length > 0 ? history[0] : null;
                 
                 for (const h of history) {
                     if (new Date(h.ChangedAt) <= currentDate) {
@@ -1913,6 +1914,9 @@ router.get(
                 if (latestRecord) {
                     if (latestRecord.NewStatus === 'Inactive') isExpected = false;
                     if (!latestRecord.NewSlotName || latestRecord.NewSlotName.toLowerCase().includes('pending')) isExpected = false;
+                } else if (oldestRecord) {
+                    if (oldestRecord.PreviousStatus === 'Inactive') isExpected = false;
+                    if (!oldestRecord.PreviousSlotName || oldestRecord.PreviousSlotName.toLowerCase().includes('pending')) isExpected = false;
                 } else {
                     if (!studentData.SlotName || studentData.SlotName.toLowerCase().includes('pending') || studentData.SlotName === 'N/A' || studentData.SlotName === 'Unassigned') {
                         isExpected = false;
