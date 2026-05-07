@@ -1,11 +1,12 @@
 // utils/db.js
+require('dotenv').config();
 const sql = require('mssql');
 
 const config = {
-    user: 'idris5687',
-    password: 'idris5253',
-    server: 'fittracker.mssql.somee.com',
-    database: 'fittracker',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_NAME,
     options: {
         encrypt: true,               
         trustServerCertificate: true 

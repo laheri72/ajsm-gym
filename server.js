@@ -1,4 +1,5 @@
 // Import required modules
+require('dotenv').config();
 
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -36,7 +37,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use(session({
-  secret: 'jamea1446@GYM!SecreT2025',  
+  secret: process.env.SESSION_SECRET,  
   resave: false,
   saveUninitialized: false,
   cookie: {
