@@ -3,6 +3,7 @@
  * like the consistency streak.
  */
 export async function loadDashboardStats() {
+    bindAttendanceSnapshotDetails();
     loadAttendanceSnapshot();
 
     try {
@@ -43,6 +44,131 @@ export async function loadDashboardStats() {
         }
     } catch (err) {
         console.error("Could not load dashboard stats:", err);
+    }
+}
+
+let attendanceSnapshotDetailsBound = false;
+let attendanceDetailModalInstance = null;
+
+function escapeHtml(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function bindAttendanceSnapshotDetails() {
+    if (attendanceSnapshotDetailsBound) return;
+    attendanceSnapshotDetailsBound = true;
+
+    document.querySelectorAll('[data-attendance-detail]').forEach(button => {
+        button.addEventListener('click', () => {
+            openAttendanceDetailModal(button.dataset.attendanceDetail);
+        });
+    });
+}
+
+function setAttendanceDetailLoading(type) {
+    const titleEl = document.getElementById('attendanceDetailModalLabel');
+    const subtitleEl = document.getElementById('attendanceDetailModalSubtitle');
+    const headEl = document.getElementById('attendanceDetailHead');
+    const bodyEl = document.getElementById('attendanceDetailBody');
+    const emptyEl = document.getElementById('attendanceDetailEmpty');
+
+    const title = type === 'present' ? 'Present Details' : 'On Leave Details';
+    if (titleEl) titleEl.textContent = title;
+    if (subtitleEl) subtitleEl.textContent = 'Loading records...';
+    if (headEl) headEl.innerHTML = '';
+    if (bodyEl) bodyEl.innerHTML = '<tr><td class="text-center text-muted py-4">Loading...</td></tr>';
+    if (emptyEl) emptyEl.style.display = 'none';
+}
+
+function renderAttendanceDetailRows(type, rows) {
+    const subtitleEl = document.getElementById('attendanceDetailModalSubtitle');
+    const headEl = document.getElementById('attendanceDetailHead');
+    const bodyEl = document.getElementById('attendanceDetailBody');
+    const emptyEl = document.getElementById('attendanceDetailEmpty');
+
+    if (!headEl || !bodyEl || !emptyEl) return;
+
+    if (type === 'present') {
+        headEl.innerHTML = `
+            <tr>
+              <th>Hijri Date</th>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Time of Present</th>
+            </tr>
+        `;
+        bodyEl.innerHTML = rows.map(row => `
+            <tr>
+              <td>${escapeHtml(row.hijriDate || '-')}</td>
+              <td>${escapeHtml(row.date || '-')}</td>
+              <td>${escapeHtml(row.day || '-')}</td>
+              <td>${escapeHtml(row.time || '-')}</td>
+            </tr>
+        `).join('');
+    } else {
+        headEl.innerHTML = `
+            <tr>
+              <th>Hijri Start</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Day</th>
+              <th>Reason</th>
+            </tr>
+        `;
+        bodyEl.innerHTML = rows.map(row => `
+            <tr>
+              <td>${escapeHtml(row.hijriStartDate || '-')}</td>
+              <td>${escapeHtml(row.startDate || '-')}</td>
+              <td>${escapeHtml(row.endDate || '-')}</td>
+              <td>${escapeHtml(row.day || '-')}</td>
+              <td>${escapeHtml(row.reason || '-')}</td>
+            </tr>
+        `).join('');
+    }
+
+    if (subtitleEl) {
+        const label = rows.length === 1 ? 'record' : 'records';
+        subtitleEl.textContent = `${rows.length} ${label} found`;
+    }
+
+    const hasRows = rows.length > 0;
+    bodyEl.style.display = hasRows ? '' : 'none';
+    emptyEl.style.display = hasRows ? 'none' : 'block';
+}
+
+async function openAttendanceDetailModal(type) {
+    if (!['present', 'onLeave'].includes(type)) return;
+
+    const modalEl = document.getElementById('attendanceDetailModal');
+    if (!modalEl) return;
+
+    attendanceDetailModalInstance = attendanceDetailModalInstance || new bootstrap.Modal(modalEl);
+    setAttendanceDetailLoading(type);
+    attendanceDetailModalInstance.show();
+
+    try {
+        const res = await fetch(`/api/student/attendance-details/${type}`, {
+            credentials: 'include',
+            cache: 'no-store'
+        });
+        const result = await res.json();
+
+        if (!res.ok || !result.success) {
+            throw new Error(result.message || 'Could not load attendance details.');
+        }
+
+        renderAttendanceDetailRows(type, result.rows || []);
+    } catch (err) {
+        console.error('Could not load attendance details:', err);
+        const subtitleEl = document.getElementById('attendanceDetailModalSubtitle');
+        const bodyEl = document.getElementById('attendanceDetailBody');
+        if (subtitleEl) subtitleEl.textContent = 'Unable to load records.';
+        if (bodyEl) bodyEl.innerHTML = '<tr><td class="text-center text-danger py-4">Unable to load records right now.</td></tr>';
     }
 }
 

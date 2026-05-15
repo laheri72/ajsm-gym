@@ -201,21 +201,21 @@
         </div>
 
         <div class="attendance-snapshot-grid">
-          <div class="snapshot-stat snapshot-present">
+          <button class="snapshot-stat snapshot-present" type="button" data-attendance-detail="present">
             <i class="bi bi-check2-circle"></i>
             <span class="snapshot-value" id="snapshotPresentCount">--</span>
             <span class="snapshot-label">Present</span>
-          </div>
-          <div class="snapshot-stat snapshot-absent">
+          </button>
+          <div class="snapshot-stat snapshot-absent" aria-disabled="true" title="Absent details coming soon">
             <i class="bi bi-x-circle"></i>
             <span class="snapshot-value" id="snapshotAbsentCount">--</span>
             <span class="snapshot-label">Absent</span>
           </div>
-          <div class="snapshot-stat snapshot-leave">
+          <button class="snapshot-stat snapshot-leave" type="button" data-attendance-detail="onLeave">
             <i class="bi bi-calendar2-minus"></i>
             <span class="snapshot-value" id="snapshotLeaveCount">--</span>
             <span class="snapshot-label">On Leave</span>
-          </div>
+          </button>
         </div>
 
         <div class="attendance-rate-row">
@@ -1254,6 +1254,30 @@
               <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade attendance-detail-modal" id="attendanceDetailModal" tabindex="-1"
+    aria-labelledby="attendanceDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title" id="attendanceDetailModalLabel">Attendance Details</h5>
+            <p class="attendance-detail-subtitle" id="attendanceDetailModalSubtitle">Loading...</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive attendance-detail-table-wrap">
+            <table class="table attendance-detail-table" id="attendanceDetailTable">
+              <thead id="attendanceDetailHead"></thead>
+              <tbody id="attendanceDetailBody"></tbody>
+            </table>
+          </div>
+          <p class="attendance-detail-empty" id="attendanceDetailEmpty" style="display: none;">No records found.</p>
         </div>
       </div>
     </div>

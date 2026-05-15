@@ -66,6 +66,8 @@ function clearUserCache(tr) {
         `analytics_overview_${tr}`,
         `analytics_history_${tr}`,
         `attendance_summary_${tr}`,
+        `attendance_details_${tr}_present`,
+        `attendance_details_${tr}_onLeave`,
         `eligible_weeks_${tr}`,
         `leaves_${tr}`,
         `student_achievements_${tr}`

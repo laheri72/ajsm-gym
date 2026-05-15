@@ -11,6 +11,15 @@ const VALID_PLANNER_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const PLANNER_SCHEMA_VERSION = 1;
 const MAX_PLANNER_ITEMS_PER_DAY = 16;
 
+// Hijri offset in days (integer). Set via env `HIJRI_OFFSET_DAYS`.
+// Positive numbers move the Gregorian date forward before computing the Hijri date.
+// Negative numbers move it backward. Default: 0.
+const HIJRI_OFFSET_DAYS = (() => {
+    const v = parseInt(process.env.HIJRI_OFFSET_DAYS, 10);
+    // Default to 1 to match university lunar observations (one day shift).
+    return Number.isFinite(v) ? v : 1;
+})();
+
 function isValidPlannerDay(day) {
     return VALID_PLANNER_DAYS.includes(day);
 }
@@ -49,6 +58,33 @@ function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlo
     const status = String(fallbackStatus || '').trim().toLowerCase();
     if (status && status !== 'active') return false;
     return !isPendingOrUnassignedSlot(fallbackSlotName);
+}
+
+function formatHijriDate(value) {
+    if (!value) return '';
+
+    try {
+        const date = value instanceof Date ? value : new Date(value);
+        // Apply configured offset (use moment to avoid timezone pitfalls)
+        const adjusted = HIJRI_OFFSET_DAYS !== 0
+            ? moment(date).add(HIJRI_OFFSET_DAYS, 'days').toDate()
+            : date;
+
+        const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'Asia/Kolkata'
+        }).formatToParts(adjusted);
+
+        const day = parts.find(part => part.type === 'day')?.value;
+        const month = parts.find(part => part.type === 'month')?.value;
+        const year = parts.find(part => part.type === 'year')?.value;
+
+        return [day, month, year].filter(Boolean).join('-');
+    } catch (err) {
+        return '';
+    }
 }
 
 function decodeHtmlEntities(input = '') {
@@ -2094,6 +2130,92 @@ router.get(
                 isGymMember: true
             }
         });
+    } catch (err) {
+        next(err);
+    }
+  }
+);
+
+router.get(
+  '/api/student/attendance-details/:type',
+  cacheMiddleware(req => `attendance_details_${req.session.user?.TR}_${req.params.type}`, 120),
+  async (req, res, next) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+
+    const { TR } = req.session.user;
+    const { type } = req.params;
+
+    if (!['present', 'onLeave'].includes(type)) {
+        return res.status(400).json({ success: false, message: 'Unsupported attendance detail type.' });
+    }
+
+    try {
+        if (type === 'present') {
+            const result = await pool.request()
+                .input('TR', sql.Int, TR)
+                .query(`
+                    SELECT
+                        CONVERT(varchar, CAST(DATEADD(MINUTE, 330, CreatedAt) AS date), 23) AS AttendanceDate,
+                        DATENAME(WEEKDAY, DATEADD(MINUTE, 330, CreatedAt)) AS DayName,
+                        FORMAT(DATEADD(MINUTE, 330, CreatedAt), 'hh:mm tt') AS PresentTime,
+                        DATEADD(MINUTE, 330, CreatedAt) AS CreatedAtIST
+                    FROM Attendance
+                    WHERE TR = @TR AND IsPresent = 1
+                    ORDER BY CreatedAt DESC
+                `);
+
+            const rows = result.recordset.map(row => {
+                const dateMoment = moment.tz(row.AttendanceDate, "Asia/Kolkata");
+                return {
+                    hijriDate: formatHijriDate(dateMoment.toDate()),
+                    date: dateMoment.format('DD/MM/YYYY'),
+                    isoDate: row.AttendanceDate,
+                    day: row.DayName,
+                    time: row.PresentTime || ''
+                };
+            });
+
+            return res.json({ success: true, type, rows });
+        }
+
+        const leaveResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT
+                    LeaveID,
+                    CONVERT(varchar, LeaveStartDate, 23) AS LeaveStartDate,
+                    CONVERT(varchar, LeaveEndDate, 23) AS LeaveEndDate,
+                    Reason,
+                    Remarks
+                FROM LeaveRequests
+                WHERE TR = @TR AND Status = 'Approved'
+                ORDER BY LeaveStartDate DESC, LeaveID DESC
+            `);
+
+        const rows = leaveResult.recordset.map(row => {
+            const start = moment.tz(row.LeaveStartDate, "Asia/Kolkata");
+            const end = moment.tz(row.LeaveEndDate, "Asia/Kolkata");
+            const dayLabel = start.isSame(end, 'day')
+                ? start.format('dddd')
+                : `${start.format('dddd')} - ${end.format('dddd')}`;
+            const isBulk = row.Remarks && row.Remarks.includes('Bulk Leaves');
+
+            return {
+                leaveID: row.LeaveID,
+                hijriStartDate: formatHijriDate(start.toDate()),
+                hijriEndDate: formatHijriDate(end.toDate()),
+                startDate: start.format('DD/MM/YYYY'),
+                endDate: end.format('DD/MM/YYYY'),
+                isoStartDate: row.LeaveStartDate,
+                isoEndDate: row.LeaveEndDate,
+                day: dayLabel,
+                reason: isBulk ? 'Holiday' : (row.Reason || 'N/A')
+            };
+        });
+
+        return res.json({ success: true, type, rows });
     } catch (err) {
         next(err);
     }

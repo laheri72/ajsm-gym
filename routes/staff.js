@@ -15,6 +15,8 @@ const { cache } = require('../utils/cache.js');
 function clearStudentAttendanceCaches(tr) {
     if (!tr) return;
     cache.del(`attendance_summary_${tr}`);
+    cache.del(`attendance_details_${tr}_present`);
+    cache.del(`attendance_details_${tr}_onLeave`);
     for (const key of cache.keys()) {
         if (key.startsWith(`attendance_${tr}_`)) {
             cache.del(key);
