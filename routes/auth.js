@@ -4,6 +4,7 @@ const router = express.Router();
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); // All login routes need this
+const { clearUserCache } = require('../utils/cache.js');
 
 const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase());
 const parseTRList = (value) => String(value || '')
@@ -124,6 +125,9 @@ router.post('/api/student/set-initial-password', async (req, res, next) => {
 
 // ✅ REPLACED /api/student-session route (now merged)
 router.get('/api/student-session', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('Vary', 'Cookie');
+
   if (req.session.user && req.session.user.TR) {
     try {
       const { TR } = req.session.user;
@@ -345,11 +349,17 @@ router.get('/api/session-user', (req, res) => {
 // ------------- 🚪 General Logout Route
 
 router.post('/api/logout', (req, res) => {
+  const tr = req.session.user?.TR;
+
   req.session.destroy(err => {
     if (err) {
       return res.status(500).json({ success: false, message: 'Failed to logout' });
     }
+
+    clearUserCache(tr);
     res.clearCookie('connect.sid'); // Optional: clear the session cookie
+    res.set('Cache-Control', 'no-store');
+    res.set('Clear-Site-Data', '"cache"');
     res.json({ success: true, message: 'Logged out successfully' });
   });
 });

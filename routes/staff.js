@@ -10,6 +10,25 @@ const {
     updateStudentStatusWithAudit,
     logSlotChangeForCurrentStudent
 } = require('../utils/studentStatusAudit.js');
+const { cache } = require('../utils/cache.js');
+
+function clearStudentAttendanceCaches(tr) {
+    if (!tr) return;
+    cache.del(`attendance_summary_${tr}`);
+    for (const key of cache.keys()) {
+        if (key.startsWith(`attendance_${tr}_`)) {
+            cache.del(key);
+        }
+    }
+}
+
+function clearAllStudentAttendanceCaches() {
+    for (const key of cache.keys()) {
+        if (key.startsWith('attendance_')) {
+            cache.del(key);
+        }
+    }
+}
 
 function decodeHtmlEntities(input = '') {
     return String(input)
@@ -1380,7 +1399,8 @@ router.post('/api/attendance-manual', async (req, res) => {
                 INSERT INTO Attendance (TR, WeekID, IsPresent, CreatedAt, OutTime, DurationInMinutes, Branch, Gender)
                 VALUES (@TR, @WeekID, @IsPresent, GETUTCDATE(), NULL, NULL, @Branch, @Gender)
             `);
-            
+        
+        clearStudentAttendanceCaches(TR);
         res.status(200).json({ message: '✅ Attendance marked successfully' });
     } catch (error) {
         console.error('❌ Attendance insert error:', error);
@@ -2399,6 +2419,7 @@ router.put('/api/attendance-record', async (req, res, next) => {
                 VALUES (@TR, @WeekID, @IsPresent, @OnLeave, @Date, @Branch, @Gender);
         `);
 
+        clearStudentAttendanceCaches(TR);
         res.json({ success: true, message: 'Student attendance has been updated.' });
 
     } catch (err) {
@@ -2480,6 +2501,7 @@ router.post('/api/attendance/bulk-leave', async (req, res) => {
         `);
 
         await transaction.commit();
+        clearAllStudentAttendanceCaches();
         res.json({ success: true, message: 'Bulk leave scheduled successfully.' });
 
     } catch (err) {
@@ -2766,6 +2788,7 @@ router.put('/api/staff/leaves/:id/status', async (req, res) => {
     const { id } = req.params; // LeaveID
     const { status, remarks } = req.body;
     const { Username, Branch, Gender } = req.session.user;
+    let affectedTR = null;
 
     const validStatuses = ['Approved', 'Rejected', 'On Hold'];
     if (!validStatuses.includes(status)) {
@@ -2797,6 +2820,7 @@ router.put('/api/staff/leaves/:id/status', async (req, res) => {
         // Step 2: If approved, update the attendance table
         if (status === 'Approved') {
             const { TR, LeaveStartDate, LeaveEndDate } = updateResult.recordset[0];
+            affectedTR = TR;
             
             let currentDate = moment(LeaveStartDate);
             const lastDate = moment(LeaveEndDate);
@@ -2830,6 +2854,7 @@ router.put('/api/staff/leaves/:id/status', async (req, res) => {
         }
         
         await transaction.commit();
+        clearStudentAttendanceCaches(affectedTR);
         res.json({ success: true, message: `Leave request has been ${status.toLowerCase()}.` });
 
     } catch (err) {

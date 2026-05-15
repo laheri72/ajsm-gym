@@ -189,6 +189,48 @@
         </div>
       </div>
 
+      <div class="attendance-snapshot-card" id="attendanceSnapshotCard" aria-live="polite">
+        <div class="attendance-snapshot-header">
+          <div>
+            <span class="snapshot-eyebrow">Attendance Snapshot</span>
+            <h3>Overall Attendance</h3>
+          </div>
+          <a href="#attendance" class="snapshot-open-btn" title="View full attendance" aria-label="View full attendance">
+            <i class="bi bi-box-arrow-up-right"></i>
+          </a>
+        </div>
+
+        <div class="attendance-snapshot-grid">
+          <div class="snapshot-stat snapshot-present">
+            <i class="bi bi-check2-circle"></i>
+            <span class="snapshot-value" id="snapshotPresentCount">--</span>
+            <span class="snapshot-label">Present</span>
+          </div>
+          <div class="snapshot-stat snapshot-absent">
+            <i class="bi bi-x-circle"></i>
+            <span class="snapshot-value" id="snapshotAbsentCount">--</span>
+            <span class="snapshot-label">Absent</span>
+          </div>
+          <div class="snapshot-stat snapshot-leave">
+            <i class="bi bi-calendar2-minus"></i>
+            <span class="snapshot-value" id="snapshotLeaveCount">--</span>
+            <span class="snapshot-label">On Leave</span>
+          </div>
+        </div>
+
+        <div class="attendance-rate-row">
+          <div>
+            <span class="snapshot-rate-label">Attendance Rate</span>
+            <span class="snapshot-range" id="snapshotRangeLabel">Since joining</span>
+          </div>
+          <strong id="snapshotAttendanceRate">--%</strong>
+        </div>
+        <div class="attendance-rate-track" aria-hidden="true">
+          <div class="attendance-rate-fill" id="snapshotRateFill" style="width: 0%;"></div>
+        </div>
+        <p class="snapshot-status-text" id="snapshotStatusText">Loading your attendance summary...</p>
+      </div>
+
       <div class="coach-strip" id="planner-coach-strip">
         <div class="coach-metric">
           <span class="metric-label">Adherence</span>

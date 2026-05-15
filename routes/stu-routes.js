@@ -19,6 +19,38 @@ function getCurrentDateInIST() {
     return moment.tz("Asia/Kolkata").format('YYYY-MM-DD');
 }
 
+function isPendingOrUnassignedSlot(slotName) {
+    const normalized = String(slotName || '').trim().toLowerCase();
+    return !normalized || normalized.includes('pending') || normalized === 'n/a' || normalized === 'unassigned';
+}
+
+function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName }) {
+    let latestRecord = null;
+    const oldestRecord = history.length > 0 ? history[0] : null;
+
+    for (const h of history) {
+        if (new Date(h.ChangedAt) <= dateEnd) {
+            latestRecord = h;
+        }
+    }
+
+    if (latestRecord) {
+        const status = String(latestRecord.NewStatus || '').trim().toLowerCase();
+        if (status && status !== 'active') return false;
+        return !isPendingOrUnassignedSlot(latestRecord.NewSlotName);
+    }
+
+    if (oldestRecord) {
+        const status = String(oldestRecord.PreviousStatus || '').trim().toLowerCase();
+        if (status && status !== 'active') return false;
+        return !isPendingOrUnassignedSlot(oldestRecord.PreviousSlotName);
+    }
+
+    const status = String(fallbackStatus || '').trim().toLowerCase();
+    if (status && status !== 'active') return false;
+    return !isPendingOrUnassignedSlot(fallbackSlotName);
+}
+
 function decodeHtmlEntities(input = '') {
     return String(input)
         .replace(/&nbsp;/gi, ' ')
@@ -1885,7 +1917,7 @@ router.get(
         const historyQuery = await pool.request()
             .input('TR', sql.Int, TR)
             .query(`
-                SELECT ChangedAt, NewStatus, NewSlotName 
+                SELECT ChangedAt, PreviousStatus, NewStatus, PreviousSlotName, NewSlotName 
                 FROM StudentStatusHistory 
                 WHERE TR = @TR 
                 ORDER BY ChangedAt ASC
@@ -1901,27 +1933,12 @@ router.get(
                 currentDate.setDate(startDate.getDate() + i);
                 currentDate.setHours(23, 59, 59, 999);
 
-                let isExpected = true;
-                let latestRecord = null;
-                let oldestRecord = history.length > 0 ? history[0] : null;
-                
-                for (const h of history) {
-                    if (new Date(h.ChangedAt) <= currentDate) {
-                        latestRecord = h;
-                    }
-                }
-
-                if (latestRecord) {
-                    if (latestRecord.NewStatus === 'Inactive') isExpected = false;
-                    if (!latestRecord.NewSlotName || latestRecord.NewSlotName.toLowerCase().includes('pending')) isExpected = false;
-                } else if (oldestRecord) {
-                    if (oldestRecord.PreviousStatus === 'Inactive') isExpected = false;
-                    if (!oldestRecord.PreviousSlotName || oldestRecord.PreviousSlotName.toLowerCase().includes('pending')) isExpected = false;
-                } else {
-                    if (!studentData.SlotName || studentData.SlotName.toLowerCase().includes('pending') || studentData.SlotName === 'N/A' || studentData.SlotName === 'Unassigned') {
-                        isExpected = false;
-                    }
-                }
+                const isExpected = isExpectedAttendanceDay({
+                    dateEnd: currentDate,
+                    history,
+                    fallbackStatus: 'Active',
+                    fallbackSlotName: studentData.SlotName
+                });
 
                 if (!isExpected) {
                     record[day] = 'Not Expected';
@@ -1941,6 +1958,147 @@ router.get(
         next(err);
     }
 });
+
+router.get(
+  '/api/student/attendance-summary/me',
+  cacheMiddleware(req => `attendance_summary_${req.session.user?.TR}`, 120),
+  async (req, res, next) => {
+    if (!req.session.user || !req.session.user.TR) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });
+    }
+
+    const { TR } = req.session.user;
+
+    try {
+        const studentResult = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT M.JoinedAt, M.Status, S.SlotName
+                FROM TestMaster M
+                LEFT JOIN Slots S ON M.SlotID = S.SlotID
+                WHERE M.TR = @TR
+            `);
+
+        if (studentResult.recordset.length === 0) {
+            return res.status(401).json({ success: false, message: 'Student record not found.' });
+        }
+
+        const student = studentResult.recordset[0];
+        const today = moment.tz("Asia/Kolkata").startOf('day');
+
+        if (!student.JoinedAt) {
+            return res.json({
+                success: true,
+                data: {
+                    scope: 'sinceJoining',
+                    joinedAt: null,
+                    throughDate: today.format('YYYY-MM-DD'),
+                    present: 0,
+                    absent: 0,
+                    onLeave: 0,
+                    expectedDays: 0,
+                    attendanceRate: null,
+                    isGymMember: false
+                }
+            });
+        }
+
+        const joinedAt = moment.tz(student.JoinedAt, "Asia/Kolkata").startOf('day');
+        const [attendanceResult, historyResult] = await Promise.all([
+            pool.request()
+                .input('TR', sql.Int, TR)
+                .input('JoinedAt', sql.Date, joinedAt.format('YYYY-MM-DD'))
+                .input('Tomorrow', sql.Date, today.clone().add(1, 'day').format('YYYY-MM-DD'))
+                .query(`
+                    SELECT
+                        CONVERT(varchar, CAST(DATEADD(MINUTE, 330, CreatedAt) AS date), 23) AS AttendanceDate,
+                        MAX(CASE WHEN IsPresent = 1 THEN 1 ELSE 0 END) AS IsPresent,
+                        MAX(CASE WHEN OnLeave = 1 THEN 1 ELSE 0 END) AS OnLeave
+                    FROM Attendance
+                    WHERE TR = @TR
+                      AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS date) >= @JoinedAt
+                      AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS date) < @Tomorrow
+                    GROUP BY CAST(DATEADD(MINUTE, 330, CreatedAt) AS date)
+                `),
+            pool.request()
+                .input('TR', sql.Int, TR)
+                .query(`
+                    SELECT ChangedAt, PreviousStatus, NewStatus, PreviousSlotName, NewSlotName
+                    FROM StudentStatusHistory
+                    WHERE TR = @TR
+                    ORDER BY ChangedAt ASC
+                `)
+        ]);
+
+        const attendanceByDate = new Map(
+            attendanceResult.recordset.map(row => [
+                row.AttendanceDate,
+                {
+                    isPresent: Boolean(row.IsPresent),
+                    onLeave: Boolean(row.OnLeave)
+                }
+            ])
+        );
+        const history = historyResult.recordset || [];
+
+        let present = 0;
+        let absent = 0;
+        let onLeave = 0;
+        const cursor = joinedAt.clone();
+
+        while (cursor.isSameOrBefore(today, 'day')) {
+            const dayOfWeek = cursor.isoWeekday();
+
+            if (dayOfWeek <= 6) {
+                const dateEnd = cursor.clone().endOf('day').toDate();
+                const isExpected = isExpectedAttendanceDay({
+                    dateEnd,
+                    history,
+                    fallbackStatus: student.Status,
+                    fallbackSlotName: student.SlotName
+                });
+
+                if (isExpected) {
+                    const dateKey = cursor.format('YYYY-MM-DD');
+                    const attendance = attendanceByDate.get(dateKey);
+
+                    if (attendance?.isPresent) {
+                        present++;
+                    } else if (attendance?.onLeave) {
+                        onLeave++;
+                    } else if (cursor.isBefore(today, 'day')) {
+                        absent++;
+                    }
+                }
+            }
+
+            cursor.add(1, 'day');
+        }
+
+        const rateDenominator = present + absent;
+        const attendanceRate = rateDenominator > 0
+            ? Number(((present / rateDenominator) * 100).toFixed(1))
+            : null;
+
+        res.json({
+            success: true,
+            data: {
+                scope: 'sinceJoining',
+                joinedAt: joinedAt.format('YYYY-MM-DD'),
+                throughDate: today.format('YYYY-MM-DD'),
+                present,
+                absent,
+                onLeave,
+                expectedDays: present + absent + onLeave,
+                attendanceRate,
+                isGymMember: true
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+  }
+);
 
 
 router.get(
@@ -2233,11 +2391,10 @@ router.get(
 // Returns all active exercises grouped by body part.
 // Cached for 10 minutes — exercise list rarely changes.
 // ============================================================
-router.get('/api/exercises', async (req, res) => {
-    const cacheKey = 'exercises_all';
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json({ success: true, data: cached });
-
+router.get(
+  '/api/exercises',
+  cacheMiddleware(() => 'exercises_all', 600, { cacheControl: 'public, max-age=600' }),
+  async (req, res) => {
     try {
         const result = await pool.request().query(`
             SELECT
@@ -2269,13 +2426,13 @@ router.get('/api/exercises', async (req, res) => {
             });
         }
 
-        cache.set(cacheKey, grouped, 600); // 10-minute cache
         res.json({ success: true, data: grouped });
     } catch (err) {
         console.error('GET /api/exercises error:', err);
         res.status(500).json({ success: false, message: 'Failed to load exercises' });
     }
-});
+  }
+);
 
 // ============================================================
 // Phase 3F: GET /api/student/performance/history/:exerciseID

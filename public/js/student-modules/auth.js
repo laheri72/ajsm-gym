@@ -294,12 +294,22 @@ export async function logout(e) {
     try {
         const res = await fetch('/api/logout', {
             method: 'POST',
-            credentials: 'include'
+            credentials: 'include',
+            cache: 'no-store'
         });
         const data = await res.json();
         if (data.success) {
-            // localStorage.clear();
-            window.location.href = '../homepage.html';
+            const savedTheme = localStorage.getItem('theme');
+            localStorage.clear();
+            sessionStorage.clear();
+            if (savedTheme) localStorage.setItem('theme', savedTheme);
+
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+            }
+
+            window.location.replace(`../homepage.html?logout=${Date.now()}`);
         } else {
             alert('Logout failed. Please try again.');
         }
