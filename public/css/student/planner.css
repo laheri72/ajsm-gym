@@ -75,11 +75,11 @@
 }
 
 #planner-low {
-    border: 1px solid #dce6f4;
+    border: 1px solid #c8d8ea;
     background:
-        radial-gradient(circle at 10% -10%, rgba(14, 165, 233, 0.12), transparent 40%),
-        radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.1), transparent 35%),
-        #ffffff;
+        radial-gradient(circle at 10% -10%, rgba(14, 165, 233, 0.16), transparent 42%),
+        radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.12), transparent 36%),
+        #fbfdff;
 }
 
 .structured-day-card {
@@ -96,22 +96,24 @@
 }
 
 .coach-metric {
-    border: 1px solid var(--border-color);
+    border: 1px solid #bfd2e6;
     border-radius: 10px;
     padding: 0.75rem 0.85rem;
-    background: #fafcff;
+    background: linear-gradient(180deg, #ffffff, #f2f7fe);
+    box-shadow: 0 4px 12px rgba(16, 35, 58, 0.06);
 }
 
 .metric-label {
     display: block;
     font-size: 0.78rem;
-    color: var(--gray);
+    color: #546c84;
+    font-weight: 700;
     margin-bottom: 0.25rem;
 }
 
 .metric-value {
     font-weight: 700;
-    color: var(--dark);
+    color: #132f4a;
     font-size: 1.05rem;
 }
 
@@ -669,8 +671,8 @@ input:checked+.slider:before {
     color: var(--dark);
     padding: 2rem;
     border-radius: 1rem;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    border: 1px solid #bdd0e3;
+    box-shadow: 0 8px 22px rgba(16, 35, 58, 0.08);
 }
 .today-plan-card h3 {
     margin-top: 0;
@@ -679,8 +681,8 @@ input:checked+.slider:before {
     margin-bottom: 1rem;
 }
 .today-plan-card .day-card {
-    background-color: #f8f9fa; /* Light gray for the card itself */
-    border: 1px dashed #ced4da;
+    background-color: #f8fbff; /* Light gray for the card itself */
+    border: 1px dashed #bfd1e3;
     color: var(--dark);
     min-height: 200px;
 }
@@ -704,7 +706,7 @@ input:checked+.slider:before {
 .consistency-progress-bar-container {
     height: 10px;
     width: 100%;
-    background-color: #e0e0e0;
+    background-color: #e7d8aa;
     border-radius: 5px;
     margin-bottom: 1rem;
     overflow: hidden;
@@ -746,7 +748,9 @@ input:checked+.slider:before {
 .stat-module {
     padding: 1.5rem;
     border-radius: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid #bfd2e6;
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(16, 35, 58, 0.07);
 }
 .stat-module h4 {
     margin-top: 0;
@@ -776,7 +780,8 @@ input:checked+.slider:before {
 }
 
 .consistency-module {
-    background: linear-gradient(135deg, #FFFDE7, #FFF8E1);
+    background: linear-gradient(135deg, #fff9de, #fff0bf);
+    border-color: #e8ca73;
 }
 .consistency-module h4 { color: #F57F17; }
 .streak-display {

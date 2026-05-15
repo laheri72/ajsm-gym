@@ -2194,14 +2194,13 @@ router.get(
                 ORDER BY LeaveStartDate DESC, LeaveID DESC
             `);
 
-        const rows = leaveResult.recordset.map(row => {
+            const rows = leaveResult.recordset.map(row => {
             const start = moment.tz(row.LeaveStartDate, "Asia/Kolkata");
             const end = moment.tz(row.LeaveEndDate, "Asia/Kolkata");
             const dayLabel = start.isSame(end, 'day')
                 ? start.format('dddd')
                 : `${start.format('dddd')} - ${end.format('dddd')}`;
-            const isBulk = row.Remarks && row.Remarks.includes('Bulk Leaves');
-
+            
             return {
                 leaveID: row.LeaveID,
                 hijriStartDate: formatHijriDate(start.toDate()),
@@ -2211,7 +2210,8 @@ router.get(
                 isoStartDate: row.LeaveStartDate,
                 isoEndDate: row.LeaveEndDate,
                 day: dayLabel,
-                reason: isBulk ? 'Holiday' : (row.Reason || 'N/A')
+                // Use the same Reason value as shown in the Leaves tab (LeaveRequests.Reason).
+                reason: row.Reason || 'N/A'
             };
         });
 

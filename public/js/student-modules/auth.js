@@ -299,10 +299,16 @@ export async function logout(e) {
         });
         const data = await res.json();
         if (data.success) {
+            // Preserve a few persistent UI keys (theme, lastSeenLevel) so
+            // they don't cause desirable one-time modals to reappear after logout.
             const savedTheme = localStorage.getItem('theme');
+            const savedLastSeenLevel = localStorage.getItem('lastSeenLevel');
+
             localStorage.clear();
             sessionStorage.clear();
+
             if (savedTheme) localStorage.setItem('theme', savedTheme);
+            if (savedLastSeenLevel) localStorage.setItem('lastSeenLevel', savedLastSeenLevel);
 
             if ('caches' in window) {
                 const cacheNames = await caches.keys();

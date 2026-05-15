@@ -75,9 +75,9 @@
     justify-items: center;
     gap: 0.18rem;
     padding: 0.75rem 0.5rem;
-    border: 1px solid #d7e6f2;
+    border: 1px solid #c7d9e9;
     border-radius: 12px;
-    background: #f8fbff;
+    background: #ffffff;
     text-align: center;
     color: inherit;
 }
@@ -126,6 +126,10 @@ button.snapshot-stat:focus-visible {
 .snapshot-absent i { color: #dc2626; }
 .snapshot-leave i { color: #ca8a04; }
 
+.snapshot-present { border-top: 3px solid rgba(22, 163, 74, 0.55); }
+.snapshot-absent { border-top: 3px solid rgba(220, 38, 38, 0.55); }
+.snapshot-leave { border-top: 3px solid rgba(202, 138, 4, 0.55); }
+
 .snapshot-rate-label {
     display: block;
     color: var(--dark);
@@ -149,7 +153,7 @@ button.snapshot-stat:focus-visible {
     margin-top: 0.6rem;
     overflow: hidden;
     border-radius: 999px;
-    background: #dbe8f2;
+    background: #cfdeea;
 }
 
 .attendance-rate-fill {
