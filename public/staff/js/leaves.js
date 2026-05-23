@@ -23,12 +23,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const historyView = document.getElementById('history-view');
     const viewPendingBtn = document.getElementById('viewPendingBtn');
     const viewHistoryBtn = document.getElementById('viewHistoryBtn');
+    const pendingLeaveCount = document.getElementById('pendingLeaveCount');
+    const historyLeaveCount = document.getElementById('historyLeaveCount');
+    const pendingLeaveTabCount = document.getElementById('pendingLeaveTabCount');
+    const historyLeaveTabCount = document.getElementById('historyLeaveTabCount');
+
+    function setCounter(elements, count) {
+        elements.forEach(el => {
+            if (el) el.textContent = String(count);
+        });
+    }
+
+    async function refreshHistoryCountPreview() {
+        if (historyLeavesTable) return;
+
+        try {
+            const res = await fetch('/api/staff/leaves/history', { credentials: 'include' });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.message || 'Failed to load leave history count.');
+            setCounter([historyLeaveCount, historyLeaveTabCount], (json.data || []).length);
+        } catch (err) {
+            console.error('Unable to load leave history count:', err);
+            setCounter([historyLeaveCount, historyLeaveTabCount], 0);
+        }
+    }
 
     viewPendingBtn.addEventListener('click', () => {
         pendingView.style.display = 'block';
         historyView.style.display = 'none';
         viewPendingBtn.classList.add('active');
         viewHistoryBtn.classList.remove('active');
+        viewPendingBtn.setAttribute('aria-selected', 'true');
+        viewHistoryBtn.setAttribute('aria-selected', 'false');
     });
 
     viewHistoryBtn.addEventListener('click', () => {
@@ -36,6 +62,8 @@ document.addEventListener("DOMContentLoaded", () => {
         historyView.style.display = 'block';
         viewPendingBtn.classList.remove('active');
         viewHistoryBtn.classList.add('active');
+        viewPendingBtn.setAttribute('aria-selected', 'false');
+        viewHistoryBtn.setAttribute('aria-selected', 'true');
         // Load history table only when it's first viewed
         if (!historyLeavesTable) {
             loadLeaveHistory();
@@ -52,16 +80,23 @@ document.addEventListener("DOMContentLoaded", () => {
 // REPLACE the old pendingLeavesTable initialization with this one
 
 pendingLeavesTable = $('#pendingLeavesTable').DataTable({
-    ajax: { url: '/api/staff/leaves/pending', dataSrc: 'data' },
+    ajax: {
+        url: '/api/staff/leaves/pending',
+        dataSrc: (json) => {
+            const rows = json.data || [];
+            setCounter([pendingLeaveCount, pendingLeaveTabCount], rows.filter(row => row.Status === 'Pending').length);
+            return rows;
+        }
+    },
     columns: [
         { 
             data: 'StudentName',
             render: (data, type, row) => {
                 const taken = row.LeavesTakenThisMonth || 0;
                 const badgeClass = taken >= 4 ? 'bg-danger' : taken >= 3 ? 'bg-warning text-dark' : 'bg-info text-dark';
-                const quotaBadge = `<span class="badge ${badgeClass} ms-1" title="Personal leaves used this month (excl. holidays)">${taken}/4 Leaves</span>`;
-                const holdBadge = row.Status === 'On Hold' ? ` <span class="badge bg-warning text-dark">On Hold</span>` : '';
-                return `${data}${holdBadge}<br><small>${quotaBadge}</small>`;
+                const quotaBadge = `<span class="badge ${badgeClass} leave-quota-badge" title="Personal leaves used this month (excl. holidays)">${taken}/4 Leaves</span>`;
+                const holdBadge = row.Status === 'On Hold' ? ` <span class="badge bg-warning text-dark leave-status-chip">On Hold</span>` : '';
+                return `<div class="leave-student-cell"><strong>${data}</strong>${holdBadge}<small>${quotaBadge}</small></div>`;
             }
         },
         { data: 'TR' },
@@ -106,7 +141,14 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
 
     function loadLeaveHistory() {
         historyLeavesTable = $('#historyLeavesTable').DataTable({
-            ajax: { url: '/api/staff/leaves/history', dataSrc: 'data' },
+            ajax: {
+                url: '/api/staff/leaves/history',
+                dataSrc: (json) => {
+                    const rows = json.data || [];
+                    setCounter([historyLeaveCount, historyLeaveTabCount], rows.length);
+                    return rows;
+                }
+            },
             columns: [
                 { data: 'StudentName' },
                 { 
@@ -158,6 +200,8 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
             pendingLeavesTable.ajax.reload();
             if (historyLeavesTable) {
                 historyLeavesTable.ajax.reload();
+            } else {
+                refreshHistoryCountPreview();
             }
             if (typeof window.staffNotificationsRefresh === 'function') {
                 window.staffNotificationsRefresh();
@@ -217,4 +261,5 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
 
     // --- INITIALIZATION ---
     loadPendingLeaves();
+    refreshHistoryCountPreview();
 });

@@ -70,8 +70,8 @@
         </a>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
-            <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
             <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
+            <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
         </ul>
     </div>
 
@@ -100,17 +100,43 @@
 
         <main class="main-content">
             <div class="content">
-                <section id="leave-management-section" class="card">
-                    <h2>🍃 Leave Management</h2>
+                <section id="leave-management-section" class="leave-workspace">
+                    <div class="leave-page-header">
+                        <div>
+                            <p class="leave-kicker">Attendance Operations</p>
+                            <h2>Leave Management</h2>
+                            <p>Review student leave requests, track decisions, and keep attendance records moving.</p>
+                        </div>
+                        <div class="leave-summary-strip" aria-label="Leave request summary">
+                            <div class="leave-summary-item">
+                                <span id="pendingLeaveCount">--</span>
+                                <small>Pending review</small>
+                            </div>
+                            <div class="leave-summary-item">
+                                <span id="historyLeaveCount">--</span>
+                                <small>Processed records</small>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <div class="view-controls mb-4">
-                        <button id="viewPendingBtn" class="btn active">Pending Requests</button>
-                        <button id="viewHistoryBtn" class="btn">Leave History</button>
+                    <div class="view-controls leave-tabs mb-4" role="tablist" aria-label="Leave views">
+                        <button id="viewPendingBtn" class="btn active" type="button" role="tab" aria-selected="true" aria-controls="pending-view">
+                            Pending Requests <span id="pendingLeaveTabCount" class="leave-tab-count">--</span>
+                        </button>
+                        <button id="viewHistoryBtn" class="btn" type="button" role="tab" aria-selected="false" aria-controls="history-view">
+                            Leave History <span id="historyLeaveTabCount" class="leave-tab-count">--</span>
+                        </button>
                     </div>
 
-                    <div id="pending-view">
-                        <p class="text-muted">Review and respond to new leave requests.</p>
-                        <div style="overflow-x: auto;">
+                    <div id="pending-view" class="leave-view" role="tabpanel" aria-labelledby="viewPendingBtn">
+                        <div class="leave-table-shell">
+                            <div class="leave-table-titlebar">
+                                <div>
+                                    <h3>Requests awaiting action</h3>
+                                    <p>Approve, reject, or place a request on hold after review.</p>
+                                </div>
+                            </div>
+                            <div class="leave-table-scroll">
                             <table id="pendingLeavesTable" class="table table-striped table-bordered nowrap stacking-card-table" style="width:100%">
                                 <thead>
                                     <tr>
@@ -124,12 +150,19 @@
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
 
-                    <div id="history-view" style="display: none;">
-                        <p class="text-muted">A log of all processed leave requests.</p>
-                         <div style="overflow-x: auto;">
+                    <div id="history-view" class="leave-view" style="display: none;" role="tabpanel" aria-labelledby="viewHistoryBtn">
+                         <div class="leave-table-shell">
+                            <div class="leave-table-titlebar">
+                                <div>
+                                    <h3>Decision history</h3>
+                                    <p>Processed leave requests for this branch and gender scope.</p>
+                                </div>
+                            </div>
+                            <div class="leave-table-scroll">
                             <table id="historyLeavesTable" class="table table-striped table-bordered nowrap stacking-card-table" style="width:100%">
                                 <thead>
                                     <tr>
@@ -143,6 +176,7 @@
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </section>

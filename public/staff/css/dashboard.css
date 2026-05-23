@@ -408,6 +408,329 @@ html.is-admin #tab-admin {
     background-color: var(--danger) !important;
     color: white !important;
 }
+
+/* =================================================================== */
+/* LEAVE MANAGEMENT REDESIGN
+/* =================================================================== */
+
+#leave-management-section.leave-workspace {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    padding: 1.5rem;
+}
+
+#leave-management-section > h2 {
+    display: none;
+}
+
+.leave-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.leave-kicker {
+    margin: 0 0 0.35rem;
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+}
+
+.leave-page-header h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.65rem;
+    font-weight: 700;
+}
+
+.leave-page-header p:not(.leave-kicker) {
+    margin: 0.45rem 0 0;
+    color: #64748b;
+    max-width: 660px;
+}
+
+.leave-summary-strip {
+    display: flex;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8fafc;
+    flex-shrink: 0;
+}
+
+.leave-summary-item {
+    min-width: 150px;
+    padding: 0.85rem 1rem;
+}
+
+.leave-summary-item + .leave-summary-item {
+    border-left: 1px solid #e5e7eb;
+}
+
+.leave-summary-item span {
+    display: block;
+    color: #111827;
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.leave-summary-item small {
+    display: block;
+    margin-top: 0.25rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+#leave-management-section .leave-tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+#leave-management-section .leave-tabs .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    border-radius: 6px;
+    box-shadow: none;
+    padding: 0.65rem 0.9rem;
+    background: transparent;
+    color: #475569;
+}
+
+#leave-management-section .leave-tabs .btn:hover {
+    transform: none;
+    background: #eef2f7;
+}
+
+#leave-management-section .leave-tabs .btn.active {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.leave-tab-count {
+    min-width: 1.6rem;
+    height: 1.35rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.08);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+#leave-management-section .leave-tabs .btn.active .leave-tab-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.leave-table-shell {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.leave-table-titlebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1rem 0.25rem;
+}
+
+.leave-table-titlebar h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.leave-table-titlebar p {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.88rem;
+}
+
+.leave-table-scroll {
+    overflow-x: auto;
+    padding: 0 1rem 1rem;
+}
+
+#leave-management-section .dataTables_wrapper {
+    padding-top: 0.75rem;
+}
+
+#leave-management-section .dataTables_length,
+#leave-management-section .dataTables_filter {
+    margin-bottom: 0.75rem;
+}
+
+#leave-management-section .dataTables_length label,
+#leave-management-section .dataTables_filter label,
+#leave-management-section .dataTables_info,
+#leave-management-section .dataTables_paginate {
+    color: #475569;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+#leave-management-section .dataTables_filter input,
+#leave-management-section .dataTables_length select {
+    border: 1px solid #dbe3ea;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+#leave-management-section table.dataTable {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 0.5rem !important;
+}
+
+#leave-management-section table.dataTable thead th {
+    background: #f8fafc;
+    color: #334155;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+#leave-management-section table.dataTable tbody td {
+    color: #111827;
+    vertical-align: middle;
+    border-bottom: 1px solid #edf2f7;
+}
+
+#leave-management-section table.dataTable tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.leave-student-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.leave-student-cell strong {
+    color: #111827;
+    font-weight: 700;
+}
+
+.leave-quota-badge,
+.leave-status-chip {
+    width: fit-content;
+}
+
+#leave-management-section .btn-group {
+    gap: 0.35rem;
+    justify-content: flex-start;
+}
+
+#leave-management-section .btn-group .btn {
+    min-width: 78px;
+    border-radius: 6px !important;
+    padding: 0.45rem 0.65rem;
+    box-shadow: none;
+}
+
+#leave-management-section .btn-group .btn:hover {
+    transform: translateY(-1px);
+}
+
+@media (min-width: 769px) {
+    #leave-management-section .stacking-card-table thead {
+        display: table-header-group;
+    }
+
+    #leave-management-section .stacking-card-table tbody tr {
+        display: table-row;
+        margin-bottom: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+        background-color: transparent;
+    }
+
+    #leave-management-section .stacking-card-table td {
+        display: table-cell;
+        text-align: left;
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    #leave-management-section .stacking-card-table td:before {
+        content: none;
+    }
+}
+
+@media (max-width: 768px) {
+    #leave-management-section.leave-workspace {
+        padding: 1rem;
+    }
+
+    .leave-page-header {
+        display: block;
+    }
+
+    .leave-summary-strip {
+        margin-top: 1rem;
+        width: 100%;
+    }
+
+    .leave-summary-item {
+        min-width: 0;
+        flex: 1;
+    }
+
+    #leave-management-section .leave-tabs {
+        display: flex;
+        width: 100%;
+    }
+
+    #leave-management-section .leave-tabs .btn {
+        flex: 1;
+        justify-content: center;
+        padding: 0.65rem 0.5rem;
+    }
+
+    .leave-table-titlebar {
+        padding: 0.9rem 0.9rem 0;
+    }
+
+    .leave-table-scroll {
+        padding: 0 0.75rem 0.75rem;
+    }
+
+    #leave-management-section .btn-group {
+        justify-content: stretch;
+    }
+
+    #leave-management-section .btn-group .btn {
+        flex: 1;
+        min-width: 0;
+    }
+}
 /* =================================================================== */
 /* 17. STUDENT PROFILE SEARCH
 /* =================================================================== */
