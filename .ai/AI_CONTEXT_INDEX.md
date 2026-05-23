@@ -15,3 +15,10 @@ For overview → read PROJECT_SUMMARY.md
 ## 🔄 Major Logic Shifts (April 2026)
 - **Attendance Exception Logic:** Weekly attendance (for both Staff and Students) no longer strictly uses `JoinedAt` as the sole baseline. Absences are dynamically masked (shown as `-`) on days where a student's `StudentStatusHistory` reflects an `Inactive` status or if their slot was `Pending`.
 - **Slot Changes Logged:** The `StudentStatusHistory` table now supports an `ActionType` of `'SlotChange'`. Whenever a student's `SlotID` is modified in the staff dashboard, this change is recorded (provided their status remains `Active`). This ensures accurate historical tracking of when a student transitions from a "Pending" slot to an actual assigned slot without relying on first-attendance heuristics.
+
+## 🔄 Major Logic Shifts (May 2026)
+- **New Student Attendance Detail API:** `GET /api/student/attendance-details/:type` supports `present` and `onLeave` detail datasets for the planner attendance snapshot modal.
+- **Hijri Offset Strategy:** Hijri labels use Umm al-Qura formatting with adjustable day offset from `HIJRI_OFFSET_DAYS` (default fallback set to `1` to match current campus calendar behavior).
+- **On Leave Reason Consistency:** On-leave modal rows now return `LeaveRequests.Reason` directly; do not replace with synthetic labels like `Holiday`.
+- **Logout Behavior:** Preserve `localStorage.lastSeenLevel` on logout (along with theme) so the level-up SweetAlert does not replay each login.
+- **UI Styling Note:** Planner contrast changes were intentionally kept in component CSS (`public/css/student/planner.css`, `public/css/student/attendance.css`) and not global late-layer overrides, to avoid dark-mode regressions.

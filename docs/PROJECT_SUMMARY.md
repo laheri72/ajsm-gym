@@ -52,3 +52,10 @@ The system relies on a `.env` file (or system environment variables) for the fol
 - **Hosting:** Currently configured for **Render.com** (as seen in CORS settings).
 - **Static Assets:** Served from the `dist/` directory after being built by Vite.
 - **Database:** Hosted externally (e.g., Somee.com or similar MSSQL provider).
+
+## Recent Milestones (May 2026)
+- **Attendance Snapshot Detail Modals (Student Dashboard):** Added clickable "Overall Attendance" detail flows for `Present` and `On Leave` stats via `GET /api/student/attendance-details/:type` (no Absent inference yet by design).
+- **Hijri Date Rendering Control:** Implemented server-side Hijri formatting using Umm al-Qura plus configurable offset support via `HIJRI_OFFSET_DAYS`. Default is now aligned to campus usage (`+1` fallback when env var is not set).
+- **On Leave Reason Source Fix:** Updated on-leave detail payload to always use `LeaveRequests.Reason` directly, matching Leaves tab behavior (removed forced `Holiday` label override for bulk entries).
+- **Level-Up Modal Persistence Fix:** Student logout no longer wipes `lastSeenLevel` from local storage, preventing the SweetAlert "LEVEL UP" modal from reappearing on every new login on the same device.
+- **Planner Tab Contrast Pass:** Applied light-theme contrast improvements to planner/attendance UI at component level (`planner.css`, `attendance.css`) while preserving existing dark-theme behavior.
