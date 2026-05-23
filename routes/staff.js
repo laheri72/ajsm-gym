@@ -2732,6 +2732,54 @@ router.put('/api/students/status/:TR', async (req, res) => {
 // ----------- 🍃 Staff Leave Management Routes
 //======================================================
 
+// GET: Fetch app-level staff notifications for the staff's branch/gender
+router.get('/api/staff/notifications', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in as staff.' });
+    }
+
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT COUNT(*) AS PendingLeaveCount
+                FROM LeaveRequests L
+                JOIN TestMaster M ON L.TR = M.TR
+                WHERE L.Status = 'Pending'
+                  AND M.Branch = @Branch
+                  AND M.Gender = @Gender
+            `);
+
+        const pendingLeaveCount = result.recordset[0]?.PendingLeaveCount || 0;
+        const notifications = [];
+
+        if (pendingLeaveCount > 0) {
+            const studentLabel = pendingLeaveCount === 1 ? 'student is' : 'students are';
+            notifications.push({
+                id: 'pending-leaves',
+                type: 'leave_requests',
+                title: 'Pending leave requests',
+                message: `${pendingLeaveCount} ${studentLabel} waiting for leave review.`,
+                count: pendingLeaveCount,
+                href: 'leaves.html',
+                priority: 'action'
+            });
+        }
+
+        res.json({
+            success: true,
+            total: pendingLeaveCount,
+            notifications
+        });
+    } catch (err) {
+        console.error('Error fetching staff notifications:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch notifications.' });
+    }
+});
+
 // ✅ GET: Fetch all PENDING and ON HOLD leave requests for the staff's branch/gender
 router.get('/api/staff/leaves/pending', async (req, res) => {
     if (!req.session.user || !req.session.user.Branch) {

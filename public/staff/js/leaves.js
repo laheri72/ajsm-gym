@@ -159,6 +159,9 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
             if (historyLeavesTable) {
                 historyLeavesTable.ajax.reload();
             }
+            if (typeof window.staffNotificationsRefresh === 'function') {
+                window.staffNotificationsRefresh();
+            }
         } catch (err) {
             Swal.fire('Error', `Failed to update status: ${err.message}`, 'error');
         }

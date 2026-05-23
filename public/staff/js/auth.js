@@ -169,11 +169,176 @@ function checkProfileCompletion() {
     }
 }
 
+// --- Staff Notification Center ---
+const STAFF_NOTIFICATION_REFRESH_MS = 60000;
+let staffNotificationPoller = null;
+let staffNotificationInitialized = false;
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function formatNotificationCount(count) {
+    return count > 99 ? '99+' : String(count);
+}
+
+function createNotificationWidget(variant) {
+    const widget = document.createElement('div');
+    widget.className = `staff-notification-widget staff-notification-widget-${variant}`;
+    widget.innerHTML = `
+        <button type="button" class="staff-notification-trigger" aria-label="Open notifications" aria-expanded="false">
+            <span class="staff-notification-icon" aria-hidden="true">&#128276;</span>
+            <span class="staff-notification-badge" hidden>0</span>
+        </button>
+        <div class="staff-notification-panel" role="menu" aria-label="Notifications">
+            <div class="staff-notification-panel-header">
+                <strong>Notifications</strong>
+                <span class="staff-notification-total">No pending work</span>
+            </div>
+            <div class="staff-notification-list">
+                <div class="staff-notification-empty">No pending work.</div>
+            </div>
+        </div>
+    `;
+
+    const trigger = widget.querySelector('.staff-notification-trigger');
+    trigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isOpen = widget.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    widget.addEventListener('click', (event) => event.stopPropagation());
+    return widget;
+}
+
+function closeNotificationPanels() {
+    document.querySelectorAll('.staff-notification-widget.open').forEach((widget) => {
+        widget.classList.remove('open');
+        widget.querySelector('.staff-notification-trigger')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function injectNotificationCenter() {
+    if (staffNotificationInitialized) return;
+
+    const navbar = document.getElementById('navbar');
+    const desktopUserMenu = document.getElementById('user-menu-desktop');
+    const appHeader = document.querySelector('.app-header');
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+
+    if (!navbar || !desktopUserMenu || !appHeader) return;
+
+    const desktopWidget = createNotificationWidget('desktop');
+    navbar.insertBefore(desktopWidget, desktopUserMenu);
+
+    const mobileWidget = createNotificationWidget('mobile');
+    if (hamburgerBtn) {
+        appHeader.insertBefore(mobileWidget, hamburgerBtn);
+    } else {
+        appHeader.appendChild(mobileWidget);
+    }
+
+    document.addEventListener('click', closeNotificationPanels);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeNotificationPanels();
+    });
+
+    staffNotificationInitialized = true;
+}
+
+function renderNotificationState({ notifications = [], total = 0, error = false }) {
+    const widgets = document.querySelectorAll('.staff-notification-widget');
+    widgets.forEach((widget) => {
+        const badge = widget.querySelector('.staff-notification-badge');
+        const totalText = widget.querySelector('.staff-notification-total');
+        const list = widget.querySelector('.staff-notification-list');
+        const count = Number(total) || 0;
+
+        if (badge) {
+            badge.hidden = count <= 0;
+            badge.textContent = formatNotificationCount(count);
+        }
+
+        if (error) {
+            if (totalText) totalText.textContent = 'Load failed';
+            if (list) list.innerHTML = '<div class="staff-notification-empty staff-notification-error">Unable to load notifications.</div>';
+            return;
+        }
+
+        if (totalText) {
+            totalText.textContent = count > 0 ? `${formatNotificationCount(count)} pending` : 'No pending work';
+        }
+
+        if (!list) return;
+
+        if (!notifications.length) {
+            list.innerHTML = '<div class="staff-notification-empty">No pending work.</div>';
+            return;
+        }
+
+        list.innerHTML = notifications.map((notification) => `
+            <a class="staff-notification-item staff-notification-priority-${escapeHtml(notification.priority || 'info')}" href="${escapeHtml(notification.href || '#')}">
+                <span class="staff-notification-item-count">${formatNotificationCount(Number(notification.count) || 0)}</span>
+                <span class="staff-notification-item-copy">
+                    <strong>${escapeHtml(notification.title)}</strong>
+                    <small>${escapeHtml(notification.message)}</small>
+                </span>
+            </a>
+        `).join('');
+    });
+}
+
+async function refreshStaffNotifications() {
+    if (!staffNotificationInitialized) return;
+
+    try {
+        const res = await fetch('/api/staff/notifications', {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (res.status === 401) {
+            renderNotificationState({ notifications: [], total: 0 });
+            return;
+        }
+
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load notifications.');
+
+        renderNotificationState({
+            notifications: data.notifications || [],
+            total: data.total || 0
+        });
+    } catch (err) {
+        console.error('Notification refresh failed:', err);
+        renderNotificationState({ error: true });
+    }
+}
+
+function initStaffNotificationCenter() {
+    injectNotificationCenter();
+    if (!staffNotificationInitialized) return;
+
+    refreshStaffNotifications();
+    if (!staffNotificationPoller) {
+        staffNotificationPoller = window.setInterval(refreshStaffNotifications, STAFF_NOTIFICATION_REFRESH_MS);
+    }
+    window.staffNotificationsRefresh = refreshStaffNotifications;
+}
+
 // --- Main Execution Block ---
 document.addEventListener('DOMContentLoaded', () => {
     
     validateSessionInBackground().then(() => {
         populateUsername();
+        initStaffNotificationCenter();
         document.body.style.visibility = 'visible';
 
         // --- ★★★ NEW MODAL LOGIC ★★★ ---

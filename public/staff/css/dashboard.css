@@ -918,6 +918,156 @@ html.is-admin #tab-admin {
     color: var(--primary);
     text-decoration: none;
 }
+.staff-notification-widget {
+    position: relative;
+    flex-shrink: 0;
+}
+.staff-notification-widget-desktop {
+    display: none;
+}
+.staff-notification-widget-mobile {
+    margin-left: auto;
+    margin-right: 1rem;
+}
+.staff-notification-trigger {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--dark);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.staff-notification-trigger:hover,
+.staff-notification-widget.open .staff-notification-trigger {
+    background-color: rgba(76, 175, 80, 0.08);
+    border-color: rgba(76, 175, 80, 0.35);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+.staff-notification-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+.staff-notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--danger);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 19px;
+    text-align: center;
+    box-shadow: 0 0 0 2px #ffffff;
+}
+.staff-notification-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(340px, calc(100vw - 24px));
+    max-height: min(440px, calc(100vh - 90px));
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 2500;
+}
+.staff-notification-widget.open .staff-notification-panel {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+.staff-notification-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #edf2f7;
+}
+.staff-notification-panel-header strong {
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+.staff-notification-total {
+    color: var(--gray);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.staff-notification-list {
+    padding: 0.5rem;
+}
+.staff-notification-empty {
+    padding: 1.25rem 1rem;
+    color: var(--gray);
+    font-size: 0.9rem;
+    text-align: center;
+}
+.staff-notification-error {
+    color: var(--danger);
+}
+.staff-notification-item {
+    display: flex !important;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.8rem !important;
+    border: 1px solid #edf2f7 !important;
+    border-radius: 8px !important;
+    color: var(--dark) !important;
+    text-decoration: none !important;
+    background: #ffffff;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.staff-notification-item + .staff-notification-item {
+    margin-top: 0.5rem;
+}
+.staff-notification-item:hover {
+    background-color: #f8fafc !important;
+    border-color: rgba(76, 175, 80, 0.35) !important;
+    transform: none !important;
+}
+.staff-notification-item-count {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(76, 175, 80, 0.12);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.staff-notification-item-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.staff-notification-item-copy strong {
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+.staff-notification-item-copy small {
+    color: var(--gray);
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
 .hamburger-btn {
     display: flex;
     flex-direction: column;
@@ -1118,9 +1268,17 @@ body.nav-open .nav-overlay {
         display: flex;
         align-items: center;
     }
+    .staff-notification-widget-mobile {
+        display: none;
+    }
+    .staff-notification-widget-desktop {
+        display: block;
+        margin-left: auto;
+        margin-right: 0.5rem;
+    }
     /* Fix #5: User menu */
     #user-menu-desktop {
-        margin-left: auto;
+        margin-left: 0;
         padding: 0.8rem 0.8rem;
     }
     .navbar-username-desktop {
