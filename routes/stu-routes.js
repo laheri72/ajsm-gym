@@ -2446,12 +2446,12 @@ router.delete('/api/student/leaves/:id', async (req, res) => {
 
 /**
  * HALL OF FAME LEADERBOARD
- * Ranks students by the number of achievements earned, filtered by branch/gender.
+ * Ranks students by earned badges, then by cumulative XP/level, filtered by branch/gender.
  */
 router.get(
   '/api/achievements/leaderboard',
   cacheMiddleware(req =>
-    `achieve_leaderboard_${req.session.user?.Branch}_${req.session.user?.Gender}`,
+    `achieve_leaderboard_v2_${req.session.user?.Branch}_${req.session.user?.Gender}`,
     300
   ),
   async (req, res) => {
@@ -2466,13 +2466,32 @@ router.get(
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
                 SELECT TOP 10
+                    M.TR,
                     M.Name,
-                    COUNT(SA.StudentAchievementID) AS TotalAchievements
+                    COUNT(SA.StudentAchievementID) AS TotalAchievements,
+                    G.SafeLevel AS FitnessLevel,
+                    G.SafeCurrentXP AS CurrentXP,
+                    G.SafeLevel * 100 AS NextLevelXP,
+                    (((G.SafeLevel - 1) * G.SafeLevel) / 2) * 100 + G.SafeCurrentXP AS TotalXP
                 FROM TestMaster M
-                JOIN StudentAchievements SA ON M.TR = SA.TR
+                LEFT JOIN StudentAchievements SA ON M.TR = SA.TR
+                CROSS APPLY (
+                    SELECT
+                        CASE
+                            WHEN ISNULL(M.FitnessLevel, 1) < 1 THEN 1
+                            ELSE ISNULL(M.FitnessLevel, 1)
+                        END AS SafeLevel,
+                        ISNULL(M.CurrentXP, 0) AS SafeCurrentXP
+                ) G
                 WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
-                GROUP BY M.Name
-                ORDER BY TotalAchievements DESC, MIN(SA.DateEarned) ASC;
+                GROUP BY M.TR, M.Name, G.SafeLevel, G.SafeCurrentXP
+                ORDER BY
+                    TotalAchievements DESC,
+                    TotalXP DESC,
+                    G.SafeLevel DESC,
+                    G.SafeCurrentXP DESC,
+                    MIN(SA.DateEarned) ASC,
+                    M.Name ASC;
             `);
         res.json({ success: true, data: result.recordset });
     } catch (err) {

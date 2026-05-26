@@ -2065,6 +2065,7 @@ body.nav-open .nav-overlay {
 
 .leaderboard-list li .name {
     flex-grow: 1;
+    min-width: 0;
     font-weight: 600;
     font-size: 1rem;
     color: var(--dark);
@@ -2077,6 +2078,13 @@ body.nav-open .nav-overlay {
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 0.9rem;
+    text-align: right;
+    white-space: normal;
+}
+
+.leaderboard-list li .score small {
+    display: block;
+    font-weight: 500;
 }
 
 .leaderboard-list li.loading {

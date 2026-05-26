@@ -48,7 +48,7 @@ The system uses session-based authentication with distinct login flows for each 
 
 ## Service Layer & Logic
 Logic is predominantly co-located with route handlers in `routes/`. Key features include:
-- **Gamification Engine (`routes/gamification.js`):** Calculates XP, levels, and awards achievements (Consistency King, Social Butterfly, etc.) based on attendance and workouts.
+- **Gamification Engine (`routes/gamification.js`):** Calculates XP, levels, and awards achievements (Consistency King, Social Butterfly, etc.) based on attendance and workouts. Hall of Fame ranking uses earned badge count first, then derived lifetime XP/level from `TestMaster`.
 - **Fitness Evaluation:** Experts (`Evaluators`) provide categorized comments on trainer-logged fitness tests.
 - **Attendance Management:** Handled in `routes/staff.js`, including "On Leave" bulk updates and manual attendance correction.
 - **Direct Entry Workflow:** Student registration bypasses the legacy `WaitingList` table. Students are activated directly in `TestMaster` upon entry, with optional "Waiting for Slot" support.

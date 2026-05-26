@@ -25,11 +25,30 @@ async function loadAchievementLeaderboard() {
             const medals = ['🥇', '🥈', '🥉'];
             
             result.data.forEach((player, index) => {
+                const badges = Number(player.TotalAchievements) || 0;
+                const level = Number(player.FitnessLevel) || 1;
+                const currentXP = Number(player.CurrentXP) || 0;
+                const nextLevelXP = Number(player.NextLevelXP) || level * 100;
+                const totalXP = Number(player.TotalXP) || currentXP;
+                const xpProgress = nextLevelXP > 0 ? Math.min((currentXP / nextLevelXP) * 100, 100) : 0;
                 const li = document.createElement('li');
+                li.className = 'achievement-leaderboard-item';
                 li.innerHTML = `
-                    <div class="rank">${medals[index] || index + 1}</div>
-                    <div class="name">${player.Name}</div>
-                    <div class="score">${player.TotalAchievements} Badges</div>
+                    <div class="rank hof-rank">${medals[index] || index + 1}</div>
+                    <div class="hof-player">
+                        <div class="name hof-name">${escapeHtml(player.Name || 'Student')}</div>
+                        <div class="hof-metrics" aria-label="Achievement leaderboard score">
+                            <span class="hof-pill">${badges} Badges</span>
+                            <span class="hof-pill">Level ${level}</span>
+                            <span class="hof-pill">${totalXP} XP</span>
+                        </div>
+                    </div>
+                    <div class="hof-xp">
+                        <div class="hof-xp-label">${currentXP}/${nextLevelXP} XP</div>
+                        <div class="hof-xp-track" aria-hidden="true">
+                            <div class="hof-xp-fill" style="width: ${xpProgress}%"></div>
+                        </div>
+                    </div>
                 `;
                 listElement.appendChild(li);
             });
@@ -40,6 +59,16 @@ async function loadAchievementLeaderboard() {
         console.error("Could not load achievement leaderboard:", err);
         listElement.innerHTML = '<li class="loading">Error loading leaderboard.</li>';
     }
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
 }
 
 /**

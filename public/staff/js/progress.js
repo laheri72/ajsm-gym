@@ -385,11 +385,16 @@ async function loadAchievementLeaderboard() {
             const medals = ['🥇', '🥈', '🥉'];
 
             result.data.forEach((player, index) => {
+                const badges = Number(player.TotalAchievements) || 0;
+                const level = Number(player.FitnessLevel) || 1;
+                const currentXP = Number(player.CurrentXP) || 0;
+                const nextLevelXP = Number(player.NextLevelXP) || level * 100;
+                const totalXP = Number(player.TotalXP) || currentXP;
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <div class="rank">${medals[index] || index + 1}</div>
                     <div class="name">${player.Name}</div>
-                    <div class="score">${player.TotalAchievements} Badges</div>
+                    <div class="score">${badges} Badges | LVL ${level} | ${totalXP} XP <small>(${currentXP}/${nextLevelXP} to next)</small></div>
                 `;
                 listElement.appendChild(li);
             });

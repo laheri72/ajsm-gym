@@ -22,6 +22,7 @@ Endpoints for student progress, weight tracking, and workout analytics.
 | Method | Endpoint | Role | Purpose | Input |
 | :--- | :--- | :--- | :--- | :--- |
 | GET | `/api/student/achievements/progress` | Student | Calculate live progress for all 5 achievements. | None |
+| GET | `/api/achievements/leaderboard` | Student/Staff | Fetch the branch/gender Hall of Fame top 10, ranked by badges first, then cumulative XP/level from `TestMaster.FitnessLevel` and `CurrentXP`. | None |
 | GET | `/api/leaderboard` | Student | Fetch the top 3 students based on yesterday's activity. | None |
 | POST | `/api/student/log-weight` | Student | Log an ad-hoc weight measurement. | `{ weight }` |
 | GET | `/api/student/weight-history` | Student | Fetch all weight logs for the current student. | None |

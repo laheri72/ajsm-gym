@@ -80,6 +80,128 @@
     color: var(--gray);
 }
 
+#achievementLeaderboardList .achievement-leaderboard-item {
+    align-items: stretch;
+    gap: 1rem;
+    border: 1px solid #e1ebf5;
+}
+
+#achievementLeaderboardList .achievement-leaderboard-item:hover {
+    transform: translateY(-2px);
+}
+
+#achievementLeaderboardList .hof-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    min-height: 46px;
+    margin: 0;
+    border-radius: 50%;
+    background: rgba(76, 175, 80, 0.12);
+    color: var(--primary);
+}
+
+#achievementLeaderboardList .hof-player {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#achievementLeaderboardList .hof-name {
+    color: var(--dark);
+    overflow-wrap: anywhere;
+}
+
+#achievementLeaderboardList .hof-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+}
+
+#achievementLeaderboardList .hof-pill {
+    border-radius: 999px;
+    border: 1px solid rgba(76, 175, 80, 0.18);
+    background: rgba(76, 175, 80, 0.08);
+    color: #256f37;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.4rem 0.55rem;
+}
+
+#achievementLeaderboardList .hof-xp {
+    flex: 0 0 145px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+#achievementLeaderboardList .hof-xp-label {
+    color: var(--gray);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: right;
+}
+
+#achievementLeaderboardList .hof-xp-track {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8eef5;
+}
+
+#achievementLeaderboardList .hof-xp-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #4CAF50, #0ea5e9);
+}
+
+[data-theme="dark"] #achievementLeaderboardList .achievement-leaderboard-item {
+    border-color: #2a435f;
+    background: #132337;
+}
+
+[data-theme="dark"] #achievementLeaderboardList .hof-rank {
+    background: rgba(42, 166, 192, 0.18);
+    color: #8fd5ff;
+}
+
+[data-theme="dark"] #achievementLeaderboardList .hof-name {
+    color: #e6f0fa;
+}
+
+[data-theme="dark"] #achievementLeaderboardList .hof-pill {
+    border-color: rgba(143, 213, 255, 0.22);
+    background: rgba(143, 213, 255, 0.1);
+    color: #b8ddff;
+}
+
+[data-theme="dark"] #achievementLeaderboardList .hof-xp-label {
+    color: #aebfd1;
+}
+
+[data-theme="dark"] #achievementLeaderboardList .hof-xp-track {
+    background: #23364b;
+}
+
+@media (max-width: 640px) {
+    #achievementLeaderboardList .achievement-leaderboard-item {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr);
+    }
+
+    #achievementLeaderboardList .hof-xp {
+        grid-column: 2;
+        flex-basis: auto;
+    }
+
+    #achievementLeaderboardList .hof-xp-label {
+        text-align: left;
+    }
+}
+
 /* Trophy Case Grid Styling */
 .achievements-grid {
     display: grid;

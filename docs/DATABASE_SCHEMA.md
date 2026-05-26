@@ -26,6 +26,7 @@ The central identity table for Students.
 - `Password` (NVARCHAR(100)) - Hashed with bcrypt. NULL for first-time login.
 - `FitnessLevel` (INT) - Current gamification level (starts at 1).
 - `CurrentXP` (INT) - Current XP towards next level.
+  - Hall of Fame lifetime XP is derived as `((FitnessLevel - 1) * FitnessLevel / 2 * 100) + CurrentXP`, because each level costs `level * 100` XP.
 - `Status` (VARCHAR(8)) - 'Active', 'Inactive', 'Revoked'.
 - `SlotID` (INT, FK) -> `Slots.SlotID`
 - `JoinedAt` (DATETIME)
