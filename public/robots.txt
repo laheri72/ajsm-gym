@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /blog
+Allow: /logins/
+Disallow: /staff/
+Disallow: /student/
+Disallow: /trainer/
+Disallow: /api/
+Disallow: /Forbidden
+
+Sitemap: https://ajsm-gym.onrender.com/sitemap.xml

@@ -2928,8 +2928,8 @@ router.get('/api/staff/leaves/history', async (req, res) => {
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
-                SELECT 
-                    L.LeaveID, L.TR, L.LeaveStartDate, L.LeaveEndDate, L.Reason, 
+                SELECT
+                    L.LeaveID, L.TR, L.LeaveStartDate, L.LeaveEndDate, L.Reason,
                     L.Status, L.ReviewedBy, L.ReviewedAt, L.Remarks,
                     M.Name AS StudentName
                 FROM LeaveRequests L
@@ -2937,12 +2937,39 @@ router.get('/api/staff/leaves/history', async (req, res) => {
                 WHERE L.Status <> 'Pending' AND M.Branch = @Branch AND M.Gender = @Gender
                 ORDER BY L.ReviewedAt DESC
             `);
-        
+
         res.json({ success: true, data: result.recordset });
 
     } catch (err) {
         console.error('Error fetching leave history:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch leave history.' });
+    }
+});
+
+// ✅ GET: Fetch unique leave reasons for the staff's section (for autocomplete)
+router.get('/api/staff/leaves/unique-reasons', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch) {
+        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in as staff.' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT DISTINCT L.Reason
+                FROM LeaveRequests L
+                JOIN TestMaster M ON L.TR = M.TR
+                WHERE M.Branch = @Branch AND M.Gender = @Gender
+                ORDER BY L.Reason ASC
+            `);
+
+        res.json({ success: true, data: result.recordset.map(r => r.Reason) });
+
+    } catch (err) {
+        console.error('Error fetching unique leave reasons:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch unique leave reasons.' });
     }
 });
 

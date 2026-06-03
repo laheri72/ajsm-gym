@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- VIEW TOGGLING LOGIC ---
     const pendingView = document.getElementById('pending-view');
     const historyView = document.getElementById('history-view');
+    const historyInsights = document.getElementById('view-history-insights');
     const viewPendingBtn = document.getElementById('viewPendingBtn');
     const viewHistoryBtn = document.getElementById('viewHistoryBtn');
     const pendingLeaveCount = document.getElementById('pendingLeaveCount');
@@ -41,16 +42,50 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await fetch('/api/staff/leaves/history', { credentials: 'include' });
             const json = await res.json();
             if (!res.ok || !json.success) throw new Error(json.message || 'Failed to load leave history count.');
-            setCounter([historyLeaveCount, historyLeaveTabCount], (json.data || []).length);
+            const rows = json.data || [];
+            setCounter([historyLeaveCount, historyLeaveTabCount], rows.length);
+            updateReasonInsights(rows);
         } catch (err) {
             console.error('Unable to load leave history count:', err);
             setCounter([historyLeaveCount, historyLeaveTabCount], 0);
         }
     }
 
+    function updateReasonInsights(rows) {
+        const container = document.getElementById('reason-insights-container');
+        if (!container) return;
+
+        if (!rows || !rows.length) {
+            container.innerHTML = '<p class="text-muted mb-0 small">No processed leave records found to analyze.</p>';
+            return;
+        }
+
+        // Group by Reason (case-insensitive grouping for better clustering)
+        const groups = {};
+        rows.forEach(row => {
+            const rawReason = (row.Reason || 'Unspecified').trim();
+            const key = rawReason.toLowerCase();
+            if (!groups[key]) {
+                groups[key] = { text: rawReason, count: 0 };
+            }
+            groups[key].count++;
+        });
+
+        const sorted = Object.values(groups).sort((a, b) => b.count - a.count);
+
+        container.innerHTML = sorted.map(g => `
+            <div class="reason-insight-chip d-flex align-items-center bg-white border px-3 py-2" 
+                 style="border-radius: 10px; font-size: 0.85rem; color: #555; transition: all 0.2s ease;">
+                <span class="fw-medium me-2">${g.text}</span>
+                <span class="badge rounded-pill bg-primary" style="font-size: 0.7rem;">${g.count}</span>
+            </div>
+        `).join('');
+    }
+
     viewPendingBtn.addEventListener('click', () => {
         pendingView.style.display = 'block';
         historyView.style.display = 'none';
+        if (historyInsights) historyInsights.style.display = 'none';
         viewPendingBtn.classList.add('active');
         viewHistoryBtn.classList.remove('active');
         viewPendingBtn.setAttribute('aria-selected', 'true');
@@ -60,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     viewHistoryBtn.addEventListener('click', () => {
         pendingView.style.display = 'none';
         historyView.style.display = 'block';
+        if (historyInsights) historyInsights.style.display = 'block';
         viewPendingBtn.classList.remove('active');
         viewHistoryBtn.classList.add('active');
         viewPendingBtn.setAttribute('aria-selected', 'false');
@@ -146,6 +182,7 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
                 dataSrc: (json) => {
                     const rows = json.data || [];
                     setCounter([historyLeaveCount, historyLeaveTabCount], rows.length);
+                    updateReasonInsights(rows);
                     return rows;
                 }
             },
@@ -172,7 +209,7 @@ pendingLeavesTable = $('#pendingLeavesTable').DataTable({
                 },
                 { data: 'ReviewedBy' },
                 { data: 'ReviewedAt', render: (data) => moment(data).format('MMM D, YYYY') },
-                { data: 'Remarks', render: (data) => data || '-' }
+                { data: 'Reason', render: (data) => data || '-' }
             ],
             responsive: true, order: [[4, 'desc']],
             language: { emptyTable: "No historical leave records found." },

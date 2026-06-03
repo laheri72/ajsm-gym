@@ -154,6 +154,19 @@
                         </div>
                     </div>
 
+                    <div id="view-history-insights" style="display: none;">
+                        <div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px; background: #fdfdfd; border: 1px solid #eee !important;">
+                            <div class="card-body p-4">
+                                <h4 class="mb-3" style="font-weight: 600; color: #333; font-size: 1.1rem;">
+                                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>Common Leave Reasons
+                                </h4>
+                                <div id="reason-insights-container" class="d-flex flex-wrap gap-2">
+                                    <p class="text-muted mb-0 small">Loading reason analytics...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="history-view" class="leave-view" style="display: none;" role="tabpanel" aria-labelledby="viewHistoryBtn">
                          <div class="leave-table-shell">
                             <div class="leave-table-titlebar">
@@ -171,7 +184,7 @@
                                         <th>Status</th>
                                         <th>Reviewed By</th>
                                         <th>Reviewed On</th>
-                                        <th>Remarks</th>    
+                                        <th>Reason</th>    
                                     </tr>
                                 </thead>
                                 <tbody></tbody>

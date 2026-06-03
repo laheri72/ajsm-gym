@@ -177,17 +177,39 @@ document.addEventListener("DOMContentLoaded", () => {
             return Swal.fire('Invalid Dates', 'End date cannot be before start date.', 'warning');
         }
 
+        // Fetch unique reasons for autocomplete
+        let uniqueReasons = [];
+        try {
+            const res = await fetch('/api/staff/leaves/unique-reasons');
+            const data = await res.json();
+            if (data.success) uniqueReasons = data.data;
+        } catch (e) {
+            console.error('Failed to fetch unique reasons', e);
+        }
+
         const { value: reason } = await Swal.fire({
             title: 'Enter Reason for Leave',
-            input: 'text',
-            inputLabel: 'Reason (e.g., Raihaan Leave)',
-            inputPlaceholder: 'Type your reason here...',
-            inputValidator: (value) => {
-                if (!value) {
-                    return 'You need to write a reason!'
+            html: `
+                <div class="text-start px-2">
+                    <label for="holidayReasonInput" class="form-label small text-muted mb-1">Reason (e.g., Raihaan Leave)</label>
+                    <input id="holidayReasonInput" class="form-control" list="reasonsList" placeholder="Type or select a reason..." style="height: 45px;">
+                    <datalist id="reasonsList">
+                        ${uniqueReasons.map(r => `<option value="${r}">`).join('')}
+                    </datalist>
+                    <div class="form-text mt-2" style="font-size: 0.75rem;">Tip: Picking an existing reason helps keep analytics clean.</div>
+                </div>
+            `,
+            focusConfirm: false,
+            preConfirm: () => {
+                const val = document.getElementById('holidayReasonInput').value;
+                if (!val) {
+                    Swal.showValidationMessage('You need to write a reason!');
+                    return false;
                 }
+                return val;
             },
-            showCancelButton: true
+            showCancelButton: true,
+            confirmButtonText: 'Continue'
         });
 
         if (!reason) return; // User cancelled
