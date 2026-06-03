@@ -51,6 +51,12 @@ export default defineConfig({
         staffEvaluation: resolve(__dirname, 'public/staff/evaluation.html'),
         staffCommentEntry: resolve(__dirname, 'public/staff/comment-entry.html'),
         staffeveluationlogs: resolve(__dirname, 'public/staff/evaluation-log.html'),
+        privacy: resolve(__dirname, 'public/privacy.html'),
+        googeletag: resolve(__dirname, 'public/google0cbc51477636a185.html'),
+        robots: resolve(__dirname, 'public/robots.txt'),
+        sitemap: resolve(__dirname, 'public/sitemap.xml'),
+        terms: resolve(__dirname, 'public/terms.html'),
+        
       },
     },
   },
