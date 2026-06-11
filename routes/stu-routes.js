@@ -2834,5 +2834,96 @@ router.post('/api/student/log-performance', async (req, res) => {
 
 
 
+// ============================================================
+// Slot Request Routes (Student)
+// ============================================================
+
+router.get('/api/student/slot-request/status', async (req, res) => {
+    const { TR } = req.session.user || {};
+    if (!TR) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    try {
+        const result = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`
+                SELECT TOP 1 sr.RequestID, sr.RequestedSlotID, s.SlotName
+                FROM SlotRequests sr
+                JOIN Slots s ON sr.RequestedSlotID = s.SlotID
+                WHERE sr.TR = @TR AND sr.Status = 'Pending'
+                ORDER BY sr.RequestedAt DESC
+            `);
+
+        if (result.recordset.length > 0) {
+            const reqData = result.recordset[0];
+            res.json({
+                success: true,
+                hasPending: true,
+                requestedSlotName: reqData.SlotName,
+                requestedSlotID: reqData.RequestedSlotID
+            });
+        } else {
+            res.json({ success: true, hasPending: false });
+        }
+    } catch (err) {
+        console.error('Error fetching slot request status:', err);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+});
+
+router.post('/api/student/slot-request', async (req, res) => {
+    const { TR } = req.session.user || {};
+    if (!TR) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { requestedSlotID } = req.body;
+    if (!requestedSlotID) {
+        return res.status(400).json({ success: false, message: 'Requested slot is required.' });
+    }
+
+    try {
+        // Check if a pending request already exists
+        const pendingCheck = await pool.request()
+            .input('TR', sql.Int, TR)
+            .query(`SELECT COUNT(*) as count FROM SlotRequests WHERE TR = @TR AND Status = 'Pending'`);
+            
+        if (pendingCheck.recordset[0].count > 0) {
+            return res.status(400).json({ success: false, message: 'You already have a pending slot change request.' });
+        }
+
+        // Validate slot exists and check capacity
+        const slotCheck = await pool.request()
+            .input('SlotID', sql.Int, requestedSlotID)
+            .query(`
+                SELECT s.SlotID, s.SlotName, s.MaxCapacity,
+                  (s.MaxCapacity - (SELECT COUNT(*) FROM TestMaster m WHERE m.SlotID = s.SlotID AND m.Status = 'Active')) AS AvailableSeats
+                FROM Slots s
+                WHERE s.SlotID = @SlotID AND s.IsActive = 1
+            `);
+
+        if (slotCheck.recordset.length === 0) {
+            return res.status(400).json({ success: false, message: 'Invalid or inactive slot selected.' });
+        }
+
+        if (slotCheck.recordset[0].AvailableSeats <= 0) {
+            return res.status(400).json({ success: false, message: 'The selected slot is currently full.' });
+        }
+
+        // Insert new request
+        await pool.request()
+            .input('TR', sql.Int, TR)
+            .input('SlotID', sql.Int, requestedSlotID)
+            .query(`
+                INSERT INTO SlotRequests (TR, RequestedSlotID, Status)
+                VALUES (@TR, @SlotID, 'Pending')
+            `);
+
+        res.json({ success: true, message: 'Slot change request submitted successfully.' });
+
+    } catch (err) {
+        console.error('Error creating slot request:', err);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+});
+
+
 module.exports = router; // Export the router
 

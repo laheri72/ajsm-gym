@@ -95,6 +95,17 @@ export async function getStudentSession() {
     document.getElementById('studentName').innerText = stu.Name || 'Student';
     
     refreshHeaderPopover(stu, memberSinceDate);
+    
+    // --- Update Planner Slot UI ---
+    const slotBadge = document.getElementById('currentSlotBadge');
+    if (slotBadge) {
+        slotBadge.textContent = stu.SlotName || 'No Slot Assigned';
+        if (!stu.SlotName) {
+            slotBadge.classList.replace('bg-secondary', 'bg-danger');
+        }
+    }
+    await checkSlotRequestStatus();
+    handleSlotChangeRequest();
 
     // --- Password Check ---
     if (stu.HasLoggedInBefore === false) {
@@ -271,6 +282,111 @@ export function handleInitialPasswordSet() {
             spinner.classList.add('d-none');
         }
      });
+}
+
+// --- Slot Change Logic ---
+
+async function checkSlotRequestStatus() {
+    try {
+        const res = await fetch('/api/student/slot-request/status', { credentials: 'include' });
+        const data = await res.json();
+        
+        const requestSlotChangeBtn = document.getElementById('requestSlotChangeBtn');
+        const pendingSlotChangeIcon = document.getElementById('pendingSlotChangeIcon');
+
+        if (data.success && data.hasPending) {
+            if (requestSlotChangeBtn) requestSlotChangeBtn.style.display = 'none';
+            if (pendingSlotChangeIcon) pendingSlotChangeIcon.style.display = 'inline-block';
+        } else {
+            if (requestSlotChangeBtn) requestSlotChangeBtn.style.display = 'inline-block';
+            if (pendingSlotChangeIcon) pendingSlotChangeIcon.style.display = 'none';
+        }
+    } catch (err) {
+        console.error('Error checking slot request status:', err);
+    }
+}
+
+function handleSlotChangeRequest() {
+    const btn = document.getElementById('requestSlotChangeBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        try {
+            // 1. Fetch available slots
+            const res = await fetch('/api/slots', { credentials: 'include' });
+            const data = await res.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch slots.');
+            }
+
+            // Get the current slot name from the UI
+            const currentSlotBadge = document.getElementById('currentSlotBadge');
+            const currentSlotName = currentSlotBadge ? currentSlotBadge.textContent.trim() : '';
+
+            // 2. Build options map
+            const slots = data.slots;
+            const slotOptions = {};
+            let hasAvailableSlots = false;
+
+            slots.forEach(slot => {
+                // Filter out full slots AND the student's current slot
+                if (slot.AvailableSeats > 0 && slot.SlotName !== currentSlotName) {
+                    slotOptions[slot.SlotID] = `${slot.SlotName} (${slot.AvailableSeats} spots left)`;
+                    hasAvailableSlots = true;
+                }
+            });
+
+            if (!hasAvailableSlots) {
+                Swal.fire('No Slots Available', 'All alternative slots are currently full.', 'info');
+                return;
+            }
+
+            // 3. Show SweetAlert2 Modal
+            const { value: selectedSlotID } = await Swal.fire({
+                title: 'Request Slot Change',
+                text: 'Select your preferred new time slot. This request must be approved by staff.',
+                input: 'select',
+                inputOptions: slotOptions,
+                inputPlaceholder: 'Choose a new slot...',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary)',
+                cancelButtonColor: 'var(--gray)',
+                confirmButtonText: 'Submit Request',
+                inputValidator: (value) => {
+                    return new Promise((resolve) => {
+                        if (value !== '') {
+                            resolve();
+                        } else {
+                            resolve('You need to select a slot');
+                        }
+                    });
+                }
+            });
+
+            if (selectedSlotID) {
+                // 4. Submit Request
+                const submitRes = await fetch('/api/student/slot-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ requestedSlotID: parseInt(selectedSlotID) })
+                });
+                
+                const submitData = await submitRes.json();
+                
+                if (submitData.success) {
+                    Swal.fire('Requested!', 'Your slot change request has been submitted to staff for review.', 'success');
+                    await checkSlotRequestStatus(); // Update UI to show timer icon
+                } else {
+                    throw new Error(submitData.message || 'Failed to submit request.');
+                }
+            }
+
+        } catch (err) {
+            Swal.fire('Error', err.message, 'error');
+        }
+    });
 }
 
 

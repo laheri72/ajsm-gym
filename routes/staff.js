@@ -2745,15 +2745,13 @@ router.get('/api/staff/notifications', async (req, res) => {
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
-                SELECT COUNT(*) AS PendingLeaveCount
-                FROM LeaveRequests L
-                JOIN TestMaster M ON L.TR = M.TR
-                WHERE L.Status = 'Pending'
-                  AND M.Branch = @Branch
-                  AND M.Gender = @Gender
+                SELECT 
+                    (SELECT COUNT(*) FROM LeaveRequests L JOIN TestMaster M ON L.TR = M.TR WHERE L.Status = 'Pending' AND M.Branch = @Branch AND M.Gender = @Gender) AS PendingLeaveCount,
+                    (SELECT COUNT(*) FROM SlotRequests SR JOIN TestMaster M ON SR.TR = M.TR WHERE SR.Status = 'Pending' AND M.Branch = @Branch AND M.Gender = @Gender) AS PendingSlotCount
             `);
 
         const pendingLeaveCount = result.recordset[0]?.PendingLeaveCount || 0;
+        const pendingSlotCount = result.recordset[0]?.PendingSlotCount || 0;
         const notifications = [];
 
         if (pendingLeaveCount > 0) {
@@ -2769,14 +2767,166 @@ router.get('/api/staff/notifications', async (req, res) => {
             });
         }
 
+        if (pendingSlotCount > 0) {
+            const studentLabel = pendingSlotCount === 1 ? 'student is' : 'students are';
+            notifications.push({
+                id: 'pending-slots',
+                type: 'slot_requests',
+                title: 'Pending slot requests',
+                message: `${pendingSlotCount} ${studentLabel} waiting for slot change.`,
+                count: pendingSlotCount,
+                href: 'entry.html#slot-requests',
+                priority: 'action'
+            });
+        }
+
         res.json({
             success: true,
-            total: pendingLeaveCount,
+            total: pendingLeaveCount + pendingSlotCount,
             notifications
         });
     } catch (err) {
         console.error('Error fetching staff notifications:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch notifications.' });
+    }
+});
+
+// ======================================================
+// Slot Requests Management (Staff)
+// ======================================================
+
+router.get('/api/staff/slot-requests/pending', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(`
+                SELECT 
+                    SR.RequestID, SR.TR, SR.RequestedAt, SR.Status,
+                    M.Name AS StudentName,
+                    S1.SlotName AS CurrentSlotName,
+                    S2.SlotName AS RequestedSlotName,
+                    (S2.MaxCapacity - (SELECT COUNT(*) FROM TestMaster TM WHERE TM.SlotID = S2.SlotID AND TM.Status = 'Active')) AS RequestedSlotAvailable
+                FROM SlotRequests SR
+                JOIN TestMaster M ON SR.TR = M.TR
+                LEFT JOIN Slots S1 ON M.SlotID = S1.SlotID
+                JOIN Slots S2 ON SR.RequestedSlotID = S2.SlotID
+                WHERE SR.Status = 'Pending' AND M.Branch = @Branch AND M.Gender = @Gender
+                ORDER BY SR.RequestedAt ASC
+            `);
+        
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error('Error fetching pending slot requests:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch pending slot requests.' });
+    }
+});
+
+router.put('/api/staff/slot-requests/:id/status', async (req, res) => {
+    if (!req.session.user || !req.session.user.Username) {
+        return res.status(401).json({ success: false, message: 'Unauthorized.' });
+    }
+    
+    const requestID = req.params.id;
+    const { status, remarks } = req.body;
+    const { Username, Role } = req.session.user;
+
+    if (!['Approved', 'Rejected'].includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid status.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        await transaction.begin();
+
+        // 1. Get the request details
+        const reqResult = await new sql.Request(transaction)
+            .input('RequestID', sql.Int, requestID)
+            .query(`
+                SELECT SR.TR, SR.RequestedSlotID, M.SlotID AS CurrentSlotID, M.Status AS StudentStatus,
+                       S1.SlotName AS CurrentSlotName, S2.SlotName AS RequestedSlotName
+                FROM SlotRequests SR
+                JOIN TestMaster M ON SR.TR = M.TR
+                LEFT JOIN Slots S1 ON M.SlotID = S1.SlotID
+                JOIN Slots S2 ON SR.RequestedSlotID = S2.SlotID
+                WHERE SR.RequestID = @RequestID AND SR.Status = 'Pending'
+            `);
+
+        if (reqResult.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: 'Request not found or already processed.' });
+        }
+
+        const reqData = reqResult.recordset[0];
+
+        // 2. If Approved, double check capacity and update TestMaster + StudentStatusHistory
+        if (status === 'Approved') {
+            const capacityCheck = await new sql.Request(transaction)
+                .input('SlotID', sql.Int, reqData.RequestedSlotID)
+                .query(`
+                    SELECT (MaxCapacity - (SELECT COUNT(*) FROM TestMaster WHERE SlotID = @SlotID AND Status = 'Active')) AS Available
+                    FROM Slots WHERE SlotID = @SlotID
+                `);
+            
+            if (capacityCheck.recordset[0].Available <= 0) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Cannot approve: The requested slot is now full.' });
+            }
+
+            // Update TestMaster
+            await new sql.Request(transaction)
+                .input('TR', sql.Int, reqData.TR)
+                .input('SlotID', sql.Int, reqData.RequestedSlotID)
+                .query(`UPDATE TestMaster SET SlotID = @SlotID WHERE TR = @TR`);
+
+            // Audit Log in StudentStatusHistory
+            await new sql.Request(transaction)
+                .input('TR', sql.Int, reqData.TR)
+                .input('ActionType', sql.VarChar(12), 'SlotChange')
+                .input('PreviousStatus', sql.VarChar(8), reqData.StudentStatus)
+                .input('NewStatus', sql.VarChar(8), reqData.StudentStatus)
+                .input('ChangeReason', sql.NVarChar(500), 'Slot Request Approved. ' + (remarks || ''))
+                .input('ChangedByUsername', sql.NVarChar(50), Username)
+                .input('ChangedByRole', sql.NVarChar(20), Role)
+                .input('PreviousSlotID', sql.Int, reqData.CurrentSlotID)
+                .input('PreviousSlotName', sql.NVarChar(50), reqData.CurrentSlotName)
+                .input('NewSlotID', sql.Int, reqData.RequestedSlotID)
+                .input('NewSlotName', sql.NVarChar(50), reqData.RequestedSlotName)
+                .input('Branch', sql.VarChar(7), req.session.user.Branch)
+                .input('Gender', sql.VarChar(6), req.session.user.Gender)
+                .query(`
+                    INSERT INTO StudentStatusHistory 
+                    (TR, ActionType, PreviousStatus, NewStatus, ChangeReason, ChangedByUsername, ChangedByRole, PreviousSlotID, PreviousSlotName, NewSlotID, NewSlotName, BranchSnapshot, GenderSnapshot)
+                    VALUES (@TR, @ActionType, @PreviousStatus, @NewStatus, @ChangeReason, @ChangedByUsername, @ChangedByRole, @PreviousSlotID, @PreviousSlotName, @NewSlotID, @NewSlotName, @Branch, @Gender)
+                `);
+        }
+
+        // 3. Update the SlotRequest record
+        await new sql.Request(transaction)
+            .input('RequestID', sql.Int, requestID)
+            .input('Status', sql.VarChar(10), status)
+            .input('ReviewedBy', sql.VarChar(50), Username)
+            .input('Remarks', sql.NVarChar(500), remarks || null)
+            .query(`
+                UPDATE SlotRequests 
+                SET Status = @Status, ReviewedBy = @ReviewedBy, ReviewedAt = GETUTCDATE(), Remarks = @Remarks
+                WHERE RequestID = @RequestID
+            `);
+
+        await transaction.commit();
+        res.json({ success: true, message: `Slot request ${status.toLowerCase()} successfully.` });
+
+    } catch (err) {
+        if (transaction.active) await transaction.rollback();
+        console.error('Error updating slot request:', err);
+        res.status(500).json({ success: false, message: 'Failed to process request.' });
     }
 });
 

@@ -365,8 +365,113 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // --- NEW: Pending Slot Requests Logic ---
+    let slotRequestsTable = null;
+
+    async function loadSlotRequestsTable() {
+        try {
+            const res = await fetch('/api/staff/slot-requests/pending', { credentials: 'include' });
+            const data = await res.json();
+
+            if (slotRequestsTable) {
+                slotRequestsTable.destroy();
+            }
+
+            const tbody = document.querySelector('#slotRequestsTable tbody');
+            tbody.innerHTML = '';
+
+            if (data.success && data.data) {
+                data.data.forEach(req => {
+                    // Use Moment.js for IST Display
+                    const istTime = moment.utc(req.RequestedAt).tz("Asia/Kolkata").format("MMM D, hh:mm A");
+                    const availableText = req.RequestedSlotAvailable > 0 
+                        ? `<span class="text-success">(${req.RequestedSlotAvailable} left)</span>` 
+                        : `<span class="text-danger">(Full)</span>`;
+
+                    const row = `
+                        <tr>
+                            <td>${istTime}</td>
+                            <td>${req.TR}</td>
+                            <td>${req.StudentName}</td>
+                            <td>${req.CurrentSlotName || '<span class="text-muted">None</span>'}</td>
+                            <td>${req.RequestedSlotName} ${availableText}</td>
+                            <td>
+                                <button class="btn btn-success btn-sm approve-request-btn" data-id="${req.RequestID}" data-name="${req.StudentName}" data-capacity="${req.RequestedSlotAvailable}">Approve</button>
+                                <button class="btn btn-danger btn-sm reject-request-btn" data-id="${req.RequestID}" data-name="${req.StudentName}">Reject</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+
+            slotRequestsTable = $('#slotRequestsTable').DataTable({
+                pageLength: 5,
+                lengthMenu: [5, 10, 25],
+                order: [[0, 'asc']] // Oldest first
+            });
+
+            // Re-attach listeners
+            document.querySelectorAll('.approve-request-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleSlotRequestAction(btn.dataset.id, btn.dataset.name, 'Approved', btn.dataset.capacity));
+            });
+            document.querySelectorAll('.reject-request-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleSlotRequestAction(btn.dataset.id, btn.dataset.name, 'Rejected'));
+            });
+
+        } catch (err) {
+            console.error('Error loading slot requests:', err);
+        }
+    }
+
+    async function handleSlotRequestAction(requestID, studentName, status, capacity) {
+        if (status === 'Approved' && parseInt(capacity) <= 0) {
+            Swal.fire('Cannot Approve', 'The requested slot is currently full.', 'warning');
+            return;
+        }
+
+        const { value: remarks } = await Swal.fire({
+            title: `${status} Slot Change?`,
+            text: `Are you sure you want to ${status.toLowerCase()} the request for ${studentName}?`,
+            input: 'text',
+            inputPlaceholder: 'Optional remarks...',
+            icon: status === 'Approved' ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: status === 'Approved' ? 'var(--primary)' : 'var(--danger)',
+            confirmButtonText: `Yes, ${status}`
+        });
+
+        if (remarks !== undefined) {
+            try {
+                const res = await fetch(`/api/staff/slot-requests/${requestID}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ status, remarks })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Success', data.message, 'success');
+                    loadSlotRequestsTable();
+                    loadSlots(); // Update counts
+                    // Refresh notifications if function exists
+                    if (typeof window.staffNotificationsRefresh === 'function') {
+                        window.staffNotificationsRefresh();
+                    }
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            } catch (err) {
+                console.error('Error updating slot request:', err);
+                Swal.fire('Error', 'Failed to process request.', 'error');
+            }
+        }
+    }
+
     // Initialize
     loadSlots();
     loadRecentActivations();
+    loadSlotRequestsTable(); // Load requests
     loadSlotTable();
 });
