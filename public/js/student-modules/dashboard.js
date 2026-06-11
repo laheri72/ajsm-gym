@@ -77,7 +77,11 @@ function setAttendanceDetailLoading(type) {
     const bodyEl = document.getElementById('attendanceDetailBody');
     const emptyEl = document.getElementById('attendanceDetailEmpty');
 
-    const title = type === 'present' ? 'Present Details' : 'On Leave Details';
+    let title = 'Attendance Details';
+    if (type === 'present') title = 'Present Details';
+    else if (type === 'absent') title = 'Absent Details';
+    else if (type === 'onLeave') title = 'On Leave Details';
+
     if (titleEl) titleEl.textContent = title;
     if (subtitleEl) subtitleEl.textContent = 'Loading records...';
     if (headEl) headEl.innerHTML = '';
@@ -108,6 +112,21 @@ function renderAttendanceDetailRows(type, rows) {
               <td>${escapeHtml(row.date || '-')}</td>
               <td>${escapeHtml(row.day || '-')}</td>
               <td>${escapeHtml(row.time || '-')}</td>
+            </tr>
+        `).join('');
+    } else if (type === 'absent') {
+        headEl.innerHTML = `
+            <tr>
+              <th>Hijri Date</th>
+              <th>Date</th>
+              <th>Day</th>
+            </tr>
+        `;
+        bodyEl.innerHTML = rows.map(row => `
+            <tr>
+              <td>${escapeHtml(row.hijriDate || '-')}</td>
+              <td>${escapeHtml(row.date || '-')}</td>
+              <td>${escapeHtml(row.day || '-')}</td>
             </tr>
         `).join('');
     } else {
@@ -142,7 +161,7 @@ function renderAttendanceDetailRows(type, rows) {
 }
 
 async function openAttendanceDetailModal(type) {
-    if (!['present', 'onLeave'].includes(type)) return;
+    if (!['present', 'onLeave', 'absent'].includes(type)) return;
 
     const modalEl = document.getElementById('attendanceDetailModal');
     if (!modalEl) return;

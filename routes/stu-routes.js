@@ -2147,11 +2147,106 @@ router.get(
     const { TR } = req.session.user;
     const { type } = req.params;
 
-    if (!['present', 'onLeave'].includes(type)) {
+    if (!['present', 'onLeave', 'absent'].includes(type)) {
         return res.status(400).json({ success: false, message: 'Unsupported attendance detail type.' });
     }
 
     try {
+        if (type === 'absent') {
+            const studentResult = await pool.request()
+                .input('TR', sql.Int, TR)
+                .query(`
+                    SELECT M.JoinedAt, M.Status, S.SlotName
+                    FROM TestMaster M
+                    LEFT JOIN Slots S ON M.SlotID = S.SlotID
+                    WHERE M.TR = @TR
+                `);
+
+            if (studentResult.recordset.length === 0 || !studentResult.recordset[0].JoinedAt) {
+                return res.json({ success: true, type, rows: [] });
+            }
+
+            const student = studentResult.recordset[0];
+            const today = moment.tz("Asia/Kolkata").startOf('day');
+            const joinedAt = moment.tz(student.JoinedAt, "Asia/Kolkata").startOf('day');
+
+            const [attendanceResult, historyResult] = await Promise.all([
+                pool.request()
+                    .input('TR', sql.Int, TR)
+                    .input('JoinedAt', sql.Date, joinedAt.format('YYYY-MM-DD'))
+                    .input('Tomorrow', sql.Date, today.clone().add(1, 'day').format('YYYY-MM-DD'))
+                    .query(`
+                        SELECT
+                            CONVERT(varchar, CAST(DATEADD(MINUTE, 330, CreatedAt) AS date), 23) AS AttendanceDate,
+                            MAX(CASE WHEN IsPresent = 1 THEN 1 ELSE 0 END) AS IsPresent,
+                            MAX(CASE WHEN OnLeave = 1 THEN 1 ELSE 0 END) AS OnLeave
+                        FROM Attendance
+                        WHERE TR = @TR
+                          AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS date) >= @JoinedAt
+                          AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS date) < @Tomorrow
+                        GROUP BY CAST(DATEADD(MINUTE, 330, CreatedAt) AS date)
+                    `),
+                pool.request()
+                    .input('TR', sql.Int, TR)
+                    .query(`
+                        SELECT ChangedAt, PreviousStatus, NewStatus, PreviousSlotName, NewSlotName
+                        FROM StudentStatusHistory
+                        WHERE TR = @TR
+                        ORDER BY ChangedAt ASC
+                    `)
+            ]);
+
+            const attendanceByDate = new Map(
+                attendanceResult.recordset.map(row => [
+                    row.AttendanceDate,
+                    {
+                        isPresent: Boolean(row.IsPresent),
+                        onLeave: Boolean(row.OnLeave)
+                    }
+                ])
+            );
+            const history = historyResult.recordset || [];
+
+            let absentDays = [];
+            const cursor = joinedAt.clone();
+
+            while (cursor.isSameOrBefore(today, 'day')) {
+                const dayOfWeek = cursor.isoWeekday();
+
+                if (dayOfWeek <= 6) { // Mon-Sat
+                    const dateEnd = cursor.clone().endOf('day').toDate();
+                    const isExpected = isExpectedAttendanceDay({
+                        dateEnd,
+                        history,
+                        fallbackStatus: student.Status,
+                        fallbackSlotName: student.SlotName
+                    });
+
+                    if (isExpected) {
+                        const dateKey = cursor.format('YYYY-MM-DD');
+                        const attendance = attendanceByDate.get(dateKey);
+
+                        if (!attendance?.isPresent && !attendance?.onLeave && cursor.isBefore(today, 'day')) {
+                            absentDays.push(cursor.clone());
+                        }
+                    }
+                }
+                cursor.add(1, 'day');
+            }
+
+            const rows = absentDays.sort((a, b) => b.valueOf() - a.valueOf()).map(dateMoment => {
+                return {
+                    hijriDate: formatHijriDate(dateMoment.toDate()),
+                    date: dateMoment.format('DD/MM/YYYY'),
+                    isoDate: dateMoment.format('YYYY-MM-DD'),
+                    day: dateMoment.format('dddd'),
+                    time: '-'
+                };
+            });
+
+            return res.json({ success: true, type, rows });
+        }
+
         if (type === 'present') {
             const result = await pool.request()
                 .input('TR', sql.Int, TR)
