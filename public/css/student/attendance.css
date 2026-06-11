@@ -80,6 +80,24 @@
     background: #ffffff;
     text-align: center;
     color: inherit;
+    position: relative;
+}
+
+.snapshot-detail-icon {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: all 0.25s ease;
+}
+
+button.snapshot-stat:hover .snapshot-detail-icon,
+button.snapshot-stat:focus .snapshot-detail-icon {
+    color: #3b82f6;
+    opacity: 1;
+    transform: translateX(2px);
 }
 
 button.snapshot-stat {

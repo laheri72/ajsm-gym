@@ -577,6 +577,7 @@
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--border-color);
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
 #planner-save-status {
@@ -864,6 +865,21 @@ input:checked+.slider:before {
     /* Extra small phones */
     .planner {
         padding: 0 0.25rem;
+    }
+
+    .planner-header {
+        gap: 0.5rem;
+    }
+
+    .planner-header .ms-auto {
+        margin-left: 0 !important;
+        margin-right: auto;
+    }
+
+    .view-toggle {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
     }
 
     .day-wrapper {
