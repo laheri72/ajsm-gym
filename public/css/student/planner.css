@@ -3,8 +3,31 @@
   
 
 
+/* -------------------------------------
+ * Slot Response Animation
+ * ------------------------------------- */
+.slot-response-anim {
+    cursor: pointer;
+    animation: slot-pulse 2s infinite;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.25rem;
+    background: rgba(0,0,0,0.03);
+    transition: background 0.2s ease;
+}
+
+.slot-response-anim:hover {
+    background: rgba(0,0,0,0.08);
+    animation: none;
+}
+
+@keyframes slot-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
 /* =================================================================== */
-/* 8. SPECIFIC COMPONENTS
+/* 8. SPECIFIC COMPONENT STYLES
 /* =================================================================== */
 
 .filter-group {

@@ -2846,24 +2846,43 @@ router.get('/api/student/slot-request/status', async (req, res) => {
         const result = await pool.request()
             .input('TR', sql.Int, TR)
             .query(`
-                SELECT TOP 1 sr.RequestID, sr.RequestedSlotID, s.SlotName
+                SELECT TOP 1 sr.RequestID, sr.RequestedSlotID, sr.Status, sr.ReviewedAt, sr.Remarks, s.SlotName
                 FROM SlotRequests sr
                 JOIN Slots s ON sr.RequestedSlotID = s.SlotID
-                WHERE sr.TR = @TR AND sr.Status = 'Pending'
+                WHERE sr.TR = @TR
                 ORDER BY sr.RequestedAt DESC
             `);
 
         if (result.recordset.length > 0) {
             const reqData = result.recordset[0];
-            res.json({
-                success: true,
-                hasPending: true,
-                requestedSlotName: reqData.SlotName,
-                requestedSlotID: reqData.RequestedSlotID
-            });
-        } else {
-            res.json({ success: true, hasPending: false });
+            
+            if (reqData.Status === 'Pending') {
+                return res.json({
+                    success: true,
+                    hasPending: true,
+                    requestedSlotName: reqData.SlotName,
+                    requestedSlotID: reqData.RequestedSlotID
+                });
+            } else {
+                // Check if processed within last 7 days
+                const reviewDate = new Date(reqData.ReviewedAt);
+                const now = new Date();
+                const diffTime = Math.abs(now - reviewDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 7) {
+                    return res.json({
+                        success: true,
+                        hasPending: false,
+                        hasProcessed: true,
+                        status: reqData.Status,
+                        remarks: reqData.Remarks,
+                        requestedSlotName: reqData.SlotName
+                    });
+                }
+            }
         }
+        res.json({ success: true, hasPending: false, hasProcessed: false });
     } catch (err) {
         console.error('Error fetching slot request status:', err);
         res.status(500).json({ success: false, message: 'Internal server error.' });

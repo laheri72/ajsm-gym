@@ -293,13 +293,43 @@ async function checkSlotRequestStatus() {
         
         const requestSlotChangeBtn = document.getElementById('requestSlotChangeBtn');
         const pendingSlotChangeIcon = document.getElementById('pendingSlotChangeIcon');
+        const processedSlotChangeIcon = document.getElementById('processedSlotChangeIcon');
 
-        if (data.success && data.hasPending) {
-            if (requestSlotChangeBtn) requestSlotChangeBtn.style.display = 'none';
-            if (pendingSlotChangeIcon) pendingSlotChangeIcon.style.display = 'inline-block';
-        } else {
-            if (requestSlotChangeBtn) requestSlotChangeBtn.style.display = 'inline-block';
-            if (pendingSlotChangeIcon) pendingSlotChangeIcon.style.display = 'none';
+        if (data.success) {
+            if (data.hasPending) {
+                if (requestSlotChangeBtn) requestSlotChangeBtn.style.display = 'none';
+                if (pendingSlotChangeIcon) pendingSlotChangeIcon.style.display = 'inline-block';
+                if (processedSlotChangeIcon) processedSlotChangeIcon.style.display = 'none';
+            } else {
+                if (requestSlotChangeBtn) requestSlotChangeBtn.style.display = 'inline-block';
+                if (pendingSlotChangeIcon) pendingSlotChangeIcon.style.display = 'none';
+
+                if (data.hasProcessed && processedSlotChangeIcon) {
+                    processedSlotChangeIcon.style.display = 'inline-block';
+                    const isApproved = data.status === 'Approved';
+                    const colorClass = isApproved ? 'text-success' : 'text-danger';
+                    const iconClass = isApproved ? 'bi-check-circle-fill' : 'bi-x-circle-fill';
+
+                    processedSlotChangeIcon.className = `ms-2 slot-response-anim ${colorClass}`;
+                    processedSlotChangeIcon.innerHTML = `<i class="bi ${iconClass}"></i> ${data.status}`;
+                    processedSlotChangeIcon.title = "Click to view staff remarks";
+
+                    // Remove old listeners by cloning
+                    const newIcon = processedSlotChangeIcon.cloneNode(true);
+                    processedSlotChangeIcon.parentNode.replaceChild(newIcon, processedSlotChangeIcon);
+
+                    newIcon.addEventListener('click', () => {
+                        Swal.fire({
+                            icon: isApproved ? 'success' : 'error',
+                            title: `Request ${data.status}`,
+                            html: `Your request to change your slot to <strong>${data.requestedSlotName}</strong> was ${data.status.toLowerCase()}.<br><br><strong>Staff Note:</strong> <i>${data.remarks || 'No remarks provided.'}</i>`,
+                            confirmButtonColor: 'var(--primary)'
+                        });
+                    });
+                } else if (processedSlotChangeIcon) {
+                    processedSlotChangeIcon.style.display = 'none';
+                }
+            }
         }
     } catch (err) {
         console.error('Error checking slot request status:', err);
