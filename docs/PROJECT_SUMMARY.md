@@ -54,6 +54,8 @@ The system relies on a `.env` file (or system environment variables) for the fol
 - **Database:** Hosted externally (e.g., Somee.com or similar MSSQL provider).
 
 ## Recent Milestones (May 2026)
+- **Slot Change Request Workflow:** Deployed a full-stack feature allowing students to request slot changes from their planner. Includes capacity validation, a new `SlotRequests` tracking table, staff notification integration, SweetAlert2 decision modals, and automatic `StudentStatusHistory` logging upon staff approval.
+- **Processed Request UI (Student):** Enhanced the slot request workflow by adding an animated, clickable icon (a pulsing checkmark or cross) to the student dashboard. This notifies the student of the staff's decision (Approved/Rejected) and displays any provided remarks via a SweetAlert2 modal if processed within the last 7 days.
 - **Attendance Snapshot Detail Modals (Student Dashboard):** Added clickable "Overall Attendance" detail flows for `Present` and `On Leave` stats via `GET /api/student/attendance-details/:type` (no Absent inference yet by design).
 - **Hijri Date Rendering Control:** Implemented server-side Hijri formatting using Umm al-Qura plus configurable offset support via `HIJRI_OFFSET_DAYS`. Default is now aligned to campus usage (`+1` fallback when env var is not set).
 - **On Leave Reason Source Fix:** Updated on-leave detail payload to always use `LeaveRequests.Reason` directly, matching Leaves tab behavior (removed forced `Holiday` label override for bulk entries).

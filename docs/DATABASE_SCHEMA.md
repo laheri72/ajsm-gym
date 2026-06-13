@@ -52,7 +52,7 @@ Audit log tracking activation, deactivation, and slot changes for students. Used
 
 ## Gym Operations
 
-### `Slots`
+### Slots
 Defines available gym timing sessions.
 - `SlotID` (INT, PK, IDENTITY)
 - `SlotName` (NVARCHAR(25))
@@ -60,6 +60,17 @@ Defines available gym timing sessions.
 - `Branch` (VARCHAR(7))
 - `Gender` (VARCHAR(6))
 - `IsActive` (BIT)
+
+### `SlotRequests`
+Tracks student requests to change their assigned gym slot.
+- `RequestID` (INT, PK, IDENTITY)
+- `TR` (INT, FK) -> `TestMaster.TR`
+- `RequestedSlotID` (INT, FK) -> `Slots.SlotID`
+- `Status` (VARCHAR(10)) - 'Pending', 'Approved', 'Rejected'
+- `RequestedAt` (DATETIME)
+- `ReviewedBy` (VARCHAR(50))
+- `ReviewedAt` (DATETIME)
+- `Remarks` (NVARCHAR(500))
 
 ### `Attendance`
 Logs daily gym check-ins and check-outs.
