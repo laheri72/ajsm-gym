@@ -122,6 +122,11 @@ export async function loadTrainingAnalytics() {
  * Fetches and renders the "Workout Consistency" heatmap.
  */
 export async function loadWorkoutConsistency() {
+    const container = document.getElementById('consistencyHeatmap');
+    if (container) {
+        container.innerHTML = '<div class="skeleton" style="width: 100%; height: 120px; border-radius: 8px;"></div>';
+    }
+
     try {
         const res = await fetch('/api/student/workout-calendar', { credentials: 'include' });
         const result = await res.json();

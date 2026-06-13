@@ -787,6 +787,19 @@ export async function loadWeeklyPlan() {
   bindPlannerEvents();
   applyPlannerFeatureGate();
 
+  // Inject skeleton loaders to provide immediate visual feedback
+  document.querySelectorAll('.structured-day-card').forEach(card => {
+    const listEl = card.querySelector('[data-role="items"]');
+    const emptyEl = card.querySelector('.planner-empty-text');
+    if (listEl) {
+      listEl.innerHTML = `
+        <li class="planner-item-row"><div class="skeleton skeleton-text medium my-1" style="width: 60%"></div></li>
+        <li class="planner-item-row"><div class="skeleton skeleton-text short my-1" style="width: 40%"></div></li>
+      `;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+  });
+
   try {
     const res = await fetch('/api/student/workout-plan', {
       method: 'GET',

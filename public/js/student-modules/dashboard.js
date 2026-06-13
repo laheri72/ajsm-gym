@@ -6,6 +6,12 @@ export async function loadDashboardStats() {
     bindAttendanceSnapshotDetails();
     loadAttendanceSnapshot();
 
+    // Inject skeleton loaders for stats
+    const currentStreakEl = document.getElementById('stat-current-streak');
+    const bestStreakEl = document.getElementById('stat-best-streak');
+    if (currentStreakEl) currentStreakEl.innerHTML = '<div class="skeleton skeleton-text short mx-auto mt-1" style="height: 1.5rem;"></div>';
+    if (bestStreakEl) bestStreakEl.innerHTML = '<div class="skeleton skeleton-text medium mx-auto mt-1"></div>';
+
     try {
         const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
         const result = await res.json();
@@ -210,9 +216,9 @@ function setSnapshotCounts({ present = '--', absent = '--', onLeave = '--' }) {
     const absentEl = document.getElementById('snapshotAbsentCount');
     const leaveEl = document.getElementById('snapshotLeaveCount');
 
-    if (presentEl) presentEl.textContent = present;
-    if (absentEl) absentEl.textContent = absent;
-    if (leaveEl) leaveEl.textContent = onLeave;
+    if (presentEl) presentEl.innerHTML = present;
+    if (absentEl) absentEl.innerHTML = absent;
+    if (leaveEl) leaveEl.innerHTML = onLeave;
 }
 
 function setSnapshotRate(rate) {

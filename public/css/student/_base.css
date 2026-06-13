@@ -583,3 +583,33 @@ td iframe {
     background-color: transparent !important;
 }
 
+/* =================================================================== */
+/* SKELETON LOADERS
+/* =================================================================== */
+@keyframes skeleton-pulse {
+    0% { background-color: rgba(0, 0, 0, 0.05); }
+    50% { background-color: rgba(0, 0, 0, 0.12); }
+    100% { background-color: rgba(0, 0, 0, 0.05); }
+}
+
+.skeleton {
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: 0.25rem;
+    width: 100%;
+}
+.skeleton-text.short { width: 50%; }
+.skeleton-text.medium { width: 75%; }
+.skeleton-text.tall { height: 2em; }
+
+[data-theme="dark"] @keyframes skeleton-pulse {
+    0% { background-color: rgba(255, 255, 255, 0.04); }
+    50% { background-color: rgba(255, 255, 255, 0.1); }
+    100% { background-color: rgba(255, 255, 255, 0.04); }
+}
+

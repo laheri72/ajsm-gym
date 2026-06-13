@@ -213,8 +213,7 @@ if (toggler && collapseElement) {
     // --- Initial Data Loading ---
     getStudentSession();
     initializeWeekPicker();
-    initializeFitness();
-    exerciseModule.renderWorkoutList();
+    // Fitness and Exercise list are lazy-loaded via navigation.js
     routeFromHash();
     window.addEventListener('hashchange', routeFromHash);
     

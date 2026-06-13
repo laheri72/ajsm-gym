@@ -104,7 +104,7 @@ export async function getStudentSession() {
             slotBadge.classList.replace('bg-secondary', 'bg-danger');
         }
     }
-    await checkSlotRequestStatus();
+    checkSlotRequestStatus().catch(console.error); // Defer: do not block main thread
     handleSlotChangeRequest();
 
     // --- Password Check ---

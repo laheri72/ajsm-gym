@@ -4,6 +4,15 @@ import { loadOverviewAnalytics, loadWorkoutConsistency } from './analysis.js';
 import { loadTipsSection } from './tips.js';
 import { loadWeightLogHistory, loadFitnessProgress } from './progression.js';
 
+// Cache flags to prevent redundant API calls
+let cache = {
+    fame: false,
+    leaves: false,
+    analysis: false,
+    fitness: false,
+    tips: false
+};
+
 /**
  * Programmatically switches the dashboard view to a specific section.
  */
@@ -19,15 +28,10 @@ export function navigateToSection(targetSectionId) {
         return;
     }
 
-    // --- THIS IS THE FIX ---
-    // The main nav list is no longer .navbar, it's .main-nav-list
     const mainNav = document.querySelector('.main-nav-list'); 
-    // --- END OF FIX ---
-    
     const contentSections = document.querySelectorAll('.content .card');
     
-    // The querySelector now correctly runs on mainNav
-    if (!mainNav) return; // Failsafe
+    if (!mainNav) return; 
     const targetLink = mainNav.querySelector(`[data-target="${targetSectionId}"]`);
 
     if (!targetLink) return;
@@ -42,31 +46,43 @@ export function navigateToSection(targetSectionId) {
     });
 
     // Trigger data loading for the new section if needed
-    if (targetSectionId === 'fame-low') {
+    if (targetSectionId === 'fame-low' && !cache.fame) {
         loadHallOfFameData();
+        cache.fame = true;
     }
-    if (targetSectionId === 'leaves-low') {
+    if (targetSectionId === 'leaves-low' && !cache.leaves) {
         loadLeaveData();
+        cache.leaves = true;
     }
     if (targetSectionId === 'logs-low') {
-        loadOverviewAnalytics();
-        loadWorkoutConsistency();
+        if (!cache.analysis) {
+            loadOverviewAnalytics();
+            loadWorkoutConsistency();
+            cache.analysis = true;
+        }
         loadWeightLogHistory();     // ⬅️ Always reload from cache or fresh
         loadFitnessProgress(); 
     }
     if (targetSectionId === 'fitness-low') {
         import('./fitness.js').then(mod => {
+            if (!cache.fitness) {
+                mod.initializeFitness();
+                cache.fitness = true;
+            }
             mod.showFitnessTab('overview');
         });
     }
-if (targetSectionId === 'tips-low') {
-    // initialize tips UI, tabs and loaders
-    try {
-        loadTipsSection();
-    } catch (err) {
-        console.error('Error initializing tips section:', err);
+    if (targetSectionId === 'tips-low' && !cache.tips) {
+        try {
+            loadTipsSection();
+            import('./planner.js').then(mod => {
+                mod.exerciseModule.renderWorkoutList();
+            });
+            cache.tips = true;
+        } catch (err) {
+            console.error('Error initializing tips section:', err);
+        }
     }
-}
 }
 
 /**
@@ -112,5 +128,4 @@ export function routeFromHash() {
             mod.loadCurrentWeightStat(true);
         });
     }
-
 }
