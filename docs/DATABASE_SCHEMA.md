@@ -67,6 +67,7 @@ Tracks student requests to change their assigned gym slot.
 - `TR` (INT, FK) -> `TestMaster.TR`
 - `RequestedSlotID` (INT, FK) -> `Slots.SlotID`
 - `Status` (VARCHAR(10)) - 'Pending', 'Approved', 'Rejected'
+- `Reason` (VARCHAR(255)) - Reason for slot request.
 - `RequestedAt` (DATETIME)
 - `ReviewedBy` (VARCHAR(50))
 - `ReviewedAt` (DATETIME)

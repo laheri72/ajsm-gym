@@ -2807,7 +2807,7 @@ router.get('/api/staff/slot-requests/pending', async (req, res) => {
             .input('Gender', sql.NVarChar(50), Gender)
             .query(`
                 SELECT 
-                    SR.RequestID, SR.TR, SR.RequestedAt, SR.Status,
+                    SR.RequestID, SR.TR, SR.RequestedAt, SR.Status, SR.Reason,
                     M.Name AS StudentName,
                     S1.SlotName AS CurrentSlotName,
                     S2.SlotName AS RequestedSlotName,
@@ -2846,11 +2846,11 @@ router.put('/api/staff/slot-requests/:id/status', async (req, res) => {
     try {
         await transaction.begin();
 
-        // 1. Get the request details
+        // 1. Get the request details (including SR.Reason)
         const reqResult = await new sql.Request(transaction)
             .input('RequestID', sql.Int, requestID)
             .query(`
-                SELECT SR.TR, SR.RequestedSlotID, M.SlotID AS CurrentSlotID, M.Status AS StudentStatus,
+                SELECT SR.TR, SR.RequestedSlotID, SR.Reason, M.SlotID AS CurrentSlotID, M.Status AS StudentStatus,
                        S1.SlotName AS CurrentSlotName, S2.SlotName AS RequestedSlotName
                 FROM SlotRequests SR
                 JOIN TestMaster M ON SR.TR = M.TR
@@ -2886,13 +2886,14 @@ router.put('/api/staff/slot-requests/:id/status', async (req, res) => {
                 .input('SlotID', sql.Int, reqData.RequestedSlotID)
                 .query(`UPDATE TestMaster SET SlotID = @SlotID WHERE TR = @TR`);
 
-            // Audit Log in StudentStatusHistory
+            // Audit Log in StudentStatusHistory, recording both the student's reason and staff's remarks
+            const auditChangeReason = `Slot Request Approved. Student Reason: "${reqData.Reason || 'None'}". Staff Remarks: "${remarks || 'None'}"`;
             await new sql.Request(transaction)
                 .input('TR', sql.Int, reqData.TR)
                 .input('ActionType', sql.VarChar(12), 'SlotChange')
                 .input('PreviousStatus', sql.VarChar(8), reqData.StudentStatus)
                 .input('NewStatus', sql.VarChar(8), reqData.StudentStatus)
-                .input('ChangeReason', sql.NVarChar(500), 'Slot Request Approved. ' + (remarks || ''))
+                .input('ChangeReason', sql.NVarChar(500), auditChangeReason)
                 .input('ChangedByUsername', sql.NVarChar(50), Username)
                 .input('ChangedByRole', sql.NVarChar(20), Role)
                 .input('PreviousSlotID', sql.Int, reqData.CurrentSlotID)

@@ -2893,9 +2893,15 @@ router.post('/api/student/slot-request', async (req, res) => {
     const { TR } = req.session.user || {};
     if (!TR) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const { requestedSlotID } = req.body;
+    const { requestedSlotID, reason } = req.body;
     if (!requestedSlotID) {
         return res.status(400).json({ success: false, message: 'Requested slot is required.' });
+    }
+    if (!reason || reason.trim() === '') {
+        return res.status(400).json({ success: false, message: 'Reason for slot change is required.' });
+    }
+    if (reason.length > 255) {
+        return res.status(400).json({ success: false, message: 'Reason must be 255 characters or less.' });
     }
 
     try {
@@ -2926,13 +2932,14 @@ router.post('/api/student/slot-request', async (req, res) => {
             return res.status(400).json({ success: false, message: 'The selected slot is currently full.' });
         }
 
-        // Insert new request
+        // Insert new request with Reason
         await pool.request()
             .input('TR', sql.Int, TR)
             .input('SlotID', sql.Int, requestedSlotID)
+            .input('Reason', sql.VarChar(255), reason.trim())
             .query(`
-                INSERT INTO SlotRequests (TR, RequestedSlotID, Status)
-                VALUES (@TR, @SlotID, 'Pending')
+                INSERT INTO SlotRequests (TR, RequestedSlotID, Status, Reason)
+                VALUES (@TR, @SlotID, 'Pending', @Reason)
             `);
 
         res.json({ success: true, message: 'Slot change request submitted successfully.' });

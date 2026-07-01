@@ -388,6 +388,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         ? `<span class="text-success">(${req.RequestedSlotAvailable} left)</span>` 
                         : `<span class="text-danger">(Full)</span>`;
 
+                    // Escape user input to prevent HTML injection/breakage
+                    const escapedReason = req.Reason 
+                        ? req.Reason.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;")
+                        : '<span class="text-muted">No reason provided</span>';
+
                     const row = `
                         <tr>
                             <td>${istTime}</td>
@@ -395,9 +400,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             <td>${req.StudentName}</td>
                             <td>${req.CurrentSlotName || '<span class="text-muted">None</span>'}</td>
                             <td>${req.RequestedSlotName} ${availableText}</td>
+                            <td class="reason-cell" style="max-width: 200px; word-wrap: break-word; white-space: normal;">${escapedReason}</td>
                             <td>
-                                <button class="btn btn-success btn-sm approve-request-btn" data-id="${req.RequestID}" data-name="${req.StudentName}" data-capacity="${req.RequestedSlotAvailable}">Approve</button>
-                                <button class="btn btn-danger btn-sm reject-request-btn" data-id="${req.RequestID}" data-name="${req.StudentName}">Reject</button>
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button class="btn btn-outline-success btn-sm approve-request-btn py-1 px-2" style="font-size: 0.75rem; font-weight: 500; border-radius: 4px;" data-id="${req.RequestID}" data-name="${req.StudentName}" data-capacity="${req.RequestedSlotAvailable}">Approve</button>
+                                    <button class="btn btn-outline-danger btn-sm reject-request-btn py-1 px-2" style="font-size: 0.75rem; font-weight: 500; border-radius: 4px;" data-id="${req.RequestID}" data-name="${req.StudentName}">Reject</button>
+                                </div>
                             </td>
                         </tr>
                     `;

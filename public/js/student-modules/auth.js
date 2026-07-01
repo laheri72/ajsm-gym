@@ -372,35 +372,54 @@ function handleSlotChangeRequest() {
                 return;
             }
 
-            // 3. Show SweetAlert2 Modal
-            const { value: selectedSlotID } = await Swal.fire({
+            // 3. Show SweetAlert2 Modal with slot dropdown and reason input
+            const { value: formValues } = await Swal.fire({
                 title: 'Request Slot Change',
-                text: 'Select your preferred new time slot. This request must be approved by staff.',
-                input: 'select',
-                inputOptions: slotOptions,
-                inputPlaceholder: 'Choose a new slot...',
+                html: `
+                    <div class="text-start mb-2" style="font-size: 0.9rem; color: var(--text-muted); opacity: 0.85;">Select your preferred new time slot and state the reason. This request must be approved by staff.</div>
+                    <select id="swal-slot-select" class="swal2-select" style="width: 100%; margin: 10px 0; box-sizing: border-box; font-size: 0.95rem;">
+                        <option value="" disabled selected>Choose a new slot...</option>
+                        ${Object.entries(slotOptions).map(([id, text]) => `<option value="${id}">${text}</option>`).join('')}
+                    </select>
+                    <input id="swal-reason-input" class="swal2-input" placeholder="Reason for slot change (max 255 chars)..." maxlength="255" style="width: 100%; margin: 10px 0; box-sizing: border-box; font-size: 0.95rem;">
+                `,
+                focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonColor: 'var(--primary)',
                 cancelButtonColor: 'var(--gray)',
                 confirmButtonText: 'Submit Request',
-                inputValidator: (value) => {
-                    return new Promise((resolve) => {
-                        if (value !== '') {
-                            resolve();
-                        } else {
-                            resolve('You need to select a slot');
-                        }
-                    });
+                preConfirm: () => {
+                    const slotSelect = document.getElementById('swal-slot-select');
+                    const reasonInput = document.getElementById('swal-reason-input');
+                    const selectedSlotID = slotSelect.value;
+                    const reason = reasonInput.value.trim();
+
+                    if (!selectedSlotID) {
+                        Swal.showValidationMessage('You need to select a slot');
+                        return false;
+                    }
+                    if (!reason) {
+                        Swal.showValidationMessage('You need to provide a reason');
+                        return false;
+                    }
+                    if (reason.length > 255) {
+                        Swal.showValidationMessage('Reason must be 255 characters or less');
+                        return false;
+                    }
+                    return { selectedSlotID, reason };
                 }
             });
 
-            if (selectedSlotID) {
+            if (formValues) {
                 // 4. Submit Request
                 const submitRes = await fetch('/api/student/slot-request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ requestedSlotID: parseInt(selectedSlotID) })
+                    body: JSON.stringify({ 
+                        requestedSlotID: parseInt(formValues.selectedSlotID),
+                        reason: formValues.reason
+                    })
                 });
                 
                 const submitData = await submitRes.json();
