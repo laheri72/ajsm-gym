@@ -11,14 +11,7 @@ const VALID_PLANNER_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const PLANNER_SCHEMA_VERSION = 1;
 const MAX_PLANNER_ITEMS_PER_DAY = 16;
 
-// Hijri offset in days (integer). Set via env `HIJRI_OFFSET_DAYS`.
-// Positive numbers move the Gregorian date forward before computing the Hijri date.
-// Negative numbers move it backward. Default: 0.
-const HIJRI_OFFSET_DAYS = (() => {
-    const v = parseInt(process.env.HIJRI_OFFSET_DAYS, 10);
-    // Default to 1 to match university lunar observations (one day shift).
-    return Number.isFinite(v) ? v : 1;
-})();
+const { formatHijriDate } = require('../utils/mumineenCalendar.js');
 
 function isValidPlannerDay(day) {
     return VALID_PLANNER_DAYS.includes(day);
@@ -58,33 +51,6 @@ function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlo
     const status = String(fallbackStatus || '').trim().toLowerCase();
     if (status && status !== 'active') return false;
     return !isPendingOrUnassignedSlot(fallbackSlotName);
-}
-
-function formatHijriDate(value) {
-    if (!value) return '';
-
-    try {
-        const date = value instanceof Date ? value : new Date(value);
-        // Apply configured offset (use moment to avoid timezone pitfalls)
-        const adjusted = HIJRI_OFFSET_DAYS !== 0
-            ? moment(date).add(HIJRI_OFFSET_DAYS, 'days').toDate()
-            : date;
-
-        const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            timeZone: 'Asia/Kolkata'
-        }).formatToParts(adjusted);
-
-        const day = parts.find(part => part.type === 'day')?.value;
-        const month = parts.find(part => part.type === 'month')?.value;
-        const year = parts.find(part => part.type === 'year')?.value;
-
-        return [day, month, year].filter(Boolean).join('-');
-    } catch (err) {
-        return '';
-    }
 }
 
 function decodeHtmlEntities(input = '') {
