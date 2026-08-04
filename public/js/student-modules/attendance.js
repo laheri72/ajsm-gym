@@ -44,6 +44,7 @@ export function loadAttendance(selectedWeekId) {
                   const status = student[day];
                   const currentDate = new Date(weekStartDate);
                   currentDate.setDate(weekStartDate.getDate() + i);
+                  currentDate.setHours(0, 0, 0, 0);
 
                   if (currentDate < joinedDate) return `<td>-</td>`;
                   if (status === 'Not Expected') return `<td>-</td>`;

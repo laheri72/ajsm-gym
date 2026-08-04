@@ -22,3 +22,7 @@ For overview → read PROJECT_SUMMARY.md
 - **On Leave Reason Consistency:** On-leave modal rows now return `LeaveRequests.Reason` directly; do not replace with synthetic labels like `Holiday`.
 - **Logout Behavior:** Preserve `localStorage.lastSeenLevel` on logout (along with theme) so the level-up SweetAlert does not replay each login.
 - **UI Styling Note:** Planner contrast changes were intentionally kept in component CSS (`public/css/student/planner.css`, `public/css/student/attendance.css`) and not global late-layer overrides, to avoid dark-mode regressions.
+
+## 🔄 Major Logic Shifts (August 2026)
+- **Attendance Masking Fallback:** Fixed a bug where missing select columns (`PreviousStatus`/`PreviousSlotName`) and legacy `NULL` slot history records caused active students with valid slots to display as not expected (`-`). The weekly masking logic now queries all history columns and falls back to the student's current active slot name when history is missing the slot field, accompanied by console warning logs.
+- **Joined Date Attendance Masking:** Fixed weekly attendance mapping logic on both backend (staff and student routes) and client views to correctly mask days before the student's registration date (`JoinedAt`) as not expected (`-`). Also unified all date boundary comparisons on client and server to prevent timezone/hour shifts.

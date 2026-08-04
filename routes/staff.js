@@ -2574,7 +2574,6 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                 WHERE 
                     M.Branch = @Branch 
                     AND M.Gender = @Gender 
-                    AND M.Status = 'Active'
                     AND M.JoinedAt <= @WeekEndDate;
             `);
 
@@ -2595,7 +2594,17 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                 dayNames.forEach((day, i) => {
                     const currentDate = new Date(startDate);
                     currentDate.setDate(startDate.getDate() + i);
+                    
+                    const checkDate = new Date(currentDate);
+                    checkDate.setHours(0, 0, 0, 0);
+                    const joinedDate = row.JoinedAt ? new Date(row.JoinedAt) : null;
+                    if (joinedDate) {
+                        joinedDate.setHours(0, 0, 0, 0);
+                    }
+
                     if (currentDate > today) {
+                        record[day] = null;
+                    } else if (joinedDate && checkDate < joinedDate) {
                         record[day] = null;
                     } else {
                         record[day] = 'Absent';
@@ -2635,20 +2644,40 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
 
             trs.forEach(tr => {
                 const record = resultMap.get(tr);
+                if (!record) return;
                 const history = historyByTR[tr] || [];
+                let hasAnyExpectedDay = false;
                 
                 dayNames.forEach((day, i) => {
-                    if (record[day] === 'Absent') {
-                        const currentDate = new Date(startDate);
-                        currentDate.setDate(startDate.getDate() + i);
-                        currentDate.setHours(23, 59, 59, 999);
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + i);
+                    
+                    const checkDate = new Date(currentDate);
+                    checkDate.setHours(0, 0, 0, 0);
+                    const joinedDate = record.JoinedAt ? new Date(record.JoinedAt) : null;
+                    if (joinedDate) {
+                        joinedDate.setHours(0, 0, 0, 0);
+                    }
 
-                        let isExpected = true;
+                    if (record[day] === 'Present' || record[day] === 'On Leave') {
+                        hasAnyExpectedDay = true;
+                        return;
+                    }
+
+                    let isExpected = true;
+                    if (joinedDate && checkDate < joinedDate) {
+                        isExpected = false;
+                    }
+
+                    if (isExpected) {
+                        const historyDateLimit = new Date(currentDate);
+                        historyDateLimit.setHours(23, 59, 59, 999);
+
                         let latestRecord = null;
                         let oldestRecord = history.length > 0 ? history[0] : null;
                         
                         for (const h of history) {
-                            if (new Date(h.ChangedAt) <= currentDate) {
+                            if (new Date(h.ChangedAt) <= historyDateLimit) {
                                 latestRecord = h;
                             }
                         }
@@ -2660,7 +2689,6 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                                 let slotToCheck = latestRecord.NewSlotName;
                                 if (!slotToCheck && latestRecord.NewStatus === 'Active') {
                                     slotToCheck = record.SlotName;
-                                    console.warn(`[Attendance Fallback] Legacy NULL slot history (latestRecord) detected for TR ${tr}. Falling back to current slot: ${record.SlotName}`);
                                 }
                                 if (!slotToCheck || slotToCheck.toLowerCase().includes('pending') || slotToCheck === 'N/A' || slotToCheck === 'Unassigned') {
                                     isExpected = false;
@@ -2673,7 +2701,6 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                                 let slotToCheck = oldestRecord.PreviousSlotName;
                                 if (!slotToCheck && oldestRecord.PreviousStatus === 'Active') {
                                     slotToCheck = record.SlotName;
-                                    console.warn(`[Attendance Fallback] Legacy NULL slot history (oldestRecord) detected for TR ${tr}. Falling back to current slot: ${record.SlotName}`);
                                 }
                                 if (!slotToCheck || slotToCheck.toLowerCase().includes('pending') || slotToCheck === 'N/A' || slotToCheck === 'Unassigned') {
                                     isExpected = false;
@@ -2684,12 +2711,20 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                                 isExpected = false;
                             }
                         }
+                    }
 
-                        if (!isExpected) {
-                            record[day] = null;
-                        }
+                    if (isExpected) {
+                        hasAnyExpectedDay = true;
+                    }
+
+                    if (!isExpected) {
+                        record[day] = null;
                     }
                 });
+
+                if (!hasAnyExpectedDay) {
+                    resultMap.delete(tr);
+                }
             });
         }
         // --- END NEW ---

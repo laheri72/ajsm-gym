@@ -414,6 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const cells = daysOfWeek.map((day, i) => {
                         const currentDate = new Date(startDate);
                         currentDate.setDate(startDate.getDate() + i);
+                        currentDate.setHours(0, 0, 0, 0);
                         if (currentDate < joinedDate) return `<td>-</td>`;
                         
                         const status = student[day];

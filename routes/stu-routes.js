@@ -26,7 +26,16 @@ function isPendingOrUnassignedSlot(slotName) {
     return !normalized || normalized.includes('pending') || normalized === 'n/a' || normalized === 'unassigned';
 }
 
-function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName, tr }) {
+function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName, tr, joinedAt }) {
+    if (joinedAt) {
+        const joinedDate = new Date(joinedAt);
+        joinedDate.setHours(0, 0, 0, 0);
+        const checkDate = new Date(dateEnd);
+        checkDate.setHours(0, 0, 0, 0);
+        if (checkDate < joinedDate) {
+            return false;
+        }
+    }
     let latestRecord = null;
     const oldestRecord = history.length > 0 ? history[0] : null;
 
@@ -1950,7 +1959,8 @@ router.get(
                     history,
                     fallbackStatus: 'Active',
                     fallbackSlotName: studentData.SlotName,
-                    tr: TR
+                    tr: TR,
+                    joinedAt: studentData.JoinedAt
                 });
 
                 if (!isExpected) {
@@ -2069,7 +2079,8 @@ router.get(
                     history,
                     fallbackStatus: student.Status,
                     fallbackSlotName: student.SlotName,
-                    tr: TR
+                    tr: TR,
+                    joinedAt: student.JoinedAt
                 });
 
                 if (isExpected) {
@@ -2198,7 +2209,8 @@ router.get(
                         history,
                         fallbackStatus: student.Status,
                         fallbackSlotName: student.SlotName,
-                        tr: TR
+                        tr: TR,
+                        joinedAt: student.JoinedAt
                     });
 
                     if (isExpected) {
