@@ -2621,7 +2621,7 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
         if (trs.length > 0) {
             const historyQuery = await pool.request()
                 .query(`
-                    SELECT TR, ChangedAt, NewStatus, NewSlotName 
+                    SELECT TR, ChangedAt, PreviousStatus, NewStatus, PreviousSlotName, NewSlotName 
                     FROM StudentStatusHistory 
                     WHERE TR IN (${trs.join(',')}) 
                     ORDER BY ChangedAt ASC
@@ -2654,11 +2654,31 @@ router.get('/api/weekly-attendance/:weekId', async (req, res, next) => {
                         }
 
                         if (latestRecord) {
-                            if (latestRecord.NewStatus === 'Inactive') isExpected = false;
-                            if (!latestRecord.NewSlotName || latestRecord.NewSlotName.toLowerCase().includes('pending')) isExpected = false;
+                            if (latestRecord.NewStatus === 'Inactive') {
+                                isExpected = false;
+                            } else {
+                                let slotToCheck = latestRecord.NewSlotName;
+                                if (!slotToCheck && latestRecord.NewStatus === 'Active') {
+                                    slotToCheck = record.SlotName;
+                                    console.warn(`[Attendance Fallback] Legacy NULL slot history (latestRecord) detected for TR ${tr}. Falling back to current slot: ${record.SlotName}`);
+                                }
+                                if (!slotToCheck || slotToCheck.toLowerCase().includes('pending') || slotToCheck === 'N/A' || slotToCheck === 'Unassigned') {
+                                    isExpected = false;
+                                }
+                            }
                         } else if (oldestRecord) {
-                            if (oldestRecord.PreviousStatus === 'Inactive') isExpected = false;
-                            if (!oldestRecord.PreviousSlotName || oldestRecord.PreviousSlotName.toLowerCase().includes('pending')) isExpected = false;
+                            if (oldestRecord.PreviousStatus === 'Inactive') {
+                                isExpected = false;
+                            } else {
+                                let slotToCheck = oldestRecord.PreviousSlotName;
+                                if (!slotToCheck && oldestRecord.PreviousStatus === 'Active') {
+                                    slotToCheck = record.SlotName;
+                                    console.warn(`[Attendance Fallback] Legacy NULL slot history (oldestRecord) detected for TR ${tr}. Falling back to current slot: ${record.SlotName}`);
+                                }
+                                if (!slotToCheck || slotToCheck.toLowerCase().includes('pending') || slotToCheck === 'N/A' || slotToCheck === 'Unassigned') {
+                                    isExpected = false;
+                                }
+                            }
                         } else {
                             if (!record.SlotName || record.SlotName.toLowerCase().includes('pending') || record.SlotName === 'N/A' || record.SlotName === 'Unassigned') {
                                 isExpected = false;

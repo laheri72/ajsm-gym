@@ -26,7 +26,7 @@ function isPendingOrUnassignedSlot(slotName) {
     return !normalized || normalized.includes('pending') || normalized === 'n/a' || normalized === 'unassigned';
 }
 
-function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName }) {
+function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName, tr }) {
     let latestRecord = null;
     const oldestRecord = history.length > 0 ? history[0] : null;
 
@@ -39,13 +39,23 @@ function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlo
     if (latestRecord) {
         const status = String(latestRecord.NewStatus || '').trim().toLowerCase();
         if (status && status !== 'active') return false;
-        return !isPendingOrUnassignedSlot(latestRecord.NewSlotName);
+        let slotToCheck = latestRecord.NewSlotName;
+        if (!slotToCheck && status === 'active') {
+            slotToCheck = fallbackSlotName;
+            console.warn(`[Attendance Fallback] Legacy NULL slot history (latestRecord) detected for TR ${tr || 'unknown'}. Falling back to current slot: ${fallbackSlotName}`);
+        }
+        return !isPendingOrUnassignedSlot(slotToCheck);
     }
 
     if (oldestRecord) {
         const status = String(oldestRecord.PreviousStatus || '').trim().toLowerCase();
         if (status && status !== 'active') return false;
-        return !isPendingOrUnassignedSlot(oldestRecord.PreviousSlotName);
+        let slotToCheck = oldestRecord.PreviousSlotName;
+        if (!slotToCheck && status === 'active') {
+            slotToCheck = fallbackSlotName;
+            console.warn(`[Attendance Fallback] Legacy NULL slot history (oldestRecord) detected for TR ${tr || 'unknown'}. Falling back to current slot: ${fallbackSlotName}`);
+        }
+        return !isPendingOrUnassignedSlot(slotToCheck);
     }
 
     const status = String(fallbackStatus || '').trim().toLowerCase();
@@ -1939,7 +1949,8 @@ router.get(
                     dateEnd: currentDate,
                     history,
                     fallbackStatus: 'Active',
-                    fallbackSlotName: studentData.SlotName
+                    fallbackSlotName: studentData.SlotName,
+                    tr: TR
                 });
 
                 if (!isExpected) {
@@ -2057,7 +2068,8 @@ router.get(
                     dateEnd,
                     history,
                     fallbackStatus: student.Status,
-                    fallbackSlotName: student.SlotName
+                    fallbackSlotName: student.SlotName,
+                    tr: TR
                 });
 
                 if (isExpected) {
@@ -2185,7 +2197,8 @@ router.get(
                         dateEnd,
                         history,
                         fallbackStatus: student.Status,
-                        fallbackSlotName: student.SlotName
+                        fallbackSlotName: student.SlotName,
+                        tr: TR
                     });
 
                     if (isExpected) {
