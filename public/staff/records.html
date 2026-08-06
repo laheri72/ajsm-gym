@@ -37,12 +37,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         }
     </script>
 
-
-    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 
@@ -125,17 +122,79 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="content">
                 <section id="student-record" class="container-fluid mt-4">
 
-                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <h2>Active Students</h2>
-                        <div class="btn-group" role="group" aria-label="Export Options">
-                            <button id="print-btn" class="btn btn-outline-secondary">🖨️ Print as PDF</button>
-                            <span class="mx-3 align-self-center"></span>
-                            <button id="excel-btn" class="btn btn-outline-success">📄 Export to Excel</button>
+                    <!-- Modern Header & Stats Banner -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-lg-8">
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <div>
+                                    <h2 class="mb-1 fw-bold text-dark">Active Student Records</h2>
+                                    <p class="text-muted mb-0">Manage gym memberships, update goals, reassign slots, or export lists.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-4 text-lg-end">
+                            <div class="btn-group shadow-sm" role="group" aria-label="Export Actions">
+                                <button id="print-btn" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+                                    <span>🖨️</span> Print PDF
+                                </button>
+                                <button id="excel-btn" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+                                    <span>📄</span> Export Excel
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <p class="text-muted">Students are grouped by their assigned slot. Use the ✏️ to change a student's
-                        goal or slot.</p>
+                    <!-- Stat Cards Summary Bar -->
+                    <div class="stat-cards-container mb-4">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-total-students">--</div>
+                            <div class="stat-label">Total Active Members</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-total-slots">--</div>
+                            <div class="stat-label">Active Slots / Batches</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-unassigned-students">--</div>
+                            <div class="stat-label">Unassigned Students</div>
+                        </div>
+                    </div>
+
+                    <!-- Filter & View Controls Toolbar -->
+                    <div class="card p-3 mb-4 shadow-sm border-0 bg-white rounded-3">
+                        <div class="row g-3 align-items-center">
+                            <!-- Quick Search Input -->
+                            <div class="col-12 col-md-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">🔍</span>
+                                    <input type="text" id="records-search-input" class="form-control form-control-sm border-start-0 ps-0" placeholder="Search TR, Name, Darajah or Goal...">
+                                </div>
+                            </div>
+
+                            <!-- Filter by Slot -->
+                            <div class="col-12 col-md-3">
+                                <select id="slot-filter-select" class="form-select form-select-sm">
+                                    <option value="">All Slots & Batches</option>
+                                </select>
+                            </div>
+
+                            <!-- View Mode Toggle -->
+                            <div class="col-12 col-md-5 d-flex justify-content-md-end align-items-center gap-2">
+                                <span class="text-muted small fw-medium d-none d-sm-inline" style="font-size: 0.8rem;">View Mode:</span>
+                                <div class="view-controls btn-group" role="group" aria-label="View Mode Toggle">
+                                    <button type="button" id="view-mode-grouped" class="btn btn-sm btn-outline-primary active d-inline-flex align-items-center gap-1">
+                                        <span>🗂️</span> Grouped Slots
+                                    </button>
+                                    <button type="button" id="view-mode-compact" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
+                                        <span>📋</span> Compact List
+                                    </button>
+                                </div>
+                                <button id="refresh-data-btn" class="btn btn-sm btn-light border text-muted px-2" title="Refresh Data">
+                                    🔄
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                     <div id="print-header" class="print-only">
                         <h1><strong>Khaima al-Riyada - GYM</strong></h1>
@@ -147,12 +206,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <p><strong>Date:</strong> <span id="print-footer-date"></span></p>
                     </div>
 
+                    <!-- Container for Grouped View (Slot Cards) -->
                     <div id="slot-cards-container">
-                        <div class="card p-4 text-center">
+                        <div class="card p-4 text-center border-0 shadow-sm">
                             <div class="loader-cell">
                                 <div class="loader" style="display: inline-block;"></div>
                             </div>
-                            <p class="mt-2">Loading student records...</p>
+                            <p class="mt-2 text-muted fw-medium">Loading student records...</p>
+                        </div>
+                    </div>
+
+                    <!-- Container for Compact View (Unified Table) -->
+                    <div id="compact-view-container" style="display: none;">
+                        <div class="card p-4 border-0 shadow-sm">
+                            <div class="table-responsive">
+                                <table id="compact-students-table" class="table table-hover table-striped table-bordered align-middle w-100 stacking-card-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="col-tr">TR No</th>
+                                            <th class="col-name">Name</th>
+                                            <th class="col-darajah">Darajah</th>
+                                            <th class="col-goal">Goal</th>
+                                            <th class="col-slot">Slot / Batch</th>
+                                            <th class="col-actions">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

@@ -80,14 +80,97 @@ body {
     border-radius: 0.5rem;
     cursor: pointer;
     font-weight: 600;
-    transition: all 0.4s ease;
+    transition: all 0.2s ease;
     box-shadow: 0 4px 8px var(--primary-shadow-light);
 }
 
 .btn:hover {
     background: var(--secondary);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 16px var(--primary-shadow-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px var(--primary-shadow-strong);
+}
+
+/* --- COMPACT & ENTERPRISE BUTTON MODIFIERS --- */
+.btn-sm {
+    padding: 0.35rem 0.75rem !important;
+    font-size: 0.825rem !important;
+    border-radius: 0.375rem !important;
+    box-shadow: none !important;
+    font-weight: 500 !important;
+}
+
+.btn-sm:hover {
+    transform: none !important;
+}
+
+.btn-xs {
+    padding: 0.15rem 0.45rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.25rem !important;
+    box-shadow: none !important;
+    font-weight: 500 !important;
+}
+
+.btn-outline-primary {
+    background: transparent !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--primary) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary.active {
+    background: var(--primary) !important;
+    color: white !important;
+}
+
+.btn-outline-secondary {
+    background: transparent !important;
+    color: #555 !important;
+    border: 1px solid #ccc !important;
+}
+
+.btn-outline-secondary:hover {
+    background: #f0f0f0 !important;
+    color: #222 !important;
+}
+
+.btn-outline-danger {
+    background: transparent !important;
+    color: var(--danger) !important;
+    border: 1px solid var(--danger) !important;
+}
+
+.btn-outline-danger:hover {
+    background: var(--danger) !important;
+    color: white !important;
+}
+
+/* --- EDITABLE TABLE CELL & HOVER EDIT BUTTONS --- */
+.editable-cell-wrapper {
+    white-space: nowrap !important;
+    min-height: 28px;
+    width: 100%;
+}
+
+.editable-cell-wrapper .edit-ghost-btn {
+    opacity: 0.35;
+    transition: opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    padding: 2px 6px !important;
+    font-size: 0.75rem !important;
+    line-height: 1.1 !important;
+    border-radius: 4px !important;
+    border: 1px solid #ddd !important;
+    background: #fafafa !important;
+    color: #555 !important;
+    flex-shrink: 0 !important;
+}
+
+tr:hover .editable-cell-wrapper .edit-ghost-btn,
+.editable-cell-wrapper:hover .edit-ghost-btn {
+    opacity: 1;
+    background: #ffffff !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
 }
 
 /* --- Forms --- */
