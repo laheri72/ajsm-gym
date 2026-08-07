@@ -235,10 +235,16 @@ function injectNotificationCenter() {
     if (!navbar || !desktopUserMenu || !appHeader) return;
 
     const desktopWidget = createNotificationWidget('desktop');
-    navbar.insertBefore(desktopWidget, desktopUserMenu);
+    if (desktopUserMenu.parentNode === navbar) {
+        navbar.insertBefore(desktopWidget, desktopUserMenu);
+    } else if (desktopUserMenu.parentNode) {
+        desktopUserMenu.parentNode.insertBefore(desktopWidget, desktopUserMenu);
+    } else {
+        navbar.appendChild(desktopWidget);
+    }
 
     const mobileWidget = createNotificationWidget('mobile');
-    if (hamburgerBtn) {
+    if (hamburgerBtn && hamburgerBtn.parentNode === appHeader) {
         appHeader.insertBefore(mobileWidget, hamburgerBtn);
     } else {
         appHeader.appendChild(mobileWidget);

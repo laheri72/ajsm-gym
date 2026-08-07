@@ -380,6 +380,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 slots[slotName].push(student);
             });
 
+            // Fetch blacklist map for quick flagging
+            let blacklistedMap = {};
+            try {
+                const bRes = await fetch('/api/blacklist/ids');
+                const bJson = await bRes.json();
+                if (bJson.success && bJson.data) {
+                    bJson.data.forEach(item => {
+                        blacklistedMap[item.TR] = item.Reason;
+                    });
+                }
+            } catch (e) { /* Fails silently */ }
+
             Object.keys(slots).sort().forEach(slotName => {
                 const card = document.createElement('div');
                 card.className = 'card mb-4';
@@ -436,9 +448,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         actionsCellHtml = `<td><button class="btn btn-sm btn-danger deactivate-btn" data-tr="${student.TR}">Deactivate</button></td>`;
                     }
 
+                    const isBlacklisted = student.IsBlacklisted || !!blacklistedMap[student.TR];
+                    const bReason = student.BlacklistReason || blacklistedMap[student.TR] || 'Flagged by Admin';
+                    const blacklistedBadgeHtml = isBlacklisted 
+                        ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="Reason: ${bReason}">🚩 Blacklisted</span>`
+                        : '';
+
                     row.innerHTML = `
                         <td>${student.TR}</td>
-                        <td>${student.Name}</td>
+                        <td>${student.Name} ${blacklistedBadgeHtml}</td>
                         ${cells.join('')}
                         <td>${absentCount}</td>
                         ${actionsCellHtml}`;

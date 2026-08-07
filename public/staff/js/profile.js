@@ -64,8 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener('click', (e) => {
         if (!searchInput.contains(e.target)) searchResults.style.display = 'none';
     });
-
-    // === MAIN PROFILE LOADING ===
+    // === MAIN PROFILE LOADING ===
     async function loadFullProfile(tr) {
         searchSection.style.display = 'none';
         detailsSection.style.display = 'block';
@@ -83,6 +82,19 @@ document.addEventListener("DOMContentLoaded", () => {
             // Load Template
             detailsSection.innerHTML = document.getElementById('profile-details-template').innerHTML;
             const data = result.data;
+
+            if (data.basicInfo && data.basicInfo.IsBlacklisted) {
+                const alertBanner = document.createElement('div');
+                alertBanner.className = 'alert alert-danger shadow-sm border-danger border-2 d-flex align-items-center gap-3 mb-4 rounded-3 p-3';
+                alertBanner.innerHTML = `
+                    <div class="fs-1 text-danger">🚫</div>
+                    <div>
+                        <h4 class="alert-heading fw-bold mb-1 text-danger">BLACKLISTED / FLAGGED STUDENT</h4>
+                        <p class="mb-0 text-dark fw-medium fs-6">Reason: <strong>${escapeHtml(data.basicInfo.BlacklistReason || 'Flagged by Admin')}</strong></p>
+                    </div>
+                `;
+                detailsSection.prepend(alertBanner);
+            }
 
             renderHeader(data.basicInfo || {});
             renderProgressTrackers(data.progress || {});

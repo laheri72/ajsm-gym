@@ -44,6 +44,21 @@ document.addEventListener("DOMContentLoaded", () => {
                     darajahLabel.textContent = data.student.Darajah;
                     newStudentFields.classList.add('d-none');
                     addStudentBtn.disabled = false;
+
+                    // Blacklist warning badge
+                    let blacklistBanner = document.getElementById('blacklistWarningBanner');
+                    if (data.student.IsBlacklisted) {
+                        if (!blacklistBanner) {
+                            blacklistBanner = document.createElement('div');
+                            blacklistBanner.id = 'blacklistWarningBanner';
+                            blacklistBanner.className = 'alert alert-danger p-2 mb-2 small fw-bold d-flex align-items-center gap-2';
+                            existingStudentDisplay.prepend(blacklistBanner);
+                        }
+                        blacklistBanner.innerHTML = `<span>🚫</span> WARNING: Student is Blacklisted! (Reason: ${data.student.BlacklistReason || 'Flagged by Admin'})`;
+                        blacklistBanner.classList.remove('d-none');
+                    } else if (blacklistBanner) {
+                        blacklistBanner.classList.add('d-none');
+                    }
                 } else if (response.status === 404) {
                     // New student (Not in TestMaster)
                     existingStudentDisplay.classList.add('d-none');

@@ -99,10 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const totalStudentsEl = document.getElementById('stat-total-students');
             const totalSlotsEl = document.getElementById('stat-total-slots');
             const unassignedEl = document.getElementById('stat-unassigned-students');
+            const blacklistedEl = document.getElementById('stat-blacklisted-students');
+
+            const blacklistedCount = allStudentsData.filter(s => s.IsBlacklisted).length;
 
             if (totalStudentsEl) totalStudentsEl.textContent = allStudentsData.length;
             if (totalSlotsEl) totalSlotsEl.textContent = Object.keys(slots).filter(s => s !== 'Unassigned').length;
             if (unassignedEl) unassignedEl.textContent = unassignedCount;
+            if (blacklistedEl) blacklistedEl.textContent = blacklistedCount;
 
             // 5. Populate Slot Filter Dropdown
             populateSlotFilterDropdown(Object.keys(slots).sort());
@@ -224,7 +228,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 data: studentsInSlot,
                 columns: [
                     { data: 'TR', className: 'col-tr fw-semibold' },
-                    { data: 'Name', className: 'col-name fw-medium' },
+                    { 
+                        data: 'Name', 
+                        className: 'col-name fw-medium',
+                        render: function(data, type, row) {
+                            let badge = '';
+                            if (row.IsBlacklisted) {
+                                badge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="Reason: ${row.BlacklistReason || 'Blacklisted'}">🚫 Blacklisted</span>`;
+                            }
+                            return `<span>${data}</span>${badge}`;
+                        }
+                    },
                     { 
                         data: 'Darajah', 
                         className: 'col-darajah',
@@ -293,7 +307,17 @@ document.addEventListener("DOMContentLoaded", () => {
             data: filteredStudents,
             columns: [
                 { data: 'TR', className: 'col-tr fw-semibold' },
-                { data: 'Name', className: 'col-name fw-medium' },
+                { 
+                    data: 'Name', 
+                    className: 'col-name fw-medium',
+                    render: function(data, type, row) {
+                        let badge = '';
+                        if (row.IsBlacklisted) {
+                            badge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="Reason: ${row.BlacklistReason || 'Blacklisted'}">🚫 Blacklisted</span>`;
+                        }
+                        return `<span>${data}</span>${badge}`;
+                    }
+                },
                 { 
                     data: 'Darajah', 
                     className: 'col-darajah',

@@ -127,16 +127,13 @@ function populateFilters() {
     // ✅ Use the new unique IDs for the goal alignment filters
     const goalFilter = document.getElementById('goalAlignmentGoalFilter');
     goalFilter.innerHTML = '<option value="" disabled selected>Select a goal...</option>';
-    goals.forEach(g => goalFilter.innerHTML += `<option value="${g}">${g}</option>`);
-
-    const goalBodyPartFilter = document.getElementById('goalAlignmentBodyPartFilter');
+    goals.forEach(g => goalFilter.innerHTML += `<option value="${g}">${g}</option>`);    const goalBodyPartFilter = document.getElementById('goalAlignmentBodyPartFilter');
     goalBodyPartFilter.innerHTML = '<option value="" disabled selected>Select a part...</option>';
     bodyParts.forEach(p => goalBodyPartFilter.innerHTML += `<option value="${p}">${p}</option>`);
 }
 
-// --- Data Loading and Rendering Functions ---
+// --- Data Loading and Rendering Functions ---ions ---
 
-// Helper to update stat cards (NEW)
 function updateStat(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -145,7 +142,6 @@ function updateStat(id, value) {
 function showLoadingIndicator(containerId) {
     const container = document.getElementById(containerId);
     if (container) {
-        // Clear previous content and show the spinner + text
         container.innerHTML = `
             <div class="d-flex justify-content-center align-items-center p-5">
                 <div class="loader me-3"></div> 
@@ -157,9 +153,7 @@ function showLoadingIndicator(containerId) {
 
 function hideLoadingIndicator(containerId, canvasId) {
     const container = document.getElementById(containerId);
-    // Target the CONTAINER div
     if (container) {
-        // Clear loading text and add the canvas back
         container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
     }
 }
@@ -174,8 +168,10 @@ function renderActivitySummary(summary) {
         change = ((summary.workoutsThisWeek - summary.workoutsLastWeek) / summary.workoutsLastWeek) * 100;
     } else if (summary.workoutsThisWeek > 0) { change = 100; }
     const changeEl = document.getElementById('stat-workouts-change');
-    changeEl.textContent = `${change.toFixed(0)}%`;
-    changeEl.style.color = change >= 0 ? 'var(--primary)' : 'var(--danger)';
+    if (changeEl) {
+        changeEl.textContent = `${change.toFixed(0)}%`;
+        changeEl.style.color = change >= 0 ? 'var(--primary)' : 'var(--danger)';
+    }
 }
 
 // Renders Body Part Chart data
@@ -183,9 +179,8 @@ function renderBodyPartChart(trends) {
     const containerId = 'bodyPartChartContainer';
     const canvasId = 'bodyPartChart';
 
-
     if (bodyPartChartInstance) {
-        bodyPartChartInstance.destroy(); // Destroy previous chart
+        bodyPartChartInstance.destroy();
     }
 
     if (!trends || trends.length === 0) {
@@ -196,7 +191,6 @@ function renderBodyPartChart(trends) {
         return;
     }
 
-
     hideLoadingIndicator(containerId, canvasId);
 
     const ctx = document.getElementById('bodyPartChart')?.getContext('2d');
@@ -204,7 +198,7 @@ function renderBodyPartChart(trends) {
 
     const labels = trends.map(item => item.bodyPart);
     const data = trends.map(item => item.count);
-    bodyPartChartInstance = new Chart(ctx, { // Store the instance
+    bodyPartChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
@@ -234,7 +228,7 @@ function renderPeakHoursChart(peakHours) {
     const canvasId = 'peakHoursChart';
 
     if (peakHoursChartInstance) {
-        peakHoursChartInstance.destroy(); // Destroy previous chart
+        peakHoursChartInstance.destroy();
     }
 
     if (!peakHours || peakHours.length === 0) {
@@ -245,17 +239,14 @@ function renderPeakHoursChart(peakHours) {
         return;
     }
 
-
-    hideLoadingIndicator(containerId, canvasId); // Add canvas back
+    hideLoadingIndicator(containerId, canvasId);
 
     const ctx = document.getElementById('peakHoursChart')?.getContext('2d');
     if (!ctx) return;
 
-
-
     const labels = peakHours.map(item => moment().hour(item.hour).format('h A'));
     const data = peakHours.map(item => item.count);
-    peakHoursChartInstance = new Chart(ctx, { // Store the instance
+    peakHoursChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
@@ -271,64 +262,71 @@ function renderPeakHoursChart(peakHours) {
     });
 }
 
-// Initializes the Training Plans Table (now just sets up the structure)
+// Initializes the Training Plans Table
 function initializeTrainingPlansTable() {
-    if (trainingPlansTable) return; // Only initialize once
+    if (trainingPlansTable) return;
     trainingPlansTable = $('#training-plans-table').DataTable({
-        // Columns definition remains the same
         columns: [
-            { data: 'CreatedAt', render: d => d ? new Date(d).toLocaleDateString() : 'N/A' }, // Added check for null
+            { data: 'CreatedAt', render: d => d ? new Date(d).toLocaleDateString() : 'N/A' },
             { data: 'TR' },
-            { data: 'Name' },
+            { 
+                data: 'Name',
+                render: function(data, type, row) {
+                    let badge = row.IsBlacklisted ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="${row.BlacklistReason || 'Blacklisted'}">🚩 Blacklisted</span>` : '';
+                    return `<span>${data || '-'}</span>${badge}`;
+                }
+            },
             { data: 'BodyParts', render: data => data ? data.split(', ').map(part => `<span class="body-part-pill">${part}</span>`).join(' ') : '' },
             {
                 data: 'CreatedAt', render: data => {
-                    if (!data) return 'N/A'; // Added check for null
+                    if (!data) return 'N/A';
                     const daysSince = Math.floor((new Date() - new Date(data)) / (1000 * 3600 * 24));
                     let color = daysSince <= 6 ? 'green' : (daysSince <= 13 ? 'orange' : 'red');
                     return `<span style="color: ${color}; font-weight: bold;">${daysSince} days ago</span>`;
                 }
             }
         ],
-        data: [], // Start with empty data
+        data: [],
         order: [[0, 'desc']], pageLength: 25, responsive: true,
-        language: { emptyTable: "Loading data or no logs found." } // Update empty message
+        language: { emptyTable: "Loading data or no logs found." }
     });
 }
 
-// Renders data into the Training Plans Table
 function renderTrainingPlansTable(plans) {
-    if (!trainingPlansTable) initializeTrainingPlansTable(); // Ensure initialized
-    trainingPlansTable.clear().rows.add(plans || []).draw(); // Add data and redraw
+    if (!trainingPlansTable) initializeTrainingPlansTable();
+    trainingPlansTable.clear().rows.add(plans || []).draw();
 }
 
-// Initializes the Engagement Table (now just sets up the structure)
 function initializeEngagementTable() {
-    if (engagementTable) return; // Only initialize once
+    if (engagementTable) return;
     engagementTable = $('#engagement-table').DataTable({
-        // Columns definition remains the same
         columns: [
-            { data: 'Name' },
-            { data: 'TotalHours', render: d => d?.toFixed(1) || '0.0' }, // Added check for null
-            { data: 'AvgDuration', render: d => d?.toFixed(0) || '0' },   // Added check for null
+            { 
+                data: 'Name',
+                render: function(data, type, row) {
+                    let badge = row.IsBlacklisted ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="${row.BlacklistReason || 'Blacklisted'}">🚩 Blacklisted</span>` : '';
+                    return `<span>${data || '-'}</span>${badge}`;
+                }
+            },
+            { data: 'TotalHours', render: d => d?.toFixed(1) || '0.0' },
+            { data: 'AvgDuration', render: d => d?.toFixed(0) || '0' },
             {
                 data: 'DaysSinceLastVisit', render: data => {
-                    const days = data != null ? data : Infinity; // Treat null as very long ago
+                    const days = data != null ? data : Infinity;
                     let color = days <= 6 ? 'green' : (days <= 13 ? 'orange' : 'red');
                     return `<span style="color: ${color}; font-weight: bold;">${days === Infinity ? 'N/A' : days}</span>`;
                 }
             }
         ],
-        data: [], // Start with empty data
+        data: [],
         order: [[1, 'desc']], responsive: true,
-        language: { emptyTable: "Loading data or no engagement data found." } // Update empty message
+        language: { emptyTable: "Loading data or no engagement data found." }
     });
 }
 
-// Renders data into the Engagement Table
 function renderEngagementTable(engagementData) {
-    if (!engagementTable) initializeEngagementTable(); // Ensure initialized
-    engagementTable.clear().rows.add(engagementData || []).draw(); // Add data and redraw
+    if (!engagementTable) initializeEngagementTable();
+    engagementTable.clear().rows.add(engagementData || []).draw();
 }
 
 function loadTrainingSummaryData(partName) {
@@ -344,11 +342,9 @@ function loadTrainingSummaryData(partName) {
     });
 }
 
-
 function loadGoalAlignmentData() {
-    // ✅ Use the new unique IDs to get filter values
-    const goal = document.getElementById('goalAlignmentGoalFilter').value;
-    const part = document.getElementById('goalAlignmentBodyPartFilter').value;
+    const goal = document.getElementById('goalAlignmentGoalFilter')?.value;
+    const part = document.getElementById('goalAlignmentBodyPartFilter')?.value;
     if (!goal || !part) return;
     if (goalAlignmentTable) goalAlignmentTable.destroy();
     goalAlignmentTable = $('#goal-alignment-table').DataTable({
@@ -370,14 +366,12 @@ function exportTable(tableInstance, fileName) {
     XLSX.writeFile(workbook, fileName);
 }
 
-// --- NEW: Leaderboard Functions ---
-
 async function loadAchievementLeaderboard() {
     const listElement = document.getElementById('achievementLeaderboardList');
     if (!listElement) return;
 
     try {
-        const res = await fetch('/api/achievements/leaderboard', { credentials: 'include' });
+        const res = await fetch('/api/achievements/leaderboard');
         const result = await res.json();
 
         if (result.success && result.data.length > 0) {
@@ -398,12 +392,9 @@ async function loadAchievementLeaderboard() {
                 `;
                 listElement.appendChild(li);
             });
-        } else {
-            listElement.innerHTML = '<li class="loading text-muted py-4">No leaderboard data available yet.</li>';
         }
     } catch (err) {
-        console.error("Could not load achievement leaderboard:", err);
-        listElement.innerHTML = '<li class="loading text-danger py-4">Error loading leaderboard.</li>';
+        console.error('Error loading achievement leaderboard:', err);
     }
 }
 

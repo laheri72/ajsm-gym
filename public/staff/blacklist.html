@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-T87V29HB');</script>
+    <!-- End Google Tag Manager -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blacklisted Students - Staff Portal</title>
+    <link rel="icon" href="../images/favicon.png" type="image/png">
+
+    <script>
+        try {
+            const userString = localStorage.getItem('staffUser');
+            if (userString) {
+                const user = JSON.parse(userString);
+                const classList = [];
+                if (user.Role === 'Admin') classList.push('is-admin');
+                if (classList.length > 0) document.documentElement.className = classList.join(' ');
+            }
+        } catch (e) {
+            console.error('Bootstrap script failed:', e);
+        }
+    </script>
+
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+
+<body style="visibility: hidden;">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T87V29HB"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <a href="overview.html">FitTracker</a>
+            </div>
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="navbar" id="navbar">
+                <div class="sidebar-header">
+                    <span id="staff-username-display" class="navbar-username-mobile" data-bs-toggle="popover"
+                        data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
+
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
+
+                <div class="nav-item dropdown" id="students-dropdown">
+                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Student Records
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
+                        <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+                        <li><a class="dropdown-item active" href="blacklist.html" id="tab-blacklist">Blacklisted Students</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-item dropdown" id="time-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Attendance
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
+                        <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
+                        <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-item dropdown" id="analytics-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Analytics
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
+                        <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a></li>
+                    </ul>
+                </div>
+
+                <div class="nav-item" id="user-menu-desktop">
+                    <span id="staff-username-display-desktop" class="navbar-username-desktop" data-bs-toggle="popover"
+                        data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
+
+                <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+                <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="content">
+                <section id="blacklist-section" class="container-fluid mt-4">
+                    
+                    <!-- Page Title & Header -->
+                    <div class="row g-3 mb-4 align-items-center">
+                        <div class="col-12 col-md-8">
+                            <h2 class="fw-bold text-dark mb-1">
+                                <span class="text-danger">🚫</span> Blacklisted & Flagged Students
+                            </h2>
+                            <p class="text-muted mb-0">Flag students for rule violations or administrative review. Flagged students show warning tags across all staff tracking pages.</p>
+                        </div>
+                        <div class="col-12 col-md-4 text-md-end">
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6">
+                                Branch: <span id="display-staff-branch">--</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Summary Stat Cards -->
+                    <div class="stat-cards-container mb-4">
+                        <div class="stat-card border-danger">
+                            <div class="stat-value text-danger" id="stat-blacklisted-count">--</div>
+                            <div class="stat-label">Total Flagged Students</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-batches-affected">--</div>
+                            <div class="stat-label">Affected Batches</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-recent-added">--</div>
+                            <div class="stat-label">Flagged This Month</div>
+                        </div>
+                    </div>
+
+                    <!-- Blacklist Add Workflow Card -->
+                    <div class="card p-4 mb-4 border-0 shadow-sm rounded-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h4 class="card-title fw-bold text-dark mb-0">
+                                <span>🚩</span> Flag a Student for Blacklist
+                            </h4>
+                            <span class="badge bg-light text-muted border px-2 py-1 small" id="workflow-step-badge">Step 1 of 2: Fetch Student Record</span>
+                        </div>
+
+                        <!-- Step 1: TR Input + Fetch Details Button -->
+                        <div class="row g-3 align-items-end mb-3">
+                            <div class="col-12 col-md-5 col-lg-4">
+                                <label for="blacklist-tr-input" class="form-label fw-medium text-dark mb-1">
+                                    Student TR Number <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-end-0">#</span>
+                                    <input type="number" class="form-control form-control-sm border-start-0" id="blacklist-tr-input" placeholder="e.g. 25687" required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4 col-lg-3">
+                                <button type="button" id="fetch-student-btn" class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-1">
+                                    <span>🔍</span> Fetch Details
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Student Details Preview Card (Initially Hidden) -->
+                        <div id="student-preview-card" class="card bg-light border-1 border-primary-subtle p-3 mb-3 d-none rounded-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <div>
+                                    <h5 class="fw-bold text-dark mb-0 d-inline-flex align-items-center gap-2">
+                                        <span id="preview-student-name">--</span>
+                                        <span class="badge bg-primary text-white" id="preview-student-tr">TR #--</span>
+                                        <span class="badge bg-secondary" id="preview-student-status">Active</span>
+                                    </h5>
+                                </div>
+                                <div id="preview-verification-badge">
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">✓ Verified Record</span>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 bg-white rounded border">
+                                        <div class="text-muted" style="font-size: 0.75rem;">Darajah / Grade</div>
+                                        <div class="fw-semibold text-dark" id="preview-darajah">--</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 bg-white rounded border">
+                                        <div class="text-muted" style="font-size: 0.75rem;">Slot / Batch</div>
+                                        <div class="fw-semibold text-dark" id="preview-slot">--</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 bg-white rounded border">
+                                        <div class="text-muted d-flex justify-content-between" style="font-size: 0.75rem;">
+                                            <span>Attendance Rate</span>
+                                            <span class="fw-bold" id="preview-attendance-pct">--%</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 6px;">
+                                            <div id="preview-attendance-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 bg-white rounded border">
+                                        <div class="text-muted" style="font-size: 0.75rem;">Session Breakdown</div>
+                                        <div class="fw-semibold text-dark" id="preview-sessions-summary">--</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Alert if already blacklisted -->
+                            <div id="preview-already-blacklisted-alert" class="alert alert-danger p-2 mt-3 mb-0 small fw-bold d-none">
+                                🚫 Warning: This student is ALREADY blacklisted. Reason: <span id="preview-blacklisted-reason">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Reason & Blacklist Submit (Initially Hidden) -->
+                        <form id="blacklistForm" class="d-none">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-9">
+                                    <label for="blacklist-reason-input" class="form-label fw-medium text-dark">
+                                        Reason for Blacklisting <span class="text-danger">*</span>
+                                    </label>
+                                    <textarea class="form-control form-control-sm" id="blacklist-reason-input" rows="2" placeholder="Enter mandatory administrative reason (e.g. Rule violation, unfulfilled tasks, long term non-attendance...)" required></textarea>
+                                </div>
+                                <div class="col-12 col-md-3 d-flex align-items-end">
+                                    <button type="submit" id="blacklist-submit-btn" class="btn btn-sm btn-danger w-100 d-inline-flex align-items-center justify-content-center gap-1 py-2">
+                                        <span>🚫</span> Confirm & Flag Student
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Blacklisted Students Data Table Card -->
+                    <div class="card p-4 border-0 shadow-sm rounded-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h4 class="fw-bold text-dark mb-0">Currently Blacklisted Students</h4>
+                            <button id="refresh-blacklist-btn" class="btn btn-sm btn-light border text-muted px-3">
+                                🔄 Refresh List
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="blacklist-table" class="table table-hover table-striped table-bordered align-middle w-100 stacking-card-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>TR No</th>
+                                        <th>Student Name</th>
+                                        <th>Darajah</th>
+                                        <th>Slot / Batch</th>
+                                        <th>Blacklist Reason</th>
+                                        <th>Flagged Date</th>
+                                        <th>Flagged By</th>
+                                        <th class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div class="nav-overlay" id="nav-overlay"></div>
+
+    <script src="/assets/js/jquery.min.js"></script>
+    <script src="/assets/js/dataTables.min.js"></script>
+    <script src="/assets/js/dataTables.bootstrap5.min.js"></script>
+    <script src="/assets/js/sweetalert2.all.min.js"></script>
+    <script src="/assets/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/blacklist.js"></script>
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navOverlay = document.getElementById('nav-overlay');
+
+            function toggleNav() {
+                document.body.classList.toggle('nav-open');
+            }
+
+            if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleNav);
+            if (navOverlay) navOverlay.addEventListener('click', toggleNav);
+        });
+    </script>
+</body>
+</html>

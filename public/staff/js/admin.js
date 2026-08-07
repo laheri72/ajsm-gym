@@ -1242,7 +1242,13 @@ const { value: formData } = await Swal.fire({
             order: [[5, 'desc']],
             columns: [
                 { data: 'TR' },
-                { data: 'Name' },
+                { 
+                    data: 'Name',
+                    render: function(data, type, row) {
+                        let badge = row.IsBlacklisted ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" title="Reason: ${row.BlacklistReason || 'Blacklisted'}">🚫 Blacklisted</span>` : '';
+                        return `<span>${data || '-'}</span>${badge}`;
+                    }
+                },
                 { data: 'Darajah' },
                 { data: 'Goal' },
                 { 

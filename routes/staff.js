@@ -1803,10 +1803,25 @@ router.post('/api/add-student', async (req, res) => {
             return res.status(400).json({ success: false, message: 'TR is required' });
         }
 
-        // 1️⃣ Check if student exists in TestMaster
-        let studentResult = await pool.request()
-            .input('TR', sql.Int, trInt)
-            .query(`SELECT Name, Darajah, Status, Branch, Gender FROM TestMaster WHERE TR = @TR`);
+        // 1️⃣ Check if student exists in TestMaster & check blacklist status
+        let studentResult;
+        try {
+            studentResult = await pool.request()
+                .input('TR', sql.Int, trInt)
+                .query(`
+                    SELECT 
+                        M.[Name], M.[Darajah], M.[Status], M.[Branch], M.[Gender],
+                        CAST(CASE WHEN B.[BlacklistID] IS NOT NULL AND B.[IsActive] = 1 THEN 1 ELSE 0 END AS BIT) AS [IsBlacklisted],
+                        B.[Reason] AS [BlacklistReason]
+                    FROM [TestMaster] AS M
+                    LEFT JOIN [StudentBlacklist] AS B ON M.[TR] = B.[TR] AND B.[IsActive] = 1
+                    WHERE M.[TR] = @TR
+                `);
+        } catch (err) {
+            studentResult = await pool.request()
+                .input('TR', sql.Int, trInt)
+                .query(`SELECT Name, Darajah, Status, Branch, Gender, CAST(0 AS BIT) AS IsBlacklisted, NULL AS BlacklistReason FROM TestMaster WHERE TR = @TR`);
+        }
 
         let student = studentResult.recordset[0];
 
@@ -1827,7 +1842,13 @@ router.post('/api/add-student', async (req, res) => {
                 return res.json({
                     success: true,
                     canAdd: true,
-                    student: { Name: student.Name, Darajah: student.Darajah, Status: student.Status }
+                    student: { 
+                        Name: student.Name, 
+                        Darajah: student.Darajah, 
+                        Status: student.Status,
+                        IsBlacklisted: !!student.IsBlacklisted,
+                        BlacklistReason: student.BlacklistReason || null
+                    }
                 });
             } else {
                  return res.status(404).json({ success: false, message: 'Student not found in TestMaster, need input' });
@@ -3322,8 +3343,18 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
                 getIronDedicationProgress(tr)
             ]).then(([consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication]) => ({ consistency, perfectMonth, socialButterfly, milestoneLift, ironDedication })),
             
-            // 2. Get Basic Info
-            pool.request().input('TR', sql.Int, tr).query(`SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName FROM TestMaster M LEFT JOIN Slots S ON M.SlotID = S.SlotID WHERE M.TR = @TR;`),
+            // 2. Get Basic Info with Blacklist Check
+            pool.request().input('TR', sql.Int, tr).query(`
+                SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName,
+                       CAST(CASE WHEN B.BlacklistID IS NOT NULL AND B.IsActive = 1 THEN 1 ELSE 0 END AS BIT) AS IsBlacklisted,
+                       B.Reason AS BlacklistReason
+                FROM TestMaster M 
+                LEFT JOIN Slots S ON M.SlotID = S.SlotID 
+                LEFT JOIN StudentBlacklist B ON M.TR = B.TR AND B.IsActive = 1
+                WHERE M.TR = @TR;
+            `).catch(() => {
+                return pool.request().input('TR', sql.Int, tr).query(`SELECT M.TR, M.Name, M.Status, M.Goal, M.Darajah, M.JoinedAt, M.FitnessLevel, M.CurrentXP, S.SlotName, CAST(0 AS BIT) AS IsBlacklisted, NULL AS BlacklistReason FROM TestMaster M LEFT JOIN Slots S ON M.SlotID = S.SlotID WHERE M.TR = @TR;`);
+            }),
             
             // 3. Get Earned Achievements
             pool.request().input('TR', sql.Int, tr).query(`SELECT A.AchievementName, A.Description, A.BadgeImageURL, SA.DateEarned FROM StudentAchievements SA JOIN Achievements A ON SA.AchievementID = A.AchievementID WHERE SA.TR = @TR ORDER BY SA.DateEarned DESC;`),
@@ -3375,39 +3406,50 @@ router.get('/api/staff/student-profile/:tr', async (req, res) => {
 
 
 router.get('/api/staff/progress-page-data', async (req, res) => {
-    // Session check (same as your other staff routes)
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const { Branch, Gender } = req.session.user;
 
-    // Use a transaction for consistency, although reads don't strictly need it
-    const transaction = new sql.Transaction(pool);
+    let activitySummary = { mostTrained: 'N/A', workoutsThisWeek: 0, workoutsLastWeek: 0 };
+    let bodyPartTrends = [];
+    let durationSummary = { avgDuration: 0, busiestSlot: 'N/A', totalHoursThisWeek: 0 };
+    let peakHours = [];
+    let allTrainingPlans = [];
+    let engagementReport = [];
+
+    // 1. Activity Summary
     try {
-        await transaction.begin();
-        const request = new sql.Request(transaction); // Use one request object within the transaction
-        request.input('Branch', sql.NVarChar(50), Branch);
-        request.input('Gender', sql.NVarChar(50), Gender);
-
-        // --- Execute all 6 queries ---
-
-        // Query 1: Activity Summary (Modified slightly for transaction)
-        const activitySummaryQuery = `
+        const q = `
             DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
             DECLARE @PrevWeekStart DATE = DATEADD(wk, -1, @WeekStart);
-            SELECT TOP 1 B.Name AS mostTrainedBodyPart FROM TrainingLog L
+
+            SELECT TOP 1 B.Name AS mostTrainedBodyPart 
+            FROM TrainingLog L
             JOIN TrainingPlan P ON L.PlanID = P.PlanID
             JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
             WHERE P.Branch = @Branch AND P.Gender = @Gender AND P.CreatedAt >= @WeekStart
             GROUP BY B.Name ORDER BY COUNT(*) DESC;
+
             SELECT
                 (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt >= @WeekStart) as workoutsThisWeek,
                 (SELECT COUNT(*) FROM TrainingPlan WHERE Branch = @Branch AND Gender = @Gender AND CreatedAt BETWEEN @PrevWeekStart AND @WeekStart) as workoutsLastWeek;
         `;
-        const activitySummaryResult = await request.query(activitySummaryQuery);
+        const res1 = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(q);
 
-        // Query 2: Body Part Trends
-        const bodyPartTrendsQuery = `
+        activitySummary.mostTrained = res1.recordsets[0]?.[0]?.mostTrainedBodyPart || 'N/A';
+        activitySummary.workoutsThisWeek = res1.recordsets[1]?.[0]?.workoutsThisWeek || 0;
+        activitySummary.workoutsLastWeek = res1.recordsets[1]?.[0]?.workoutsLastWeek || 0;
+    } catch (err) {
+        console.error('Progress page activitySummary error:', err.message);
+    }
+
+    // 2. Body Part Trends
+    try {
+        const q = `
             SELECT B.Name as bodyPart, COUNT(L.LogID) as count
             FROM TrainingLog L
             JOIN TrainingPlan P ON L.PlanID = P.PlanID
@@ -3415,10 +3457,19 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
             WHERE P.Branch = @Branch AND P.Gender = @Gender
             GROUP BY B.Name ORDER BY count DESC;
         `;
-        const bodyPartTrendsResult = await request.query(bodyPartTrendsQuery);
+        const res2 = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(q);
 
-        // Query 3: Duration Summary
-        const durationSummaryQuery = `
+        bodyPartTrends = res2.recordset || [];
+    } catch (err) {
+        console.error('Progress page bodyPartTrends error:', err.message);
+    }
+
+    // 3. Duration Summary
+    try {
+        const q = `
             DECLARE @WeekStart DATE = DATEADD(wk, DATEDIFF(wk, 7, DATEADD(MINUTE, 330, GETUTCDATE())), 0);
             SELECT
                 (
@@ -3451,10 +3502,23 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
                       AND A.CreatedAt >= @WeekStart
                 ) as totalHoursThisWeek;
         `;
-        const durationSummaryResult = await request.query(durationSummaryQuery);
+        const res3 = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(q);
 
-        // Query 4: Peak Hours
-        const peakHoursQuery = `
+        if (res3.recordset?.[0]) {
+            durationSummary.avgDuration = Math.round(res3.recordset[0].avgDuration || 0);
+            durationSummary.busiestSlot = res3.recordset[0].busiestSlot || 'N/A';
+            durationSummary.totalHoursThisWeek = Math.round((res3.recordset[0].totalHoursThisWeek || 0) * 10) / 10;
+        }
+    } catch (err) {
+        console.error('Progress page durationSummary error:', err.message);
+    }
+
+    // 4. Peak Hours
+    try {
+        const q = `
             SELECT DATEPART(hour, DATEADD(MINUTE, 330, A.CreatedAt)) AS hour, COUNT(*) AS count
             FROM Attendance A
             JOIN TestMaster M ON A.TR = M.TR
@@ -3466,60 +3530,98 @@ router.get('/api/staff/progress-page-data', async (req, res) => {
             GROUP BY DATEPART(hour, DATEADD(MINUTE, 330, A.CreatedAt))
             ORDER BY hour ASC;
         `;
-        const peakHoursResult = await request.query(peakHoursQuery);
+        const res4 = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(q);
 
-        // Query 5: All Training Plans
-        const allTrainingPlansQuery = `
-            SELECT P.TR, M.Name, P.CreatedAt, STRING_AGG(B.Name, ', ') AS BodyParts
+        peakHours = res4.recordset || [];
+    } catch (err) {
+        console.error('Progress page peakHours error:', err.message);
+    }
+
+    // 5. All Training Plans
+    try {
+        const q = `
+            SELECT P.TR, M.Name, P.CreatedAt, STRING_AGG(B.Name, ', ') AS BodyParts,
+                   CAST(CASE WHEN SB.BlacklistID IS NOT NULL AND SB.IsActive = 1 THEN 1 ELSE 0 END AS BIT) AS IsBlacklisted,
+                   SB.Reason AS BlacklistReason
             FROM TrainingPlan P
             JOIN TestMaster M ON P.TR = M.TR
             JOIN TrainingLog L ON P.PlanID = L.PlanID
             JOIN BodyParts B ON L.BodyPartID = B.BodyPartID
+            LEFT JOIN StudentBlacklist SB ON P.TR = SB.TR AND SB.IsActive = 1
             WHERE P.Branch = @Branch AND P.Gender = @Gender
-            GROUP BY P.PlanID, P.TR, M.Name, P.CreatedAt ORDER BY P.CreatedAt DESC;
+            GROUP BY P.PlanID, P.TR, M.Name, P.CreatedAt, SB.BlacklistID, SB.IsActive, SB.Reason 
+            ORDER BY P.CreatedAt DESC;
         `;
-        const allTrainingPlansResult = await request.query(allTrainingPlansQuery);
+        const res5 = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(q);
 
-        // Query 6: Engagement Report
-        const engagementReportQuery = `
+        allTrainingPlans = res5.recordset || [];
+    } catch (err) {
+        console.error('Progress page allTrainingPlans STRING_AGG error, falling back:', err.message);
+        try {
+            const fallbackQ = `
+                SELECT DISTINCT P.TR, M.Name, P.CreatedAt, 'Workout Log' AS BodyParts,
+                       CAST(CASE WHEN SB.BlacklistID IS NOT NULL AND SB.IsActive = 1 THEN 1 ELSE 0 END AS BIT) AS IsBlacklisted,
+                       SB.Reason AS BlacklistReason
+                FROM TrainingPlan P
+                JOIN TestMaster M ON P.TR = M.TR
+                LEFT JOIN StudentBlacklist SB ON P.TR = SB.TR AND SB.IsActive = 1
+                WHERE P.Branch = @Branch AND P.Gender = @Gender
+                ORDER BY P.CreatedAt DESC;
+            `;
+            const fbRes5 = await pool.request()
+                .input('Branch', sql.NVarChar(50), Branch)
+                .input('Gender', sql.NVarChar(50), Gender)
+                .query(fallbackQ);
+            allTrainingPlans = fbRes5.recordset || [];
+        } catch (fbErr) {
+            console.error('Progress page allTrainingPlans fallback error:', fbErr.message);
+        }
+    }
+
+    // 6. Engagement Report
+    try {
+        const q = `
             WITH LastVisit AS (SELECT TR, MAX(CreatedAt) as lastVisitDate FROM Attendance GROUP BY TR)
-            SELECT M.Name, ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours, ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration, DATEDIFF(day, LV.lastVisitDate, DATEADD(MINUTE, 330, GETUTCDATE())) as DaysSinceLastVisit
+            SELECT M.Name, M.TR,
+                   ISNULL(SUM(A.DurationInMinutes) / 60.0, 0) as TotalHours, 
+                   ISNULL(AVG(CAST(A.DurationInMinutes AS FLOAT)), 0) as AvgDuration, 
+                   DATEDIFF(day, LV.lastVisitDate, DATEADD(MINUTE, 330, GETUTCDATE())) as DaysSinceLastVisit,
+                   CAST(CASE WHEN SB.BlacklistID IS NOT NULL AND SB.IsActive = 1 THEN 1 ELSE 0 END AS BIT) AS IsBlacklisted,
+                   SB.Reason AS BlacklistReason
             FROM TestMaster M
             LEFT JOIN Attendance A ON M.TR = A.TR
             LEFT JOIN LastVisit LV ON M.TR = LV.TR
+            LEFT JOIN StudentBlacklist SB ON M.TR = SB.TR AND SB.IsActive = 1
             WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
-            GROUP BY M.Name, LV.lastVisitDate;
+            GROUP BY M.Name, M.TR, LV.lastVisitDate, SB.BlacklistID, SB.IsActive, SB.Reason;
         `;
-        const engagementReportResult = await request.query(engagementReportQuery);
+        const res6 = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(50), Gender)
+            .query(q);
 
-        await transaction.commit(); // Commit after all reads are successful
-
-        // --- Structure the combined response ---
-        res.json({
-            success: true,
-            data: {
-                activitySummary: {
-                    mostTrained: activitySummaryResult.recordsets[0][0]?.mostTrainedBodyPart || 'N/A',
-                    workoutsThisWeek: activitySummaryResult.recordsets[1][0].workoutsThisWeek,
-                    workoutsLastWeek: activitySummaryResult.recordsets[1][0].workoutsLastWeek
-                },
-                bodyPartTrends: bodyPartTrendsResult.recordset,
-                durationSummary: {
-                    avgDuration: durationSummaryResult.recordset[0].avgDuration,
-                    busiestSlot: durationSummaryResult.recordset[0].busiestSlot || 'N/A',
-                    totalHoursThisWeek: durationSummaryResult.recordset[0].totalHoursThisWeek
-                },
-                peakHours: peakHoursResult.recordset,
-                allTrainingPlans: allTrainingPlansResult.recordset,
-                engagementReport: engagementReportResult.recordset
-            }
-        });
-
+        engagementReport = res6.recordset || [];
     } catch (err) {
-        if (transaction.active) await transaction.rollback(); // Rollback on error
-        console.error('Error fetching combined progress page data:', err);
-        res.status(500).json({ success: false, message: 'Failed to load progress data.' });
+        console.error('Progress page engagementReport error:', err.message);
     }
+
+    return res.json({
+        success: true,
+        data: {
+            activitySummary,
+            bodyPartTrends,
+            durationSummary,
+            peakHours,
+            allTrainingPlans,
+            engagementReport
+        }
+    });
 });
 
 
@@ -3609,6 +3711,7 @@ router.get('/api/students', async (req, res) => {
     const { Branch, Gender } = req.session.user;
 
     try {
+        // First try with StudentBlacklist table join
         const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(10), Gender)
@@ -3620,24 +3723,452 @@ router.get('/api/students', async (req, res) => {
                     M.[Goal],
                     M.[SlotID],
                     S.[SlotName],
-                    S.[IsActive]
+                    S.[IsActive],
+                    CAST(CASE WHEN B.[BlacklistID] IS NOT NULL AND B.[IsActive] = 1 THEN 1 ELSE 0 END AS BIT) AS [IsBlacklisted],
+                    B.[Reason] AS [BlacklistReason]
                 FROM
                     [TestMaster] AS M
                 LEFT JOIN
                     [Slots] AS S ON M.[SlotID] = S.[SlotID]
+                LEFT JOIN
+                    [StudentBlacklist] AS B ON M.[TR] = B.[TR] AND B.[IsActive] = 1
                 WHERE
                     M.[Status] = 'Active'
                     AND M.[Branch] = @Branch
                     AND M.[Gender] = @Gender;
             `);
         
-        // CORRECTED RESPONSE: Wrap the data in an object
         res.json({ success: true, data: result.recordset });
 
     } catch (err) {
-        console.error('❌ Error fetching students:', err.message);
-        // Ensure the error response is also in JSON format
-        res.status(500).json({ success: false, error: 'Failed to fetch students' });
+        // Fallback if StudentBlacklist table is not yet created
+        try {
+            const fallbackResult = await pool.request()
+                .input('Branch', sql.NVarChar(50), Branch)
+                .input('Gender', sql.NVarChar(10), Gender)
+                .query(`
+                    SELECT
+                        M.[TR], M.[Name], M.[Darajah], M.[Goal], M.[SlotID], S.[SlotName], S.[IsActive],
+                        CAST(0 AS BIT) AS [IsBlacklisted], NULL AS [BlacklistReason]
+                    FROM [TestMaster] AS M
+                    LEFT JOIN [Slots] AS S ON M.[SlotID] = S.[SlotID]
+                    WHERE M.[Status] = 'Active' AND M.[Branch] = @Branch AND M.[Gender] = @Gender;
+                `);
+            return res.json({ success: true, data: fallbackResult.recordset });
+        } catch (fbErr) {
+            console.error('❌ Error fetching students:', fbErr.message);
+            res.status(500).json({ success: false, error: 'Failed to fetch students' });
+        }
+    }
+});
+
+// --- BLACKLIST STUDENT ENDPOINTS ---
+
+// Helper logic matching student dashboard attendance snapshot calculation
+function isPendingOrUnassignedSlot(slotName) {
+    const normalized = String(slotName || '').trim().toLowerCase();
+    return !normalized || normalized.includes('pending') || normalized === 'n/a' || normalized === 'unassigned';
+}
+
+function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName, tr, joinedAt }) {
+    if (joinedAt) {
+        const joinedDate = new Date(joinedAt);
+        joinedDate.setHours(0, 0, 0, 0);
+        const checkDate = new Date(dateEnd);
+        checkDate.setHours(0, 0, 0, 0);
+        if (checkDate < joinedDate) {
+            return false;
+        }
+    }
+    let latestRecord = null;
+    const oldestRecord = history.length > 0 ? history[0] : null;
+
+    for (const h of history) {
+        if (new Date(h.ChangedAt) <= dateEnd) {
+            latestRecord = h;
+        }
+    }
+
+    if (latestRecord) {
+        const status = String(latestRecord.NewStatus || '').trim().toLowerCase();
+        if (status && status !== 'active') return false;
+        let slotToCheck = latestRecord.NewSlotName;
+        if (!slotToCheck && status === 'active') {
+            slotToCheck = fallbackSlotName;
+        }
+        return !isPendingOrUnassignedSlot(slotToCheck);
+    }
+
+    if (oldestRecord) {
+        const status = String(oldestRecord.PreviousStatus || '').trim().toLowerCase();
+        if (status && status !== 'active') return false;
+        let slotToCheck = oldestRecord.PreviousSlotName;
+        if (!slotToCheck && status === 'active') {
+            slotToCheck = fallbackSlotName;
+        }
+        return !isPendingOrUnassignedSlot(slotToCheck);
+    }
+
+    const status = String(fallbackStatus || '').trim().toLowerCase();
+    if (status && status !== 'active') return false;
+    return !isPendingOrUnassignedSlot(fallbackSlotName);
+}
+
+async function calculateStudentAttendanceSummary(tr) {
+    const studentResult = await pool.request()
+        .input('TR', sql.Int, tr)
+        .query(`
+            SELECT M.JoinedAt, M.Status, S.SlotName
+            FROM TestMaster M
+            LEFT JOIN Slots S ON M.SlotID = S.SlotID
+            WHERE M.TR = @TR
+        `);
+
+    if (studentResult.recordset.length === 0 || !studentResult.recordset[0].JoinedAt) {
+        return {
+            present: 0,
+            absent: 0,
+            onLeave: 0,
+            expectedDays: 0,
+            attendanceRate: 0,
+            joinedAt: studentResult.recordset[0]?.JoinedAt || null
+        };
+    }
+
+    const student = studentResult.recordset[0];
+    const today = moment.tz("Asia/Kolkata").startOf('day');
+    const joinedAt = moment.tz(student.JoinedAt, "Asia/Kolkata").startOf('day');
+
+    const [attendanceResult, historyResult] = await Promise.all([
+        pool.request()
+            .input('TR', sql.Int, tr)
+            .input('JoinedAt', sql.Date, joinedAt.format('YYYY-MM-DD'))
+            .input('Tomorrow', sql.Date, today.clone().add(1, 'day').format('YYYY-MM-DD'))
+            .query(`
+                SELECT
+                    CONVERT(varchar, CAST(DATEADD(MINUTE, 330, CreatedAt) AS date), 23) AS AttendanceDate,
+                    MAX(CASE WHEN IsPresent = 1 THEN 1 ELSE 0 END) AS IsPresent,
+                    MAX(CASE WHEN OnLeave = 1 THEN 1 ELSE 0 END) AS OnLeave
+                FROM Attendance
+                WHERE TR = @TR
+                  AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS date) >= @JoinedAt
+                  AND CAST(DATEADD(MINUTE, 330, CreatedAt) AS date) < @Tomorrow
+                GROUP BY CAST(DATEADD(MINUTE, 330, CreatedAt) AS date)
+            `),
+        pool.request()
+            .input('TR', sql.Int, tr)
+            .query(`
+                SELECT ChangedAt, PreviousStatus, NewStatus, PreviousSlotName, NewSlotName
+                FROM StudentStatusHistory
+                WHERE TR = @TR
+                ORDER BY ChangedAt ASC
+            `)
+    ]);
+
+    const attendanceByDate = new Map(
+        attendanceResult.recordset.map(row => [
+            row.AttendanceDate,
+            {
+                isPresent: Boolean(row.IsPresent),
+                onLeave: Boolean(row.OnLeave)
+            }
+        ])
+    );
+    const history = historyResult.recordset || [];
+
+    let present = 0;
+    let absent = 0;
+    let onLeave = 0;
+    const cursor = joinedAt.clone();
+
+    while (cursor.isSameOrBefore(today, 'day')) {
+        const dayOfWeek = cursor.isoWeekday();
+
+        if (dayOfWeek <= 6) { // Mon-Sat
+            const dateEnd = cursor.clone().endOf('day').toDate();
+            const isExpected = isExpectedAttendanceDay({
+                dateEnd,
+                history,
+                fallbackStatus: student.Status,
+                fallbackSlotName: student.SlotName,
+                tr,
+                joinedAt: student.JoinedAt
+            });
+
+            if (isExpected) {
+                const dateKey = cursor.format('YYYY-MM-DD');
+                const attendance = attendanceByDate.get(dateKey);
+
+                if (attendance?.isPresent) {
+                    present++;
+                } else if (attendance?.onLeave) {
+                    onLeave++;
+                } else if (cursor.isBefore(today, 'day')) {
+                    absent++;
+                }
+            }
+        }
+
+        cursor.add(1, 'day');
+    }
+
+    const rateDenominator = present + absent;
+    const attendanceRate = rateDenominator > 0
+        ? Number(((present / rateDenominator) * 100).toFixed(1))
+        : 0;
+
+    return {
+        present,
+        absent,
+        onLeave,
+        expectedDays: present + absent + onLeave,
+        attendanceRate,
+        joinedAt: joinedAt.format('YYYY-MM-DD')
+    };
+}
+
+// Fetch student details & calculated attendance % for blacklist preview
+router.get('/api/blacklist/student-preview/:tr', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
+
+    const tr = parseInt(req.params.tr, 10);
+    if (isNaN(tr)) {
+        return res.status(400).json({ success: false, error: 'Please enter a valid numeric TR number.' });
+    }
+
+    const { Branch, Gender, Role } = req.session.user;
+
+    try {
+        // 1. Fetch student basic info from TestMaster with SlotName and Blacklist status
+        const studentRes = await pool.request()
+            .input('TR', sql.Int, tr)
+            .query(`
+                SELECT 
+                    M.[TR], M.[Name], M.[Darajah], M.[Status], M.[Branch], M.[Gender], 
+                    M.[Goal], M.[JoinedAt], S.[SlotName],
+                    CAST(CASE WHEN B.[BlacklistID] IS NOT NULL AND B.[IsActive] = 1 THEN 1 ELSE 0 END AS BIT) AS [IsBlacklisted],
+                    B.[Reason] AS [BlacklistReason]
+                FROM [TestMaster] AS M
+                LEFT JOIN [Slots] AS S ON M.[SlotID] = S.[SlotID]
+                LEFT JOIN [StudentBlacklist] AS B ON M.[TR] = B.[TR] AND B.[IsActive] = 1
+                WHERE M.[TR] = @TR
+            `);
+
+        if (studentRes.recordset.length === 0) {
+            return res.status(404).json({ success: false, error: `Student with TR #${tr} was not found in database.` });
+        }
+
+        const student = studentRes.recordset[0];
+
+        // 2. Validate Branch & Gender scoping (unless Admin role override)
+        if (Role !== 'Admin' && (student.Branch !== Branch || student.Gender !== Gender)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: `Student TR #${tr} belongs to ${student.Branch} (${student.Gender}). You can only flag students from your branch (${Branch} - ${Gender}).` 
+            });
+        }
+
+        // 3. Calculate exact attendance summary using identical student dashboard algorithm
+        const attStats = await calculateStudentAttendanceSummary(tr);
+
+        return res.json({
+            success: true,
+            student: {
+                TR: student.TR,
+                Name: student.Name,
+                Darajah: student.Darajah || 'N/A',
+                SlotName: student.SlotName || 'Unassigned',
+                Status: student.Status || 'Active',
+                Branch: student.Branch,
+                Gender: student.Gender,
+                Goal: student.Goal || 'Not Set',
+                JoinedAt: student.JoinedAt,
+                AttendanceRate: attStats.attendanceRate,
+                TotalRecords: attStats.expectedDays,
+                TotalPresent: attStats.present,
+                TotalAbsences: attStats.absent,
+                TotalOnLeave: attStats.onLeave,
+                ExpectedDays: attStats.expectedDays,
+                IsBlacklisted: !!student.IsBlacklisted,
+                BlacklistReason: student.BlacklistReason || null
+            }
+        });
+
+    } catch (err) {
+        console.error('Error fetching student preview for blacklist:', err);
+        return res.status(500).json({ success: false, error: 'Server error fetching student details.' });
+    }
+});
+
+// Fetch active blacklisted students for branch
+router.get('/api/blacklist', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
+
+    const { Branch, Gender, Role } = req.session.user;
+
+    try {
+        let queryStr = `
+            SELECT 
+                B.[BlacklistID],
+                B.[TR],
+                M.[Name],
+                M.[Darajah],
+                M.[Goal],
+                M.[SlotID],
+                S.[SlotName],
+                B.[Reason],
+                B.[AddedByUsername],
+                B.[CreatedAt]
+            FROM [StudentBlacklist] AS B
+            INNER JOIN [TestMaster] AS M ON B.[TR] = M.[TR]
+            LEFT JOIN [Slots] AS S ON M.[SlotID] = S.[SlotID]
+            WHERE B.[IsActive] = 1
+        `;
+
+        const reqPool = pool.request();
+        if (Role !== 'Admin') {
+            reqPool.input('Branch', sql.NVarChar(50), Branch);
+            reqPool.input('Gender', sql.NVarChar(10), Gender);
+            queryStr += ` AND B.[Branch] = @Branch AND B.[Gender] = @Gender`;
+        }
+        queryStr += ` ORDER BY B.[CreatedAt] DESC;`;
+
+        const result = await reqPool.query(queryStr);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('❌ Error fetching blacklist:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch blacklist records. Please ensure migration SQL script is executed.' });
+    }
+});
+
+// Fetch active blacklisted TR IDs and reasons (lightweight map)
+router.get('/api/blacklist/ids', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized.' });
+    }
+
+    const { Branch, Gender, Role } = req.session.user;
+
+    try {
+        let queryStr = `
+            SELECT [TR], [Reason] 
+            FROM [StudentBlacklist] 
+            WHERE [IsActive] = 1
+        `;
+
+        const reqPool = pool.request();
+        if (Role !== 'Admin') {
+            reqPool.input('Branch', sql.NVarChar(50), Branch);
+            reqPool.input('Gender', sql.NVarChar(10), Gender);
+            queryStr += ` AND [Branch] = @Branch AND [Gender] = @Gender`;
+        }
+
+        const result = await reqPool.query(queryStr);
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        res.json({ success: true, data: [] });
+    }
+});
+
+// Add student to Blacklist with Branch validation
+router.post('/api/blacklist', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
+
+    const { TR, Reason } = req.body;
+    const { Branch, Gender, Username, UserID, Role } = req.session.user;
+
+    const trNum = parseInt(TR, 10);
+    if (isNaN(trNum) || !Reason || !String(Reason).trim()) {
+        return res.status(400).json({ success: false, error: 'Valid TR number and a reason are required.' });
+    }
+
+    try {
+        // 1. Check student existence and branch matching
+        const studentCheck = await pool.request()
+            .input('TR', sql.Int, trNum)
+            .query('SELECT [TR], [Name], [Branch], [Gender], [Status] FROM [TestMaster] WHERE [TR] = @TR');
+
+        if (studentCheck.recordset.length === 0) {
+            return res.status(404).json({ success: false, error: `Student with TR ${trNum} does not exist in database.` });
+        }
+
+        const student = studentCheck.recordset[0];
+
+        if (Role !== 'Admin' && (student.Branch !== Branch || student.Gender !== Gender)) {
+            return res.status(400).json({
+                success: false,
+                error: `Student TR ${trNum} (${student.Name}) belongs to branch '${student.Branch}' (${student.Gender}). You can only blacklist students from your assigned branch '${Branch}' (${Gender}).`
+            });
+        }
+
+        // 2. Check if student is already blacklisted
+        const activeCheck = await pool.request()
+            .input('TR', sql.Int, trNum)
+            .query('SELECT [BlacklistID] FROM [StudentBlacklist] WHERE [TR] = @TR AND [IsActive] = 1');
+
+        if (activeCheck.recordset.length > 0) {
+            return res.status(400).json({ success: false, error: `Student TR ${trNum} (${student.Name}) is already blacklisted.` });
+        }
+
+        // 3. Insert into StudentBlacklist using student's actual Branch & Gender
+        await pool.request()
+            .input('TR', sql.Int, trNum)
+            .input('Reason', sql.NVarChar(500), Reason.trim())
+            .input('AddedByUserID', sql.Int, UserID || null)
+            .input('AddedByUsername', sql.NVarChar(50), Username || 'Staff')
+            .input('Branch', sql.NVarChar(50), student.Branch)
+            .input('Gender', sql.NVarChar(10), student.Gender)
+            .query(`
+                INSERT INTO [StudentBlacklist] (TR, Reason, AddedByUserID, AddedByUsername, Branch, Gender, IsActive, CreatedAt)
+                VALUES (@TR, @Reason, @AddedByUserID, @AddedByUsername, @Branch, @Gender, 1, SYSUTCDATETIME());
+            `);
+
+        return res.json({ success: true, message: `Student TR ${trNum} (${student.Name}) has been added to the blacklist.` });
+
+    } catch (err) {
+        console.error('❌ Error blacklisting student:', err);
+        return res.status(500).json({ success: false, error: err.message || 'Failed to blacklist student' });
+    }
+});
+
+// Remove student from Blacklist (Unflag)
+router.post('/api/blacklist/remove', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized.' });
+    }
+
+    const { TR, RemovalReason } = req.body;
+    const { Username } = req.session.user;
+    const trNum = parseInt(TR);
+
+    if (isNaN(trNum)) {
+        return res.status(400).json({ success: false, error: 'Invalid TR number' });
+    }
+
+    try {
+        await pool.request()
+            .input('TR', sql.Int, trNum)
+            .input('RemovedByUsername', sql.NVarChar(50), Username || 'Staff')
+            .input('RemovalReason', sql.NVarChar(500), RemovalReason || 'Unflagged by staff')
+            .query(`
+                UPDATE [StudentBlacklist]
+                SET IsActive = 0,
+                    RemovedAt = SYSUTCDATETIME(),
+                    RemovedByUsername = @RemovedByUsername,
+                    RemovalReason = @RemovalReason
+                WHERE TR = @TR AND IsActive = 1;
+            `);
+
+        res.json({ success: true, message: `Student TR ${trNum} has been unflagged.` });
+    } catch (err) {
+        console.error('❌ Error removing blacklist:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to remove student from blacklist' });
     }
 });
 

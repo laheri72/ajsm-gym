@@ -16,24 +16,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <script src="/assets/js/moment-timezone-with-data.min.js"></script>
 
         <script>
-        // This script runs instantly, before anything is displayed.
         try {
             const userString = localStorage.getItem('staffUser');
             if (userString) {
                 const user = JSON.parse(userString);
                 const classList = [];
-
-                if (user.Role === 'Admin') {
-                    classList.push('is-admin');
-                }
-
-
-                if (classList.length > 0) {
-                    document.documentElement.className = classList.join(' ');
-                }
+                if (user.Role === 'Admin') classList.push('is-admin');
+                if (classList.length > 0) document.documentElement.className = classList.join(' ');
             }
         } catch (e) {
-            // If something fails, do nothing and let the main script handle it.
             console.error('Bootstrap script failed:', e);
         }
     </script>
@@ -42,7 +33,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body style="visibility: hidden;">
@@ -60,13 +50,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span></span>
                 <span></span>
             </button>
-<nav class="navbar" id="navbar">
-    <div class="sidebar-header">
-        <span id="staff-username-display" class="navbar-username-mobile" 
-              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
-            Loading...
-        </span>
-    </div>
+            <nav class="navbar" id="navbar">
+                <div class="sidebar-header">
+                    <span id="staff-username-display" class="navbar-username-mobile" 
+                          data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
 
     <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
     <a href="test.html" id="tab-test">Fitness Test</a>
@@ -78,9 +68,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
             <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+            <li><a class="dropdown-item" href="blacklist.html" id="tab-blacklist">Blacklisted Students</a></li>
         </ul>
     </div>
-    
+
     <div class="nav-item dropdown" id="time-dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Attendance

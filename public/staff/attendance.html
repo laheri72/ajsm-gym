@@ -1,229 +1,246 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-T87V29HB');</script>
-<!-- End Google Tag Manager -->
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-T87V29HB');</script>
+    <!-- End Google Tag Manager -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Attendance Management - Staff Portal</title>
+    <link rel="icon" href="../images/favicon.png" type="image/png">
+
+    <script>
+        try {
+            const userString = localStorage.getItem('staffUser');
+            if (userString) {
+                const user = JSON.parse(userString);
+                const classList = [];
+                if (user.Role === 'Admin') classList.push('is-admin');
+                if (classList.length > 0) document.documentElement.className = classList.join(' ');
+            }
+        } catch (e) {
+            console.error('Bootstrap script failed:', e);
+        }
+    </script>
+
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/flatpickr.min.css">
+    <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+
     <script src="/assets/js/flatpickr.min.js"></script>
     <script src="/assets/js/moment.min.js"></script>
     <script src="/assets/js/moment-timezone-with-data.min.js"></script>
-    <title>Attendance Management</title> <link rel="icon" href="../images/favicon.png" type="image/png">
-        <script>
-        // This script runs instantly, before anything is displayed.
-try {
-            const userString = localStorage.getItem('staffUser');
-if (userString) {
-                const user = JSON.parse(userString);
-                const classList = [];
-
-                if (user.Role === 'Admin') {
-                    classList.push('is-admin');
-}
-
-                if (classList.length > 0) {
-                    document.documentElement.className = classList.join(' ');
-}
-            }
-        } catch (e) {
-            // If something fails, do nothing and let the main script handle it.
-console.error('Bootstrap script failed:', e);
-        }
-    </script>
-    
-    <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <link rel="stylesheet" href="css/dashboard.css">
 </head>
+
 <body style="visibility: hidden;">
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T87V29HB"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T87V29HB"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
     <div class="dashboard-container">
         <header class="app-header">
             <div class="brand">
                 <a href="overview.html">FitTracker</a>
             </div>
-        
-    <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Open Menu">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
             <nav class="navbar" id="navbar">
-    <div class="sidebar-header">
-        <span id="staff-username-display" class="navbar-username-mobile" 
-              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
-            Loading...
-        </span>
-    </div>
+                <div class="sidebar-header">
+                    <span id="staff-username-display" class="navbar-username-mobile" data-bs-toggle="popover"
+                        data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
 
-    <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-    <a href="test.html" id="tab-test">Fitness Test</a>
+                <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+                <a href="test.html" id="tab-test">Fitness Test</a>
 
-    <div class="nav-item dropdown" id="students-dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Student Records
-        </a>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
-            <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
-        </ul>
-    </div>
-    
-    <div class="nav-item dropdown" id="time-dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Attendance
-        </a>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
-            <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
-            <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
-        </ul>
-    </div>
+                <div class="nav-item dropdown" id="students-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Student Records
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
+                        <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+                        <li><a class="dropdown-item" href="blacklist.html" id="tab-blacklist">Blacklisted Students</a></li>
+                    </ul>
+                </div>
 
-    <div class="nav-item dropdown" id="analytics-dropdown">
-        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Analytics
-        </a>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
-            <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a></li>
-        </ul>
-    </div>
+                <div class="nav-item dropdown" id="time-dropdown">
+                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Attendance
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item active" href="attendance.html" id="tab-attendance">Attendance Grid</a></li>
+                        <li><a class="dropdown-item" href="leaves.html" id="tab-leaves">Leave Management</a></li>
+                        <li><a class="dropdown-item" href="fitness-attendance.html" id="tab-fitness-attendance">Fitness Test Attendance</a></li>
+                    </ul>
+                </div>
 
-    <div class="nav-item" id="user-menu-desktop">
-        <span id="staff-username-display-desktop" class="navbar-username-desktop"
-              data-bs-toggle="popover" data-bs-placement="bottom" data-bs-trigger="hover">
-            Loading...
-        </span>
-    </div>
+                <div class="nav-item dropdown" id="analytics-dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Analytics
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="progress.html" id="tab-Progress">Progress Analysis</a></li>
+                        <li><a class="dropdown-item" href="profile.html" id="tab-profile">Student Profile Search</a></li>
+                    </ul>
+                </div>
 
-    <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+                <div class="nav-item" id="user-menu-desktop">
+                    <span id="staff-username-display-desktop" class="navbar-username-desktop" data-bs-toggle="popover"
+                        data-bs-placement="bottom" data-bs-trigger="hover">
+                        Loading...
+                    </span>
+                </div>
 
-    <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
-</nav>
+                <a href="#" id="logoutLinkDesktop" class="desktop-only-logout">Logout</a>
+                <a href="#" id="logoutLinkMobile" class="mobile-only-logout">Logout</a>
+            </nav>
         </header>
 
         <main class="main-content">
- 
-           <div class="content">
-                <section id="attendance-summary" class="card">
-                    <section id="edit-attendance" class="card mt-4 p-3">
-                        <h2>Attendance Module</h2>
-                     
-   <div class="row mb-2">
-                            <div class="col-md-3">
-                                <label for="editTR">TR Number</label>
-                                
-<input type="number" class="form-control" id="editTR" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="editDate">Date</label>
-      
-                          <input type="date" class="form-control" id="editDate" required>
-                            </div>
-                            <div class="col-md-3 d-flex align-items-end">
-           
-                     <button class="btn btn-primary w-100" id="fetchAttendanceBtn">Fetch Record</button>
-                            </div>
-                        </div>
-                      
-  <div id="attendanceEditor" style="display: none;">
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                
-    <label>Current Status</label>
-                                    <input type="text" class="form-control" id="currentStatus" readonly>
-                                </div>
-                       
-         <div class="col-md-4">
-                                    <label for="newStatusSelect">Change Status To</label>
-                                    <select class="form-control" id="newStatusSelect">
-             
-                           <option value="on_leave">On Leave</option>
-                                        <option value="present">Present</option>
-                              
-      </select>
-                                </div>
-                                <div class="col-md-4 d-flex align-items-end">
-                           
-         <button class="btn btn-success w-100" id="updateAttendanceBtn">Save Changes</button>
-                                </div>
-                            </div>
-                          
-  <h3>
-                                <p id="editMessage" class="text-info mt-3"></p>
-                            </h3>
-                        </div>
-           
-         </section>
+            <div class="content container-fluid mt-4">
+                
+                <!-- Page Title -->
+                <div class="row g-3 mb-4 align-items-center">
+                    <div class="col-12 col-md-8">
+                        <h2 class="fw-bold text-dark mb-1">
+                            <span>📅</span> Attendance Management
+                        </h2>
+                        <p class="text-muted mb-0">Track weekly attendance per slot, update individual attendance records, and declare gym holidays.</p>
+                    </div>
+                </div>
 
-                    <section id="bulk-attendance" class="card mt-4 p-3">
-                        <h2>Mark Holidays - At Gym</h2>
-                        <div class="row align-items-end">
-                            <div class="col-md-3 mb-3">
-                                <label for="bulkLeaveDarajah">Filter by Darajah</label>
-                                <select class="form-control" id="bulkLeaveDarajah">
+                <!-- Controls & Tools Bar -->
+                <div class="card p-3 mb-4 border-0 shadow-sm rounded-3">
+                    <div class="row g-3 align-items-center justify-content-between">
+                        <div class="col-12 col-md-5 col-lg-4">
+                            <label for="staffWeekPickerInput" class="form-label fw-medium text-dark mb-1 small">Select Tracking Week:</label>
+                            <input type="text" id="staffWeekPickerInput" class="form-control form-control-sm" placeholder="Select a week...">
+                        </div>
+                        <div class="col-12 col-md-7 col-lg-8 text-md-end d-flex flex-wrap gap-2 justify-content-md-end align-items-end">
+                            <button id="toggleEditRecordBtn" class="btn btn-sm btn-outline-primary px-3" type="button" data-bs-toggle="collapse" data-bs-target="#edit-attendance-wrapper" aria-expanded="false">
+                                ✏️ Edit Single Record
+                            </button>
+                            <button id="toggleBulkHolidayBtn" class="btn btn-sm btn-outline-warning px-3 text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#bulk-attendance-wrapper" aria-expanded="false">
+                                🌴 Mark Gym Holiday
+                            </button>
+                            <button id="exportAttendanceBtn" class="btn btn-sm btn-success px-3 ms-md-2">
+                                📥 Export to Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collapsible: Edit Single Attendance Record -->
+                <div class="collapse mb-4" id="edit-attendance-wrapper">
+                    <section id="edit-attendance" class="card p-4 border-0 shadow-sm rounded-3">
+                        <h4 class="fw-bold text-dark mb-3">
+                            <span>✏️</span> Edit Student Attendance Record
+                        </h4>
+                        <div class="row g-3 mb-2">
+                            <div class="col-12 col-md-4">
+                                <label for="editTR" class="form-label fw-medium text-dark small">Student TR Number</label>
+                                <input type="number" class="form-control form-control-sm" id="editTR" placeholder="e.g. 25687" required>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label for="editDate" class="form-label fw-medium text-dark small">Attendance Date</label>
+                                <input type="date" class="form-control form-control-sm" id="editDate" required>
+                            </div>
+                            <div class="col-12 col-md-4 d-flex align-items-end">
+                                <button class="btn btn-sm btn-primary w-100 py-2" id="fetchAttendanceBtn">Fetch Record</button>
+                            </div>
+                        </div>
+
+                        <div id="attendanceEditor" style="display: none;" class="mt-3 p-3 bg-light rounded border">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label fw-medium text-dark small">Current Status</label>
+                                    <input type="text" class="form-control form-control-sm bg-white" id="currentStatus" readonly>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label for="newStatusSelect" class="form-label fw-medium text-dark small">Change Status To</label>
+                                    <select class="form-select form-select-sm" id="newStatusSelect">
+                                        <option value="on_leave">On Leave</option>
+                                        <option value="present">Present</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-4 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-success w-100 py-2" id="updateAttendanceBtn">Save Changes</button>
+                                </div>
+                            </div>
+                            <p id="editMessage" class="text-info small mt-2 mb-0"></p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Collapsible: Mark Holidays (Bulk Leave) -->
+                <div class="collapse mb-4" id="bulk-attendance-wrapper">
+                    <section id="bulk-attendance" class="card p-4 border-0 shadow-sm rounded-3">
+                        <h4 class="fw-bold text-dark mb-3">
+                            <span>🌴</span> Declare Gym Holiday (Bulk Attendance)
+                        </h4>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-3">
+                                <label for="bulkLeaveDarajah" class="form-label fw-medium text-dark small">Filter by Darajah</label>
+                                <select class="form-select form-select-sm" id="bulkLeaveDarajah">
                                     <option value="All">All Students</option>
                                     <!-- Darajahs populated here -->
                                 </select>
-                                <div id="bulkLeaveStudentSummary" class="mt-1" style="font-size: 0.85em;">
-                                    <span id="bulkLeaveStudentCount" class="text-primary fw-bold" style="cursor: pointer; text-decoration: underline;">Loading students...</span>
+                                <div id="bulkLeaveStudentSummary" class="mt-1 small">
+                                    <span id="bulkLeaveStudentCount" class="text-primary fw-semibold" style="cursor: pointer; text-decoration: underline;">Loading students...</span>
                                 </div>
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="bulkLeaveStartDate">Start Date</label>
-                                <input type="date" class="form-control" id="bulkLeaveStartDate">
+                            <div class="col-12 col-md-3">
+                                <label for="bulkLeaveStartDate" class="form-label fw-medium text-dark small">Start Date</label>
+                                <input type="date" class="form-control form-control-sm" id="bulkLeaveStartDate">
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="bulkLeaveEndDate">End Date</label>
-                                <input type="date" class="form-control" id="bulkLeaveEndDate">
+                            <div class="col-12 col-md-3">
+                                <label for="bulkLeaveEndDate" class="form-label fw-medium text-dark small">End Date</label>
+                                <input type="date" class="form-control form-control-sm" id="bulkLeaveEndDate">
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <button class="btn btn-warning w-100" id="bulkLeaveBtn">Declare Holiday</button>
+                            <div class="col-12 col-md-3">
+                                <button class="btn btn-sm btn-warning w-100 py-2 text-dark fw-medium" id="bulkLeaveBtn">Declare Holiday</button>
                             </div>
                         </div>
                     </section>
+                </div>
 
-                <div class="container mt-5">
-                    <h2>Weekly Attendance</h2>
-
-                    <div class="form-group mb-4"> 
-                        <label for="staffWeekPickerInput" class="form-label">Select Week:</label>
-                        <input type="text" id="staffWeekPickerInput" class="form-control" placeholder="Select a week...">
-                        
+                <!-- Attendance Grid Container -->
+                <div class="card p-4 border-0 shadow-sm rounded-3 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h4 class="fw-bold text-dark mb-0">Weekly Attendance Grid</h4>
+                        <span class="text-muted small">Note: Export attendance data weekly for record keeping.</span>
                     </div>
-                    <div class="d-flex justify-content-end">
-                        <button id="exportAttendanceBtn" class="btn btn-success mb-3">Export to Excel</button>
-                    </div>
-                    <b><p class="text-muted">Note: Please export attendance data weekly for consistency</p></b>
-
                     
-                    <div id="slot-attendance-container" class="mt-4">
-                        
+                    <div id="slot-attendance-container">
+                        <!-- Dynamic slot tables rendered here -->
                     </div>
                 </div>
 
-                </section>
-                </div>
+            </div>
         </main>
     </div>
 
     <div class="nav-overlay" id="nav-overlay"></div>
 
     <script src="/assets/js/jquery.min.js"></script>
-  
-  <script src="/assets/js/dataTables.min.js"></script>
+    <script src="/assets/js/dataTables.min.js"></script>
     <script src="/assets/js/xlsx.full.min.js"></script>
     <script src="/assets/js/sweetalert2.all.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
@@ -231,51 +248,42 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/attendance.js"></script>
 
-    <script type ="module">
+    <script type="module">
         document.addEventListener('DOMContentLoaded', function () {
             const hamburgerBtn = document.getElementById('hamburger-btn');
-const navOverlay = document.getElementById('nav-overlay');
-            
+            const navOverlay = document.getElementById('nav-overlay');
+
             function toggleNav() {
                 document.body.classList.toggle('nav-open');
-}
+            }
 
-            if (hamburgerBtn) {
-                hamburgerBtn.addEventListener('click', toggleNav);
-}
-
-            if (navOverlay) {
-                navOverlay.addEventListener('click', toggleNav);
-}
-
-
-});
+            if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleNav);
+            if (navOverlay) navOverlay.addEventListener('click', toggleNav);
+        });
     </script>
+
     <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Create Your New Password</h5>
-            </div>
-            <div class="modal-body">
-                
-<p>Welcome! For your security, you must create a new password for your account.</p>
-                <form id="setPasswordForm">
-                    <div class="mb-3">
-                        <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
-                    
-    <input type="password" class="form-control" id="newPassword" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                       
- <input type="password" class="form-control" id="confirmPassword" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Set New Password</button>
-                </form>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Your New Password</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Welcome! For your security, you must create a new password for your account.</p>
+                    <form id="setPasswordForm">
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 </body>
 </html>

@@ -12,32 +12,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Admin Tab</title> <link rel="icon" href="../images/favicon.png" type="image/png">
         <script>
-        // This script runs instantly, before anything is displayed.
         try {
             const userString = localStorage.getItem('staffUser');
             if (userString) {
                 const user = JSON.parse(userString);
                 const classList = [];
-
-                if (user.Role === 'Admin') {
-                    classList.push('is-admin');
-                }
-
-                if (classList.length > 0) {
-                    document.documentElement.className = classList.join(' ');
-                }
+                if (user.Role === 'Admin') classList.push('is-admin');
+                if (classList.length > 0) document.documentElement.className = classList.join(' ');
             }
         } catch (e) {
-            // If something fails, do nothing and let the main script handle it.
             console.error('Bootstrap script failed:', e);
         }
     </script>
-    
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body style="visibility: hidden;">
@@ -63,7 +53,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </span>
     </div>
 
-    <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
+    <a href="admin.html" id="tab-admin" class="active">👑 Admin Panel</a>
     <a href="test.html" id="tab-test">Fitness Test</a>
 
     <div class="nav-item dropdown" id="students-dropdown">
@@ -73,9 +63,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
             <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+            <li><a class="dropdown-item" href="blacklist.html" id="tab-blacklist">Blacklisted Students</a></li>
         </ul>
     </div>
-    
+
     <div class="nav-item dropdown" id="time-dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Attendance

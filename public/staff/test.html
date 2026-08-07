@@ -13,67 +13,56 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <title>Fitness Test</title>
     <link rel="icon" href="../images/favicon.png" type="image/png">
             <script>
-        // This script runs instantly, before anything is displayed.
         try {
-                const userString = localStorage.getItem('staffUser');
-                if (userString) {
+            const userString = localStorage.getItem('staffUser');
+            if (userString) {
                 const user = JSON.parse(userString);
                 const classList = [];
-
-                if (user.Role === 'Admin') {
-                    classList.push('is-admin');
-}
-
-                if (classList.length > 0) {
-                    document.documentElement.className = classList.join(' ');
-}
+                if (user.Role === 'Admin') classList.push('is-admin');
+                if (classList.length > 0) document.documentElement.className = classList.join(' ');
             }
         } catch (e) {
-            // If something fails, do nothing and let the main script handle it.
-console.error('Bootstrap script failed:', e);
+            console.error('Bootstrap script failed:', e);
         }
     </script>
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="css/dashboard.css">
-    
     <style>
-        /* All your existing styles for charts and rows remain */
         .chart-container {
             position: relative;
-        height: 300px;
+            height: 300px;
             width: 100%;
-    }
+        }
         .charts-grid {
             display: grid;
-        grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 2rem;
         }
         @media (max-width: 992px) {
             .charts-grid {
                 grid-template-columns: 1fr;
-        }
+            }
         }
         .bmi-danger td {
-        background-color: #f8d7da !important;
-        color: #721c24 !important;
+            background-color: #f8d7da !important;
+            color: #721c24 !important;
         }
         .grade-success td {
-        background-color: #d4edda !important;
-        color: #155724 !important;
+            background-color: #d4edda !important;
+            color: #155724 !important;
         }
         .grade-fail td {
-        background-color: #f5c6cb !important;
-        color: #721c24 !important;
+            background-color: #f5c6cb !important;
+            color: #721c24 !important;
             font-weight: 500;
         }
         #filter-row th {
-        padding: 0.5rem;
+            padding: 0.5rem;
         }
         #filter-row select {
-        width: 100%;
+            width: 100%;
             min-width: 120px;
         }
         /* Hide the admin warning by default */
@@ -111,7 +100,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
 
     <a href="admin.html" id="tab-admin">👑 Admin Panel</a>
-    <a href="test.html" id="tab-test">Fitness Test</a>
+    <a href="test.html" id="tab-test" class="active">Fitness Test</a>
 
     <div class="nav-item dropdown" id="students-dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -120,9 +109,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="entry.html" id="tab-entry">Slot & Student Entry</a></li>
             <li><a class="dropdown-item" href="records.html" id="tab-record">Active Students List</a></li>
+            <li><a class="dropdown-item" href="blacklist.html" id="tab-blacklist">Blacklisted Students</a></li>
         </ul>
     </div>
-    
+
     <div class="nav-item dropdown" id="time-dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Attendance
