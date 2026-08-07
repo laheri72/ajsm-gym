@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     let blacklistTable = null;
+    let blacklistHistoryTable = null;
     let staffBranch = 'Unknown';
     let currentFetchedTR = null;
 
@@ -48,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (countEl) countEl.textContent = records.length;
 
-            const uniqueBatches = new Set(records.map(r => r.SlotName || 'Unassigned'));
+            const uniqueBatches = new Set(records.map(r => r.SlotName).filter(s => s && s !== 'Unassigned'));
             if (batchesEl) batchesEl.textContent = uniqueBatches.size;
 
             const now = new Date();
@@ -118,6 +119,82 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             console.error('Error loading blacklist:', err);
             Swal.fire('Notice', err.message, 'warning');
+        }
+    }
+
+    /**
+     * Loads unflagged student audit history
+     */
+    async function loadBlacklistHistoryData() {
+        if (blacklistHistoryTable) {
+            blacklistHistoryTable.destroy();
+            blacklistHistoryTable = null;
+        }
+
+        const tbody = document.querySelector('#blacklist-history-table tbody');
+        if (tbody) tbody.innerHTML = '';
+
+        try {
+            const res = await fetch('/api/blacklist/history');
+            const json = await res.json();
+
+            if (!json.success) return;
+
+            const records = json.data || [];
+
+            const historyCountEl = document.getElementById('stat-unflagged-history-count');
+            if (historyCountEl) historyCountEl.textContent = records.length;
+
+            blacklistHistoryTable = $('#blacklist-history-table').DataTable({
+                data: records,
+                columns: [
+                    { data: 'TR', className: 'fw-semibold text-secondary' },
+                    { 
+                        data: 'Name',
+                        className: 'fw-medium',
+                        render: function(data) {
+                            return `<span class="badge bg-success-subtle text-success border border-success-subtle me-1">✓ Unflagged</span> ${data || 'Unknown'}`;
+                        }
+                    },
+                    { 
+                        data: 'OriginalReason',
+                        render: function(data) {
+                            return `<span class="text-muted small">${data || 'N/A'}</span>`;
+                        }
+                    },
+                    { 
+                        data: 'FlaggedDate',
+                        render: function(data, type, row) {
+                            if (!data) return '-';
+                            const d = new Date(data).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                            return `<span class="small">${d}</span> <span class="text-muted">by ${row.AddedByUsername || 'Staff'}</span>`;
+                        }
+                    },
+                    { 
+                        data: 'UnflaggedDate',
+                        render: function(data) {
+                            if (!data) return '-';
+                            const d = new Date(data);
+                            return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                        }
+                    },
+                    { data: 'UnflaggedBy', className: 'text-muted small' },
+                    { 
+                        data: 'UnflaggedReason',
+                        className: 'fw-medium text-dark',
+                        render: function(data) {
+                            return `<span class="text-success">${data || 'Unflagged by staff'}</span>`;
+                        }
+                    }
+                ],
+                responsive: true,
+                destroy: true,
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
+            });
+
+        } catch (err) {
+            console.error('Error loading blacklist history:', err);
         }
     }
 
@@ -317,6 +394,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     Swal.fire('Unflagged!', json.message, 'success');
                     loadBlacklistData();
+                    loadBlacklistHistoryData();
                 } catch (err) {
                     Swal.fire('Error', err.message, 'error');
                 }
@@ -329,9 +407,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
             loadBlacklistData();
+            loadBlacklistHistoryData();
         });
     }
 
     // Initialize Page
     loadBlacklistData();
+    loadBlacklistHistoryData();
 });

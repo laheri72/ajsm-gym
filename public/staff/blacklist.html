@@ -246,7 +246,7 @@
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h4 class="fw-bold text-dark mb-0">Currently Blacklisted Students</h4>
                             <button id="refresh-blacklist-btn" class="btn btn-sm btn-light border text-muted px-3">
-                                🔄 Refresh List
+                                🔄 Refresh Lists
                             </button>
                         </div>
 
@@ -262,6 +262,39 @@
                                         <th>Flagged Date</th>
                                         <th>Flagged By</th>
                                         <th class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Unflagged Audit History Card -->
+                    <div class="card p-4 border-0 shadow-sm rounded-3 mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <div>
+                                <h4 class="fw-bold text-dark mb-1">
+                                    <span>📜</span> Unflagged Student Audit History
+                                </h4>
+                                <p class="text-muted small mb-0">Complete historical audit log of students previously blacklisted and unflagged in this branch.</p>
+                            </div>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                                Unflagged Records: <span id="stat-unflagged-history-count">0</span>
+                            </span>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="blacklist-history-table" class="table table-hover table-striped table-bordered align-middle w-100 stacking-card-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>TR No</th>
+                                        <th>Student Name</th>
+                                        <th>Original Flag Reason</th>
+                                        <th>Flagged Date & By</th>
+                                        <th>Unflagged Date</th>
+                                        <th>Unflagged By</th>
+                                        <th>Unflagged Reason / Remarks</th>
                                     </tr>
                                 </thead>
                                 <tbody>

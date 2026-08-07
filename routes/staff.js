@@ -4002,42 +4002,37 @@ router.get('/api/blacklist/student-preview/:tr', async (req, res) => {
     }
 });
 
-// Fetch active blacklisted students for branch
+// Fetch active blacklisted students for session branch
 router.get('/api/blacklist', async (req, res) => {
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
     }
 
-    const { Branch, Gender, Role } = req.session.user;
+    const { Branch, Gender } = req.session.user;
 
     try {
-        let queryStr = `
-            SELECT 
-                B.[BlacklistID],
-                B.[TR],
-                M.[Name],
-                M.[Darajah],
-                M.[Goal],
-                M.[SlotID],
-                S.[SlotName],
-                B.[Reason],
-                B.[AddedByUsername],
-                B.[CreatedAt]
-            FROM [StudentBlacklist] AS B
-            INNER JOIN [TestMaster] AS M ON B.[TR] = M.[TR]
-            LEFT JOIN [Slots] AS S ON M.[SlotID] = S.[SlotID]
-            WHERE B.[IsActive] = 1
-        `;
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT 
+                    B.[BlacklistID],
+                    B.[TR],
+                    M.[Name],
+                    M.[Darajah],
+                    M.[Goal],
+                    M.[SlotID],
+                    S.[SlotName],
+                    B.[Reason],
+                    B.[AddedByUsername],
+                    B.[CreatedAt]
+                FROM [StudentBlacklist] AS B
+                INNER JOIN [TestMaster] AS M ON B.[TR] = M.[TR]
+                LEFT JOIN [Slots] AS S ON M.[SlotID] = S.[SlotID]
+                WHERE B.[IsActive] = 1 AND B.[Branch] = @Branch AND B.[Gender] = @Gender
+                ORDER BY B.[CreatedAt] DESC;
+            `);
 
-        const reqPool = pool.request();
-        if (Role !== 'Admin') {
-            reqPool.input('Branch', sql.NVarChar(50), Branch);
-            reqPool.input('Gender', sql.NVarChar(10), Gender);
-            queryStr += ` AND B.[Branch] = @Branch AND B.[Gender] = @Gender`;
-        }
-        queryStr += ` ORDER BY B.[CreatedAt] DESC;`;
-
-        const result = await reqPool.query(queryStr);
         res.json({ success: true, data: result.recordset });
     } catch (err) {
         console.error('❌ Error fetching blacklist:', err.message);
@@ -4045,32 +4040,64 @@ router.get('/api/blacklist', async (req, res) => {
     }
 });
 
-// Fetch active blacklisted TR IDs and reasons (lightweight map)
+// Fetch active blacklisted TR IDs and reasons (lightweight map for grid badging)
 router.get('/api/blacklist/ids', async (req, res) => {
     if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
         return res.status(401).json({ success: false, error: 'Unauthorized.' });
     }
 
-    const { Branch, Gender, Role } = req.session.user;
+    const { Branch, Gender } = req.session.user;
 
     try {
-        let queryStr = `
-            SELECT [TR], [Reason] 
-            FROM [StudentBlacklist] 
-            WHERE [IsActive] = 1
-        `;
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT [TR], [Reason] 
+                FROM [StudentBlacklist] 
+                WHERE [IsActive] = 1 AND [Branch] = @Branch AND [Gender] = @Gender;
+            `);
 
-        const reqPool = pool.request();
-        if (Role !== 'Admin') {
-            reqPool.input('Branch', sql.NVarChar(50), Branch);
-            reqPool.input('Gender', sql.NVarChar(10), Gender);
-            queryStr += ` AND [Branch] = @Branch AND [Gender] = @Gender`;
-        }
-
-        const result = await reqPool.query(queryStr);
         res.json({ success: true, data: result.recordset });
     } catch (err) {
         res.json({ success: true, data: [] });
+    }
+});
+
+// Fetch unflagged student audit history for session branch
+router.get('/api/blacklist/history', async (req, res) => {
+    if (!req.session.user || !req.session.user.Branch || !req.session.user.Gender) {
+        return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
+    }
+
+    const { Branch, Gender } = req.session.user;
+
+    try {
+        const result = await pool.request()
+            .input('Branch', sql.NVarChar(50), Branch)
+            .input('Gender', sql.NVarChar(10), Gender)
+            .query(`
+                SELECT 
+                    B.[BlacklistID],
+                    B.[TR],
+                    M.[Name],
+                    M.[Darajah],
+                    B.[Reason] AS [OriginalReason],
+                    B.[AddedByUsername],
+                    B.[CreatedAt] AS [FlaggedDate],
+                    B.[RemovedAt] AS [UnflaggedDate],
+                    B.[RemovedByUsername] AS [UnflaggedBy],
+                    B.[RemovalReason] AS [UnflaggedReason]
+                FROM [StudentBlacklist] AS B
+                LEFT JOIN [TestMaster] AS M ON B.[TR] = M.[TR]
+                WHERE B.[IsActive] = 0 AND B.[Branch] = @Branch AND B.[Gender] = @Gender
+                ORDER BY B.[RemovedAt] DESC;
+            `);
+
+        res.json({ success: true, data: result.recordset });
+    } catch (err) {
+        console.error('❌ Error fetching blacklist history:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch blacklist audit history.' });
     }
 });
 
