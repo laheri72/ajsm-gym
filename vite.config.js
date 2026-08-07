@@ -47,6 +47,7 @@ export default defineConfig({
         staffAttendance: resolve(__dirname, 'public/staff/attendance.html'),
         staffFitnessAttendance: resolve(__dirname, 'public/staff/fitness-attendance.html'),
         staffLeaves: resolve(__dirname, 'public/staff/leaves.html'),
+        staffBlacklist: resolve(__dirname, 'public/staff/blacklist.html'),
         staffProfile: resolve(__dirname, 'public/staff/profile.html'),
         staffEvaluation: resolve(__dirname, 'public/staff/evaluation.html'),
         staffCommentEntry: resolve(__dirname, 'public/staff/comment-entry.html'),
