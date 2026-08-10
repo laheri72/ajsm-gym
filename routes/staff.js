@@ -1732,20 +1732,33 @@ router.get('/api/recent-activations', async (req, res) => {
     
     // Define the boundaries for "Today" in IST
     const startOfTodayIST = moment.tz("Asia/Kolkata").startOf('day').utc().toDate();
+    const endOfTodayIST = moment.tz("Asia/Kolkata").endOf('day').utc().toDate();
 
     const result = await pool.request()
       .input('Branch', sql.NVarChar(50), Branch)
       .input('Gender', sql.NVarChar(10), Gender)
       .input('TodayStart', sql.DateTime, startOfTodayIST)
+      .input('TodayEnd', sql.DateTime, endOfTodayIST)
       .query(`
-        SELECT M.TR, M.Name, M.Darajah, M.JoinedAt, M.Goal, S.SlotName
+        SELECT DISTINCT 
+          M.TR, M.Name, M.Darajah, M.JoinedAt, M.Goal, S.SlotName,
+          COALESCE(H.LatestActivation, M.JoinedAt) AS DisplayActivatedAt
         FROM TestMaster M
         LEFT JOIN Slots S ON M.SlotID = S.SlotID
+        LEFT JOIN (
+          SELECT TR, MAX(ChangedAt) AS LatestActivation
+          FROM StudentStatusHistory
+          WHERE ActionType = 'Activated' AND NewStatus = 'Active'
+          GROUP BY TR
+        ) H ON M.TR = H.TR
         WHERE M.Branch = @Branch 
           AND M.Gender = @Gender 
           AND M.Status = 'Active'
-          AND M.JoinedAt >= @TodayStart
-        ORDER BY M.JoinedAt DESC
+          AND (
+            (H.LatestActivation >= @TodayStart AND H.LatestActivation <= @TodayEnd) OR
+            (H.LatestActivation IS NULL AND M.JoinedAt >= @TodayStart AND M.JoinedAt <= @TodayEnd)
+          )
+        ORDER BY DisplayActivatedAt DESC
       `);
 
     res.json(result.recordset);
@@ -1887,7 +1900,7 @@ router.post('/api/add-student', async (req, res) => {
                 .query(`
                     INSERT INTO TestMaster (TR, ITS, Name, Darajah, Branch, Gender, Status, SlotID, JoinedAt, Goal)
                     VALUES (@TR, @ITS, @Name, @Darajah, @Branch, @Gender, @Status, @SlotID, 
-                            CASE WHEN @Status = 'Active' THEN GETDATE() ELSE NULL END, @Goal)
+                            CASE WHEN @Status = 'Active' THEN GETUTCDATE() ELSE NULL END, @Goal)
                 `);
 
             if (finalStatus === 'Active') {
@@ -1913,7 +1926,7 @@ router.post('/api/add-student', async (req, res) => {
                     UPDATE TestMaster 
                     SET Status = @Status, 
                         SlotID = @SlotID, 
-                        JoinedAt = CASE WHEN @Status = 'Active' AND JoinedAt IS NULL THEN GETDATE() ELSE JoinedAt END,
+                        JoinedAt = CASE WHEN @Status = 'Active' AND JoinedAt IS NULL THEN GETUTCDATE() ELSE JoinedAt END,
                         Goal = @Goal,
                         Name = @Name,
                         Darajah = @Darajah
@@ -2028,9 +2041,16 @@ router.post('/api/assign-student-slot', async (req, res) => {
                 SET
                     Status = 'Active',
                     SlotID = @SlotID,
-                    JoinedAt = GETDATE()
+                    JoinedAt = CASE WHEN JoinedAt IS NULL THEN GETUTCDATE() ELSE JoinedAt END
                 WHERE TR = @TR AND Branch = @Branch AND Gender = @Gender
             `);
+
+        await logActivationForCurrentStudent({
+            connection: transaction,
+            tr: TR,
+            previousStatus: 'Inactive',
+            sessionUser: req.session.user
+        });
 
         // 4️⃣ Remove from WaitingList
         await request.query(`

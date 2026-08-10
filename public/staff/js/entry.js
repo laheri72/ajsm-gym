@@ -199,8 +199,11 @@ document.addEventListener("DOMContentLoaded", () => {
             tbody.innerHTML = '';
 
             data.forEach(item => {
-                // Use Moment.js for IST Display
-                const istTime = moment.utc(item.JoinedAt).tz("Asia/Kolkata").format("hh:mm A");
+                // Use Moment.js for IST Display (prefer DisplayActivatedAt for re-activations)
+                const targetTime = item.DisplayActivatedAt || item.JoinedAt;
+                const istMoment = targetTime ? moment.utc(targetTime).tz("Asia/Kolkata") : null;
+                const istTime = istMoment && istMoment.isValid() ? istMoment.format("hh:mm A") : 'N/A';
+                const sortKey = istMoment && istMoment.isValid() ? istMoment.valueOf() : 0;
                 
                 const row = `
                     <tr>
@@ -209,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <td>${item.Darajah}</td>
                         <td>${item.Goal || 'N/A'}</td>
                         <td>${item.SlotName || '<span class="text-muted italic">Waiting...</span>'}</td>
-                        <td>${istTime}</td>
+                        <td data-order="${sortKey}">${istTime}</td>
                     </tr>
                 `;
                 tbody.insertAdjacentHTML('beforeend', row);
@@ -398,7 +401,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.success && data.data) {
                 data.data.forEach(req => {
                     // Use Moment.js for IST Display
-                    const istTime = moment.utc(req.RequestedAt).tz("Asia/Kolkata").format("MMM D, hh:mm A");
+                    const istMoment = req.RequestedAt ? moment.utc(req.RequestedAt).tz("Asia/Kolkata") : null;
+                    const istTime = istMoment && istMoment.isValid() ? istMoment.format("MMM D, hh:mm A") : 'N/A';
+                    const sortKey = istMoment && istMoment.isValid() ? istMoment.valueOf() : 0;
                     const availableText = req.RequestedSlotAvailable > 0 
                         ? `<span class="text-success">(${req.RequestedSlotAvailable} left)</span>` 
                         : `<span class="text-danger">(Full)</span>`;
@@ -410,7 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     const row = `
                         <tr>
-                            <td>${istTime}</td>
+                            <td data-order="${sortKey}">${istTime}</td>
                             <td>${req.TR}</td>
                             <td>${req.StudentName}</td>
                             <td>${req.CurrentSlotName || '<span class="text-muted">None</span>'}</td>
