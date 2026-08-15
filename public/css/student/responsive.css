@@ -225,57 +225,10 @@
         font-size: 0.9rem !important;
     }
 
-    /* --- Navigation: Collapse to hamburger --- */
+    /* --- Navigation: Collapse to hamburger button --- */
     .navbar-toggler {
         padding: 0.25rem 0;
         font-size: 1.3rem;
-    }
-
-    #mainNavCollapse {
-        position: fixed;
-        top: 55px;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-height: calc(100vh - 55px);
-        overflow-y: auto;
-        background-color: var(--dark-bg-secondary);
-        border: none;
-        border-top: 1px solid var(--dark-border);
-        padding: 0.75rem 0;
-        z-index: 1050;
-    }
-
-    #mainNavCollapse.show {
-        display: flex !important;
-    }
-
-    .header-center {
-        width: 100%;
-        margin: 0;
-    }
-
-    .main-nav-list {
-        flex-direction: column;
-        width: 100%;
-        gap: 0;
-    }
-
-    .main-nav-list .nav-link {
-        padding: 0.65rem 1rem;
-        border-bottom: 1px solid var(--dark-border);
-        border-radius: 0;
-        font-size: 0.9rem;
-        justify-content: flex-start;
-    }
-
-    .main-nav-list .nav-link i {
-        font-size: 1rem;
-        margin-right: 0.5rem;
-    }
-
-    .main-nav-list .nav-link span {
-        display: inline;
     }
 
     /* --- Dropdown Menu: Stack vertically with indent --- */
@@ -529,6 +482,53 @@
     
     .app-header-info {
         top: var(--header-height);
+    }
+
+    #mainNavCollapse {
+        position: fixed;
+        top: 55px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: calc(100vh - 55px);
+        overflow-y: auto;
+        background-color: var(--dark-bg-secondary, #132337);
+        border: none;
+        border-top: 1px solid var(--dark-border);
+        padding: 0.75rem 0;
+        z-index: 1050;
+    }
+
+    #mainNavCollapse.show {
+        display: flex !important;
+    }
+
+    .header-center {
+        width: 100%;
+        margin: 0;
+    }
+
+    .main-nav-list {
+        flex-direction: column;
+        width: 100%;
+        gap: 0;
+    }
+
+    .main-nav-list .nav-link {
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid var(--dark-border);
+        border-radius: 0;
+        font-size: 0.9rem;
+        justify-content: flex-start;
+    }
+
+    .main-nav-list .nav-link i {
+        font-size: 1rem;
+        margin-right: 0.5rem;
+    }
+
+    .main-nav-list .nav-link span {
+        display: inline;
     }
 }
 
