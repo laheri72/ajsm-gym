@@ -324,7 +324,13 @@ async function runAchievementEvaluation() {
 // (POST /api/achievements/evaluate will go here)
 // THE "FIRE-AND-FORGET" API ROUTE (No changes here, remains the same)
 router.post('/api/achievements/evaluate', (req, res) => {
-    if (req.headers['x-internal-secret'] !== 'AjsmGymEvaluation_2025!') { 
+    const expectedSecret = process.env.CRON_SECRET_ACHIEVEMENTS;
+    if (!expectedSecret) {
+        console.error('CRON_SECRET_ACHIEVEMENTS is not configured.');
+        return res.status(503).json({ success: false, message: 'Scheduled task is not configured.' });
+    }
+
+    if (req.headers['x-internal-secret'] !== expectedSecret) {
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     res.status(202).json({ success: true, message: 'Achievement evaluation process has been initiated in the background.' });

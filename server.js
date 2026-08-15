@@ -27,6 +27,7 @@ const { cache } = require('./utils/cache.js');
 // Set up the port
 const port = 10000;
 
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
@@ -38,10 +39,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 app.use(session({
   secret: process.env.SESSION_SECRET,  
+  name: 'ajsm.sid',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // true if using HTTPS
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 2 // 2 hours
   }
 }));
@@ -89,6 +93,21 @@ app.get('*', (req, res) => {
     
     // 3. If it's neither a directory nor a file, send a 404 Not Found error.
     res.status(404).sendFile(path.join(__dirname, 'dist/Forbidden.html')); // Or a custom 404 page
+});
+
+// Catch-all safe global error middleware
+app.use((err, req, res, next) => {
+  console.error('SERVER LOG ERROR:', {
+    method: req.method,
+    path: req.originalUrl,
+    message: err.message,
+    stack: process.env.NODE_ENV === 'production' ? 'Cleaned' : err.stack
+  });
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.status ? err.message : 'An unexpected backend error occurred.'
+  });
 });
 
 

@@ -4,6 +4,7 @@ const router = express.Router();
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); 
+const { schemas, validateBody } = require('../middleware/validation');
 
 // Helper functions for this router
 
@@ -128,7 +129,7 @@ router.put('/api/testmaster/me/dob', async (req, res) => {
 
 
 // NEW: Sets the student's new password (for first-time login)
-router.post('/api/test/set-password', async (req, res) => {
+router.post('/api/test/set-password', validateBody(schemas.setPassword), async (req, res) => {
     // 1. Get TR from the session (secure)
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in again.' });
@@ -137,10 +138,6 @@ router.post('/api/test/set-password', async (req, res) => {
     
     // 2. Get the new password from the request body
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
-    }
-
     try {
         // 3. Hash the new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);

@@ -5,6 +5,26 @@ const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); // All login routes need this
 const { clearUserCache } = require('../utils/cache.js');
+const rateLimit = require('express-rate-limit');
+const { schemas, validateBody } = require('../middleware/validation');
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many attempts. Please try again later.' }
+});
+
+function establishSession(req, user) {
+    return new Promise((resolve, reject) => {
+        req.session.regenerate((err) => {
+            if (err) return reject(err);
+            req.session.user = user;
+            resolve();
+        });
+    });
+}
 
 const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase());
 const parseTRList = (value) => String(value || '')
@@ -31,7 +51,7 @@ function isPlannerV2Enabled(tr) {
 
 // ... (other code) ...
 
-router.post('/api/student-login', async (req, res, next) => {
+router.post('/api/student-login', loginLimiter, validateBody(schemas.studentLogin), async (req, res, next) => {
     const { tr, password } = req.body;
     try {
         const result = await pool.request()
@@ -44,12 +64,9 @@ router.post('/api/student-login', async (req, res, next) => {
 
         const student = result.recordset[0];
         
-        // --- MODIFICATION: REMOVE THIS BLOCK ---
-        /*
         if (student.Status !== 'Active') {
-            return res.status(403).json({ success: false, message: 'Your account is inactive. Please contact admin.' });
+            return res.status(403).json({ success: false, message: 'Account is deactivated.' });
         }
-        */
 
         let forcePasswordChange = false;
         let isLoginSuccessful = false;
@@ -75,14 +92,13 @@ router.post('/api/student-login', async (req, res, next) => {
 
 
         if (isLoginSuccessful) {
-            // --- MODIFICATION: ADD Status TO THE SESSION ---
-            req.session.user = { 
+            await establishSession(req, {
                 TR: student.TR, 
                 Name: student.Name, 
                 Branch: student.Branch, 
                 Gender: student.Gender, 
-                Status: student.Status // <-- ADD THIS
-            };
+                Status: student.Status
+            });
             return res.json({ success: true, forcePasswordChange });
         } else {
             return res.status(401).json({ success: false, message: 'Invalid TR or password' });
@@ -95,16 +111,12 @@ router.post('/api/student-login', async (req, res, next) => {
 // ... (rest of auth.js) ...
 
 
-router.post('/api/student/set-initial-password', async (req, res, next) => {
+router.post('/api/student/set-initial-password', validateBody(schemas.setPassword), async (req, res, next) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const { TR } = req.session.user;
     const { newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 6) {
-        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
-    }
 
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -180,7 +192,7 @@ router.get('/api/student-session', async (req, res) => {
 //---------👨‍💼 Staff & Trainer Login Routes
 
 
-router.post('/api/trainer-login', async (req, res, next) => {
+router.post('/api/trainer-login', loginLimiter, validateBody(schemas.staffLogin), async (req, res, next) => {
     const { username, password } = req.body;
 
     try {
@@ -200,17 +212,17 @@ router.post('/api/trainer-login', async (req, res, next) => {
         }
 
         if (user.Role !== 'Trainer') {
-            return res.status(403).json({ success: false, message: 'Only Trainers can login here.' });
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         // FIX: Include UserID inside session
-        req.session.user = {
+        await establishSession(req, {
             UserID: user.UserID,      // <--- REQUIRED
             Username: user.Username,
             Branch: user.Branch,
             Gender: user.Gender,
             Role: user.Role
-        };
+        });
 
         return res.json({
             success: true,
@@ -226,7 +238,7 @@ router.post('/api/trainer-login', async (req, res, next) => {
 
 
 // REPLACE your old /api/staff-login route
-router.post('/api/staff-login', async (req, res, next) => {
+router.post('/api/staff-login', loginLimiter, validateBody(schemas.staffLogin), async (req, res, next) => {
     const { username, password } = req.body;
     
     const transaction = new sql.Transaction(pool); // Use a transaction
@@ -253,11 +265,11 @@ router.post('/api/staff-login', async (req, res, next) => {
 
         if (user.Role === 'Trainer') {
             await transaction.rollback();
-            return res.status(403).json({ success: false, message: 'Trainers not allowed here.' });
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
         // 4. Set session user
-        req.session.user = { 
+        const staffSessionUser = { 
             UserID: user.UserID, // ★★★ SENDING THE NEW UserID
             Username: user.Username, 
             Branch: user.Branch, 
@@ -293,6 +305,8 @@ router.post('/api/staff-login', async (req, res, next) => {
         }
 
         await transaction.commit();
+
+        await establishSession(req, staffSessionUser);
         
         // 6. Send all flags to the frontend
         res.json({ 
@@ -304,21 +318,18 @@ router.post('/api/staff-login', async (req, res, next) => {
 
     } catch (err) {
         if (transaction.active) await transaction.rollback();
+        if (req.session) req.session.user = undefined;
         next(err);
     }
 });
 
 // For the first-time password change modal
-router.put('/api/staff/set-initial-password', async (req, res, next) => {
+router.put('/api/staff/set-initial-password', validateBody(schemas.setPassword), async (req, res, next) => {
     if (!req.session.user || !req.session.user.Username) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const { Username } = req.session.user;
     const { newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 6) {
-        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
-    }
 
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -357,7 +368,7 @@ router.post('/api/logout', (req, res) => {
     }
 
     clearUserCache(tr);
-    res.clearCookie('connect.sid'); // Optional: clear the session cookie
+    res.clearCookie('ajsm.sid'); // Optional: clear the session cookie
     res.set('Cache-Control', 'no-store');
     res.set('Clear-Site-Data', '"cache"');
     res.json({ success: true, message: 'Logged out successfully' });
