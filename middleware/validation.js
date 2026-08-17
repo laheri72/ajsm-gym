@@ -18,10 +18,9 @@ const schemas = {
     password: z.string().min(1).max(128)
   }),
   setPassword: z.object({
-    newPassword: z.string().min(10).max(128)
-      .regex(/[A-Z]/, { message: 'Requires uppercase' })
-      .regex(/[a-z]/, { message: 'Requires lowercase' })
-      .regex(/[0-9]/, { message: 'Requires a number' })
+    newPassword: z.string()
+      .min(6, { message: 'Password must be at least 6 characters long.' })
+      .max(128, { message: 'Password cannot exceed 128 characters.' })
   })
 };
 
@@ -29,7 +28,8 @@ function validateBody(schema) {
   return (req, res, next) => {
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ success: false, message: 'Invalid input format.' });
+      const message = parsed.error.issues[0]?.message || 'Invalid input format.';
+      return res.status(400).json({ success: false, message });
     }
 
     req.body = parsed.data;

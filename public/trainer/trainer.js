@@ -36,18 +36,17 @@ let lastOverdueToastAt = Number(localStorage.getItem('trainerLastOverdueToastAt'
 
 // --- Utility Functions ---
 function toggleButtonSpinner(button, showSpinner) {
-    const btnText = button.querySelector('.btn-text') || button;
+    if (!button) return;
+    const btnText = button.querySelector('.button-text') || button.querySelector('.btn-text') || button;
+    const spinner = button.querySelector('.spinner-border') || button.querySelector('.spinner');
     if (showSpinner) {
         button.disabled = true;
-        if (!button.querySelector('.spinner')) {
-            button.insertAdjacentHTML('afterbegin', '<div class="spinner"></div>');
-        }
-        btnText.style.display = 'none';
+        if (spinner) spinner.classList.remove('d-none');
+        if (btnText && btnText !== button) btnText.style.display = 'none';
     } else {
         button.disabled = false;
-        const spinner = button.querySelector('.spinner');
-        if (spinner) spinner.remove();
-        btnText.style.display = 'inline';
+        if (spinner) spinner.classList.add('d-none');
+        if (btnText && btnText !== button) btnText.style.display = 'inline-flex';
     }
 }
 
@@ -2113,9 +2112,12 @@ async function loadTrainingPlans(tr) {
 
 function handleInitialPasswordSet() {
     const form = document.getElementById('setPasswordForm');
+    if (!form || form.dataset.listenerAttached) return;
+    form.dataset.listenerAttached = 'true';
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const button = form.querySelector('button[type="submit"]');
+        const button = document.getElementById('setPasswordBtn') || form.querySelector('button[type="submit"]');
         toggleButtonSpinner(button, true);
         const newPassword = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
@@ -2143,8 +2145,11 @@ function handleInitialPasswordSet() {
             if (!res.ok) throw new Error(data.message || 'Failed to set password');
 
             Swal.fire('Success!', 'Your new password has been set.', 'success');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('forcePasswordChangeModal'));
-            modal.hide();
+            const modalEl = document.getElementById('forcePasswordChangeModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.hide();
+            }
             sessionStorage.removeItem('isDefaultPassword');
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
@@ -2179,10 +2184,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('darkMode', 'false');
         renderHomePage();
         initProfileModalListeners();
-        if (sessionStorage.getItem('isDefaultPassword') === 'true') {
-            const modal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
-            modal.show();
-            handleInitialPasswordSet();
+
+        const isDef = sessionStorage.getItem('isDefaultPassword');
+        const isDefault = isDef === 'true' || isDef === '1' || isDef === 1 || isDef === true || user.IsDefaultPassword === 1 || user.IsDefaultPassword === true || user.IsDefaultPassword === '1' || user.IsDefaultPassword === 'true';
+
+        if (isDefault) {
+            const modalEl = document.getElementById('forcePasswordChangeModal');
+            if (modalEl) {
+                const modal = new bootstrap.Modal(modalEl, {
+                    backdrop: 'static',
+                    keyboard: false
+                });
+                modal.show();
+                handleInitialPasswordSet();
+            }
         }
     }
 });

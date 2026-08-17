@@ -38,9 +38,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap-icons.css">
     <link rel="stylesheet" href="/assets/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="/css/password-modal.css">
+
+    <script src="/js/password-modal-ux.js"></script>
 </head>
 
 <body style="visibility: hidden;">
@@ -420,25 +424,50 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         });
     </script>
-    <div class="modal fade" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false"
-        tabindex="-1">
+    <div class="modal fade security-modal" id="forcePasswordChangeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Create Your New Password</h5>
+                    <div class="security-modal-badge">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </div>
+                    <h4 class="modal-title">Set New Password</h4>
+                    <p class="security-modal-subtitle">Welcome! For your account security, please create a new password to continue.</p>
                 </div>
                 <div class="modal-body">
-                    <p>Welcome! For your security, you must create a new password for your account.</p>
-                    <form id="setPasswordForm">
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">New Password (min. 6 characters)</label>
-                            <input type="password" class="form-control" id="newPassword" required>
+                    <form id="setPasswordForm" novalidate>
+                        <div class="security-form-group">
+                            <label for="newPassword" class="security-form-label">New Password</label>
+                            <div class="security-input-wrapper">
+                                <i class="bi bi-lock input-icon-left"></i>
+                                <input type="password" class="security-input" id="newPassword" placeholder="Min. 6 characters" autocomplete="new-password" required minlength="6">
+                                <button type="button" class="toggle-password-btn" title="Toggle password visibility" tabindex="-1">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="password-requirements">
+                                <span class="req-pill" id="lengthReqPill"><i class="bi bi-circle me-1"></i> Min. 6 characters</span>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-control" id="confirmPassword" required>
+
+                        <div class="security-form-group">
+                            <label for="confirmPassword" class="security-form-label">Confirm New Password</label>
+                            <div class="security-input-wrapper">
+                                <i class="bi bi-shield-check input-icon-left"></i>
+                                <input type="password" class="security-input" id="confirmPassword" placeholder="Re-enter password" autocomplete="new-password" required>
+                                <button type="button" class="toggle-password-btn" title="Toggle password visibility" tabindex="-1">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="password-requirements">
+                                <span class="req-pill" id="matchReqPill"><i class="bi bi-circle me-1"></i> Passwords match</span>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Set New Password</button>
+
+                        <button type="submit" class="btn security-btn-primary w-100" id="setPasswordBtn">
+                            <span class="button-text"><i class="bi bi-shield-check me-1"></i> Set New Password</span>
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
                     </form>
                 </div>
             </div>

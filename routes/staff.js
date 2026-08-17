@@ -5485,7 +5485,7 @@ router.get('/api/trainer/profile', isTrainer, async (req, res) => {
         const result = await pool.request()
             .input("UserID", sql.Int, req.UserID)
             .query(`
-                SELECT P.Username, P.Role, P.Branch, P.Gender, T.Name, T.Profession, T.Contact, T.Email
+                SELECT P.Username, P.Role, P.Branch, P.Gender, P.IsDefaultPassword, T.Name, T.Profession, T.Contact, T.Email
                 FROM PassBank P
                 LEFT JOIN Trainers T ON P.UserID = T.UserID
                 WHERE P.UserID = @UserID
