@@ -3,9 +3,11 @@
  * Handles show/hide password toggling and real-time visual validation feedback.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initPasswordModalUX());
+} else {
     initPasswordModalUX();
-});
+}
 
 function initPasswordModalUX() {
     const modal = document.getElementById('forcePasswordChangeModal');
@@ -18,31 +20,6 @@ function initPasswordModalUX() {
     const confirmPassInput = form.querySelector('#confirmPassword');
     const lengthReqPill = form.querySelector('#lengthReqPill');
     const matchReqPill = form.querySelector('#matchReqPill');
-
-    // 1. Password Visibility Toggles
-    const toggleBtns = form.querySelectorAll('.toggle-password-btn');
-    toggleBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const wrapper = btn.closest('.security-input-wrapper');
-            const input = wrapper ? wrapper.querySelector('input') : null;
-            if (!input) return;
-
-            const isPassword = input.type === 'password';
-            input.type = isPassword ? 'text' : 'password';
-
-            const icon = btn.querySelector('i');
-            if (icon) {
-                if (isPassword) {
-                    icon.classList.remove('bi-eye', 'fa-eye');
-                    icon.classList.add('bi-eye-slash', 'fa-eye-slash');
-                } else {
-                    icon.classList.remove('bi-eye-slash', 'fa-eye-slash');
-                    icon.classList.add('bi-eye', 'fa-eye');
-                }
-            }
-        });
-    });
 
     // 2. Real-time Live Validation Indicators
     function updateValidationUI() {
@@ -70,8 +47,42 @@ function initPasswordModalUX() {
         }
     }
 
+    // Run initial UI state update
+    updateValidationUI();
+
+    // Prevent duplicate event listener bindings
+    if (form.dataset.uxInitialized === 'true') return;
+    form.dataset.uxInitialized = 'true';
+
+    // 1. Password Visibility Toggles
+    const toggleBtns = form.querySelectorAll('.toggle-password-btn');
+    toggleBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const wrapper = btn.closest('.security-input-wrapper');
+            const input = wrapper ? wrapper.querySelector('input') : null;
+            if (!input) return;
+
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+
+            const icon = btn.querySelector('i');
+            if (icon) {
+                if (isPassword) {
+                    icon.classList.remove('bi-eye', 'fa-eye');
+                    icon.classList.add('bi-eye-slash', 'fa-eye-slash');
+                } else {
+                    icon.classList.remove('bi-eye-slash', 'fa-eye-slash');
+                    icon.classList.add('bi-eye', 'fa-eye');
+                }
+            }
+        });
+    });
+
     if (newPassInput) newPassInput.addEventListener('input', updateValidationUI);
     if (confirmPassInput) confirmPassInput.addEventListener('input', updateValidationUI);
+
+    modal.addEventListener('shown.bs.modal', updateValidationUI);
 }
 
 // Global export in case modal is dynamically shown/rendered
