@@ -507,7 +507,55 @@ router.get('/api/evaluations/me', async (req, res) => {
 
 //===================================================================
 //================= 🧪 Staff Fitness Test Routes ==============
-//===================================================================
+// Helper function to auto-detect student gender based on Darajah suffix and Name honorifics
+function detectStudentGender(darajah = '', name = '', defaultGender = 'Male') {
+    const d = String(darajah).trim();
+    const n = String(name).trim();
+
+    // -------------------------------------------------------------
+    // HIERARCHY LEVEL 1: Darajah Character Indicator (Absolute Authority)
+    // If Darajah specifies 'M' or 'F', name is ignored completely!
+    // -------------------------------------------------------------
+    if (/\bF\b/i.test(d) || /DARS\s+F/i.test(d) || d.toUpperCase().endsWith('F')) {
+        return 'Female';
+    }
+    if (/\bM\b/i.test(d) || /DARS\s+M/i.test(d) || d.toUpperCase().endsWith('M')) {
+        return 'Male';
+    }
+
+    // 2. Name honorifics & title check
+    // Female name keywords in Bohra names
+    const femaleKeywords = [
+        'bai', 'bhen', 'bn', 'amatullah', 'fatema', 'batul', 'khadija',
+        'zainab', 'sakina', 'insiyah', 'umme', 'lulua', 'rashida', 'mariyah',
+        'arwa', 'nisreen', 'farida', 'tasneem', 'jumana', 'alefiya', 'alefiyah',
+        'hawra', 'shehrebanu', 'aarefa', 'mubarakah', 'samina', 'zahabiyah'
+    ];
+    
+    // Male name keywords in Bohra names
+    const maleKeywords = ['bhai', 'mulla', 'shaikh'];
+
+    const nameLower = n.toLowerCase();
+
+    // Check female keywords
+    for (const kw of femaleKeywords) {
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        if (regex.test(nameLower)) {
+            return 'Female';
+        }
+    }
+
+    // Check male keywords
+    for (const kw of maleKeywords) {
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        if (regex.test(nameLower)) {
+            return 'Male';
+        }
+    }
+
+    // 3. Fallback to default/session gender
+    return defaultGender;
+}
 
 
 router.post('/api/fitness-test/bulk-validate', async (req, res) => {
@@ -515,6 +563,8 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
     return res.status(401).json({ message: 'Unauthorized.' });
   }
   
+  const { Role: userRole, Gender: sessionGender } = req.session.user;
+
   try {
     const { students } = req.body;
     if (!students || !Array.isArray(students) || students.length === 0) {
@@ -522,6 +572,7 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
     }
 
     const invalidRows = [];
+    const genderMismatchedRows = [];
     const structurallyValidStudents = [];
     const itsInFile = new Set();
     const trInFile = new Set(); // Check for TR duplicates in the file too
@@ -529,7 +580,7 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
     const itsRegex = /^\d{8}$/;
     const trRegex = /^\d{5}$/;
 
-    // 1. First pass: Check format and in-file duplicates
+    // 1. First pass: Check format, in-file duplicates, and auto-detect gender
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
       const fileRow = i + 2;
@@ -558,18 +609,44 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
       } else {
         itsInFile.add(itsStr);
         trInFile.add(trStr);
+        
+        // Auto-detect gender for this student
+        const detectedGender = detectStudentGender(Darajah, Name, sessionGender);
+
+        // Check if Staff (single-gender restricted) is attempting to import opposite gender
+        if (userRole === 'Staff' && detectedGender !== sessionGender) {
+          genderMismatchedRows.push({
+            fileRow,
+            TR: trStr,
+            Name: Name.toString(),
+            Darajah: Darajah.toString(),
+            detectedGender,
+            reason: `Student detected as ${detectedGender}, but you are logged in as ${sessionGender} Staff.`
+          });
+        }
+
         structurallyValidStudents.push({
           TR: parseInt(trStr),
           ITS: parseInt(itsStr),
           Name: Name.toString(),
-          Darajah: Darajah.toString()
+          Darajah: Darajah.toString(),
+          Gender: detectedGender
         });
       }
     }
 
     if (structurallyValidStudents.length === 0) {
-      // Return lists of new, skipped, and invalid
-      return res.json({ newStudents: [], skippedStudents: [], invalidRows });
+      return res.json({ 
+        newStudents: [], 
+        skippedStudents: [], 
+        invalidRows, 
+        genderMismatchedRows,
+        maleCount: 0,
+        femaleCount: 0,
+        hasMultiGender: false,
+        userRole,
+        sessionGender
+      });
     }
     
     // 2. Second pass: Check for DB duplicates (TR and ITS)
@@ -577,16 +654,12 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
     const incomingITS = structurallyValidStudents.map(s => s.ITS);
 
     const request = pool.request();
-
-    // Create parameters for TRs
     const trParams = incomingTRs.map((tr, i) => `@TR${i}`);
     incomingTRs.forEach((tr, i) => request.input(`TR${i}`, sql.Int, tr));
     
-    // Create parameters for ITS
     const itsParams = incomingITS.map((its, i) => `@ITS${i}`);
     incomingITS.forEach((its, i) => request.input(`ITS${i}`, sql.Int, its));
 
-    // Query for existing TRs OR ITS numbers in ONE query
     const dbCheckResult = await request.query(`
         SELECT TR, ITS 
         FROM TestMaster 
@@ -598,7 +671,10 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
 
     // 3. Partition the results
     const newStudents = [];
-    const skippedStudents = []; // Renamed for clarity
+    const skippedStudents = [];
+
+    let maleCount = 0;
+    let femaleCount = 0;
 
     for (const s of structurallyValidStudents) {
       let skipReason = null;
@@ -612,10 +688,24 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
         skippedStudents.push({ ...s, reason: skipReason });
       } else {
         newStudents.push(s);
+        if (s.Gender === 'Male') maleCount++;
+        else if (s.Gender === 'Female') femaleCount++;
       }
     }
 
-    res.json({ newStudents, skippedStudents, invalidRows });
+    const hasMultiGender = maleCount > 0 && femaleCount > 0;
+
+    res.json({ 
+      newStudents, 
+      skippedStudents, 
+      invalidRows, 
+      genderMismatchedRows,
+      maleCount, 
+      femaleCount, 
+      hasMultiGender,
+      userRole,
+      sessionGender
+    });
 
   } catch (err) {
     console.error('Bulk validation error:', err);
@@ -624,10 +714,9 @@ router.post('/api/fitness-test/bulk-validate', async (req, res) => {
 });
 
 
-// REPLACE your old /api/fitness-test/bulk-commit route with this one
 router.post('/api/fitness-test/bulk-commit', async (req, res) => {
-  const { Branch, Gender } = req.session.user || {};
-  if (!Branch || !Gender) {
+  const { Branch, Gender: sessionGender } = req.session.user || {};
+  if (!Branch || !sessionGender) {
     return res.status(401).json({ message: 'Unauthorized.' });
   }
   
@@ -641,37 +730,36 @@ router.post('/api/fitness-test/bulk-commit', async (req, res) => {
     await transaction.begin();
 
     try {
-      // 1. Create ONE request object for the entire transaction
       const request = new sql.Request(transaction);
       const valuesClauses = [];
+      let maleCount = 0;
+      let femaleCount = 0;
 
-      // 2. Loop through students to build parameters and value strings
-      //    (This loop does not hit the database)
       students.forEach((student, index) => {
-        // Create unique parameter names for each student's data
         const trParam = `TR${index}`;
         const itsParam = `ITS${index}`;
         const nameParam = `Name${index}`;
         const darajahParam = `Darajah${index}`;
+        const genderParam = `Gender${index}`;
 
-        // Add all parameters to the *single* request object
+        const studentGender = student.Gender || detectStudentGender(student.Darajah, student.Name, sessionGender);
+
+        if (studentGender === 'Male') maleCount++;
+        else femaleCount++;
+
         request.input(trParam, sql.Int, student.TR);
         request.input(itsParam, sql.Int, student.ITS);
         request.input(nameParam, sql.NVarChar(100), student.Name);
         request.input(darajahParam, sql.NVarChar(50), student.Darajah);
+        request.input(genderParam, sql.NVarChar(10), studentGender);
 
-        // Add a new VALUES clause to our array
         valuesClauses.push(
-          `(@${trParam}, @${itsParam}, @${nameParam}, @${darajahParam}, @Branch, @Gender)`
+          `(@${trParam}, @${itsParam}, @${nameParam}, @${darajahParam}, @Branch, @${genderParam})`
         );
       });
       
-      // 3. Add the session Branch and Gender parameters *once*
-      //    (Using NVarChar is still fine, SQL server will convert the value)
       request.input('Branch', sql.NVarChar(50), Branch);
-      request.input('Gender', sql.NVarChar(10), Gender);
       
-      // 4. Construct the single, massive INSERT query
       const query = `
         INSERT INTO TestMaster 
           (TR, ITS, Name, Darajah, Branch, Gender)
@@ -679,23 +767,17 @@ router.post('/api/fitness-test/bulk-commit', async (req, res) => {
           ${valuesClauses.join(', ')};
       `;
 
-      // 5. Execute the query *once*
       await request.query(query);
-      
-      // 6. If all loops succeeded, commit the transaction
       await transaction.commit();
 
-      res.json({ success: true, count: students.length });
+      res.json({ success: true, count: students.length, maleCount, femaleCount });
 
     } catch (err) {
-      // If the single insert fails, roll back the *entire* batch
       await transaction.rollback();
-      throw err; // Re-throw to be caught by the outer catch
+      throw err;
     }
   } catch (err) {
     console.error('Bulk commit error:', err);
-    
-    // The existing error handling is perfect
     if (err.number === 2627 || err.number === 2601) { 
       res.status(409).json({ success: false, message: 'Conflict: A student with one of these TR or ITS numbers already exists.' });
     } else {

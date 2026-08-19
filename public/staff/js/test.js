@@ -339,11 +339,11 @@ reader.onload = async (e) => {
         reader.readAsArrayBuffer(file);
     });
 
-    // 4. Validate against database (UPDATED for new API response)
-async function validateAndPreview(students) {
+        // 4. Validate against database with Gender Auto-Detection & Section Inspection
+    async function validateAndPreview(students) {
         Swal.fire({
             title: 'Validating Students...',
-            text: 'Checking for global duplicates...',
+            text: 'Analyzing student sections and checking duplicates...',
             didOpen: () => { Swal.showLoading() }
         });
 
@@ -352,73 +352,147 @@ async function validateAndPreview(students) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ students })
         });
-const result = await res.json();
+        const result = await res.json();
 
-    if (!res.ok) {
+        if (!res.ok) {
             Swal.fire('Validation Error', result.message || 'An unknown error occurred.', 'error');
             return;
         }
 
-        // *** UPDATED to handle 'skippedStudents' ***
-    const { newStudents, skippedStudents, invalidRows } = result;
-        
-        let summaryHtml = `<div style="text-align: left; margin-top: 1rem;">`;
-    if (newStudents.length > 0) {
-            summaryHtml += `<p class="text-success"><strong>✅ New students to be ENROLLED: ${newStudents.length}</strong></p>`;
-        }
-    if (skippedStudents.length > 0) {
+        const { 
+            newStudents = [], 
+            skippedStudents = [], 
+            invalidRows = [], 
+            genderMismatchedRows = [],
+            maleCount = 0,
+            femaleCount = 0,
+            hasMultiGender = false,
+            userRole = 'Staff',
+            sessionGender = 'Male'
+        } = result;
+
+        let summaryHtml = `<div style="text-align: left; margin-top: 0.5rem; font-size: 0.92rem;">`;
+
+        // A. Multi-Gender Auto-Detection UI Badge
+        if (hasMultiGender) {
             summaryHtml += `
-                <hr>
-                <p class="text-warning"><strong>⚠️ Skipping ${skippedStudents.length} duplicate(s) (TR or ITS already exists):</strong></p>
-                <ul class="swal-list">
-                    ${skippedStudents.map(s => `<li>ITS ${s.ITS}, TR ${s.TR} - <strong>${s.reason}</strong></li>`).join('')}
+                <div style="background: #f0f4ff; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 12px; margin-bottom: 15px;">
+                    <h6 style="font-weight: 700; color: #1e3a8a; margin: 0 0 6px 0; font-size: 0.95rem;">⚖️ Multi-Gender Batch Auto-Detected</h6>
+                    <p style="margin-bottom: 10px; font-size: 0.82rem; color: #475569;">
+                        ${userRole === 'Admin' 
+                            ? 'As an Admin, students will be automatically routed to their respective sections:' 
+                            : 'This file contains students for both Male and Female sections:'}
+                    </p>
+                    <div style="display: flex; justify-content: space-around; align-items: center; background: white; border-radius: 6px; padding: 10px; border: 1px solid #cbd5e1;">
+                        <div style="text-align: center;">
+                            <span style="font-size: 1.4rem; font-weight: 700; color: #2563eb;">${maleCount}</span>
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Male (Talabat)</div>
+                        </div>
+                        <div style="height: 30px; border-right: 1px solid #e2e8f0;"></div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 1.4rem; font-weight: 700; color: #dc2626;">${femaleCount}</span>
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Female (Talebaat)</div>
+                        </div>
+                    </div>
+                </div>`;
+        } else if (newStudents.length > 0) {
+            const sectionLabel = maleCount > 0 ? 'Male (Talabat)' : 'Female (Talebaat)';
+            summaryHtml += `<p class="text-success" style="font-size: 0.95rem;"><strong>✅ New students to be ENROLLED: ${newStudents.length} (${sectionLabel})</strong></p>`;
+        }
+
+        // B. Staff Section Mismatch Protection
+        const isStaffBlocked = (userRole === 'Staff' && genderMismatchedRows.length > 0);
+        if (isStaffBlocked) {
+            summaryHtml += `
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 6px; padding: 10px; margin-bottom: 15px; color: #991b1b;">
+                    <strong>⛔ Staff Section Restriction:</strong> You are logged in as <strong>${sessionGender} Staff</strong>. 
+                    ${genderMismatchedRows.length} student(s) in this file belong to the opposite section (${sessionGender === 'Male' ? 'Female' : 'Male'}).
+                    <br><small style="font-size: 0.8rem;">Opposite section rows will be excluded automatically from this import.</small>
+                </div>`;
+        }
+
+        // C. Skipped Duplicates
+        if (skippedStudents.length > 0) {
+            summaryHtml += `
+                <hr style="margin: 10px 0;">
+                <p class="text-warning mb-1"><strong>⚠️ Skipping ${skippedStudents.length} duplicate(s) (TR or ITS already exists):</strong></p>
+                <ul class="swal-list" style="max-height: 90px; overflow-y: auto; padding-left: 20px; font-size: 0.82rem;">
+                    ${skippedStudents.slice(0, 5).map(s => `<li>ITS ${s.ITS}, TR ${s.TR} - <strong>${s.reason}</strong></li>`).join('')}
+                    ${skippedStudents.length > 5 ? `<li class="text-muted">...and ${skippedStudents.length - 5} more</li>` : ''}
                 </ul>`;
         }
-    if (invalidRows.length > 0) {
+
+        // D. Invalid Formatting Rows
+        if (invalidRows.length > 0) {
             summaryHtml += `
-                <hr>
-                <p class="text-danger"><strong>❌ Skipping ${invalidRows.length} invalid row(s):</strong></p>
-                <ul class="swal-list">
-                    ${invalidRows.map(row => `<li>Row ${row.fileRow}: <strong>${row.reason}</strong></li>`).join('')}
+                <hr style="margin: 10px 0;">
+                <p class="text-danger mb-1"><strong>❌ Skipping ${invalidRows.length} invalid row(s):</strong></p>
+                <ul class="swal-list" style="max-height: 90px; overflow-y: auto; padding-left: 20px; font-size: 0.82rem;">
+                    ${invalidRows.slice(0, 5).map(row => `<li>Row ${row.fileRow}: <strong>${row.reason}</strong></li>`).join('')}
+                    ${invalidRows.length > 5 ? `<li class="text-muted">...and ${invalidRows.length - 5} more</li>` : ''}
                 </ul>`;
         }
+
         summaryHtml += `</div>`;
 
-    Swal.fire({
-            title: 'Import Summary',
+        // Calculate students that will actually be imported
+        const validImportStudents = isStaffBlocked 
+            ? newStudents.filter(s => s.Gender === sessionGender)
+            : newStudents;
+
+        Swal.fire({
+            title: 'Import Preview & Section Check',
             html: summaryHtml,
-            icon: 'info',
+            icon: isStaffBlocked ? 'warning' : 'info',
             showCancelButton: true,
             confirmButtonColor: '#4CAF50',
             cancelButtonColor: '#d33',
-            confirmButtonText: `Yes, add ${newStudents.length} new students!`,
-        preConfirm: () => {
-                if (newStudents.length === 0) {
-                    Swal.showValidationMessage('There are no new students to import.');
+            confirmButtonText: validImportStudents.length > 0 
+                ? `Yes, enroll ${validImportStudents.length} students!` 
+                : 'No valid students to add',
+            preConfirm: () => {
+                if (validImportStudents.length === 0) {
+                    Swal.showValidationMessage('There are no valid students to import for your section.');
                     return false;
                 }
-                return true;
+                return validImportStudents;
             }
-    }).then((action) => {
-            if (action.isConfirmed) {
-                commitBulkAdd(newStudents);
+        }).then((action) => {
+            if (action.isConfirmed && action.value) {
+                commitBulkAdd(action.value);
             }
         });
     }
     
-    // 5. Commit to database (Unchanged, still just sends newStudents)
-async function commitBulkAdd(newStudents) {
+    // 5. Commit to database with auto-detected section routing
+    async function commitBulkAdd(newStudents) {
+        Swal.fire({
+            title: 'Enrolling Students...',
+            text: 'Saving records to database...',
+            didOpen: () => { Swal.showLoading() }
+        });
+
         const res = await fetch('/api/fitness-test/bulk-commit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ students: newStudents }) 
         });
-const data = await res.json();
+        const data = await res.json();
 
         if (res.ok) {
-    Swal.fire('Success!', `${data.count} new students have been enrolled.`, 'success');
+            let msg = `${data.count} new students enrolled successfully.`;
+            if (data.maleCount > 0 && data.femaleCount > 0) {
+                msg = `Enrolled ${data.count} students (${data.maleCount} Male, ${data.femaleCount} Female) into their respective sections!`;
+            } else if (data.maleCount > 0) {
+                msg = `Enrolled ${data.count} Male (Talabat) students successfully!`;
+            } else if (data.femaleCount > 0) {
+                msg = `Enrolled ${data.count} Female (Talebaat) students successfully!`;
+            }
+            Swal.fire('Import Successful!', msg, 'success').then(() => {
+                location.reload();
+            });
         } else {
-    Swal.fire('Error!', 'Could not add students: ' + data.message, 'error');
+            Swal.fire('Error!', 'Could not add students: ' + data.message, 'error');
         }
     }
 

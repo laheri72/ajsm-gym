@@ -49,9 +49,12 @@ The system uses session-based authentication with distinct login flows for each 
 ## Service Layer & Logic
 Logic is predominantly co-located with route handlers in `routes/`. Key features include:
 - **Gamification Engine (`routes/gamification.js`):** Calculates XP, levels, and awards achievements (Consistency King, Social Butterfly, etc.) based on attendance and workouts. Hall of Fame ranking uses earned badge count first, then derived lifetime XP/level from `TestMaster`.
-- **Fitness Evaluation:** Experts (`Evaluators`) provide categorized comments on trainer-logged fitness tests.
-- **Attendance Management:** Handled in `routes/staff.js`, including "On Leave" bulk updates and manual attendance correction.
 - **Direct Entry Workflow:** Student registration bypasses the legacy `WaitingList` table. Students are activated directly in `TestMaster` upon entry, with optional "Waiting for Slot" support.
+- **Bulk Import Engine & Section Routing:** Spreadsheet import (`/api/fitness-test/bulk-validate` & `/api/fitness-test/bulk-commit`) implements a strict 3-tier hierarchy engine (`detectStudentGender`):
+  1. *Level 1 (Absolute Authority):* `Darajah` codes ending in `M`/`F` or `DARS M`/`DARS F` auto-route students to Male (Talabat) vs Female (Talebaat) sections, completely ignoring name text.
+  2. *Level 2 (Honorific Keywords):* Evaluated ONLY if `Darajah` has no `M`/`F` indicator (scans Bohra title keywords like `bai`/`bhen` vs `bhai`/`mulla`/`shaikh`).
+  3. *Level 3 (Session Fallback):* Defaults to session gender.
+  Admins can upload multi-gender branch files in a single batch with automatic section routing and an interactive SweetAlert modal preview badge. Single-gender Staff are protected against cross-section imports.
 - **Student Revocation:** Admin-level student removal uses a "Revoke" status instead of permanent deletion to preserve historical analytics and records.
 - **Workout Planner (V2):** Students compose weekly plans via a structured day-by-day UI. Plans are persisted in the normalized `WorkoutPrograms → WorkoutWeeks → WorkoutDays → PlannedExercises` tables. Exercises are fetched dynamically via `/api/exercises` from the master `Exercises` table (98 entries with Video URLs). Planner insights (adherence, weekday history, duration baseline) are derived from `AttendanceWeek`, `WorkoutDays`, and `TrainingPlan/TrainingLog`.
 - **Performance Logging (Phase 3C):** Students can log set-by-set execution (reps, weight, RPE) for any exercise in the master list. This data is stored in `PerformanceLogs`, which feeds into the Personal Record (PR) engine for real-time achievement notifications.
