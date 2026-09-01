@@ -11,6 +11,7 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const session = require("express-session");
+const MSSQLStore = require('connect-mssql')(session);
 const app = express();
 const moment = require('moment-timezone');
 const { pool, connectDB } = require('./utils/db.js');
@@ -22,26 +23,38 @@ const staffRoutes = require('./routes/staff.js');
 const gamificationRoutes = require('./routes/gamification.js');
 const { cache } = require('./utils/cache.js');
 
-
-
-// Set up the port
 const port = 10000;
 
 app.set('trust proxy', 1);
 
 // Middleware
+// Fix: ALLOWED_ORIGIN env var lets local dev work without code changes
 app.use(cors({
-  origin: 'https://ajsm-gym.onrender.com',
+  origin: process.env.ALLOWED_ORIGIN || 'https://ajsm-gym.onrender.com',
   credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Fix: Replaced MemoryStore with connect-mssql so sessions survive Render deployments/restarts
+const sessionStoreConfig = {
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  options: {
+    encrypt: true,
+    trustServerCertificate: true
+  }
+};
+
 app.use(session({
-  secret: process.env.SESSION_SECRET,  
+  secret: process.env.SESSION_SECRET,
   name: 'ajsm.sid',
   resave: false,
   saveUninitialized: false,
+  store: new MSSQLStore(sessionStoreConfig),
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

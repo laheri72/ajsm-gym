@@ -1741,7 +1741,7 @@ router.get(
 router.get(
   '/api/student/training-analytics',
   cacheMiddleware(req => `train_analytics_${req.session.user?.TR}`, 300),
-  async (req, res) => {
+  async (req, res, next) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized. Please log in.' });       
     }   
@@ -1761,7 +1761,10 @@ router.get(
                 ORDER BY count DESC;
             `);
         res.json({ success: true, data: result.recordset });
-    } catch (err) { /* ... error handling ... */ }
+    } catch (err) {
+        console.error('❌ Error fetching workout body part trends:', err);
+        next(err);
+    }
 });
 
 

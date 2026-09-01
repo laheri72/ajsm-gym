@@ -1954,8 +1954,8 @@ async function promptForWorkoutAndSubmit(tr, studentName) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    WeekStartDate: weekStart.toISOString().split('T')[0],
-                    WeekEndDate: weekEnd.toISOString().split('T')[0]
+                    WeekStartDate: weekStart.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
+                    WeekEndDate: weekEnd.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
                 })
             });
             const weekData = await weekResponse.json();

@@ -168,7 +168,7 @@ async function runAchievementEvaluation() {
                         .input('TR', TR)
                         .input('StartDate', thirtyDaysAgo)
                         .query(`
-                            SELECT COUNT(DISTINCT CAST(CreatedAt AS DATE)) as AttendedDays 
+                            SELECT COUNT(DISTINCT CAST(DATEADD(MINUTE, 330, CreatedAt) AS DATE)) as AttendedDays 
                             FROM Attendance 
                             WHERE TR = @TR AND CreatedAt >= @StartDate 
                               AND (IsPresent = 1 OR OnLeave = 1)
@@ -189,7 +189,7 @@ async function runAchievementEvaluation() {
             const consistencyKingID = 2;
             const workoutDatesRequest = new sql.Request(transaction);
             const workoutDatesRes = await workoutDatesRequest.input('TR', TR)
-                .query(`SELECT DISTINCT CAST(CreatedAt AS DATE) as workoutDate 
+                .query(`SELECT DISTINCT CAST(DATEADD(MINUTE, 330, CreatedAt) AS DATE) as workoutDate 
                         FROM TrainingPlan 
                         WHERE TR = @TR 
                         ORDER BY workoutDate ASC`);
