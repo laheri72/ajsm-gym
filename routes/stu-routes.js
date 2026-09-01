@@ -26,7 +26,7 @@ function isPendingOrUnassignedSlot(slotName) {
     return !normalized || normalized.includes('pending') || normalized === 'n/a' || normalized === 'unassigned';
 }
 
-function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName, tr, joinedAt }) {
+function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlotName, tr, joinedAt, warnedRef = {} }) {
     if (joinedAt) {
         const joinedDate = new Date(joinedAt);
         joinedDate.setHours(0, 0, 0, 0);
@@ -51,7 +51,10 @@ function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlo
         let slotToCheck = latestRecord.NewSlotName;
         if (!slotToCheck && status === 'active') {
             slotToCheck = fallbackSlotName;
-            console.warn(`[Attendance Fallback] Legacy NULL slot history (latestRecord) detected for TR ${tr || 'unknown'}. Falling back to current slot: ${fallbackSlotName}`);
+            if (!warnedRef.latestRecord) {
+                console.warn(`[Attendance Fallback] Legacy NULL slot history (latestRecord) detected for TR ${tr || 'unknown'}. Falling back to current slot: ${fallbackSlotName}`);
+                warnedRef.latestRecord = true;
+            }
         }
         return !isPendingOrUnassignedSlot(slotToCheck);
     }
@@ -62,7 +65,10 @@ function isExpectedAttendanceDay({ dateEnd, history, fallbackStatus, fallbackSlo
         let slotToCheck = oldestRecord.PreviousSlotName;
         if (!slotToCheck && status === 'active') {
             slotToCheck = fallbackSlotName;
-            console.warn(`[Attendance Fallback] Legacy NULL slot history (oldestRecord) detected for TR ${tr || 'unknown'}. Falling back to current slot: ${fallbackSlotName}`);
+            if (!warnedRef.oldestRecord) {
+                console.warn(`[Attendance Fallback] Legacy NULL slot history (oldestRecord) detected for TR ${tr || 'unknown'}. Falling back to current slot: ${fallbackSlotName}`);
+                warnedRef.oldestRecord = true;
+            }
         }
         return !isPendingOrUnassignedSlot(slotToCheck);
     }
@@ -1947,6 +1953,7 @@ router.get(
         const history = historyQuery.recordset || [];
         const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const startDate = new Date(WeekStartDate);
+        const warnedRef = {}; // Dedup: warn at most once per request for this TR
         
         dayNames.forEach((day, i) => {
             if (record[day] === '') { // Means it wasn't Present or On Leave
@@ -1960,7 +1967,8 @@ router.get(
                     fallbackStatus: 'Active',
                     fallbackSlotName: studentData.SlotName,
                     tr: TR,
-                    joinedAt: studentData.JoinedAt
+                    joinedAt: studentData.JoinedAt,
+                    warnedRef
                 });
 
                 if (!isExpected) {
@@ -2068,6 +2076,7 @@ router.get(
         let absent = 0;
         let onLeave = 0;
         const cursor = joinedAt.clone();
+        const warnedRef = {}; // Dedup: warn at most once per request for this TR
 
         while (cursor.isSameOrBefore(today, 'day')) {
             const dayOfWeek = cursor.isoWeekday();
@@ -2080,7 +2089,8 @@ router.get(
                     fallbackStatus: student.Status,
                     fallbackSlotName: student.SlotName,
                     tr: TR,
-                    joinedAt: student.JoinedAt
+                    joinedAt: student.JoinedAt,
+                    warnedRef
                 });
 
                 if (isExpected) {
@@ -2198,6 +2208,7 @@ router.get(
 
             let absentDays = [];
             const cursor = joinedAt.clone();
+            const warnedRef = {}; // Dedup: warn at most once per request for this TR
 
             while (cursor.isSameOrBefore(today, 'day')) {
                 const dayOfWeek = cursor.isoWeekday();
@@ -2210,7 +2221,8 @@ router.get(
                         fallbackStatus: student.Status,
                         fallbackSlotName: student.SlotName,
                         tr: TR,
-                        joinedAt: student.JoinedAt
+                        joinedAt: student.JoinedAt,
+                        warnedRef
                     });
 
                     if (isExpected) {
