@@ -156,11 +156,93 @@ export async function initializeWeekPicker() {
         const today = moment.tz("Asia/Kolkata").toDate();
         findAndLoadAttendanceForDate(today, true);
 
+        // 🌟 Load and animate the Attendance Hero summary
+        loadAttendanceHero();
+
     } catch (err) {
         console.error('Failed to initialize week picker:', err);
         weekPickerInput.placeholder = "Error loading weeks.";
         weekPickerInput.disabled = true;
         Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Could not load week data.' });
+    }
+}
+
+/**
+ * Loads and renders the Overall Attendance Hero card at the top of the Attendance tab.
+ */
+export async function loadAttendanceHero() {
+    const heroCard = document.getElementById('attendanceHeroCard');
+    if (!heroCard) return;
+
+    const rateEl = document.getElementById('attendanceHeroRate');
+    const circleEl = document.getElementById('attendanceHeroCircle');
+    const presentEl = document.getElementById('attendanceHeroPresent');
+    const absentEl = document.getElementById('attendanceHeroAbsent');
+    const leaveEl = document.getElementById('attendanceHeroLeave');
+    const expectedEl = document.getElementById('attendanceHeroExpected');
+    const subtitleEl = document.getElementById('attendanceHeroSubtitle');
+    const statusTextEl = document.getElementById('attendanceHeroStatusText');
+    const pillEl = document.getElementById('attendanceHeroRatingPill');
+
+    try {
+        const res = await fetch('/api/student/attendance-summary/me', { credentials: 'include' });
+        const result = await res.json();
+
+        if (!res.ok || !result.success) {
+            throw new Error(result.message || 'Could not load summary');
+        }
+
+        const data = result.data || {};
+        const present = Number(data.present || 0);
+        const absent = Number(data.absent || 0);
+        const onLeave = Number(data.onLeave || 0);
+        const expected = Number(data.expectedDays || 0);
+        const rate = Number(data.attendanceRate);
+        const hasRate = Number.isFinite(rate);
+        const safeRate = hasRate ? Math.max(0, Math.min(rate, 100)) : 0;
+
+        if (presentEl) presentEl.textContent = present;
+        if (absentEl) absentEl.textContent = absent;
+        if (leaveEl) leaveEl.textContent = onLeave;
+        if (expectedEl) expectedEl.textContent = expected;
+
+        if (rateEl) {
+            rateEl.textContent = hasRate ? `${safeRate.toFixed(1)}%` : '--%';
+        }
+
+        if (circleEl) {
+            const circumference = 2 * Math.PI * 50; // r=50 => ~314.159
+            circleEl.style.strokeDasharray = `${circumference}`;
+            const offset = circumference * (1 - safeRate / 100);
+            circleEl.style.strokeDashoffset = `${offset}`;
+        }
+
+        // Rating status pill
+        if (pillEl && statusTextEl) {
+            pillEl.className = 'hero-rate-pill';
+            if (!hasRate || expected === 0) {
+                pillEl.classList.add('rate-new');
+                statusTextEl.textContent = '🌟 New Member';
+            } else if (safeRate >= 85) {
+                pillEl.classList.add('rate-excellent');
+                statusTextEl.textContent = '🌟 Excellent Standing';
+            } else if (safeRate >= 70) {
+                pillEl.classList.add('rate-good');
+                statusTextEl.textContent = '👍 Good Consistency';
+            } else {
+                pillEl.classList.add('rate-warning');
+                statusTextEl.textContent = '⚠️ Attention Needed';
+            }
+        }
+
+        if (subtitleEl && data.joinedAt) {
+            const joinedStr = moment(data.joinedAt).format('MMM D, YYYY');
+            subtitleEl.textContent = `Member since ${joinedStr} • ${expected} total sessions evaluated`;
+        }
+    } catch (err) {
+        console.error('Error loading attendance hero:', err);
+        if (rateEl) rateEl.textContent = '--%';
+        if (statusTextEl) statusTextEl.textContent = 'Summary Unavailable';
     }
 }
 

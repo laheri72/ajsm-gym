@@ -2552,47 +2552,65 @@ router.delete('/api/student/leaves/:id', async (req, res) => {
 router.get(
   '/api/achievements/leaderboard',
   cacheMiddleware(req =>
-    `achieve_leaderboard_v2_${req.session.user?.Branch}_${req.session.user?.Gender}`,
+    `achieve_leaderboard_v3_${req.session.user?.Branch}_${req.session.user?.Gender}_${req.session.user?.TR}`,
     300
   ),
   async (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const { Branch, Gender } = req.session.user;
+    const { Branch, Gender, TR } = req.session.user;
 
     try {
         const result = await pool.request()
             .input('Branch', sql.NVarChar(50), Branch)
             .input('Gender', sql.NVarChar(50), Gender)
+            .input('TR', sql.Int, TR)
             .query(`
-                SELECT TOP 10
-                    M.TR,
-                    M.Name,
-                    COUNT(SA.StudentAchievementID) AS TotalAchievements,
-                    G.SafeLevel AS FitnessLevel,
-                    G.SafeCurrentXP AS CurrentXP,
-                    G.SafeLevel * 100 AS NextLevelXP,
-                    (((G.SafeLevel - 1) * G.SafeLevel) / 2) * 100 + G.SafeCurrentXP AS TotalXP
-                FROM TestMaster M
-                LEFT JOIN StudentAchievements SA ON M.TR = SA.TR
-                CROSS APPLY (
+                WITH RankedStudents AS (
                     SELECT
-                        CASE
-                            WHEN ISNULL(M.FitnessLevel, 1) < 1 THEN 1
-                            ELSE ISNULL(M.FitnessLevel, 1)
-                        END AS SafeLevel,
-                        ISNULL(M.CurrentXP, 0) AS SafeCurrentXP
-                ) G
-                WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
-                GROUP BY M.TR, M.Name, G.SafeLevel, G.SafeCurrentXP
-                ORDER BY
-                    TotalAchievements DESC,
-                    TotalXP DESC,
-                    G.SafeLevel DESC,
-                    G.SafeCurrentXP DESC,
-                    MIN(SA.DateEarned) ASC,
-                    M.Name ASC;
+                        M.TR,
+                        M.Name,
+                        COUNT(SA.StudentAchievementID) AS TotalAchievements,
+                        G.SafeLevel AS FitnessLevel,
+                        G.SafeCurrentXP AS CurrentXP,
+                        G.SafeLevel * 100 AS NextLevelXP,
+                        (((G.SafeLevel - 1) * G.SafeLevel) / 2) * 100 + G.SafeCurrentXP AS TotalXP,
+                        ROW_NUMBER() OVER (
+                            ORDER BY
+                                COUNT(SA.StudentAchievementID) DESC,
+                                (((G.SafeLevel - 1) * G.SafeLevel) / 2) * 100 + G.SafeCurrentXP DESC,
+                                G.SafeLevel DESC,
+                                G.SafeCurrentXP DESC,
+                                MIN(SA.DateEarned) ASC,
+                                M.Name ASC
+                        ) AS Rank
+                    FROM TestMaster M
+                    LEFT JOIN StudentAchievements SA ON M.TR = SA.TR
+                    CROSS APPLY (
+                        SELECT
+                            CASE
+                                WHEN ISNULL(M.FitnessLevel, 1) < 1 THEN 1
+                                ELSE ISNULL(M.FitnessLevel, 1)
+                            END AS SafeLevel,
+                            ISNULL(M.CurrentXP, 0) AS SafeCurrentXP
+                    ) G
+                    WHERE M.Status = 'Active' AND M.Branch = @Branch AND M.Gender = @Gender
+                    GROUP BY M.TR, M.Name, G.SafeLevel, G.SafeCurrentXP
+                )
+                SELECT
+                    TR,
+                    Name,
+                    TotalAchievements,
+                    FitnessLevel,
+                    CurrentXP,
+                    NextLevelXP,
+                    TotalXP,
+                    Rank,
+                    CASE WHEN TR = @TR THEN 1 ELSE 0 END AS IsCurrentUser
+                FROM RankedStudents
+                WHERE Rank <= 10 OR TR = @TR
+                ORDER BY Rank ASC;
             `);
         res.json({ success: true, data: result.recordset });
     } catch (err) {

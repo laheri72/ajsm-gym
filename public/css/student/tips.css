@@ -138,5 +138,75 @@
 .tips-tabs .tab-link.active {
   background-color: var(--primary);
   color: white;
+}
 
+/* =================================================================== */
+/* 26. TUTORIAL EXERCISE CARDS & ADD BUTTONS
+/* =================================================================== */
+
+.body-part-desc {
+    font-size: 0.95rem;
+    color: var(--gray);
+    line-height: 1.6;
+    background: rgba(76, 175, 80, 0.05);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
+}
+
+.tip-exercise-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: #ffffff;
+}
+
+.tip-exercise-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+.tip-card-img-wrap {
+    height: 180px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.tip-card-img-wrap img {
+    max-height: 100%;
+    width: auto;
+    object-fit: contain;
+}
+
+.tip-add-to-plan-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.tip-add-to-plan-btn:hover {
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .tip-exercise-card {
+    background: #101a2a;
+    border-color: #24354a;
+}
+
+[data-theme="dark"] .tip-card-img-wrap {
+    background: #0b1320;
+}
+
+[data-theme="dark"] .body-part-desc {
+    background: rgba(0, 255, 234, 0.05);
+    border-left-color: var(--accent);
+    color: var(--text-on-dark);
+}
+
+[data-theme="dark"] .tip-exercise-card .card-title {
+    color: var(--text-on-light);
 }

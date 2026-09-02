@@ -72,6 +72,11 @@ export function navigateToSection(targetSectionId) {
             mod.showFitnessTab('overview');
         });
     }
+    if (targetSectionId === 'attendance-low') {
+        import('./attendance.js').then(mod => {
+            mod.loadAttendanceHero();
+        });
+    }
     if (targetSectionId === 'tips-low' && !cache.tips) {
         try {
             loadTipsSection();

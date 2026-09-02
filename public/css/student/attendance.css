@@ -1,4 +1,285 @@
 /* =================================================================== */
+/* ATTENDANCE TAB HERO OVERVIEW CARD
+/* =================================================================== */
+
+.attendance-hero-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.08), rgba(14, 165, 233, 0.07)) #ffffff;
+    border: 1px solid #cce3de;
+    border-radius: 18px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(16, 35, 58, 0.07);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.attendance-hero-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #15803d;
+    background: rgba(34, 197, 94, 0.12);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.35rem;
+}
+
+.hero-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #132f4c;
+    margin: 0 0 0.25rem;
+}
+
+.hero-subtitle {
+    font-size: 0.85rem;
+}
+
+.hero-rate-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.hero-rate-pill.rate-excellent {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.hero-rate-pill.rate-good {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.hero-rate-pill.rate-warning {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+}
+
+.hero-rate-pill.rate-new {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.attendance-hero-body {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.hero-score-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hero-gauge-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
+
+.hero-gauge-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.hero-gauge-bg {
+    fill: none;
+    stroke: #e2e8f0;
+    stroke-width: 10;
+}
+
+.hero-gauge-progress {
+    fill: none;
+    stroke: url(#heroGradient) #4CAF50;
+    stroke: #22c55e;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 314.159;
+    stroke-dashoffset: 314.159;
+    transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-gauge-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.hero-gauge-number {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #132f4c;
+    line-height: 1;
+}
+
+.hero-gauge-caption {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 0.2rem;
+}
+
+.hero-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+}
+
+.hero-metric-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.85rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-metric-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+}
+
+.hero-metric-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.hero-metric-present .hero-metric-icon { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
+.hero-metric-absent .hero-metric-icon { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.hero-metric-leave .hero-metric-icon { background: rgba(234, 179, 8, 0.12); color: #ca8a04; }
+.hero-metric-expected .hero-metric-icon { background: rgba(14, 165, 233, 0.12); color: #0284c7; }
+
+.hero-metric-value {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #132f4c;
+    line-height: 1.1;
+}
+
+.hero-metric-label {
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--gray);
+}
+
+.week-section-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #132f4c;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .hero-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .attendance-hero-body {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+    .hero-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        width: 100%;
+    }
+    .hero-metric-box {
+        padding: 0.65rem;
+    }
+    .hero-metric-value {
+        font-size: 1.15rem;
+    }
+}
+
+/* Dark mode for Attendance Hero Card */
+[data-theme="dark"] .attendance-hero-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.14), rgba(14, 165, 233, 0.1)) #101c2b;
+    border-color: #243b55;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+}
+
+[data-theme="dark"] .hero-title,
+[data-theme="dark"] .hero-gauge-number,
+[data-theme="dark"] .hero-metric-value,
+[data-theme="dark"] .week-section-title {
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .hero-metric-box {
+    background: #142436;
+    border-color: #243b55;
+}
+
+[data-theme="dark"] .hero-gauge-bg {
+    stroke: #1f3347;
+}
+
+[data-theme="dark"] .hero-rate-pill.rate-excellent {
+    background: #064e3b;
+    color: #6ee7b7;
+    border-color: #047857;
+}
+
+[data-theme="dark"] .hero-rate-pill.rate-good {
+    background: #0c4a6e;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+[data-theme="dark"] .hero-rate-pill.rate-warning {
+    background: #78350f;
+    color: #fde68a;
+    border-color: #b45309;
+}
+
+/* =================================================================== */
 /* LANDING ATTENDANCE SNAPSHOT
 /* =================================================================== */
 

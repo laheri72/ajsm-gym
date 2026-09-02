@@ -260,6 +260,108 @@ function renderSuggestionChips(card, day) {
   });
 }
 
+const SHORT_DAYS = {
+  Monday: 'MON',
+  Tuesday: 'TUE',
+  Wednesday: 'WED',
+  Thursday: 'THU',
+  Friday: 'FRI',
+  Saturday: 'SAT',
+  Sunday: 'SUN'
+};
+
+function renderDayGlanceStrip() {
+  const container = document.getElementById('plannerGlanceStrip');
+  const summaryEl = document.getElementById('plannerGlanceSummary');
+  if (!container) return;
+
+  const todayName = getTodayName();
+  if (!focusedDay) focusedDay = todayName;
+
+  let plannedCount = 0;
+  container.innerHTML = '';
+
+  DAYS.forEach((day) => {
+    const dayPlan = plannerState[day] || buildEmptyDayPlan();
+    const itemsCount = Array.isArray(dayPlan.items) ? dayPlan.items.length : 0;
+    const hasNotes = String(dayPlan.notes || '').trim().length > 0;
+    const isToday = (day === todayName);
+    const isFocused = (day === focusedDay);
+    const isSunday = (day === 'Sunday');
+
+    let status = 'empty';
+    let icon = '➕';
+    let badgeText = 'Open';
+
+    if (isSunday) {
+      status = 'sunday';
+      icon = '😴';
+      badgeText = 'Rest';
+    } else if (itemsCount > 0) {
+      status = 'planned';
+      icon = '✅';
+      badgeText = `${itemsCount} ex`;
+      plannedCount++;
+    } else if (hasNotes) {
+      status = 'notes';
+      icon = '📝';
+      badgeText = 'Notes';
+      plannedCount++;
+    } else {
+      status = 'empty';
+      icon = '➕';
+      badgeText = 'Open';
+    }
+
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `glance-day-chip status-${status} ${isToday ? 'is-today' : ''} ${isFocused ? 'is-focused' : ''}`;
+    chip.dataset.day = day;
+    chip.title = `${day}: ${itemsCount > 0 ? `${itemsCount} exercises planned` : (isSunday ? 'Rest day' : 'No workout planned')}`;
+    chip.innerHTML = `
+      <div class="glance-day-header">
+        <span class="glance-day-name">${SHORT_DAYS[day] || day.slice(0, 3)}</span>
+        ${isToday ? '<span class="glance-today-badge">TODAY</span>' : ''}
+      </div>
+      <div class="glance-day-status">
+        <span class="glance-status-icon">${icon}</span>
+        <span class="glance-status-text">${badgeText}</span>
+      </div>
+    `;
+
+    chip.addEventListener('click', () => {
+      focusedDay = day;
+      updateSingleDayView();
+      renderDayGlanceStrip();
+
+      // If weekly view is active, scroll smoothly to that day card
+      const weeklyView = document.getElementById('weekly-view');
+      if (weeklyView && weeklyView.style.display !== 'none') {
+        const targetCard = weeklyView.querySelector(`.structured-day-card[data-day="${day}"]`) ||
+                           weeklyView.querySelector(`.day-wrapper:has([data-day="${day}"])`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    });
+
+    container.appendChild(chip);
+  });
+
+  if (summaryEl) {
+    if (plannedCount === 6) {
+      summaryEl.innerHTML = `🔥 Full Week (${plannedCount}/6 Days Planned)`;
+      summaryEl.className = 'glance-summary-pill pill-complete';
+    } else if (plannedCount > 0) {
+      summaryEl.innerHTML = `💪 ${plannedCount} of 6 Days Planned`;
+      summaryEl.className = 'glance-summary-pill pill-active';
+    } else {
+      summaryEl.innerHTML = `📝 Plan your week`;
+      summaryEl.className = 'glance-summary-pill pill-empty';
+    }
+  }
+}
+
 function renderDay(day) {
   const dayPlan = plannerState[day] || buildEmptyDayPlan();
   document.querySelectorAll(`.structured-day-card[data-day="${day}"]`).forEach((card) => {
@@ -267,6 +369,7 @@ function renderDay(day) {
     renderHistoryChips(card, day);
     renderSuggestionChips(card, day);
   });
+  renderDayGlanceStrip();
 }
 
 function updateSingleDayView() {
@@ -292,6 +395,7 @@ function updateSingleDayView() {
 function renderAllDays() {
   DAYS.forEach(renderDay);
   updateSingleDayView();
+  renderDayGlanceStrip();
 }
 
 function updateCoachStrip() {
@@ -966,6 +1070,34 @@ export const exerciseModule = (() => {
               </div>
             </div>
           </div>`);
+      });
+
+      // Bind add-to-plan buttons
+      accordion.querySelectorAll('.add-to-plan-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const exercise = btn.dataset.exercise;
+          const bodyPart = btn.closest('.accordion-item')?.querySelector('.accordion-button')?.textContent?.replace(/^[^\w]+/, '').trim() || 'General';
+          const today = moment.tz('Asia/Kolkata').format('dddd');
+          const targetDay = today === 'Sunday' ? 'Monday' : today;
+
+          addExerciseToCard(targetDay, {
+            exercise,
+            bodyPart,
+            sets: 3,
+            reps: '10-12',
+            source: 'workout-list'
+          });
+
+          const originalText = btn.textContent;
+          btn.textContent = 'Added!';
+          btn.classList.add('btn-success');
+          btn.classList.remove('btn-primary');
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-primary');
+          }, 2000);
+        });
       });
 
       // Bind log-session buttons

@@ -272,6 +272,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
       </div>
 
+      <!-- 🗓️ WEEK AT A GLANCE STRIP -->
+      <div class="planner-glance-container mb-3" id="plannerGlanceContainer">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="glance-heading">
+            <i class="bi bi-calendar3"></i> <span>Week at a Glance</span>
+          </div>
+          <span class="glance-summary-pill" id="plannerGlanceSummary">Loading plan...</span>
+        </div>
+        <div class="planner-glance-strip" id="plannerGlanceStrip">
+          <!-- Populated dynamically with 7 clickable day status cards -->
+        </div>
+      </div>
+
       <div id="daily-view">
         <div class="today-grid">
           <div class="today-plan-card">
@@ -451,10 +464,72 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- =================================================================== -->
     <!-- =================================================================== -->
     <section class="card" id="attendance-low" style="display: none;">
-      <h2 class="text-center mb-4">📅 Your Weekly Attendance</h2>
-      <div class="form-group mb-4">
-        <label for="weekPickerInput" class="form-label">Select Week:</label>
-        <input type="text" id="weekPickerInput" class="form-control" placeholder="Select a week...">
+      <!-- 🌟 ATTENDANCE HERO OVERVIEW CARD -->
+      <div class="attendance-hero-card mb-4" id="attendanceHeroCard">
+        <div class="attendance-hero-header">
+          <div>
+            <span class="hero-badge"><i class="bi bi-shield-check"></i> Official Gym Record</span>
+            <h2 class="hero-title">Overall Attendance Rate</h2>
+            <p class="hero-subtitle text-muted mb-0" id="attendanceHeroSubtitle">Track your presence rate across all eligible gym sessions.</p>
+          </div>
+          <div class="hero-rate-pill" id="attendanceHeroRatingPill">
+            <span class="hero-rate-status" id="attendanceHeroStatusText">Calculating...</span>
+          </div>
+        </div>
+
+        <div class="attendance-hero-body">
+          <div class="hero-score-section">
+            <div class="hero-gauge-container">
+              <svg class="hero-gauge-svg" viewBox="0 0 120 120">
+                <circle class="hero-gauge-bg" cx="60" cy="60" r="50"></circle>
+                <circle class="hero-gauge-progress" id="attendanceHeroCircle" cx="60" cy="60" r="50"></circle>
+              </svg>
+              <div class="hero-gauge-inner">
+                <span class="hero-gauge-number" id="attendanceHeroRate">--%</span>
+                <span class="hero-gauge-caption">Presence</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-metrics-grid">
+            <div class="hero-metric-box hero-metric-present">
+              <div class="hero-metric-icon"><i class="bi bi-check-circle-fill"></i></div>
+              <div class="hero-metric-details">
+                <span class="hero-metric-value" id="attendanceHeroPresent">--</span>
+                <span class="hero-metric-label">Days Present</span>
+              </div>
+            </div>
+            <div class="hero-metric-box hero-metric-absent">
+              <div class="hero-metric-icon"><i class="bi bi-x-circle-fill"></i></div>
+              <div class="hero-metric-details">
+                <span class="hero-metric-value" id="attendanceHeroAbsent">--</span>
+                <span class="hero-metric-label">Days Absent</span>
+              </div>
+            </div>
+            <div class="hero-metric-box hero-metric-leave">
+              <div class="hero-metric-icon"><i class="bi bi-calendar2-minus-fill"></i></div>
+              <div class="hero-metric-details">
+                <span class="hero-metric-value" id="attendanceHeroLeave">--</span>
+                <span class="hero-metric-label">Approved Leaves</span>
+              </div>
+            </div>
+            <div class="hero-metric-box hero-metric-expected">
+              <div class="hero-metric-icon"><i class="bi bi-calendar-range-fill"></i></div>
+              <div class="hero-metric-details">
+                <span class="hero-metric-value" id="attendanceHeroExpected">--</span>
+                <span class="hero-metric-label">Expected Days</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="attendance-week-section">
+        <h3 class="week-section-title mb-3"><i class="bi bi-calendar-week"></i> Weekly Attendance Record</h3>
+        <div class="form-group mb-4">
+          <label for="weekPickerInput" class="form-label">Select Week to View:</label>
+          <input type="text" id="weekPickerInput" class="form-control" placeholder="Select a week...">
+        </div>
       </div>
 
       <div class="table-responsive">

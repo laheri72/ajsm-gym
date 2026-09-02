@@ -69,26 +69,47 @@ export function loadTip(goal) {
   document.getElementById('tipArea').innerHTML = html;
 }
 
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
 /**
  * Loads tips for the selected body part in the accordion section.
  */
 export function loadBodyPartTips() {
-  const value = document.getElementById("bodyPartSelect").value;
+  const selectEl = document.getElementById("bodyPartSelect");
+  const value = selectEl?.value;
   const target = document.getElementById("bodyPartTips");
+  if (!target) return;
   target.innerHTML = "";
 
   if (!value || !partTips[value]) return;
 
   const { desc, exercises } = partTips[value];
-  let html = `<p>${desc}</p><div class="row">`;
+  let html = `<p class="body-part-desc mb-3">${desc}</p><div class="row g-3">`;
 
   exercises.forEach(ex => {
     html += `
       <div class="col-md-6 col-lg-4 mb-3">
-        <div class="card h-100 shadow-sm">
-          <img src="${ex.img}" class="card-img-top" alt="${ex.name}" loading="lazy">
-          <div class="card-body">
-            <h5 class="card-title">${ex.name}</h5>
+        <div class="card h-100 shadow-sm tip-exercise-card">
+          <div class="tip-card-img-wrap">
+            <img src="${ex.img}" class="card-img-top" alt="${escapeHtml(ex.name)}" loading="lazy">
+          </div>
+          <div class="card-body d-flex flex-column justify-content-between p-3">
+            <div>
+              <h5 class="card-title mb-1">${escapeHtml(ex.name)}</h5>
+              <span class="badge bg-light text-primary border mb-2"><i class="bi bi-tag"></i> ${escapeHtml(value)}</span>
+            </div>
+            <button class="btn btn-sm btn-primary w-100 mt-2 tip-add-to-plan-btn"
+              data-exercise="${escapeHtml(ex.name)}" data-bodypart="${escapeHtml(value)}">
+              <i class="bi bi-plus-circle me-1"></i> Add to Today's Plan
+            </button>
           </div>
         </div>
       </div>
@@ -96,6 +117,61 @@ export function loadBodyPartTips() {
   });
   html += `</div>`;
   target.innerHTML = html;
+
+  // Bind click handlers for all buttons in this section
+  target.querySelectorAll('.tip-add-to-plan-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const exercise = btn.dataset.exercise;
+      const bodyPart = btn.dataset.bodypart;
+      handleAddExerciseToToday(btn, exercise, bodyPart);
+    });
+  });
+}
+
+function handleAddExerciseToToday(button, exercise, bodyPart) {
+  const today = moment.tz('Asia/Kolkata').format('dddd');
+  if (today === 'Sunday') {
+    Swal.fire({
+      icon: 'info',
+      title: 'Gym Closed on Sunday',
+      text: 'Would you like to add this exercise to Monday\'s workout plan instead?',
+      showCancelButton: true,
+      confirmButtonText: 'Add to Monday',
+      cancelButtonText: 'Cancel'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        addExerciseFromTip('Monday', exercise, bodyPart, button);
+      }
+    });
+    return;
+  }
+
+  addExerciseFromTip(today, exercise, bodyPart, button);
+}
+
+function addExerciseFromTip(day, exercise, bodyPart, button) {
+  import('./planner.js').then(mod => {
+    mod.addExerciseToCard(day, {
+      exercise,
+      bodyPart,
+      sets: 3,
+      reps: '10-12',
+      source: 'tutorial'
+    });
+
+    if (button) {
+      const originalHtml = button.innerHTML;
+      button.classList.remove('btn-primary', 'btn-outline-primary');
+      button.classList.add('btn-success');
+      button.innerHTML = `<i class="bi bi-check2"></i> Added to ${day}!`;
+      setTimeout(() => {
+        button.classList.remove('btn-success');
+        button.classList.add('btn-primary');
+        button.innerHTML = originalHtml;
+      }, 2500);
+    }
+  });
 }
 
 /* =====================================================

@@ -140,6 +140,223 @@
     font-size: 1.05rem;
 }
 
+/* =================================================================== */
+/* 🗓️ WEEK AT A GLANCE STRIP
+/* =================================================================== */
+
+.planner-glance-container {
+    background: #ffffff;
+    border: 1px solid #d4e2f0;
+    border-radius: 14px;
+    padding: 1rem;
+    box-shadow: 0 4px 14px rgba(16, 35, 58, 0.05);
+}
+
+.glance-heading {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #132f4a;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.glance-heading i {
+    color: var(--primary);
+    font-size: 1.05rem;
+}
+
+.glance-summary-pill {
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+
+.glance-summary-pill.pill-complete {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.glance-summary-pill.pill-active {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.glance-summary-pill.pill-empty {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+.planner-glance-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+}
+
+.glance-day-chip {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.6rem 0.4rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    position: relative;
+    user-select: none;
+}
+
+.glance-day-chip:hover {
+    transform: translateY(-2px);
+    border-color: #93c5fd;
+    box-shadow: 0 4px 12px rgba(16, 35, 58, 0.08);
+}
+
+.glance-day-chip.is-focused {
+    background: #ffffff;
+    border: 2px solid var(--primary);
+    box-shadow: 0 4px 14px rgba(76, 175, 80, 0.2);
+    transform: translateY(-2px);
+}
+
+.glance-day-chip.is-today {
+    border-top: 3px solid #0284c7;
+}
+
+.glance-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.glance-day-name {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #334155;
+    letter-spacing: 0.04em;
+}
+
+.glance-today-badge {
+    font-size: 0.58rem;
+    font-weight: 900;
+    background: #0284c7;
+    color: #ffffff;
+    padding: 0.08rem 0.3rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.glance-day-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.glance-status-icon {
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.glance-status-text {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.glance-day-chip.status-planned {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.glance-day-chip.status-planned .glance-status-text {
+    color: #16a34a;
+}
+
+.glance-day-chip.status-notes {
+    background: #fefce8;
+    border-color: #fef08a;
+}
+.glance-day-chip.status-notes .glance-status-text {
+    color: #ca8a04;
+}
+
+.glance-day-chip.status-sunday {
+    background: #f8fafc;
+    opacity: 0.85;
+}
+
+@media (max-width: 767.98px) {
+    .planner-glance-strip {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        gap: 0.4rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    .glance-day-chip {
+        min-width: 76px;
+        flex: 0 0 auto;
+    }
+}
+
+/* Dark theme for glance strip */
+[data-theme="dark"] .planner-glance-container {
+    background: #101c2b;
+    border-color: #243b55;
+}
+
+[data-theme="dark"] .glance-heading {
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .glance-day-chip {
+    background: #142436;
+    border-color: #243b55;
+}
+
+[data-theme="dark"] .glance-day-name {
+    color: var(--text-on-light);
+}
+
+[data-theme="dark"] .glance-day-chip:hover {
+    border-color: #60a5fa;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .glance-day-chip.is-focused {
+    background: #1a2f47;
+    border-color: #00FFEA;
+    box-shadow: 0 4px 16px rgba(0, 255, 234, 0.2);
+}
+
+[data-theme="dark"] .glance-day-chip.status-planned {
+    background: #064e3b;
+    border-color: #059669;
+}
+[data-theme="dark"] .glance-day-chip.status-planned .glance-status-text {
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .glance-day-chip.status-notes {
+    background: #451a03;
+    border-color: #78350f;
+}
+[data-theme="dark"] .glance-day-chip.status-notes .glance-status-text {
+    color: #fde68a;
+}
+
+[data-theme="dark"] .glance-day-chip.status-sunday {
+    background: #0f172a;
+}
+
 .planner-chip-row {
     display: flex;
     flex-wrap: wrap;

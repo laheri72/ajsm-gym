@@ -101,15 +101,84 @@
 }
 
 .snapshot-card .value {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
     font-weight: 700;
     color: var(--dark);
+    line-height: 1.2;
+}
+
+.snapshot-card .value .unit {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--gray);
+}
+
+.snapshot-card .delta-wrapper {
+    margin-top: 0.45rem;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.snapshot-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    line-height: 1;
+}
+
+.snapshot-delta.delta-good {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.snapshot-delta.delta-warn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.snapshot-delta.delta-same {
+    background: rgba(148, 163, 184, 0.12);
+    color: #64748b;
+}
+
+.snapshot-delta.delta-none {
+    color: #cbd5e1;
+    font-size: 0.8rem;
 }
 
 .snapshot-card.grade-A { border-bottom: 4px solid #4CAF50; color: #4CAF50; }
 .snapshot-card.grade-B { border-bottom: 4px solid #2196F3; color: #2196F3; }
 .snapshot-card.grade-C { border-bottom: 4px solid #FF9800; color: #FF9800; }
 .snapshot-card.grade-D { border-bottom: 4px solid #f44336; color: #f44336; }
+
+[data-theme="dark"] .snapshot-delta.delta-good {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+[data-theme="dark"] .snapshot-delta.delta-warn {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+[data-theme="dark"] .snapshot-delta.delta-same {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .snapshot-delta.delta-none {
+    color: #475569;
+}
 
 /* --- Modern Form Sections --- */
 .form-section-modern {

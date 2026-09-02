@@ -301,8 +301,9 @@ async function loadTestHistory() {
         const res = await fetch(`/api/testrecords/me`, { credentials: 'include' });
         historyData = await res.json();
         
-        const latest = historyData[0];
-        renderSnapshot(latest);
+        const latest = Array.isArray(historyData) ? historyData[0] : null;
+        const previous = (Array.isArray(historyData) && historyData.length > 1) ? historyData[1] : null;
+        renderSnapshot(latest, previous);
 
         const saveBtn = document.getElementById('saveBtn');
         const saveWarning = document.getElementById('saveWarning');
@@ -322,7 +323,40 @@ async function loadTestHistory() {
     }
 }
 
-function renderSnapshot(record) {
+function formatDeltaBadge(diff, unit = '', isLowerBetter = false) {
+    if (diff === null || diff === undefined || isNaN(diff)) {
+        return `<span class="snapshot-delta delta-none" title="First recorded test"><i class="bi bi-dash"></i></span>`;
+    }
+    const rounded = Math.round(diff * 10) / 10;
+    if (Math.abs(rounded) < 0.05) {
+        return `<span class="snapshot-delta delta-same" title="Maintained level"><i class="bi bi-dash"></i> 0.0${unit}</span>`;
+    }
+    const isUp = rounded > 0;
+    const isGood = isLowerBetter ? !isUp : isUp;
+    const cls = isGood ? 'delta-good' : 'delta-warn';
+    const icon = isUp ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
+    const sign = isUp ? '+' : '';
+    return `<span class="snapshot-delta ${cls}" title="${isUp ? 'Increased' : 'Decreased'} by ${Math.abs(rounded)}${unit} vs previous test">
+        <i class="bi ${icon}"></i> ${sign}${rounded.toFixed(1)}${unit}
+    </span>`;
+}
+
+function formatGradeDelta(currentGrade, prevGrade) {
+    if (!prevGrade) {
+        return `<span class="snapshot-delta delta-none"><i class="bi bi-dash"></i></span>`;
+    }
+    const rankMap = { 'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1 };
+    const curRank = rankMap[currentGrade] || 0;
+    const prevRank = rankMap[prevGrade] || 0;
+    if (curRank > prevRank) {
+        return `<span class="snapshot-delta delta-good" title="Promoted from Grade ${prevGrade}"><i class="bi bi-arrow-up-short"></i> vs ${prevGrade}</span>`;
+    } else if (curRank < prevRank) {
+        return `<span class="snapshot-delta delta-warn" title="Changed from Grade ${prevGrade}"><i class="bi bi-arrow-down-short"></i> vs ${prevGrade}</span>`;
+    }
+    return `<span class="snapshot-delta delta-same" title="Maintained Grade ${currentGrade}"><i class="bi bi-dash"></i> vs ${prevGrade}</span>`;
+}
+
+function renderSnapshot(record, previous = null) {
     const container = document.getElementById('latest-test-snapshot');
     if (!container) return;
 
@@ -331,23 +365,48 @@ function renderSnapshot(record) {
         return;
     }
 
-    const gradeClass = `grade-${record.Grade.charAt(0)}`;
+    const gradeClass = `grade-${record.Grade ? record.Grade.charAt(0) : 'A'}`;
+    const prevWeight = previous ? previous.Weight : null;
+    const prevBMI = previous ? previous.BMI : null;
+    const prevBodyFat = (previous && !isNaN(previous.BodyFat)) ? previous.BodyFat : null;
+    const prevTotal = previous ? previous.Total : null;
+    const prevGrade = previous ? previous.Grade : null;
+
+    const curWeight = record.Weight ?? null;
+    const curBMI = record.BMI ?? null;
+    const curBodyFat = !isNaN(record.BodyFat) ? record.BodyFat : null;
+    const curTotal = record.Total ?? null;
+
+    const weightDelta = (curWeight !== null && prevWeight !== null) ? (curWeight - prevWeight) : null;
+    const bmiDelta = (curBMI !== null && prevBMI !== null) ? (curBMI - prevBMI) : null;
+    const bodyFatDelta = (curBodyFat !== null && prevBodyFat !== null) ? (curBodyFat - prevBodyFat) : null;
+    const scoreDelta = (curTotal !== null && prevTotal !== null) ? (curTotal - prevTotal) : null;
+
     container.innerHTML = `
         <div class="snapshot-card ${gradeClass}">
             <span class="label">Grade</span>
             <div class="value">${record.Grade}</div>
+            <div class="delta-wrapper">${formatGradeDelta(record.Grade, prevGrade)}</div>
         </div>
         <div class="snapshot-card">
             <span class="label">Score</span>
-            <div class="value">${record.Total.toFixed(1)}</div>
+            <div class="value">${Number(record.Total).toFixed(1)}</div>
+            <div class="delta-wrapper">${formatDeltaBadge(scoreDelta, ' pts', false)}</div>
+        </div>
+        <div class="snapshot-card">
+            <span class="label">Weight</span>
+            <div class="value">${record.Weight ? Number(record.Weight).toFixed(1) + ' <small class="unit">kg</small>' : '--'}</div>
+            <div class="delta-wrapper">${formatDeltaBadge(weightDelta, ' kg', true)}</div>
         </div>
         <div class="snapshot-card">
             <span class="label">BMI</span>
-            <div class="value">${record.BMI.toFixed(1)}</div>
+            <div class="value">${record.BMI ? Number(record.BMI).toFixed(1) : '--'}</div>
+            <div class="delta-wrapper">${formatDeltaBadge(bmiDelta, '', true)}</div>
         </div>
         <div class="snapshot-card">
             <span class="label">Body Fat</span>
-            <div class="value">${record.BodyFat.toFixed(1)}%</div>
+            <div class="value">${(record.BodyFat && !isNaN(record.BodyFat)) ? Number(record.BodyFat).toFixed(1) + '%' : 'N/A'}</div>
+            <div class="delta-wrapper">${formatDeltaBadge(bodyFatDelta, '%', true)}</div>
         </div>
     `;
 }
