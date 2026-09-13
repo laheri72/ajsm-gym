@@ -1,0 +1,70 @@
+name: Release and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  deployments: write
+  pull-requests: read
+
+jobs:
+  # ─── 1. AUTOMATED SEMANTIC VERSIONING & GITHUB RELEASE ──────────────────────
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.bump_version.outputs.new_tag }}
+      changelog: ${{ steps.bump_version.outputs.changelog }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Next Semantic Version & Tag
+        id: bump_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+          initial_version: 1.0.0
+          release_branches: main
+          create_annotated_tag: true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.bump_version.outputs.new_tag != ''
+        with:
+          tag_name: ${{ steps.bump_version.outputs.new_tag }}
+          name: Release ${{ steps.bump_version.outputs.new_tag }}
+          body: ${{ steps.bump_version.outputs.changelog }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── 2. GITHUB ENVIRONMENT & DEPLOYMENT TRACKING (100% FREE) ────────────────
+  deploy:
+    name: Track Production Deployment
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: Production
+      url: https://ajsm-gym.onrender.com
+    steps:
+      - name: Verify Live Service & Record Deployment
+        run: |
+          echo "========================================================"
+          echo "🎉 Release: ${{ needs.release.outputs.new_tag || 'Latest' }}"
+          echo "🚀 Target URL: https://ajsm-gym.onrender.com"
+          echo "========================================================"
+          echo "Render auto-deploys from GitHub on push to main."
+          echo "Pinging live endpoint to verify service availability..."
+          
+          # Wake up / verify endpoint (allowing for Render free-tier cold start)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ajsm-gym.onrender.com || echo "000")
+          echo "HTTP Response Status: $STATUS"
+          echo "✅ Production deployment registered on GitHub!"

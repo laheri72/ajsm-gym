@@ -7,12 +7,13 @@
   **Engineered specifically for the students, faculty, trainers, and administrative staff of Raudat ul Ikhwaan at the Al Jamea Tus Saifiyah Marol Campus, this platform centralizes athletic operations and health intelligence in a secure institutional environment. It delivers automated multi-tier attendance verification, normalized V2 progressive workout prescription, clinical-grade biometric diagnostics, and competitive XP-driven gamification to elevate student physical discipline and athletic health.**
 
   <p align="center">
-    <a href="https://github.com/laheri72/ajsm-gym/releases"><img src="https://img.shields.io/badge/version-v1.0.0-059669?style=for-the-badge&logo=git&logoColor=white" alt="Version" /></a>
+    <a href="https://github.com/laheri72/ajsm-gym/releases"><img src="https://img.shields.io/github/v/release/laheri72/ajsm-gym?style=for-the-badge&logo=github&logoColor=white&color=059669" alt="Latest Release" /></a>
+    <a href="https://ajsm-gym.onrender.com"><img src="https://img.shields.io/github/deployments/laheri72/ajsm-gym/Production?style=for-the-badge&logo=render&logoColor=white&color=059669&label=Deployment" alt="Deployment Status" /></a>
     <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/runtime-Node.js_v20+-1E293B?style=for-the-badge&logo=node.js&logoColor=white" alt="Runtime" /></a>
     <a href="https://expressjs.com/"><img src="https://img.shields.io/badge/backend-Express_4.18-059669?style=for-the-badge&logo=express&logoColor=white" alt="Express" /></a>
     <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/frontend-Vite_7_%7C_Bootstrap_5-D97706?style=for-the-badge&logo=vite&logoColor=white" alt="Frontend" /></a>
     <a href="https://www.microsoft.com/sql-server"><img src="https://img.shields.io/badge/database-MSSQL_Server-1E293B?style=for-the-badge&logo=microsoftsqlserver&logoColor=white" alt="Database" /></a>
-    <a href="https://github.com/laheri72/ajsm-gym"><img src="https://img.shields.io/badge/build-passing-059669?style=for-the-badge&logo=githubactions&logoColor=white" alt="Build Status" /></a>
+    <a href="https://github.com/laheri72/ajsm-gym/actions"><img src="https://img.shields.io/badge/build-passing-059669?style=for-the-badge&logo=githubactions&logoColor=white" alt="Build Status" /></a>
     <a href="https://opensource.org/licenses/ISC"><img src="https://img.shields.io/badge/license-ISC-D97706?style=for-the-badge" alt="License" /></a>
   </p>
 

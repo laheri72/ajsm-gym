@@ -76,6 +76,27 @@ The project is configured for deployment on Render.com.
 - **Build Command:** `npm install && npm run build`
 - **Start Command:** `node server.js`
 - **Environment:** Ensure all `.env` variables are added to the Render dashboard.
+- **Auto-Deploy:** Keep enabled (`Yes`) so pushes to `main` trigger immediate zero-downtime builds on Render's free tier.
+
+## Automated GitHub Releases & Deployment Pipeline
+
+The repository uses GitHub Actions (`.github/workflows/release-and-deploy.yml`) to automatically tag releases, generate changelogs, and register production deployments whenever code is pushed to `main`.
+
+### How Semantic Versioning Works (Conventional Commits)
+Version bumps are derived automatically from commit messages:
+- **Patch release** (`v1.0.0` ➔ `v1.0.1`): Use prefix `fix:`, `perf:`, or `refactor:`. (Default fallback for normal commits).
+- **Minor release** (`v1.0.1` ➔ `v1.1.0`): Use prefix `feat:`.
+- **Major release** (`v1.1.0` ➔ `v2.0.0`): Use prefix `feat!:` or include `BREAKING CHANGE:` in the commit message body.
+
+### GitHub UI Integrations
+- **Releases Section**: Updates the repository sidebar with the new release tag, notes, and asset archives.
+- **Environments / Deployments**: Registers an active `Production` deployment pointing to `https://ajsm-gym.onrender.com`.
+- **Dynamic Badges**: The Shields.io badges in `README.md` dynamically pull the latest release tag and deployment state.
+
+### One-Time Setup Requirement
+In GitHub repository **Settings ➔ Actions ➔ General ➔ Workflow permissions**:
+- Select **Read and write permissions**.
+- Check **"Allow GitHub Actions to create and approve pull requests"**.
 
 ## Database Migrations
 Currently, the project does not use a migration tool like Knex or Sequelize. Schema changes must be applied manually to the MSSQL instance. 
