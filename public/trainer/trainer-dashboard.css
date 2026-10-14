@@ -1,3 +1,8 @@
+        .trainer-fitness-actions { display:flex; flex-wrap:wrap; gap:.75rem; margin:1rem 0 1.35rem; }
+        .trainer-fitness-action { display:inline-flex; align-items:center; gap:.65rem; min-height:44px; padding:.7rem 1rem; border-radius:12px; background:#087e81; color:#fff; border:1px solid #087e81; font-weight:700; text-decoration:none; box-shadow:0 5px 15px #087e8130; }
+        .trainer-fitness-action.secondary { background:var(--card-bg,#fff); color:#087e81; box-shadow:none; }
+        .trainer-fitness-action:hover,.trainer-fitness-action:focus-visible { filter:brightness(.92); outline-offset:3px; }
+        @media(max-width:520px){.trainer-fitness-action{flex:1 1 100%;justify-content:center}}
         :root {
             --primary-color: #10b981;
             --primary-hover: #059669;

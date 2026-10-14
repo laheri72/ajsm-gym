@@ -64,10 +64,6 @@ router.post('/api/student-login', loginLimiter, validateBody(schemas.studentLogi
 
         const student = result.recordset[0];
         
-        if (student.Status !== 'Active') {
-            return res.status(403).json({ success: false, message: 'Account is deactivated.' });
-        }
-
         let forcePasswordChange = false;
         let isLoginSuccessful = false;
 
@@ -97,7 +93,8 @@ router.post('/api/student-login', loginLimiter, validateBody(schemas.studentLogi
                 Name: student.Name, 
                 Branch: student.Branch, 
                 Gender: student.Gender, 
-                Status: student.Status
+                Status: student.Status,
+                mustChangePassword: forcePasswordChange
             });
             return res.json({ success: true, forcePasswordChange });
         } else {
@@ -124,6 +121,7 @@ router.post('/api/student/set-initial-password', validateBody(schemas.setPasswor
             .input('TR', sql.Int, TR)
             .input('HashedPassword', sql.NVarChar(100), hashedPassword)
             .query('UPDATE TestMaster SET Password = @HashedPassword, HasLoggedInBefore = 1 WHERE TR = @TR');
+        req.session.user.mustChangePassword = false;
         
         res.json({ success: true, message: 'Password updated successfully!' });
     } catch (err) {
@@ -157,6 +155,7 @@ router.get('/api/student-session', async (req, res) => {
             M.Goal, 
             M.Height,
             M.Status,   -- <-- ADD THIS LINE
+            M.SlotID,
             S.SlotName
           FROM TestMaster M
           LEFT JOIN Slots S ON M.SlotID = S.SlotID
@@ -172,6 +171,7 @@ router.get('/api/student-session', async (req, res) => {
       const userProfile = {
         ...req.session.user,
         ...result.recordset[0],
+        GymEligible: result.recordset[0].Status === 'Active' && !!result.recordset[0].joinedAt,
         FeatureFlags: {
           planner_v2_ui: isPlannerV2Enabled(TR)
         }

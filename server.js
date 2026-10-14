@@ -18,12 +18,14 @@ const { pool, connectDB } = require('./utils/db.js');
 const adminRoutes = require('./routes/admin.js');
 const authRoutes = require('./routes/auth.js');
 const fitnessTestRoutes = require('./routes/fitnessTest.js');
+const fitnessProfileRoutes = require('./routes/fitnessProfiles.js');
 const studentRoutes = require('./routes/stu-routes.js');
 const staffRoutes = require('./routes/staff.js');
 const gamificationRoutes = require('./routes/gamification.js');
 const { cache } = require('./utils/cache.js');
+const { requireStudentPasswordChange, requireGymMembership } = require('./middleware/studentAccess.js');
 
-const port = 10000;
+const port = Number(process.env.PORT) || 10000;
 
 app.set('trust proxy', 1);
 
@@ -36,6 +38,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('/api/version', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ commit: process.env.RENDER_GIT_COMMIT || null });
+});
 
 // Fix: Replaced MemoryStore with connect-mssql so sessions survive Render deployments/restarts
 const sessionStoreConfig = {
@@ -70,10 +77,14 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api', requireStudentPasswordChange);
+app.use('/api', requireGymMembership(pool, sql));
+
 
 app.use(adminRoutes);
 app.use(authRoutes);
 app.use(fitnessTestRoutes);
+app.use(fitnessProfileRoutes);
 app.use(studentRoutes);
 app.use(staffRoutes);
 app.use(gamificationRoutes);

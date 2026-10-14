@@ -1,0 +1,45 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fitness cohorts | FitTracker</title>
+  <link rel="icon" href="/images/favicon.png">
+  <link rel="stylesheet" href="/css/fitness-profile-view.css">
+</head>
+<body class="fp-page">
+  <header class="fp-page-header"><h1>Fitness cohorts</h1><a id="back-link" href="/staff/test.html">Dashboard</a></header>
+  <main class="fp-shell">
+    <section class="fp-panel">
+      <div class="fp-section-heading"><div><h2>Explore evaluation results</h2><p>Choose a batch, then narrow the results or sort by a vital.</p></div></div>
+      <form id="cohort-filters" class="fp-filters">
+        <label>Evaluation batch<select name="batchId" required><option value="">Loading batches…</option></select></label>
+        <label>Student TR or name<input name="q" type="search" placeholder="Search students"></label>
+        <label id="cohort-gender-field" hidden>Gender<select name="gender"><option value="">Both genders</option><option>Male</option><option>Female</option></select></label>
+        <label>Darajah<select name="darajah"><option value="">All Darajahs</option></select></label>
+        <label>Grade<select name="grade"><option value="">Any grade</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>D</option></select></label>
+        <label>Metric<select name="metric"><option value="VO2Max">VO₂ max</option><option value="BMI">BMI</option><option value="BodyFat">Body fat</option><option value="BMR">BMR</option></select></label>
+        <label>Minimum<input name="min" type="number" step="any" placeholder="No minimum"></label>
+        <label>Maximum<input name="max" type="number" step="any" placeholder="No maximum"></label>
+        <label>Sort<select name="sort"><option value="CreatedAt">Test date</option><option value="VO2Max">VO₂ max</option><option value="BMI">BMI</option><option value="BodyFat">Body fat</option><option value="BMR">BMR</option></select></label>
+        <label>Direction<select name="direction"><option value="desc">High to low / newest</option><option value="asc">Low to high / oldest</option></select></label>
+        <button class="fp-action fp-primary" type="submit">Apply filters</button>
+      </form>
+    </section>
+    <p id="cohort-status" class="fp-status" role="status"></p>
+    <div id="cohort-stats" class="fp-stat-grid"></div>
+    <section class="fp-panel">
+      <div class="fp-section-heading"><div><h2>Student results</h2><p>Latest trainer test per student in the selected batch.</p></div>
+        <div id="bulk-actions" class="fp-bulk-actions" hidden>
+          <label id="bulk-template-field" hidden>PDF template<select id="bulk-template"><option value="dark">Dark teal and gold</option><option value="light">Light teal</option></select></label>
+          <button type="button" id="bulk-download" class="fp-action fp-primary">Download batch PDF</button>
+        </div>
+      </div>
+      <p id="bulk-status" class="fp-status" role="status"></p>
+      <div class="fp-table-wrap"><table class="fp-table"><thead><tr><th>Student</th><th>Test</th><th>Grade</th><th>VO₂ max</th><th>BMI</th><th>Body fat</th><th>BMR</th><th>Comments</th></tr></thead><tbody id="cohort-rows"></tbody></table></div>
+      <div class="fp-toolbar"><span id="cohort-page-label"></span><div class="fp-nav"><button id="prev-page" type="button">Previous</button><button id="next-page" type="button">Next</button></div></div>
+    </section>
+  </main>
+  <script type="module" src="/js/fitness-cohort.js"></script>
+</body>
+</html>

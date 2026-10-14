@@ -34,41 +34,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
     <script type="module" src="/js/password-modal-ux.js"></script>
     <style>
-        .chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
-        }
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-        @media (max-width: 992px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .bmi-danger td {
-            background-color: #f8d7da !important;
-            color: #721c24 !important;
-        }
-        .grade-success td {
-            background-color: #d4edda !important;
-            color: #155724 !important;
-        }
-        .grade-fail td {
-            background-color: #f5c6cb !important;
-            color: #721c24 !important;
-            font-weight: 500;
-        }
-        #filter-row th {
-            padding: 0.5rem;
-        }
-        #filter-row select {
-            width: 100%;
-            min-width: 120px;
-        }
         /* Hide the admin warning by default */
         #admin-import-warning {
             display: none;
@@ -77,6 +42,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         html.is-admin #admin-import-warning {
             display: block;
         }
+        .fitness-command{display:flex;justify-content:space-between;align-items:center;gap:26px;flex-wrap:wrap;padding:28px;border-left:4px solid #21866d;background:linear-gradient(115deg,#fff,#f2faf6)}
+        .fitness-command h1{font-size:clamp(1.45rem,2.5vw,2rem);margin:4px 0 7px}
+        .fitness-command p{margin:0;color:#61736d}
+        .fitness-eyebrow{font-size:.7rem;letter-spacing:.14em;font-weight:700;color:#2a866e}
+        .fitness-command-actions{display:flex;gap:9px;flex-wrap:wrap}
+        .fitness-command-actions .btn{display:inline-flex;align-items:center;gap:8px}
+        .fitness-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:13px}
+        .fitness-kpi{display:grid;gap:4px;text-align:left;background:#fff;border:1px solid #dfe9e3;border-radius:14px;padding:16px 18px;color:#264039;box-shadow:0 5px 18px #213c320a}
+        .fitness-kpi strong{font-size:1.75rem;line-height:1.1}.fitness-kpi span{font-size:.82rem;font-weight:650}.fitness-kpi small{color:#687b73}
+        button.fitness-kpi{cursor:pointer}button.fitness-kpi:hover,button.fitness-kpi:focus-visible{border-color:#2a866e;box-shadow:0 0 0 3px #2a866e20}
+        .fitness-source-strip{padding:16px 18px}.fitness-source-track{display:flex;height:11px;overflow:hidden;border-radius:9px;background:#e5eeea;margin:13px 0 8px}.fitness-source-track span{transition:width .25s ease}
+        #source-trainer-bar{background:#258a70}#source-student-bar{background:#d6a043}#source-legacy-bar{background:#8798a3}
+        .fitness-source-legend{display:flex;gap:20px;flex-wrap:wrap;font-size:.72rem;color:#5b6d67}.fitness-source-legend span:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:#258a70}.fitness-source-legend span:nth-child(2):before{background:#d6a043}.fitness-source-legend span:nth-child(3):before{background:#8798a3}
+        #test-record{padding:22px}#test-record table th{white-space:nowrap;font-size:.78rem}#test-record table td{white-space:nowrap;font-size:.85rem}#test-record table td:nth-child(2){white-space:normal;min-width:155px}
+        .fitness-roster{padding:0}.fitness-roster summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:15px;cursor:pointer;padding:18px 22px}.fitness-roster summary::-webkit-details-marker{display:none}.fitness-roster summary small{display:block;color:#687b73;margin-top:3px}.fitness-roster[open] summary i{transform:rotate(180deg)}.fitness-roster-body{padding:0 22px 22px}
+        @media(max-width:800px){.fitness-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.fitness-command{padding:20px}}
+        @media(max-width:480px){.fitness-kpis{grid-template-columns:1fr 1fr}.fitness-kpi{padding:12px}.fitness-kpi strong{font-size:1.4rem}.fitness-command-actions .btn{flex:1;justify-content:center}}
     </style>
 </head>
 <body style="visibility: hidden;">
@@ -151,151 +133,221 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </nav>
         </header>
 
-        <main class="main-content">
-           <div class="content">
-
-                <section id="bulk-import-students" class="card mb-4">
-                    <h2>Enroll Students for Fitness Test</h2>
-
-                    <div class="alert alert-warning" role="alert" id="admin-import-warning">
-                        <h5 class="alert-heading">Admin Import Note</h5>
-                        <p>
-                            As an Admin, your imports are tied to your <strong>own</strong> session. You are currently logged in as
-                            <strong><span id="admin-gender-warning" class="text-danger">...</span></strong> "Talabat" for the
-                            <strong><span id="admin-branch-warning" class="text-danger">...</span></strong> branch.
-                        </p>
-                        <p class="mb-0">
-                            All students you import will be added to this section. To import for <strong>Talebaat</strong>,
-                            login as a staff for Talebaat. If no such user exists, you can
-                            <a href="admin.html" class="alert-link">create one in the Admin Panel</a>.
-                        </p>
-                    </div>
-
-                    <p class="text-muted small">Import students into the fitness test program.
-                            the template given below must be used to ensure proper formatting.
-
-                    </p>
-                    <div class="btn-group" role="group">
-                        <button id="bulkImportBtn" class="btn btn-primary">
-                              Import Student List
-                        </button>
-                        <span class="mx-2"></span>
-                        <button id="downloadTemplateBtn" class="btn btn-outline-secondary" style="background-color: rgb(79, 130, 197);">
-                               Download Template
-                        </button>
-                    </div>
-        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display: none;" />
-                </section>
-                <section id="test-stats" class="mb-4">
-
-                    <div class="stat-card" id="open-evaluation-logs-card" style="cursor: pointer;">
-                    <div class="stat-value">
-                        📄
-                    </div>
-                    <div class="stat-label">
-                        Evaluation Logs  
-                        <br><small class="text-muted">Tap to view</small>
-                    </div>
-                </div>
-
-           <h2 class="h4 mb-3">Statistics Overview</h2>
-                    <div class="stat-cards-container">
-
-                        <div class="stat-card" id="student-list-card" style="cursor: pointer;" title="Click to view list">
-                            <div class="stat-value" id="stat-total-students">...</div>
-                            <div class="stat-label">All Enrolled Students <br> <small class="text-muted">Click to view list</small></div>
-                        </div>
-
-            <div class="stat-card">
-                            <div class="stat-value" id="stat-total-tests">...</div>
-                            <div class="stat-label">Total Tests</div>
-                        </div>
-            <div class="stat-card">
-                            <div class="stat-value" id="stat-trainer-submitted">...</div>
-                            <div class="stat-label">Submitted by Trainer</div>
-                        </div>
-            <div class="stat-card">
-                            <div class="stat-value" id="stat-student-submitted">...</div>
-                <div class="stat-label">Submitted by Student</div>
-                        </div>
-            <div class="stat-card">
-                            <div class="stat-value" id="stat-avg-bmi">...</div>
-                            <div class="stat-label">Average BMI</div>
-                        </div>
-            <div class="stat-card">
-                            <div class="stat-value" id="stat-avg-body-fat">...</div>
-                            <div class="stat-label">Average Body Fat %</div>
-                        </div>
-            <div class="stat-card">
-                            <div class="stat-value" id="stat-common-grade">...</div>
-                            <div class="stat-label">Most Common Grade</div>
-                        </div>
-           </div>
-                </section>
-                
-                <section id="test-charts" class="card mb-4" style="overflow-x: auto;">
-                    <h2 class="h4 mb-3">Distributions</h2>
-                    <div class="charts-grid">
-            <div>
-                            <h5 class="text-center">BMI Status Distribution</h5>
-                            <div class="chart-container">
-                <canvas id="bmiStatusChart"></canvas>
-                            </div>
-                        </div>
-            <div>
-                            <h5 class="text-center">Grade Distribution</h5>
-                            <div class="chart-container">
-                <canvas id="gradeChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                
-                <section id="test-record" class="card">
-       <div class="container-fluid mt-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-                            <h2 class="h4 mb-0">🧪 Fitness Test Records</h2>
-                <button id="exportTestRecordsBtn" class="btn btn-success">Export to Excel</button>
-                        </div>
-                        
-                        <div style="overflow-x: auto;">
-                            <table id="test-records-table" 
-class="table table-striped table-bordered nowrap" style="width:100%">
-                          <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>TR</th>
-                                        <th>Name</th>
-                                        <th>Age</th>
-                                        <th>Weight</th>
-                                        <th>Height</th>
-                                        <th>Waist</th>
-                                        <th>Hips</th>
-                                        <th>Neck</th>
-                                        <th>BMI</th>
-                                        <th>BMI Status</th>
-                                        <th>Body Fat %</th>
-                                        <th>BMR</th>
-                                        <th>Calorie Intake</th>
-                                        <th>VO₂ Max</th>
-                                        <th>Push-Ups (30s)</th>
-                                        <th>Sit-Ups (30s)</th>
-                                        <th>Squats (30s)</th>
-                                        <th>Sit & Reach (cm)</th>
-                                        <th>Step-Up Pulse Rate</th>
-                                        <th>Total</th>
-                                        <th>Grade</th>
-                                        <th>Submitted By</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-         </table>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </main>
+                <main class="main-content">
+ <div class="content">
+  <section class="fitness-command card mb-4">
+   <div>
+    <span class="fitness-eyebrow">
+     FITNESS OPERATIONS
+    </span>
+    <h1>
+     Profiles and test records
+    </h1>
+    <p>
+     Find a student, review batches, or manage the fitness roster.
+    </p>
+   </div>
+   <div class="fitness-command-actions">
+    <a class="btn btn-primary" href="/fitness/profile.html">
+     <i class="bi bi-person-vcard">
+     </i>
+     Find student
+    </a>
+    <a class="btn btn-outline-primary" href="/fitness/cohort.html">
+     <i class="bi bi-bar-chart">
+     </i>
+     Explore cohorts
+    </a>
+    <a class="btn btn-outline-secondary" href="evaluation-log.html">
+     <i class="bi bi-journal-text">
+     </i>
+     Evaluation logs
+    </a>
+   </div>
+  </section>
+  <section class="mb-4" id="test-stats">
+   <h2 class="h5 mb-1">
+    Testing activity
+   </h2>
+   <p class="text-muted small">
+    All recorded tests in your section. Batch comparisons are on the cohort page.
+   </p>
+   <div class="fitness-kpis">
+    <button class="fitness-kpi" id="student-list-card" type="button">
+     <span>
+      Students
+     </span>
+     <strong id="stat-total-students">
+      ...
+     </strong>
+     <small>
+      View roster
+     </small>
+    </button>
+    <div class="fitness-kpi">
+     <span>
+      Total tests
+     </span>
+     <strong id="stat-total-tests">
+      ...
+     </strong>
+     <small>
+      All sources
+     </small>
     </div>
+    <div class="fitness-kpi">
+     <span>
+      Trainer tests
+     </span>
+     <strong id="stat-trainer-submitted">
+      ...
+     </strong>
+     <small>
+      Evaluation-ready
+     </small>
+    </div>
+    <div class="fitness-kpi">
+     <span>
+      Self tests
+     </span>
+     <strong id="stat-student-submitted">
+      ...
+     </strong>
+     <small>
+      Personal records
+     </small>
+    </div>
+   </div>
+   <div class="fitness-source-strip card">
+    <div class="d-flex justify-content-between flex-wrap gap-2">
+     <strong>
+      Test source mix
+     </strong>
+     <span class="text-muted small" id="source-mix-caption">
+      Loading...
+     </span>
+    </div>
+    <div aria-label="Trainer, student, and legacy test proportions" class="fitness-source-track" role="img">
+     <span id="source-trainer-bar">
+     </span>
+     <span id="source-student-bar">
+     </span>
+     <span id="source-legacy-bar">
+     </span>
+    </div>
+    <div class="fitness-source-legend">
+     <span>
+      Trainer
+     </span>
+     <span>
+      Student
+     </span>
+     <span>
+      Legacy / unknown
+     </span>
+    </div>
+   </div>
+  </section>
+  <section class="card mb-4" id="test-record">
+   <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+    <div>
+     <h2 class="h5 mb-1">
+      Test records
+     </h2>
+     <p class="text-muted small mb-0">
+      Search here, then open a profile for full measurements and reports.
+     </p>
+    </div>
+    <button class="btn btn-outline-success" id="exportTestRecordsBtn" type="button">
+     <i class="bi bi-download">
+     </i>
+     Export filtered records
+    </button>
+   </div>
+   <div class="table-responsive">
+    <table class="table table-hover align-middle" id="test-records-table" style="width:100%">
+     <thead>
+      <tr>
+       <th>
+        Date
+       </th>
+       <th>
+        Student
+       </th>
+       <th>
+        Source
+       </th>
+       <th>
+        VO2 max
+       </th>
+       <th>
+        BMI
+       </th>
+       <th>
+        Body fat
+       </th>
+       <th>
+        BMR
+       </th>
+       <th>
+        Grade
+       </th>
+       <th>
+        Profile
+       </th>
+      </tr>
+     </thead>
+     <tbody>
+     </tbody>
+    </table>
+   </div>
+  </section>
+  <details class="card fitness-roster mb-4" id="bulk-import-students">
+   <summary>
+    <span>
+     <strong>
+      Manage fitness roster
+     </strong>
+     <small>
+      Import students or download the enrollment template
+     </small>
+    </span>
+    <i aria-hidden="true" class="bi bi-chevron-down">
+    </i>
+   </summary>
+   <div class="fitness-roster-body">
+    <div class="alert alert-warning" id="admin-import-warning" role="alert">
+     <strong>
+      Admin import scope
+     </strong>
+     <p class="mb-0">
+      Imports are tied to the
+      <span id="admin-branch-warning">
+       ...
+      </span>
+      branch. Both gender sections are available. Your session default is
+      <span id="admin-gender-warning">
+       ...
+      </span>
+      . Mixed gender files are routed to matching sections.
+     </p>
+    </div>
+    <p class="text-muted small">
+     Use the template format so TR, ITS, name, and Darajah can be validated before enrollment.
+    </p>
+    <div class="d-flex gap-2 flex-wrap">
+     <button class="btn btn-primary" id="bulkImportBtn" type="button">
+      Import student list
+     </button>
+     <button class="btn btn-outline-secondary" id="downloadTemplateBtn" type="button">
+      Download template
+     </button>
+    </div>
+    <input accept=".xlsx,.xls,.csv" hidden="" id="fileInput" type="file"/>
+   </div>
+  </details>
+ </div>
+</main>
 
     <div class="nav-overlay" id="nav-overlay"></div>
 
@@ -305,7 +357,6 @@ class="table table-striped table-bordered nowrap" style="width:100%">
     <script src="/assets/js/sweetalert2.all.min.js"></script>
     <script src="/assets/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/js/xlsx.full.min.js"></script>
-    <script src="/assets/js/chart.min.js"></script>
 
     <script type="module" src="js/auth.js"></script>
     <script type="module" src="js/test.js"></script>

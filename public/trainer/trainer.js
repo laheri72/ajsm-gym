@@ -566,6 +566,7 @@ function renderFitnessTestPage(preSelectedTR = null) {
     elements.mainContent.innerHTML = `
             <div class="card fade-in">
                 <h3>Fitness Test</h3>
+                <div class="trainer-fitness-actions"><a class="trainer-fitness-action" href="/fitness/cohort.html"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>Explore cohorts</span></a><a class="trainer-fitness-action secondary" href="/fitness/profile.html"><i class="fas fa-user-activity" aria-hidden="true"></i><span>Find student profile</span></a></div>
                 <div class="form-group">
                     <label for="student-selector">Select Students (Max 5)</label>
                     <select id="student-selector" multiple></select>
@@ -625,7 +626,7 @@ function renderMenuPage() {
 function renderLogsPage() {
     elements.mainContent.innerHTML = `
         <div class="card fade-in">
-            <h3>My Test Logs</h3>
+            <h3>My Test Logs</h3><div class="trainer-fitness-actions"><a class="trainer-fitness-action" href="/fitness/cohort.html"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>Explore cohorts</span></a><a class="trainer-fitness-action secondary" href="/fitness/profile.html"><i class="fas fa-user-activity" aria-hidden="true"></i><span>Find student profile</span></a></div>
 
             <input type="text" id="logSearchInput" class="glass-input" placeholder="Search by TR / Grade / Total" style="margin-bottom:10px;">
 
@@ -833,7 +834,7 @@ async function showLogDetails(logId) {
         <div class="log-item"><span class="log-label">Waist</span><div class="log-value">${r.Waist}</div></div>
         <div class="log-item"><span class="log-label">Hips</span><div class="log-value">${r.Hips}</div></div>
         <div class="log-item"><span class="log-label">Neck</span><div class="log-value">${r.Neck}</div></div>
-        <div class="log-item"><span class="log-label">BMI</span><div class="log-value">${r.BMI} (${r.BMIStatus})</div></div>
+        <div class="log-item"><span class="log-label">BMI</span><div class="log-value">${r.BMI ?? 'N/A'}</div></div>
         <div class="log-item"><span class="log-label">BodyFat</span><div class="log-value">${r.BodyFat}</div></div>
         <div class="log-item"><span class="log-label">BMR</span><div class="log-value">${r.BMR}</div></div>
         <div class="log-item"><span class="log-label">Calories</span><div class="log-value">${r.CalorieIntake}</div></div>
@@ -1801,7 +1802,7 @@ function calculateFitnessRecord(formElement) {
             // throw new Error(`Gender is missing for student TR ${formElement.dataset.tr}. Cannot calculate accurately.`);
         }
         const dobString = formElement.dataset.dob;
-        let Age = 18; // Default if DOB is missing/invalid
+        let Age = null;
         if (dobString && /^\d{4}-\d{2}-\d{2}$/.test(dobString)) {
             const birthDate = new Date(dobString);
             const today = new Date();
@@ -1811,14 +1812,13 @@ function calculateFitnessRecord(formElement) {
                 Age--;
             }
         } else if (dobString) {
-            // Warn if DOB format is bad, but proceed with default age
-            console.warn(`Invalid DOB format for TR ${formElement.dataset.tr}: ${dobString}. Using default age 18.`);
+            console.warn(`Invalid DOB format for TR ${formElement.dataset.tr}: ${dobString}. Age dependent estimates are unavailable.`);
         }
 
         const heightInM = Height / 100;
         const bmi = Weight / (heightInM * heightInM);
         calculated.BMI = parseFloat(bmi.toFixed(1));
-        calculated.BMIStatus = bmi < 18.5 ? "Underweight" : bmi < 24.9 ? "Normal weight" : bmi < 29.9 ? "Overweight" : "Obese";
+        calculated.BMIStatus = 'Not assessed';
 
         if (Waist && Neck && Height) {
             if (Gender === "male") {
@@ -1847,11 +1847,11 @@ function calculateFitnessRecord(formElement) {
             }
             calculated.CalorieIntake = Math.round(calculated.BMR * 1.55); // Assuming moderate activity
         } else {
-            calculated.BMR = "N/A";
-            calculated.CalorieIntake = "N/A";
+            calculated.BMR = null;
+            calculated.CalorieIntake = null;
         }
 
-        calculated.VO2Max = PulseRate ? Math.round(15 * (220 - Age) / PulseRate) : "N/A";
+        calculated.VO2Max = PulseRate && Age != null ? Math.round(15 * (220 - Age) / PulseRate) : "N/A";
         const totalScore = Math.round(
             (PushUps / 2) + (SitUps / 2) + (Squats / 2) + SitReach + (calculated.VO2Max !== "N/A" ? calculated.VO2Max / 2 : 0)
         );
@@ -2027,6 +2027,9 @@ function initMenuListeners() {
 // --- Modal Action Buttons ---
 // --- Modal Action Buttons ---
 function initProfileModalListeners() {
+    document.getElementById('profile-fitness-btn')?.addEventListener('click', () => {
+        if (currentStudent?.TR) window.location.href = `/fitness/profile.html?tr=${encodeURIComponent(currentStudent.TR)}`;
+    });
     elements.profileAttendanceBtn.addEventListener('click', async () => {
         const button = elements.profileAttendanceBtn;
         toggleButtonSpinner(button, true);
@@ -2182,7 +2185,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (user) {
         document.body.classList.remove('dark-mode');
         localStorage.setItem('darkMode', 'false');
-        renderHomePage();
+        const preselectedTR = new URLSearchParams(location.search).get('testTR');
+        if (preselectedTR && /^\d+$/.test(preselectedTR)) {
+            elements.navLinks.forEach(link => link.classList.toggle('active', link.dataset.page === 'test'));
+            renderFitnessTestPage(preselectedTR);
+        } else renderHomePage();
         initProfileModalListeners();
 
         const isDef = sessionStorage.getItem('isDefaultPassword');

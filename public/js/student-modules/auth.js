@@ -30,8 +30,6 @@ export async function getStudentSession() {
       return;
     }
 
-    showLeaderboard();
-    
     const stu = data.user; 
     
     // Handle Member Since Date
@@ -45,25 +43,18 @@ export async function getStudentSession() {
     }
 
     // --- GYM MEMBER & STATUS CHECK ---
-    const isNotGymMember = !stu.joinedAt;
-    const isInactive = stu.Status === 'Inactive';
+    const isNotGymMember = !stu.GymEligible;
+    document.body.classList.toggle('fitness-only', isNotGymMember);
+    document.body.classList.toggle('is-inactive', isNotGymMember);
+    document.body.classList.remove('student-session-loading');
 
     if (isNotGymMember) {
-        // Remove Attendance and Leaves tabs for non-gym members
-        const attendanceTab = document.querySelector('a[href="#attendance"]')?.closest('.nav-item');
-        const leavesTab = document.querySelector('a[href="#leaves"]')?.closest('.nav-item');
-        
-        if (attendanceTab) attendanceTab.remove();
-        if (leavesTab) leavesTab.remove();
-    }
-
-    if (isNotGymMember || isInactive) {
-        const banner = document.getElementById('inactive-status-banner');
-        if (banner) {
-            banner.style.display = 'block'; // Show the banner
-        }
-        // Add a class to the body to disable features or for styling
-        document.body.classList.add('is-inactive');
+        document.querySelectorAll('.main-nav-list .nav-item').forEach(item => {
+            if (!item.querySelector('[data-target="fitness-low"]')) item.remove();
+        });
+        document.querySelector('.xp-level-container')?.classList.add('d-none');
+        document.getElementById('updateGoalBtn')?.closest('li')?.remove();
+        document.getElementById('snapshotUpdateGoalBtn')?.closest('.stat-module')?.remove();
     }
 
     // --- Set Global State ---
@@ -85,7 +76,7 @@ export async function getStudentSession() {
     // --- XP & Level ---
     document.getElementById('xpBarText').textContent = 'Loading...';
     const lastSeenLevel = parseInt(localStorage.getItem('lastSeenLevel') || '0');
-    if (stu.FitnessLevel > lastSeenLevel) {
+    if (stu.GymEligible && stu.FitnessLevel > lastSeenLevel) {
         showLevelUpAnimation(stu.FitnessLevel);
     }
     updateXPBarUI(stu.FitnessLevel, stu.CurrentXP);
@@ -104,24 +95,30 @@ export async function getStudentSession() {
             slotBadge.classList.replace('bg-secondary', 'bg-danger');
         }
     }
-    checkSlotRequestStatus().catch(console.error); // Defer: do not block main thread
-    handleSlotChangeRequest();
+    if (stu.GymEligible) {
+        checkSlotRequestStatus().catch(console.error);
+        handleSlotChangeRequest();
+    }
 
     // --- Password Check ---
-    if (stu.HasLoggedInBefore === false) {
+    if (stu.mustChangePassword || stu.HasLoggedInBefore === false) {
         const passwordModal = new bootstrap.Modal(document.getElementById('forcePasswordChangeModal'));
         passwordModal.show();
         handleInitialPasswordSet(); // Set up the form listener
     }
     
     // --- Load Other Dashboard Components ---
-    loadTip(stu.Goal);
-    loadWeeklyPlan();
-    loadDashboardStats(); 
-    loadCurrentWeightStat();
+    if (stu.GymEligible && !stu.mustChangePassword) {
+        showLeaderboard();
+        loadTip(stu.Goal);
+        loadWeeklyPlan();
+        loadDashboardStats();
+        loadCurrentWeightStat();
+    }
 
     // --- Initialize popovers AFTER all data is set ---
     initializeHeaderPopovers();
+    return stu;
 
   } catch (err) {
     console.error('Error fetching student session:', err);
@@ -136,11 +133,10 @@ function refreshHeaderPopover(stu, memberSince) {
       : 'Student';
     
     const popoverContent = `
-        <p class="mb-1"><strong>Member Since:</strong> ${memberSince}</p>
+        ${stu.GymEligible ? `<p class="mb-1"><strong>Member Since:</strong> ${memberSince}</p>` : ''}
         <p class="mb-1"><strong>Branch:</strong> ${stu.Branch} | ${title}</p>
         <hr class="my-2">
-        <p class="mb-1"><strong>Goal:</strong> ${stu.Goal || 'N/A'}</p>
-        <p class="mb-1"><strong>Slot:</strong> ${stu.SlotName || 'N/A'}</p>
+        ${stu.GymEligible ? `<p class="mb-1"><strong>Goal:</strong> ${stu.Goal || 'N/A'}</p><p class="mb-1"><strong>Slot:</strong> ${stu.SlotName || 'N/A'}</p>` : ''}
         <p class="mb-1"><strong>Class:</strong> ${stu.Darajah || 'N/A'}</p>
         <p class="mb-0"><strong>TR:</strong> ${stu.TR}</p>
     `;
@@ -272,6 +268,7 @@ export function handleInitialPasswordSet() {
              Swal.fire('Success!', 'Your new password has been set.', 'success');
              const modal = bootstrap.Modal.getInstance(document.getElementById('forcePasswordChangeModal'));
              modal.hide();
+             window.location.reload();
 
          } catch (err) {
              Swal.fire('Error', err.message, 'error');

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student fitness profile | FitTracker</title>
+  <link rel="icon" href="/images/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/fitness-profile-view.css">
+  <script src="/assets/js/chart.min.js"></script>
+</head>
+<body class="fp-page">
+  <header class="fp-page-header">
+    <div><span class="fp-kicker">FitTracker / Fitness</span><h1>Student profile</h1></div>
+    <a id="back-link" href="/fitness/cohort.html">Back to fitness dashboard</a>
+  </header>
+  <section class="fp-search" id="staff-search" hidden aria-label="Find a student fitness profile">
+    <label for="profile-search">Find a student</label>
+    <input id="profile-search" type="search" placeholder="Type a name or TR number" autocomplete="off" aria-describedby="profile-search-status" aria-controls="profile-search-results">
+    <div id="profile-search-status" class="fp-search-status" role="status" aria-live="polite">Enter at least two characters to search your section.</div>
+    <div id="profile-search-results" class="fp-search-results" aria-label="Matching students"></div>
+  </section>
+  <main id="fitness-profile-root" aria-live="polite"><div class="fp-loading" role="status"><div class="fp-loading-line wide"></div><div class="fp-loading-line"></div><div class="fp-loading-cards"><span></span><span></span><span></span><span></span></div><p>Loading fitness profile access...</p></div></main>
+  <script type="module" src="/js/fitness-profile-page.js"></script>
+</body>
+</html>

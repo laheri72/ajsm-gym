@@ -1,20 +1,28 @@
-1/**
+/**
  * 🏋️ ENHANCED FITNESS MODULE
  * Handles Fitness Test, Evaluations, Medical History, and Activity Logs.
  */
 
 import { getTR } from './auth.js';
+import { mountFitnessProfile } from '../fitness-profile-view.js';
 
 let studentData = null;
 let calculated = null;
 let historyDataTable = null;
 let historyData = [];
+let cooldownTimer;
+let fitnessListenersReady = false;
 
 /**
  * Initializes the fitness module
  */
 export async function initializeFitness() {
-    setupEventListeners();
+    if (!fitnessListenersReady) {
+        setupEventListeners();
+        fitnessListenersReady = true;
+    }
+    const host = document.getElementById('student-fitness-profile');
+    if (host) host.innerHTML = '<div class="fp-loading" role="status" aria-label="Loading fitness profile"><div class="fp-loading-line wide"></div><div class="fp-loading-line"></div><div class="fp-loading-cards"><span></span><span></span><span></span><span></span></div><p>Loading your fitness profile and test history…</p></div>';
     await loadFitnessData();
 }
 
@@ -64,7 +72,9 @@ function setupEventListeners() {
     fitnessTabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
             const tabId = e.currentTarget.dataset.tab;
-            showFitnessTab(tabId);
+            const hash = tabId === 'overview' ? '#fitness' : `#fitness&tab=${tabId}`;
+            if (window.location.hash === hash) showFitnessTab(tabId);
+            else window.location.hash = hash;
         });
     });
 }
@@ -88,9 +98,11 @@ export function showFitnessTab(tabId) {
 }
 
 async function loadFitnessData() {
+    const host = document.getElementById('student-fitness-profile');
+    const profileLoad = mountFitnessProfile(host, { embedded: true });
     try {
         const res = await fetch(`/api/testmaster/me`, { credentials: 'include' });
-        if (!res.ok) return;
+        if (!res.ok) throw new Error('Could not load your fitness data.');
         
         const student = await res.json();
         if (student && student.Name) {
@@ -103,21 +115,24 @@ async function loadFitnessData() {
             }
         }
 
-        await Promise.all([
+        await Promise.allSettled([
             loadTestHistory(),
             loadMedicalHistory(),
             loadActivityTable()
         ]);
-
+        await profileLoad;
         updateFormProgress();
     } catch (err) {
         console.error("Failed to load fitness data", err);
+        await profileLoad;
+        const form = document.getElementById('testForm');
+        if (form) form.insertAdjacentHTML('afterbegin', '<p class="fp-empty" role="alert">The test form could not load your student details. Reload the page before submitting a new test.</p>');
     }
 }
 
 function calculateAge(dob) {
     if (!dob) {
-        studentData.calculatedAge = 18;
+        studentData.calculatedAge = null;
         return;
     }
     const birthDate = new Date(dob);
@@ -156,11 +171,27 @@ export function updateFormProgress() {
     if (progressText) progressText.textContent = `${progress}% Complete`;
 }
 
-export function generateReport() {
+export async function generateReport() {
     const form = document.getElementById('testForm');
     if (!form.checkValidity()) {
         form.reportValidity();
         return;
+    }
+    if (studentData?.calculatedAge == null) {
+        const answer = await Swal.fire({
+            title: 'Date of birth needed',
+            text: 'Enter your date of birth to calculate the age dependent estimates.',
+            input: 'date', showCancelButton: true, confirmButtonText: 'Save date of birth',
+            inputValidator: value => value ? undefined : 'Enter your date of birth.'
+        });
+        if (!answer.isConfirmed) return;
+        const response = await fetch('/api/testmaster/me/dob', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', body: JSON.stringify({ DOB: answer.value })
+        });
+        if (!response.ok) { Swal.fire('Could not save date of birth', 'Please try again.', 'error'); return; }
+        studentData.DOB = answer.value;
+        calculateAge(answer.value);
     }
 
     const Weight = parseFloat(form.querySelector('[name="Weight"]').value);
@@ -170,7 +201,7 @@ export function generateReport() {
     let Neck = parseFloat(form.querySelector('[name="Neck"]').value);
     let PulseRate = parseFloat(form.querySelector('[name="PulseRate"]').value);
     const Gender = form.querySelector('[name="Gender"]').value;
-    const Age = studentData?.calculatedAge || 18;
+    const Age = studentData.calculatedAge;
 
     const PushUps = parseInt(form.querySelector('[name="PushUps"]').value) || 0;
     const SitUps = parseInt(form.querySelector('[name="SitUps"]').value) || 0;
@@ -188,10 +219,7 @@ export function generateReport() {
 
     const heightInM = Height / 100;
     calculated.BMI = (Weight / (heightInM * heightInM)).toFixed(1);
-    if (calculated.BMI < 18.5) calculated.BMIStatus = "Underweight";
-    else if (calculated.BMI < 24.9) calculated.BMIStatus = "Normal weight";
-    else if (calculated.BMI < 29.9) calculated.BMIStatus = "Overweight";
-    else calculated.BMIStatus = "Obese";
+    calculated.BMIStatus = 'Not assessed';
 
     let bodyFat = null;
     if (Gender === "male") {
@@ -237,7 +265,7 @@ function renderReport() {
     if (!tbody) return;
 
     tbody.innerHTML = `
-        <tr><th><i class="bi bi-person-bounding-box me-2"></i>BMI</th><td>${calculated.BMI}</td><td class="fw-bold">${calculated.BMIStatus}</td></tr>
+        <tr><th><i class="bi bi-person-bounding-box me-2"></i>BMI</th><td>${calculated.BMI}</td><td>Numeric value only</td></tr>
         <tr><th><i class="bi bi-droplet-half me-2"></i>Body Fat %</th><td>${calculated.BodyFat}%</td><td>Calculated</td></tr>
         <tr><th><i class="bi bi-fire me-2"></i>BMR</th><td>${calculated.BMR} kcal</td><td>Basal Rate</td></tr>
         <tr><th><i class="bi bi-wind me-2"></i>VO2 Max</th><td>${calculated.VO2Max}</td><td>Cardio</td></tr>
@@ -276,7 +304,10 @@ export async function saveRecord() {
                 body: JSON.stringify(body)
             });
             const data = await res.json();
-            if (data.error) throw new Error(data.error);
+            if (data.error) {
+                if (data.nextEligibleAt) throw new Error(`${data.error} Next eligible: ${new Date(data.nextEligibleAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST.`);
+                throw new Error(data.error);
+            }
 
             Swal.fire({
                 title: 'Success!',
@@ -285,11 +316,13 @@ export async function saveRecord() {
                 timer: 3000
             });
             
-            loadTestHistory();
+            await loadTestHistory();
+            await mountFitnessProfile(document.getElementById('student-fitness-profile'), { embedded: true });
             document.getElementById("reportSection").classList.add("hidden");
             document.getElementById('testForm').reset();
             updateFormProgress();
-            showFitnessTab('overview');
+            if (window.location.hash === '#fitness') showFitnessTab('overview');
+            else window.location.hash = 'fitness';
         } catch (err) {
             Swal.fire('Save Failed', err.message, 'error');
         }
@@ -302,21 +335,20 @@ async function loadTestHistory() {
         historyData = await res.json();
         
         const latest = Array.isArray(historyData) ? historyData[0] : null;
+        const latestSelf = Array.isArray(historyData) ? historyData.find(record => record.SubmittedBy === 'Student') : null;
         const previous = (Array.isArray(historyData) && historyData.length > 1) ? historyData[1] : null;
         renderSnapshot(latest, previous);
 
         const saveBtn = document.getElementById('saveBtn');
         const saveWarning = document.getElementById('saveWarning');
-        if (latest) {
-            const lastDate = new Date(latest.CreatedAt);
-            const diffDays = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
-            if (diffDays < 7) {
-                if (saveBtn) saveBtn.style.display = 'none';
-                if (saveWarning) {
-                    saveWarning.innerHTML = `<div class="alert alert-info py-2"><i class="bi bi-info-circle me-2"></i>Next test available in <strong>${7 - diffDays} days</strong>.</div>`;
-                    saveWarning.style.display = 'block';
-                }
-            }
+        const nextEligibleAt = latestSelf ? new Date(latestSelf.CreatedAt).getTime() + 7 * 86400000 : 0;
+        const blocked = nextEligibleAt > Date.now();
+        clearTimeout(cooldownTimer);
+        if (blocked) cooldownTimer = setTimeout(loadTestHistory, Math.min(2147483647, nextEligibleAt - Date.now() + 1000));
+        if (saveBtn) saveBtn.style.display = blocked ? 'none' : '';
+        if (saveWarning) {
+            saveWarning.textContent = blocked ? `Next self test: ${new Date(nextEligibleAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST.` : '';
+            saveWarning.style.display = blocked ? 'block' : 'none';
         }
     } catch (err) {
         console.error("History load failed", err);
@@ -425,7 +457,7 @@ async function loadMedicalHistory() {
             document.getElementById('medFamilyHistory').value = data.FamilyHistory || '';
             document.getElementById('medPreviousInjuries').value = data.PreviousInjuries || '';
 
-            const format = (val) => val ? val.replace(/\n/g, '<br>') : '<span class="text-muted italic">No information provided</span>';
+            const format = (val) => val ? String(val).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])).replace(/\n/g, '<br>') : '<span class="text-muted italic">No information provided</span>';
 
             viewDiv.innerHTML = `
                 <div class="med-info animate__animated animate__fadeIn">

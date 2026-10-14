@@ -538,7 +538,7 @@ function buildLogDetailsHTML(r) {
             <div class="log-item"><div class="log-label">Waist</div><div class="log-value">${r.Waist}</div></div>
             <div class="log-item"><div class="log-label">Hips</div><div class="log-value">${r.Hips}</div></div>
             <div class="log-item"><div class="log-label">Neck</div><div class="log-value">${r.Neck}</div></div>
-            <div class="log-item"><div class="log-label">BMI</div><div class="log-value">${r.BMI} (${r.BMIStatus})</div></div>
+            <div class="log-item"><div class="log-label">BMI</div><div class="log-value">${r.BMI ?? 'N/A'}</div></div>
             <div class="log-item"><div class="log-label">Fat</div><div class="log-value">${r.BodyFat}</div></div>
             <div class="log-item"><div class="log-label">BMR</div><div class="log-value">${r.BMR}</div></div>
             <div class="log-item"><div class="log-label">Calories</div><div class="log-value">${r.CalorieIntake}</div></div>

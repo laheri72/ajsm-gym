@@ -7,6 +7,19 @@ const moment = require('moment-timezone'); // This file needs moment
 const { cacheMiddleware, cache } = require('../utils/cache.js');
 const { getStudentStatusHistory } = require('../utils/studentStatusAudit.js');
 
+// Gym operations are separate from the fitness profile available to every
+// TestMaster student. Check current database state, not the login-time session.
+router.use(async (req, res, next) => {
+    if (!req.session.user?.TR) return next();
+    try {
+        const result = await pool.request().input('TR', sql.Int, req.session.user.TR)
+            .query('SELECT Status, JoinedAt FROM TestMaster WHERE TR = @TR');
+        const student = result.recordset[0];
+        if (student?.Status === 'Active' && student.JoinedAt) return next();
+        return res.status(403).json({ success: false, message: 'Gym membership required.' });
+    } catch (error) { return next(error); }
+});
+
 const VALID_PLANNER_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const PLANNER_SCHEMA_VERSION = 1;
 const MAX_PLANNER_ITEMS_PER_DAY = 16;

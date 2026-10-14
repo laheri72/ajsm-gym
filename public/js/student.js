@@ -211,10 +211,14 @@ if (toggler && collapseElement) {
 
 
     // --- Initial Data Loading ---
-    getStudentSession();
-    initializeWeekPicker();
-    // Fitness and Exercise list are lazy-loaded via navigation.js
-    routeFromHash();
-    window.addEventListener('hashchange', routeFromHash);
+    getStudentSession().then(stu => {
+        if (!stu) return;
+        if (!window.location.hash) window.location.hash = stu.GymEligible ? 'planner' : 'fitness';
+        if (stu.GymEligible && !stu.mustChangePassword) initializeWeekPicker();
+        routeFromHash();
+        window.addEventListener('hashchange', () => {
+            routeFromHash();
+        });
+    });
     
 });

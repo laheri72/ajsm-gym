@@ -3,6 +3,20 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
+// Student sessions may only read slots while their gym membership is current.
+// All other routes in this router are staff/trainer/evaluator operations.
+router.use(async (req, res, next) => {
+    if (!req.session.user?.TR) return next();
+    if (req.path !== '/api/slots' || req.method !== 'GET') {
+        return res.status(403).json({ success: false, message: 'Staff access required.' });
+    }
+    try {
+        const result = await pool.request().input('TR', sql.Int, req.session.user.TR)
+            .query('SELECT Status, JoinedAt FROM TestMaster WHERE TR = @TR');
+        if (result.recordset[0]?.Status === 'Active' && result.recordset[0]?.JoinedAt) return next();
+        return res.status(403).json({ success: false, message: 'Gym membership required.' });
+    } catch (error) { return next(error); }
+});
 const moment = require('moment-timezone');
 const {
     getStudentStatusHistory,
@@ -1211,13 +1225,13 @@ router.post('/api/trainer-test-records', async (req, res) => {
         const trParams = studentTRs.map((tr, i) => `@TR${i}`).join(',');
 
         const validationResult = await validationRequest.query(`
-            SELECT TR, Branch, Gender FROM TestMaster 
+            SELECT TR, Branch, Gender, Status, JoinedAt FROM TestMaster
             WHERE TR IN (${trParams})
         `);
 
         const map = new Map();
         validationResult.recordset.forEach(s => {
-            map.set(s.TR, { Branch: s.Branch, Gender: s.Gender });
+            map.set(s.TR, { Branch: s.Branch, Gender: s.Gender, GymEligible: s.Status === 'Active' && !!s.JoinedAt });
         });
 
         for (const r of records) {
@@ -1228,6 +1242,7 @@ router.post('/api/trainer-test-records', async (req, res) => {
             }
             r.Branch = d.Branch;
             r.Gender = d.Gender;
+            r.GymEligible = d.GymEligible;
         }
 
 
@@ -1238,7 +1253,7 @@ router.post('/api/trainer-test-records', async (req, res) => {
              VO2Max, Total, Grade, Branch, Gender, SubmittedBy, BatchID, TrainerID)
             OUTPUT INSERTED.TestLog
             VALUES 
-            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, @BodyFat, @BMR, @CalorieIntake,
+            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, 'Not assessed', @BodyFat, @BMR, @CalorieIntake,
              @VO2Max, @Total, @Grade, @Branch, @Gender, 'Trainer', @BatchID, @TrainerID)
         `;
 
@@ -1252,10 +1267,9 @@ router.post('/api/trainer-test-records', async (req, res) => {
             request.input('Hips', sql.Float, record.Hips);
             request.input('Neck', sql.Float, record.Neck);
             request.input('BMI', sql.Float, record.BMI);
-            request.input('BMIStatus', sql.NVarChar(50), record.BMIStatus);
-            request.input('BodyFat', sql.Float, record.BodyFat);
-            request.input('BMR', sql.Float, record.BMR);
-            request.input('CalorieIntake', sql.Float, record.CalorieIntake);
+            request.input('BodyFat', sql.Float, record.BodyFat === 'N/A' ? null : record.BodyFat);
+            request.input('BMR', sql.Float, record.BMR === 'N/A' ? null : record.BMR);
+            request.input('CalorieIntake', sql.Float, record.CalorieIntake === 'N/A' ? null : record.CalorieIntake);
             request.input('VO2Max', sql.Float, record.VO2Max === "N/A" ? null : record.VO2Max);
             request.input('Total', sql.Float, record.Total);
             request.input('Grade', sql.NVarChar(2), record.Grade);
@@ -1281,7 +1295,7 @@ router.post('/api/trainer-test-records', async (req, res) => {
                 VALUES (@TestLog, @PushUps, @SitUps, @Squats, @SitAndReach, @StepUpPulseRate)
             `);
 
-            await awardXP(record.TR, 750, transaction);
+            if (record.GymEligible) await awardXP(record.TR, 750, transaction);
         }
 
         await transaction.commit();
@@ -1650,30 +1664,26 @@ router.get('/api/student-lookup/:query', async (req, res) => {
 
 
 router.get('/api/all-test-records', async (req, res) => {
-  // 1. Get Branch and Gender from the logged-in staff's session
-  const { Branch, Gender } = req.session.user || {};
-
-  // 2. Validate session
-  if (!Branch || !Gender) {
-    return res.status(401).json({ 
+  const { Branch, Gender, Role } = req.session.user || {};
+  if (!['Staff','Admin'].includes(Role) || !Branch || (Role !== 'Admin' && !Gender)) {
+    return res.status(403).json({
       success: false, 
-      message: 'Unauthorized. Session is missing branch or gender.' 
+      message: 'Staff access required.'
     });
   }
 
   try {
-    // 3. Create a parameterized request
     const request = pool.request();
     request.input('Branch', sql.NVarChar(50), Branch);
-    request.input('Gender', sql.NVarChar(10), Gender);
+    if (Role !== 'Admin') request.input('Gender', sql.NVarChar(10), Gender);
 
-    // 4. Update the SQL query to filter and calculate Age
 const result = await request.query(`
   SELECT 
     TRS.CreatedAt AS CreatedAt,
     TRS.TR,
     TMS.Name,
-    DATEDIFF(year, TMS.DOB, TRS.CreatedAt) AS Age, 
+    DATEDIFF(year, TMS.DOB, TRS.CreatedAt) - CASE WHEN MONTH(TRS.CreatedAt) < MONTH(TMS.DOB)
+      OR (MONTH(TRS.CreatedAt) = MONTH(TMS.DOB) AND DAY(TRS.CreatedAt) < DAY(TMS.DOB)) THEN 1 ELSE 0 END AS Age,
     
     TRS.Weight,
     TRS.Height,
@@ -1701,7 +1711,7 @@ const result = await request.query(`
   JOIN TestMaster TMS ON TRS.TR = TMS.TR
   LEFT JOIN TestActivityLog TAL ON TRS.TestLog = TAL.TestLog
 
-  WHERE TRS.Branch = @Branch AND TRS.Gender = @Gender
+  WHERE TMS.Branch = @Branch ${Role === 'Admin' ? '' : 'AND TMS.Gender = @Gender'}
   ORDER BY TRS.CreatedAt DESC
 `);
 
@@ -3317,8 +3327,8 @@ router.get('/api/staff/student-search', async (req, res) => {
 // Add this new route to your server.js file
 
 router.get('/api/staff/student-profile/:tr', async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!['Staff', 'Admin'].includes(req.session.user?.Role)) {
+        return res.status(403).json({ success: false, message: 'Staff access required.' });
     }
     const { tr } = req.params;
     const { Branch, Gender, Role } = req.session.user;
@@ -4637,6 +4647,8 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
     try {
         const request = new sql.Request(pool);
         request.input('TestLog', sql.Int, testLog);
+        request.input('Branch', sql.NVarChar(50), req.Branch);
+        request.input('Gender', sql.NVarChar(10), req.Gender);
 
         // --- 1. Run the FIRST query to get the current record and TR ---
         const currentRecordResult = await request.query(`
@@ -4659,7 +4671,7 @@ router.get('/api/evaluation/comment-details/:testLog', isEvaluator, async (req, 
             JOIN TestMaster tm ON tr.TR = tm.TR
             LEFT JOIN EvaluationBatches eb ON tr.BatchID = eb.BatchID
             LEFT JOIN TestActivityLog tal ON tr.TestLog = tal.TestLog
-            WHERE tr.TestLog = @TestLog;
+            WHERE tr.TestLog = @TestLog AND tm.Branch = @Branch AND tm.Gender = @Gender;
         `);
 
 
@@ -4738,15 +4750,21 @@ router.post('/api/evaluation/save-comment', isEvaluator, async (req, res) => {
     }
 
     try {
-        await pool.request()
+        const inserted = await pool.request()
             .input('LogID', sql.Int, LogID)
             .input('EvaluatorID', sql.Int, req.EvaluatorID) // From middleware
             .input('CategoryID', sql.Int, CategoryID)
             .input('CommentText', sql.NVarChar(sql.MAX), CommentText)
+            .input('Branch', sql.NVarChar(50), req.Branch)
+            .input('Gender', sql.NVarChar(10), req.Gender)
             .query(`
                 INSERT INTO Evaluations (LogID, EvaluatorID, CategoryID, CommentText)
-                VALUES (@LogID, @EvaluatorID, @CategoryID, @CommentText)
+                SELECT @LogID, @EvaluatorID, @CategoryID, @CommentText
+                FROM TestRecords R JOIN TestMaster TM ON TM.TR = R.TR
+                WHERE R.TestLog = @LogID AND R.SubmittedBy = 'Trainer'
+                  AND TM.Branch = @Branch AND TM.Gender = @Gender
             `);
+        if (!inserted.rowsAffected[0]) return res.status(403).json({ success: false, message: 'Test is outside your access.' });
         
         // Return a fresh list of comments for the UI to re-render
         const freshComments = await pool.request()

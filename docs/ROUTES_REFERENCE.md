@@ -67,6 +67,23 @@ Endpoints for recording physical measurements and medical status.
 | GET | `/api/testactivity/me` | Student | Fetch all activity-specific logs (PushUps, SitUps, etc.). | None |
 | GET | `/api/evaluations/me` | Student | Fetch trainer-submitted tests with evaluator comments. | None |
 
+## Unified fitness profiles (`routes/fitnessProfiles.js`)
+
+All profile routes require an authenticated session. A student can access only their own TR. Staff, trainers, and evaluators are limited to their branch and gender; admins can access both genders in their branch. Medical history is returned only to the student or an evaluator and is excluded from PDFs.
+
+| Method | Endpoint | Role | Purpose | Input |
+| :--- | :--- | :--- | :--- | :--- |
+| GET | `/api/fitness-profiles/me` | Student | Identity, ordered self/trainer/legacy tests, activity values, batches, comments, per-test reference assessments, medical history, next self test time. | None |
+| GET | `/api/fitness-profiles/search` | Staff/Admin/Trainer/Evaluator | Scoped TR or name search. | `?q=` |
+| GET | `/api/fitness-profiles/:tr` | Authorized viewer | Scoped student report data. | TR |
+| GET | `/api/fitness-cohorts/batches` | Staff/Admin/Trainer/Evaluator | Scoped batch choices. | None |
+| GET | `/api/fitness-cohorts/darajahs` | Staff/Admin/Trainer/Evaluator | Distinct scoped `TestMaster` Darajahs for the cohort dropdown, across all gym statuses. | `gender` (admin only, optional) |
+| GET | `/api/fitness-cohorts` | Staff/Admin/Trainer/Evaluator | Latest trainer test per student in a batch, batch size, four metric summaries and tie aware percentiles, filters, sort and pagination. | `batchId`, `q`, `gender` (admin), `darajah`, `grade`, `metric`, `min`, `max`, `sort`, `direction`, `page` |
+| GET | `/api/fitness-reports/:testLog.pdf` | Student or authorized staff role | Selected one-page test PDF without medical history; inline preview or attachment. Dark teal report is the default. | TestLog, `preview=1` (optional), `template=light` (admin only) |
+| GET | `/api/fitness-cohorts/:batchId/reports.pdf` | Staff/Admin | Combined PDF with one page per student's latest trainer test in the selected batch, ignoring cohort table filters. Dark teal report is the default. | BatchID, `template=light` (admin only) |
+
+Student self tests use a server enforced rolling seven day interval. A blocked POST returns HTTP 409 with `nextEligibleAt`. Gym APIs require `TestMaster.Status = 'Active'` and a non-null `JoinedAt`; fitness profile access only requires a master record. Initial student passwords must be changed before accessing other APIs.
+
 ## 👨‍💼 Staff & Trainer Management (`routes/staff.js`)
 Endpoints for gym operations, attendance, enrollment, and leave management.
 

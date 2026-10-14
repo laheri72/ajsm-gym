@@ -27,12 +27,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <script src="/assets/js/moment.min.js"></script>
   <script src="/assets/js/moment-timezone-with-data.min.js"></script>
   <link rel="stylesheet" href="/css/student/student-dashboard.css">
+  <link rel="stylesheet" href="/css/fitness-profile-view.css">
+  <link rel="stylesheet" href="/css/student/fitness-only.css">
   <link rel="stylesheet" href="/css/password-modal.css">
 
   <script type="module" src="/js/password-modal-ux.js"></script>
 </head>
 
-<body>
+<body class="student-session-loading">
 <!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T87V29HB"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -171,11 +173,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </div>
 
-  <div class="alert alert-info text-center" id="inactive-status-banner"
-    style="display: none; margin: 1rem; font-weight: 500; border-radius: 8px;">
-    <i class="bi bi-info-circle-fill"></i> <strong>Welcome, Student!</strong> Explore workout tips and our Hall of Fame.
-    To join the gym and unlock all features, please contact an admin.
-  </div>
+  <div id="student-session-status" role="status" aria-live="polite"><span aria-hidden="true"></span> Preparing your dashboard…</div>
 
   <main class="content">
     <!-- =================================================================== -->
@@ -786,16 +784,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <!-- 🔹 Fitness Sub Navigation -->
       <div class="tab-nav fitness-tabs">
         <button class="tab-link active" data-tab="overview">
-          <i class="bi bi-person-badge"></i><span>Snapshot</span>
+          <i class="bi bi-person-badge"></i><span>Profile</span>
         </button>
         <button class="tab-link" data-tab="test">
           <i class="bi bi-clipboard-pulse"></i><span>Take Test</span>
-        </button>
-        <button class="tab-link" data-tab="evaluations">
-          <i class="bi bi-chat-right-quote"></i><span>Feedback</span>
-        </button>
-        <button class="tab-link" data-tab="history">
-          <i class="bi bi-clock-history"></i><span>History</span>
         </button>
       </div>
 
@@ -804,8 +796,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <!-- 1️⃣ Overview & Medical -->
         <div class="tab-pane fitness-tab-pane active" id="fit-tab-overview">
+          <div id="student-fitness-profile" class="mb-4" aria-live="polite"><div class="fp-loading" role="status"><div class="fp-loading-line wide"></div><div class="fp-loading-line"></div><div class="fp-loading-cards"><span></span><span></span><span></span><span></span></div><p>Loading your fitness profile and test history…</p></div></div>
           <div class="row g-4">
-            <div class="col-md-6">
+            <div class="col-12">
               <div class="stat-module mb-4">
                 <h4><i class="bi bi-file-medical"></i> Medical History</h4>
                 <div class="d-flex justify-content-end mb-2">
@@ -851,7 +844,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <p class="small text-muted mt-2 mb-0">Your workouts and tips are personalized based on this goal.</p>
               </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-6 fitness-legacy-snapshot" style="display:none">
               <div class="stat-module">
                 <h4><i class="bi bi-activity"></i> Performance Snapshot</h4>
                 <div id="latest-test-snapshot" class="snapshot-grid">
@@ -871,6 +864,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <!-- 2️⃣ Fitness Test Form -->
         <div class="tab-pane fitness-tab-pane" id="fit-tab-test">
+          <div class="fitness-only-test-heading">
+            <a class="fitness-only-back" href="#fitness"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to profile</a>
+            <div><span class="fitness-only-eyebrow">Fitness test</span><h1>Record your fitness test</h1></div>
+          </div>
           <div class="fitness-form-container">
             <div class="d-flex justify-content-end gap-2 mb-3">
               <button class="btn btn-sm btn-outline-info" onclick="fitnessModule.showTestInfo()"><i
@@ -987,6 +984,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <!-- 3️⃣ Evaluations -->
         <div class="tab-pane fitness-tab-pane" id="fit-tab-evaluations">
+          <a class="fitness-only-back fitness-only-legacy-back" href="#fitness"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to profile</a>
           <div id="evaluation-accordion-container">
             <p class="text-muted">Loading evaluations...</p>
           </div>
@@ -994,6 +992,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <!-- 4️⃣ Test History -->
         <div class="tab-pane fitness-tab-pane" id="fit-tab-history">
+          <a class="fitness-only-back fitness-only-legacy-back" href="#fitness"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to profile</a>
           <div class="table-responsive">
             <table id="historyTable" class="table table-striped table-bordered" style="width:100%">
               <thead>

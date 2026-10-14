@@ -80,7 +80,7 @@ The project is configured for deployment on Render.com.
 
 ## Automated GitHub Releases & Deployment Pipeline
 
-The repository uses GitHub Actions (`.github/workflows/release-and-deploy.yml`) to automatically tag releases, generate changelogs, and register production deployments whenever code is pushed to `main`.
+The repository uses GitHub Actions (`.github/workflows/release-and-deploy.yml`) to run a clean install, tests, and a production build. After a push to `main`, the workflow waits until the live `/api/version` endpoint reports that exact commit. It then marks the GitHub `Production` deployment successful and tags the release. Render deployment still depends on the service's linked branch and Auto-Deploy setting in the Render dashboard.
 
 ### How Semantic Versioning Works (Conventional Commits)
 Version bumps are derived automatically from commit messages:

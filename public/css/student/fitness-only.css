@@ -1,0 +1,147 @@
+/* The student dashboard becomes a focused report view when gym access is unavailable. */
+body.student-session-loading,
+body.fitness-only {
+  padding-top: var(--header-height) !important;
+}
+
+body.student-session-loading .app-header-info,
+body.fitness-only .app-header-info,
+body.fitness-only .header-center,
+body.fitness-only .navbar-toggler,
+body.fitness-only #fitness-low > .tips-header,
+body.fitness-only #fitness-low > .fitness-tabs {
+  display: none !important;
+}
+body.student-session-loading main.content { display: none; }
+#student-session-status { display: none; }
+body.student-session-loading #student-session-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1488px;
+  margin: 18px auto;
+  padding: 18px 24px;
+  color: var(--dark);
+  font-weight: 600;
+}
+#student-session-status span {
+  width: 19px;
+  height: 19px;
+  border: 3px solid #a8d8d6;
+  border-top-color: #177f87;
+  border-radius: 50%;
+  animation: student-session-spin .8s linear infinite;
+}
+@keyframes student-session-spin { to { transform: rotate(360deg); } }
+
+body.fitness-only #mainNavCollapse {
+  display: flex !important;
+  position: static !important;
+  left: auto;
+  right: auto;
+  top: auto;
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+body.fitness-only .header-actions {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+body.fitness-only .header-brand .brand-highlight { display: none; }
+
+body.fitness-only main.content {
+  width: 100%;
+  max-width: 1488px;
+  padding: clamp(12px, 2vw, 24px);
+}
+
+body.fitness-only main.content #fitness-low,
+body.fitness-only main.content #fitness-low:hover {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+
+body.fitness-only #student-fitness-profile { margin-bottom: 16px !important; }
+body.fitness-only .fp-hero { padding: clamp(18px, 2.5vw, 30px); }
+body.fitness-only .fp-avatar { width: 70px; height: 70px; font-size: 1.5rem; }
+body.fitness-only .fp-identity,
+body.fitness-only .fp-identity > div:last-child { min-width: 0; }
+body.fitness-only .fp-hero h1 { overflow-wrap: anywhere; }
+body.fitness-only .fp-toolbar { margin: 16px 0; }
+
+.fitness-only-test-heading { display: none; }
+body.fitness-only .fitness-only-test-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  margin-bottom: 18px;
+}
+body.fitness-only .fitness-only-test-heading h1 {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+  color: var(--dark);
+}
+.fitness-only-eyebrow {
+  display: block;
+  margin-bottom: 2px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #287f88;
+}
+.fitness-only-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--light);
+  color: var(--dark);
+  text-decoration: none;
+  font-weight: 650;
+}
+.fitness-only-back:hover,
+.fitness-only-back:focus-visible { border-color: #288d96; color: #166b74; }
+.fitness-only-legacy-back { display: none; }
+body.fitness-only .fitness-only-legacy-back { display: inline-flex; margin-bottom: 16px; }
+
+@media (max-width: 650px) {
+  body.fitness-only .app-header-main .container-fluid { display: flex; flex-wrap: nowrap; }
+  body.fitness-only .header-actions { gap: .4rem; }
+  body.fitness-only .fp-avatar { width: 58px; height: 58px; font-size: 1.2rem; }
+  body.fitness-only .fp-identity { gap: 12px; }
+  body.fitness-only .fp-hero .fp-actions { gap: 8px; }
+  body.fitness-only .fp-hero .fp-action { padding: 9px 12px; font-size: .82rem; }
+  body.fitness-only .fp-nav { width: 100%; max-width: 100%; flex-wrap: wrap; }
+  body.fitness-only .fp-nav select { flex: 1 1 170px; min-width: 0; }
+  body.fitness-only .fitness-only-test-heading { align-items: flex-start; flex-direction: column; }
+}
+
+[data-theme="dark"] body.fitness-only .fitness-only-eyebrow { color: #8adcd4; }
+[data-theme="dark"] body.fitness-only .fitness-only-back {
+  background: #1e2c39;
+  color: #e9f1f4;
+}
+@media (prefers-reduced-motion: reduce) {
+  #student-session-status span { animation: none; }
+}

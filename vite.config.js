@@ -38,6 +38,8 @@ export default defineConfig({
         loginTrainer: resolve(__dirname, 'public/logins/trainer-login.html'),
         studentDashboard: resolve(__dirname, 'public/student/student-dashboard.html'),
         studentFitnessTest: resolve(__dirname, 'public/student/fitness-test.html'),
+        fitnessProfile: resolve(__dirname, 'public/fitness/profile.html'),
+        fitnessCohort: resolve(__dirname, 'public/fitness/cohort.html'),
         trainerDashboard: resolve(__dirname, 'public/trainer/trainer-dashboard.html'),
         staffOverview: resolve(__dirname, 'public/staff/overview.html'),
         staffEntry: resolve(__dirname, 'public/staff/entry.html'),
@@ -55,7 +57,6 @@ export default defineConfig({
         staffeveluationlogs: resolve(__dirname, 'public/staff/evaluation-log.html'),
         privacy: resolve(__dirname, 'public/privacy.html'),
         terms: resolve(__dirname, 'public/terms.html'),
-        
       },
     },
   },

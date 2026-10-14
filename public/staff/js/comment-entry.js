@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Populate all page sections
             const { currentRecord, medicalHistory, commentCategories, existingComments } = recordData;
+            document.getElementById('fitness-profile-link').href = `/fitness/profile.html?tr=${encodeURIComponent(currentRecord.TR)}`;
             
             pageBatchName.textContent = currentRecord.BatchName;
             populateAnchor(currentRecord);
@@ -104,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateAnchor(record) {
         pageTitle.textContent = `${record.Name}`;
         //darajah in Bold and diff color to separate
-        document.getElementById('anchor-student-details').innerHTML = `TR: ${record.TR}| <strong style="color: #007bff;">Darajah: ${record.Darajah}</strong> | Test Date: ${new Date(record.CreatedAt).toLocaleDateString()}`;
+        document.getElementById('anchor-student-details').textContent = `TR: ${record.TR} | Darajah: ${record.Darajah || 'N/A'} | Test Date: ${new Date(record.CreatedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
         document.getElementById('anchor-student-name').textContent = record.Name;
         const f = (val, dec = 1) => (val != null ? parseFloat(val).toFixed(dec) : 'N/A');
         const setStat = (id, value, unit = '', cssClass = '') => {
@@ -125,14 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setStat('stat-Waist', f(record.Waist), 'cm');
         setStat('stat-Hips', f(record.Hips), 'cm');
         setStat('stat-Neck', f(record.Neck), 'cm');
-        const statusClass = (record.BMIStatus || '').split(' ')[0].toLowerCase();
-        setStat('stat-BMI', f(record.BMI), '', `status-${statusClass}`);
-        const bmiStatusEl = document.getElementById('stat-BMIStatus');
-        if (bmiStatusEl) {
-            const valueEl = bmiStatusEl.querySelector('.test-result-item-value');
-            valueEl.textContent = record.BMIStatus;
-            valueEl.className = `test-result-item-value status-${statusClass}`;
-        }
+        setStat('stat-BMI', f(record.BMI));
         setStat('stat-BodyFat', f(record.BodyFat), '%');
         setStat('stat-BMR', f(record.BMR, 0), 'kcal');
         setStat('stat-VO2Max', f(record.VO2Max, 0), 'ml/kg');

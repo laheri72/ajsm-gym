@@ -115,7 +115,7 @@ Stores results of comprehensive fitness tests.
 - `TR` (INT, FK) -> `TestMaster.TR`
 - `Weight`, `Height`, `Waist`, `Hips`, `Neck` (FLOAT)
 - `BMI` (FLOAT)
-- `BMIStatus` (VARCHAR(20))
+- `BMIStatus` (VARCHAR(20)) - legacy adult categories are retained in historical rows; new tests store `Not assessed` because BMI interpretation for minors requires age and sex specific percentiles.
 - `BodyFat`, `BMR`, `CalorieIntake`, `VO2Max` (FLOAT)
 - `Total` (FLOAT) - Aggregated fitness score.
 - `Grade` (NVARCHAR(2)) - A, B, C, etc.

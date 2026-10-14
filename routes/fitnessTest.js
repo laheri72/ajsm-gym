@@ -1,6 +1,11 @@
 // routes/fitnessTest.js
 const express = require('express');
 const router = express.Router();
+router.use((req, res, next) => {
+    if (!req.path.startsWith('/api/fitness-test/')) return next();
+    if (['Staff', 'Admin'].includes(req.session.user?.Role)) return next();
+    return res.status(403).json({ success: false, message: 'Staff access required.' });
+});
 const { pool } = require('../utils/db.js');
 const sql = require('mssql');
 const bcrypt = require('bcrypt'); 
@@ -102,6 +107,11 @@ router.put('/api/testmaster/me/dob', async (req, res) => {
     // Basic validation for the date format
     if (!DOB || !/^\d{4}-\d{2}-\d{2}$/.test(DOB)) {
         return res.status(400).json({ error: 'Invalid date format. Please use YYYY-MM-DD.' });
+    }
+    const birth = new Date(`${DOB}T00:00:00Z`);
+    if (Number.isNaN(birth.getTime()) || birth.toISOString().slice(0, 10) !== DOB ||
+        birth > new Date() || birth.getUTCFullYear() < 1900) {
+        return res.status(400).json({ error: 'Enter a valid date of birth.' });
     }
 
     try {
@@ -250,7 +260,7 @@ router.post('/api/testrecords', async (req, res) => {
     // Data from the form (Age and DOB are removed)
     const {
         Weight, Height, Waist, Hips, Neck,
-        BMI, BMIStatus, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade
+        BMI, BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade
     } = req.body;
 
     const transaction = new sql.Transaction(pool);
@@ -259,15 +269,34 @@ router.post('/api/testrecords', async (req, res) => {
         await transaction.begin();
         const request = new sql.Request(transaction); // Use transaction-scoped request
 
+        // Serialize self submissions per student, including concurrent requests.
+        const lock = await new sql.Request(transaction)
+            .input('Resource', sql.NVarChar(100), `fitness-self-test-${TR}`)
+            .query(`DECLARE @result int; EXEC @result = sp_getapplock
+                @Resource = @Resource, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000;
+                SELECT @result AS Result`);
+        if (lock.recordset[0].Result < 0) throw new Error('Could not reserve test submission. Please retry.');
+        const recent = await new sql.Request(transaction).input('TR', sql.Int, TR).query(`
+            SELECT TOP 1 DATEADD(day, 7, CreatedAt) AS NextEligibleAt,
+              CASE WHEN DATEADD(day, 7, CreatedAt) > GETDATE() THEN 1 ELSE 0 END AS IsBlocked
+            FROM TestRecords WITH (UPDLOCK, HOLDLOCK)
+            WHERE TR = @TR AND SubmittedBy = 'Student'
+            ORDER BY CreatedAt DESC, TestLog DESC`);
+        const nextEligibleAt = recent.recordset[0]?.NextEligibleAt;
+        if (recent.recordset[0]?.IsBlocked) {
+            await transaction.rollback();
+            return res.status(409).json({ success: false, error: 'A self test is allowed every seven days.', nextEligibleAt });
+        }
+
         // --- 1. Get Branch and Gender from TestMaster ---
         const studentInfo = await request // Reuse the request object
             .input('TR_Lookup', sql.Int, TR) // Use a different parameter name to avoid conflict
-            .query('SELECT Branch, Gender FROM TestMaster WHERE TR = @TR_Lookup');
+            .query('SELECT Branch, Gender, Status, JoinedAt FROM TestMaster WHERE TR = @TR_Lookup');
 
         if (studentInfo.recordset.length === 0) {
             throw new Error('Student TestMaster record not found.');
         }
-        const { Branch, Gender } = studentInfo.recordset[0];
+        const { Branch, Gender, Status, JoinedAt } = studentInfo.recordset[0];
         // --- End Get Branch/Gender ---
 
         // Clear existing inputs before adding new ones
@@ -281,8 +310,7 @@ router.post('/api/testrecords', async (req, res) => {
         request.input('Hips', sql.Float, Hips);
         request.input('Neck', sql.Float, Neck);
         request.input('BMI', sql.Float, BMI);
-        request.input('BMIStatus', sql.NVarChar(50), BMIStatus);
-        request.input('BodyFat', sql.Float, BodyFat);
+        request.input('BodyFat', sql.Float, BodyFat === 'N/A' ? null : BodyFat);
         request.input('BMR', sql.Float, BMR);
         request.input('CalorieIntake', sql.Float, CalorieIntake);
         request.input('VO2Max', sql.Float, VO2Max === "N/A" ? null : VO2Max);
@@ -294,22 +322,20 @@ router.post('/api/testrecords', async (req, res) => {
 
 
         // --- 3. Execute INSERT ---
-        await request.query(`
+        const insertResult = await request.query(`
             INSERT INTO TestRecords 
             (TR, Weight, Height, Waist, Hips, Neck, BMI, BMIStatus, 
              BodyFat, BMR, CalorieIntake, VO2Max, Total, Grade, 
-             Branch, Gender) -- Added Branch, Gender; Removed DOB, Age
+             Branch, Gender, SubmittedBy) -- Added Branch, Gender; Removed DOB, Age
+            OUTPUT INSERTED.TestLog
             VALUES 
-            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, @BMIStatus, 
+            (@TR, @Weight, @Height, @Waist, @Hips, @Neck, @BMI, 'Not assessed',
              @BodyFat, @BMR, @CalorieIntake, @VO2Max, @Total, @Grade,
-             @Branch, @Gender) -- Added Branch, Gender
+             @Branch, @Gender, 'Student') -- Added Branch, Gender
         `);
         // --- End INSERT ---
-          // --- 3b. Get the newly created TestLog ID ---
-            const testLogResult = await request.query(`
-                SELECT TOP 1 TestLog FROM TestRecords WHERE TR = @TR ORDER BY TestLog DESC
-            `);
-            const newTestLogID = testLogResult.recordset[0]?.TestLog;
+          // Use this insert's ID, even when a trainer saves a test concurrently.
+            const newTestLogID = insertResult.recordset[0].TestLog;
 
             // --- 3c. Insert into TestActivityLog ---
             const {
@@ -318,11 +344,11 @@ router.post('/api/testrecords', async (req, res) => {
 
             const activityRequest = new sql.Request(transaction);
             activityRequest.input('TestLog', sql.Int, newTestLogID);
-            activityRequest.input('PushUps', sql.SmallInt, PushUps || null);
-            activityRequest.input('SitUps', sql.SmallInt, SitUps || null);
-            activityRequest.input('Squats', sql.SmallInt, Squats || null);
-            activityRequest.input('SitAndReach', sql.SmallInt, SitReach || null);
-            activityRequest.input('StepUpPulseRate', sql.SmallInt, PulseRate || null);
+            activityRequest.input('PushUps', sql.SmallInt, PushUps ?? null);
+            activityRequest.input('SitUps', sql.SmallInt, SitUps ?? null);
+            activityRequest.input('Squats', sql.SmallInt, Squats ?? null);
+            activityRequest.input('SitAndReach', sql.SmallInt, SitReach ?? null);
+            activityRequest.input('StepUpPulseRate', sql.SmallInt, PulseRate ?? null);
 
             await activityRequest.query(`
                 INSERT INTO TestActivityLog 
@@ -331,7 +357,9 @@ router.post('/api/testrecords', async (req, res) => {
             `);
 
         // --- 4. Award XP (remains the same) ---
-        const levelUpInfo = await awardXP(TR, 500, transaction ); // Pass the new request
+        const levelUpInfo = Status === 'Active' && JoinedAt
+            ? await awardXP(TR, 500, transaction)
+            : { levelledUp: false };
         // --- End Award XP ---
 
         await transaction.commit();
@@ -396,7 +424,7 @@ router.get('/api/testrecords/me', async (req, res) => {
     try {
         const result = await pool.request()
             .input('TR', sql.Int, TR)
-            .query('SELECT * FROM TestRecords WHERE TR = @TR ORDER BY TestLog DESC');
+            .query('SELECT * FROM TestRecords WHERE TR = @TR ORDER BY CreatedAt DESC, TestLog DESC');
 
         res.status(200).json(result.recordset);
     } catch (err) {
@@ -787,8 +815,8 @@ router.post('/api/fitness-test/bulk-commit', async (req, res) => {
 });
 
 router.get('/api/fitness-test/all-students', async (req, res) => {
-  const { Branch, Gender } = req.session.user || {};
-  if (!Branch || !Gender) {
+  const { Branch, Gender, Role } = req.session.user || {};
+  if (!Branch || (Role !== 'Admin' && !Gender)) {
     return res.status(401).json({ 
       success: false, 
       message: 'Unauthorized. Session is missing branch or gender.' 
@@ -798,7 +826,7 @@ router.get('/api/fitness-test/all-students', async (req, res) => {
   try {
     const request = pool.request();
     request.input('Branch', sql.NVarChar(50), Branch);
-    request.input('Gender', sql.NVarChar(10), Gender);
+    if (Role !== 'Admin') request.input('Gender', sql.NVarChar(10), Gender);
 
     // Query TestMaster for all students in this section
     const result = await request.query(`
@@ -809,7 +837,7 @@ router.get('/api/fitness-test/all-students', async (req, res) => {
         Darajah,
         CONVERT(varchar, DOB, 23) AS DOB -- Format DOB for readability
       FROM TestMaster
-      WHERE Branch = @Branch AND Gender = @Gender
+      WHERE Branch = @Branch ${Role === 'Admin' ? '' : 'AND Gender = @Gender'}
       ORDER BY Name ASC
     `);
 
@@ -828,9 +856,8 @@ router.get('/api/fitness-test/all-students', async (req, res) => {
 
 
 router.get('/api/fitness-test/students/count', async (req, res) => {
-    // Reuse the same session/auth check as your other staff endpoints
-    const { Branch, Gender } = req.session.user || {};
-    if (!Branch || !Gender) {
+    const { Branch, Gender, Role } = req.session.user || {};
+    if (!Branch || (Role !== 'Admin' && !Gender)) {
         return res.status(401).json({
             success: false,
             message: 'Unauthorized. Session is missing branch or gender.'
@@ -840,13 +867,13 @@ router.get('/api/fitness-test/students/count', async (req, res) => {
     try {
         const request = pool.request();
         request.input('Branch', sql.NVarChar(50), Branch);
-        request.input('Gender', sql.NVarChar(10), Gender);
+        if (Role !== 'Admin') request.input('Gender', sql.NVarChar(10), Gender);
 
         // Efficiently get only the count from the database
         const result = await request.query(`
             SELECT COUNT(*) AS totalStudents
             FROM TestMaster
-            WHERE Branch = @Branch AND Gender = @Gender
+            WHERE Branch = @Branch ${Role === 'Admin' ? '' : 'AND Gender = @Gender'}
         `);
 
         res.json({

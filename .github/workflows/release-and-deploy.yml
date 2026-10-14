@@ -12,9 +12,23 @@ permissions:
   pull-requests: read
 
 jobs:
+  verify:
+    name: Verify tests and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/*.test.js
+      - run: npm run build
+
   # ─── 1. AUTOMATED SEMANTIC VERSIONING & GITHUB RELEASE ──────────────────────
   release:
     name: Create GitHub Release
+    needs: deploy
     runs-on: ubuntu-latest
     outputs:
       new_tag: ${{ steps.bump_version.outputs.new_tag }}
@@ -48,23 +62,26 @@ jobs:
 
   # ─── 2. GITHUB ENVIRONMENT & DEPLOYMENT TRACKING (100% FREE) ────────────────
   deploy:
-    name: Track Production Deployment
-    needs: release
+    name: Verify Production Commit
+    needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: Production
       url: https://ajsm-gym.onrender.com
     steps:
       - name: Verify Live Service & Record Deployment
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
         run: |
-          echo "========================================================"
-          echo "🎉 Release: ${{ needs.release.outputs.new_tag || 'Latest' }}"
-          echo "🚀 Target URL: https://ajsm-gym.onrender.com"
-          echo "========================================================"
-          echo "Render auto-deploys from GitHub on push to main."
-          echo "Pinging live endpoint to verify service availability..."
-          
-          # Wake up / verify endpoint (allowing for Render free-tier cold start)
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ajsm-gym.onrender.com || echo "000")
-          echo "HTTP Response Status: $STATUS"
-          echo "✅ Production deployment registered on GitHub!"
+          for attempt in $(seq 1 45); do
+            LIVE_COMMIT=$(curl -fsS --max-time 15 https://ajsm-gym.onrender.com/api/version | jq -r '.commit // empty') || LIVE_COMMIT=""
+            if [ "$LIVE_COMMIT" = "$EXPECTED_COMMIT" ]; then
+              echo "Production is serving commit $LIVE_COMMIT"
+              exit 0
+            fi
+            echo "Waiting for production commit $EXPECTED_COMMIT (attempt $attempt/45, live: ${LIVE_COMMIT:-unavailable})"
+            sleep 20
+          done
+          echo "Production did not serve the expected commit within 15 minutes."
+          exit 1

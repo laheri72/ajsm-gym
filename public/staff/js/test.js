@@ -1,251 +1,42 @@
-// === NEW CHART HELPERS ===
-// We define these outside the DOMContentLoaded to keep them clean
-let bmiChart = null;
-let gradeChart = null;
-const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#4CAF50';
-const dangerColor = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || '#f44336';
-
-// Function to draw the BMI Pie Chart
-function drawBmiChart(counts) {
-    const ctx = document.getElementById('bmiStatusChart');
-    if (!ctx) return;
-
-    if (bmiChart) {
-        bmiChart.destroy(); // Destroy old chart instance
-    }
-    
-    const labels = Object.keys(counts);
-    const data = Object.values(counts);
-
-    bmiChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'BMI Status',
-                data: data,
-                backgroundColor: [
-                    '#3498db', // Underweight (Blue)
-                    primaryColor, // Normal (Green)
-                    '#f39c12', // Overweight (Orange)
-                    dangerColor  // Obese (Red)
-                ],
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                }
-            }
-        }
-    });
-}
-
-// Function to draw the Grade Bar Chart
-function drawGradeChart(counts) {
-    const ctx = document.getElementById('gradeChart');
-    if (!ctx) return;
-
-    if (gradeChart) {
-        gradeChart.destroy(); // Destroy old chart instance
-    }
-
-    // Sort grades logically (A, B, C, D, F)
-    const sortedGrades = Object.entries(counts).sort((a, b) => {
-        if (a[0] < b[0]) return -1;
-        if (a[0] > b[0]) return 1;
-        return 0;
-    });
-
-    const labels = sortedGrades.map(entry => entry[0]);
-    const data = sortedGrades.map(entry => entry[1]);
-
-    gradeChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Number of Students',
-                data: data,
-                backgroundColor: primaryColor,
-                borderColor: primaryColor,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1 // Show only whole numbers for student counts
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false // Not needed for a single-dataset bar chart
-                }
-            }
-        }
-    });
-}
-
-
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const formatNumber = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? '-' : Number(value).toFixed(digits);
 document.addEventListener('DOMContentLoaded', () => {
-    // Helper function to format numbers or show 'N/A' if null/undefined
-const formatNumber = (num, decimals) => (num != null ? num.toFixed(decimals) : 'N/A');
-
-    // Helper function to update stat card text
-    const updateStat = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.textContent = value;
+  const updateStat = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  const testRecordsTable = $('#test-records-table').DataTable({
+    ajax: {
+      url:'/api/all-test-records',
+      dataSrc:json => {
+        const data = json.data || [];
+        const trainer = data.filter(row => row.SubmittedBy === 'Trainer').length;
+        const student = data.filter(row => row.SubmittedBy === 'Student').length;
+        const legacy = data.length - trainer - student;
+        updateStat('stat-total-tests', data.length);
+        updateStat('stat-trainer-submitted', trainer);
+        updateStat('stat-student-submitted', student);
+        updateStat('source-mix-caption', data.length ? trainer+' trainer / '+student+' student / '+legacy+' legacy tests' : 'No tests recorded yet');
+        for (const [id,count] of [['source-trainer-bar',trainer],['source-student-bar',student],['source-legacy-bar',legacy]]) {
+          document.getElementById(id).style.width = data.length ? (count/data.length*100)+'%' : '0%';
         }
-    };
-
-    // Initialize the DataTable for the fitness test records
-    const testRecordsTable = $('#test-records-table').DataTable({
-        ajax: {
-            url: '/api/all-test-records',
-            credentials: 'include', // Send session cookies
-            /**
-             * ENHANCED dataSrc callback
-             * Now calculates stats AND chart data
-             */
-            dataSrc: (json) => {
-                const data = json.data || [];
-
-                // 1. Initialize counters
-                let totalTests = 0;
-                let trainerSubmitted = 0;
-                let studentSubmitted = 0;
-                let totalBmi = 0;
-                let bmiCount = 0;
-                let totalBodyFat = 0;
-                let bodyFatCount = 0;
-                const gradeCounts = {};
-                const bmiStatusCounts = {}; // NEW: For BMI Chart
-
-                // 2. Loop through all records to calculate stats
-                data.forEach(record => {
-                    totalTests++;
-
-                    // Count submissions by type
-                    if (record.SubmittedBy === 'Trainer') {
-                        trainerSubmitted++;
-                    } else if (record.SubmittedBy === 'Student') {
-                        studentSubmitted++;
-                    }
-
-                    // Sum BMI and BodyFat (only if they are valid numbers)
-                    if (record.BMI != null) {
-                        totalBmi += record.BMI;
-                        bmiCount++;
-                    }
-                    if (record.BodyFat != null) {
-                        totalBodyFat += record.BodyFat;
-                        bodyFatCount++;
-                    }
-
-                    // Count grades (NEW: handle null/empty grades)
-                    const grade = record.Grade || 'N/A';
-                    gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
-                    
-                    // Count BMI Status (NEW: handle null/empty status)
-                    const status = record.BMIStatus || 'N/A';
-                    bmiStatusCounts[status] = (bmiStatusCounts[status] || 0) + 1;
-                });
-
-                // 3. Calculate averages and find most common grade
-                const avgBmi = bmiCount > 0 ? (totalBmi / bmiCount).toFixed(1) : 'N/A';
-                const avgBodyFat = bodyFatCount > 0 ? (totalBodyFat / bodyFatCount).toFixed(1) : 'N/A';
-
-                let mostCommonGrade = 'N/A';
-                let maxGradeCount = 0;
-                for (const [grade, count] of Object.entries(gradeCounts)) {
-                    if (grade !== 'N/A' && count > maxGradeCount) {
-                        mostCommonGrade = grade;
-                        maxGradeCount = count;
-                    }
-                }
-
-                // 4. Update the stat cards in the HTML
-                updateStat('stat-total-tests', totalTests);
-                updateStat('stat-trainer-submitted', trainerSubmitted);
-                updateStat('stat-student-submitted', studentSubmitted);
-                updateStat('stat-avg-bmi', avgBmi);
-                updateStat('stat-avg-body-fat', avgBodyFat !== 'N/A' ? `${avgBodyFat}%` : 'N/A');
-                updateStat('stat-common-grade', mostCommonGrade);
-
-                // 5. NEW: Draw the charts
-                drawBmiChart(bmiStatusCounts);
-                drawGradeChart(gradeCounts);
-
-                // 6. IMPORTANT: Return the original data for the table
-                return data;
-            }
-        },
-            columns: [
-            { data: 'CreatedAt', render: d => new Date(d).toLocaleDateString() },
-            { data: 'TR' },
-            { data: 'Name' },
-            { data: 'Age', render: d => formatNumber(d, 0) },
-            { data: 'Weight', render: d => formatNumber(d, 1) },
-            { data: 'Height', render: d => formatNumber(d, 1) },
-            { data: 'Waist', render: d => formatNumber(d, 1) },
-            { data: 'Hips', render: d => formatNumber(d, 1) },
-            { data: 'Neck', render: d => formatNumber(d, 1) },
-            { data: 'BMI', render: d => formatNumber(d, 2) },
-            { data: 'BMIStatus' },
-            { data: 'BodyFat', render: d => formatNumber(d, 2) },
-            { data: 'BMR', render: d => formatNumber(d, 1) },
-            { data: 'CalorieIntake', render: d => formatNumber(d, 1) },
-            { data: 'VO2Max', render: d => formatNumber(d, 1) },
-
-            // 🆕 New Activity Columns
-            { data: 'PushUps', render: d => d ?? 'N/A' },
-            { data: 'SitUps', render: d => d ?? 'N/A' },
-            { data: 'Squats', render: d => d ?? 'N/A' },
-            { data: 'SitAndReach', render: d => d ?? 'N/A' },
-            { data: 'StepUpPulseRate', render: d => d ?? 'N/A' },
-
-            { data: 'Total', render: d => formatNumber(d, 1) },
-            { data: 'Grade' },
-            { data: 'SubmittedBy' }
-            ],
-
-        order: [[0, 'desc']], // Show newest records first
-        pageLength: 25,
-        responsive: true,
-        language: {
-            emptyTable: "No fitness test records have been submitted yet."
-        },
-        
-
-
-        /**
-         * NEW: createdRow (for Row Highlighting)
-         * This runs for every row that is drawn.
-         */
-        createdRow: function (row, data, dataIndex) {
-            // Highlight based on BMI Status
-            if (data.BMIStatus === 'Obese' || data.BMIStatus === 'Underweight') {
-                $(row).addClass('bmi-danger');
-            }
-
-            // Highlight based on Grade
-            if (data.Grade === 'A') {
-                $(row).addClass('grade-success');
-            } else if (data.Grade === 'F') {
-                $(row).addClass('grade-fail');
-            }
-        }
-    });
+        document.querySelector('.fitness-source-track').setAttribute('aria-label', trainer+' trainer, '+student+' student, and '+legacy+' legacy tests');
+        return data;
+      }
+    },
+    columns:[
+      {data:'CreatedAt',render:(value,type) => type === 'display' ? new Date(value).toLocaleDateString('en-IN') : value},
+      {data:'Name',render:(value,type,row) => type === 'display' ? '<strong>'+escapeHtml(value)+'</strong><br><small>TR '+escapeHtml(row.TR)+'</small>' : type === 'filter' ? value+' '+row.TR : value},
+      {data:'SubmittedBy',render:value => escapeHtml(value === 'Trainer' ? 'Trainer' : value === 'Student' ? 'Student' : 'Legacy / unknown')},
+      {data:'VO2Max',render:value => formatNumber(value)},
+      {data:'BMI',render:value => formatNumber(value)},
+      {data:'BodyFat',render:value => value == null ? '-' : formatNumber(value)+'%'},
+      {data:'BMR',render:value => formatNumber(value,0)},
+      {data:'Grade',render:value => escapeHtml(value || '-')},
+      {data:'TR',orderable:false,searchable:false,render:value => '<a class="btn btn-sm btn-outline-primary" href="/fitness/profile.html?tr='+encodeURIComponent(value)+'">Open profile</a>'}
+    ],
+    order:[[0,'desc']],
+    pageLength:15,
+    responsive:true,
+    language:{emptyTable:'No fitness test records have been submitted yet.'}
+  });
 
     // Add click event listener to the export button
 document.getElementById('exportTestRecordsBtn').addEventListener('click', () => {
@@ -255,7 +46,7 @@ document.getElementById('exportTestRecordsBtn').addEventListener('click', () => 
             return;
         }
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
+        const worksheet = XLSX.utils.json_to_sheet(data.map(({ BMIStatus, ...record }) => record));
 const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "TestRecords");
         XLSX.writeFile(workbook, "Fitness_Test_Records.xlsx");
@@ -598,17 +389,6 @@ reader.onload = async (e) => {
 
     // Call the new function on page load
     populateAdminWarning();
-
-    // -----------------------------
-// OPEN EVALUATION LOGS (STAFF)
-// -----------------------------
-const evalCard = document.getElementById("open-evaluation-logs-card");
-if (evalCard) {
-    evalCard.addEventListener("click", () => {
-        window.location.href = "evaluation-log.html";
-    });
-}
-
 
 }); 
 

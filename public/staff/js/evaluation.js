@@ -38,7 +38,6 @@ function formatMetaData(evaluator, profession, timestamp) {
             document.getElementById('stat-avg-bodyfat').textContent = latestBatchStats.AvgBodyFat ? `${latestBatchStats.AvgBodyFat.toFixed(1)}%` : 'N/A';
             document.getElementById('stat-common-grade').textContent = latestBatchStats.MostCommonGrade || 'N/A';
             drawBmiOverTimeChart(lineChartData);
-            drawBmiStatusChart(latestBatchStats.BmiStatusDistribution);
         } catch (err) {
             console.error('Error loading statistics:', err);
             document.getElementById('statistics-overview').innerHTML = `<p class="text-danger">Could not load statistics.</p>`;

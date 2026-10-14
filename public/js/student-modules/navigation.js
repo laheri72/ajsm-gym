@@ -16,15 +16,15 @@ let cache = {
 /**
  * Programmatically switches the dashboard view to a specific section.
  */
-export function navigateToSection(targetSectionId) {
+export function navigateToSection(targetSectionId, fitnessTab = 'overview') {
     // --- RESTRICTION CHECK ---
     // Prevent non-members/inactive users from accessing functional gym sections
-    const restrictedSections = ['attendance-low', 'leaves-low'];
+    const restrictedSections = ['planner-low','logs-low','attendance-low','leaves-low','tips-low','fame-low'];
     const isRestricted = document.body.classList.contains('is-inactive');
 
     if (isRestricted && restrictedSections.includes(targetSectionId)) {
         console.warn(`Access to ${targetSectionId} is restricted.`);
-        window.location.hash = 'planner';
+        window.location.hash = 'fitness';
         return;
     }
 
@@ -66,10 +66,10 @@ export function navigateToSection(targetSectionId) {
     if (targetSectionId === 'fitness-low') {
         import('./fitness.js').then(mod => {
             if (!cache.fitness) {
-                mod.initializeFitness();
                 cache.fitness = true;
+                mod.initializeFitness().catch(console.error);
             }
-            mod.showFitnessTab('overview');
+            mod.showFitnessTab(fitnessTab);
         });
     }
     if (targetSectionId === 'attendance-low') {
@@ -94,7 +94,7 @@ export function navigateToSection(targetSectionId) {
  * Reads the URL hash and routes to the correct section and sub-tab.
  */
 export function routeFromHash() {
-    let hash = window.location.hash.replace('#', '') || 'planner';
+    let hash = window.location.hash.replace('#', '') || 'fitness';
     let mainHash = hash;
     let subTab = null;
 
@@ -114,11 +114,12 @@ export function routeFromHash() {
         fame: 'fame-low'
     }; 
     
-    const targetSectionId = map[mainHash] || 'planner-low';
+    const targetSectionId = map[mainHash] || 'fitness-low';
     
-    navigateToSection(targetSectionId); 
+    const fitnessTab = ['overview', 'test', 'evaluations', 'history'].includes(subTab) ? subTab : 'overview';
+    navigateToSection(targetSectionId, fitnessTab);
 
-    if (subTab) {
+    if (subTab && targetSectionId !== 'fitness-low') {
         const tabLink = document.querySelector(`.tab-nav .tab-link[data-tab="${subTab}"]`);
         if (tabLink) {
             tabLink.click();
