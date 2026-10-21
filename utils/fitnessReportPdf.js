@@ -3,31 +3,52 @@ const path = require('path');
 const { assessTest } = require('./fitnessAssessment');
 
 const FONT = path.join(__dirname, '..', 'assets', 'fonts', 'NotoSansArabic.ttf');
+const LOGO = path.join(__dirname, '..', 'assets', 'reports', 'logo.png');
 const W = 595.28, H = 841.89;
 const palettes = {
   dark: { bg:'#083c43', panel:'#285761', deep:'#1b2638', paper:'#f7faf8', ink:'#ffffff', muted:'#d5e6e3', orange:'#e9a027', line:'#b7d5d1', surface:'#153f48' },
   light: { bg:'#eaf5f3', panel:'#ffffff', deep:'#163a45', paper:'#ffffff', ink:'#183943', muted:'#4d6a70', orange:'#d99120', line:'#a4c5c3', surface:'#d9ece9' }
 };
 const toneColors = { low:'#6fa9d4', neutral:'#61bea9', moderate:'#efa43b', high:'#e36b56', above:'#77b4d3' };
+const toneTags = { low:'#285d7e', moderate:'#93600a', high:'#963b31', above:'#2b6682' };
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 const short = (value, max = 90) => { const s = clean(value); return s.length > max ? `${s.slice(0, max - 3).trimEnd()}...` : s; };
 function nameLines(value) {
   const lines = [''];
   for (const word of clean(value || 'Student').split(' ')) {
     const current = lines.length - 1;
-    if (lines[current] && `${lines[current]} ${word}`.length > 25) lines.push(word);
+    if (lines[current] && `${lines[current]} ${word}`.length > 21) lines.push(word);
     else lines[current] = lines[current] ? `${lines[current]} ${word}` : word;
   }
-  return lines.slice(0,2).map((line,index) => index === 1 && lines.length > 2 ? short(line,23) : line);
+  return lines.slice(0,3).map((line,index) => index === 2 && lines.length > 3 ? short(line,19) : line);
 }
 const number = (value, digits = 1) => value == null || !Number.isFinite(Number(value)) ? '-' : Number(value).toFixed(digits);
 const date = value => value && !Number.isNaN(new Date(value).getTime()) ? new Date(value).toLocaleDateString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', year:'numeric' }) : 'Not recorded';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 function txt(doc, value, x, y, width, size, color, options = {}) {
-  doc.font('Report').fontSize(size).fillColor(color).text(String(value), x, y, { width, height:options.height || size * 1.55, ellipsis:true, lineBreak:false, align:options.align || 'left' });
+  doc.font(options.bold ? 'Helvetica-Bold' : 'Report').fontSize(size).fillColor(color).text(String(value), x, y, { width, height:options.height || size * 1.55, ellipsis:true, lineBreak:false, align:options.align || 'left' });
 }
 function rect(doc, x, y, w, h, fill, stroke = fill, r = 0) { doc.roundedRect(x, y, w, h, r).fillAndStroke(fill, stroke); }
+function wrappedLines(doc, value, width, size, maxLines) {
+  const words = clean(value).split(' ').filter(Boolean);
+  const lines = [];
+  let current = '';
+  doc.font('Report').fontSize(size);
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (current && doc.widthOfString(next) > width) { lines.push(current); current = word; }
+    else current = next;
+  }
+  if (current) lines.push(current);
+  const visible = lines.slice(0, maxLines);
+  if (lines.length > maxLines && visible.length) {
+    let final = visible[visible.length - 1];
+    while (final && doc.widthOfString(`${final}...`) > width) final = final.slice(0,-1);
+    visible[visible.length - 1] = `${final.trimEnd()}...`;
+  }
+  return visible;
+}
 function motif(doc, p) {
   doc.save().opacity(.18).strokeColor(p.line).lineWidth(2);
   for (const [x,y] of [[54,24],[246,18],[509,35],[315,132],[52,690],[516,701]]) {
@@ -49,11 +70,11 @@ function scale(doc, scale, x, y, w, p) {
   for (const segment of scale.segments) {
     const left = x + clamp((segment.from - scale.min) / total,0,1) * w;
     const right = x + clamp((segment.to - scale.min) / total,0,1) * w;
-    if (right > left) rect(doc,left,y,right-left,6,toneColors[segment.tone] || p.line);
+    if (right > left) rect(doc,left,y,right-left,5,toneColors[segment.tone] || p.line);
   }
   const pointer = x + clamp((scale.value - scale.min) / total,0,1) * w;
   doc.moveTo(pointer,y-5).lineTo(pointer-4,y-1).lineTo(pointer+4,y-1).closePath().fill(p.ink);
-  txt(doc,scale.caption || '',x,y+10,w,6.8,p.muted);
+  txt(doc,scale.caption || '',x,y+8,w,6.8,p.muted);
 }
 function deltaText(metric) {
   if (metric.delta == null) return 'FIRST READING';
@@ -61,20 +82,24 @@ function deltaText(metric) {
   return metric.delta === 0 ? arrow : `${arrow} ${number(Math.abs(metric.delta))} vs previous`;
 }
 function vital(doc, key, title, metric, x, y, w, p) {
-  rect(doc,x,y,w,82,p.panel,p.line,4);
+  rect(doc,x,y,w,72,p.panel,p.line,4);
   const tone = metric.band?.severity || 'neutral';
   const accent = toneColors[tone] || p.orange;
-  rect(doc,x,y,4,82,accent,accent,1);
-  txt(doc,title,x+12,y+7,84,10,p.ink);
-  txt(doc,metric.estimated ? 'ESTIMATE' : 'CALCULATED',x+102,y+9,90,6.5,p.muted);
-  txt(doc,number(metric.value),x+12,y+24,82,22,p.ink);
-  txt(doc,metric.unit,x+91,y+34,72,7.5,p.muted);
+  rect(doc,x,y,4,72,accent,accent,1);
+  txt(doc,title,x+12,y+5,84,9.3,p.ink,{bold:true});
+  txt(doc,metric.estimated ? 'ESTIMATE' : 'CALCULATED',x+99,y+8,73,6.7,p.muted);
+  txt(doc,number(metric.value),x+12,y+19,82,21,p.ink,{bold:true});
+  txt(doc,metric.unit,x+93,y+30,70,7,p.muted);
   const status = metric.band?.label || (metric.value == null ? 'Not measured' : 'Personal baseline');
-  const tagWidth = Math.min(157, Math.max(67, clean(status).length * 4.5 + 13));
-  rect(doc,x+w-tagWidth-9,y+9,tagWidth,20,tone === 'high' || tone === 'moderate' ? accent : p.deep);
-  txt(doc,status,x+w-tagWidth-4,y+14,tagWidth-10,7.2,'#ffffff');
-  if (metric.band?.scale) scale(doc,metric.band.scale,x+12,y+55,w-24,p);
-  if (metric.value != null) txt(doc,deltaText(metric),x+w-151,y+34,140,7.2,p.muted,{align:'right'});
+  const tagWidth = Math.min(149, Math.max(69, clean(status).length * 4.3 + 12));
+  rect(doc,x+w-tagWidth-8,y+7,tagWidth,18,toneTags[tone] || p.deep);
+  txt(doc,status,x+w-tagWidth-4,y+11,tagWidth-9,7,'#ffffff');
+  if (metric.band?.scale) scale(doc,metric.band.scale,x+12,y+50,w-24,p);
+  else if (metric.value != null) {
+    doc.moveTo(x+12,y+51).lineTo(x+w-12,y+51).lineWidth(1).strokeColor(p.line).stroke();
+    txt(doc,metric.band?.detail || 'Personal energy baseline',x+12,y+58,w-24,6.8,p.muted);
+  }
+  if (metric.value != null) txt(doc,deltaText(metric),x+w-143,y+30,133,7,p.muted,{align:'right'});
 }
 function bodyFigure(doc, x, y, p) {
   doc.save().fillColor(p.deep).strokeColor(p.line).lineWidth(1.5);
@@ -87,28 +112,62 @@ function measure(doc, label, value, unit, x, y, p, align = 'left') {
   txt(doc,`${number(value)} ${unit}`,x,y+10,78,9,'#ffffff',{align});
 }
 function performanceGlyph(doc, kind, x, y, p) {
-  doc.save().strokeColor(p.orange).lineWidth(2.2).lineCap('round').lineJoin('round');
-  doc.circle(x+11,y+5,3.5).stroke();
+  // Filled, rounded exercise pictograms remain sharp at any print resolution.
+  const ink = p.ink;
+  doc.save().strokeColor(ink).fillColor(ink).lineCap('round').lineJoin('round').lineWidth(5.5);
+  const limb = points => {
+    doc.moveTo(x+points[0][0],y+points[0][1]);
+    for (const [px,py] of points.slice(1)) doc.lineTo(x+px,y+py);
+    doc.stroke();
+  };
   if (kind === 0) { // squat
-    doc.moveTo(x+11,y+9).lineTo(x+12,y+19).lineTo(x+20,y+23).lineTo(x+25,y+17).stroke();
-    doc.moveTo(x+12,y+19).lineTo(x+5,y+23).lineTo(x+5,y+29).stroke();
-    doc.moveTo(x+9,y+12).lineTo(x+2,y+17).stroke();
-  } else if (kind === 1) { // sit up
-    doc.moveTo(x+9,y+9).lineTo(x+17,y+20).lineTo(x+27,y+21).stroke();
-    doc.moveTo(x+17,y+20).lineTo(x+21,y+29).lineTo(x+29,y+29).stroke();
-    doc.moveTo(x+4,y+28).lineTo(x+29,y+28).stroke();
-  } else if (kind === 2) { // push up
-    doc.moveTo(x+8,y+11).lineTo(x+26,y+19).lineTo(x+30,y+22).stroke();
-    doc.moveTo(x+14,y+14).lineTo(x+10,y+26).stroke();
-    doc.moveTo(x+25,y+19).lineTo(x+23,y+27).stroke();
-    doc.moveTo(x+2,y+28).lineTo(x+31,y+28).stroke();
-  } else { // reach
-    doc.moveTo(x+11,y+10).lineTo(x+15,y+23).lineTo(x+28,y+24).stroke();
-    doc.moveTo(x+15,y+23).lineTo(x+7,y+28).stroke();
-    doc.moveTo(x+8,y+14).lineTo(x+24,y+12).stroke();
-    doc.moveTo(x+25,y+29).lineTo(x+31,y+29).stroke();
+    doc.circle(x+20,y+6,4.2).fill();
+    limb([[20,12],[19,21],[28,24],[30,18]]);
+    limb([[19,21],[10,24],[9,34],[4,34]]);
+    limb([[24,14],[33,15]]);
+  } else if (kind === 1) { // sit-up
+    doc.circle(x+9,y+14,4.2).fill();
+    limb([[13,18],[19,24],[25,29]]);
+    limb([[25,29],[31,17],[36,29]]);
+    limb([[17,22],[25,19]]);
+  } else if (kind === 2) { // push-up
+    doc.circle(x+36,y+13,4).fill();
+    limb([[32,17],[20,19],[9,19],[4,23]]);
+    limb([[29,18],[28,30],[35,31]]);
+    limb([[23,19],[22,30],[28,31]]);
+  } else { // seated reach
+    doc.circle(x+10,y+14,4.2).fill();
+    limb([[11,20],[17,28],[34,29]]);
+    limb([[14,22],[29,20],[36,22]]);
+    limb([[18,28],[7,33]]);
   }
+  doc.strokeColor(p.orange).lineWidth(1.5).moveTo(x+2,y+37).lineTo(x+39,y+37).stroke();
   doc.restore();
+}
+
+function evaluatorFeedback(doc, comments, p) {
+  rect(doc,30,673,535,134,p.panel,p.line,3);
+  rect(doc,30,673,4,134,p.orange,p.orange,1);
+  txt(doc,'EVALUATOR FEEDBACK',42,681,290,10,p.ink,{bold:true});
+  txt(doc,`${comments.length} ${comments.length === 1 ? 'NOTE' : 'NOTES'}`,452,683,100,7,p.muted,{align:'right'});
+  doc.moveTo(42,699).lineTo(553,699).lineWidth(.8).strokeColor(p.line).stroke();
+  if (!comments.length) {
+    txt(doc,'Evaluator feedback will appear after review.',42,715,510,9,p.muted);
+    return;
+  }
+  const hasMore = comments.length > 4;
+  const shown = comments.slice(0,hasMore ? 3 : 4);
+  const rowHeight = (101 - (hasMore ? 13 : 0)) / shown.length;
+  shown.forEach((comment,index) => {
+    const top = 702 + index * rowHeight;
+    const meta = `${short(comment.CategoryName || 'General',22)}  |  ${short(comment.EvaluatorName || 'Evaluator',27)}  |  ${date(comment.DateEvaluated)}`;
+    txt(doc,meta,42,top+1,510,7.2,p.muted);
+    const lineCount = Math.min(4,Math.max(1,Math.floor((rowHeight-23)/8.6)+1));
+    wrappedLines(doc,comment.CommentText || 'No written note.',507,7.8,lineCount)
+      .forEach((line,lineIndex) => txt(doc,line,42,top+12+lineIndex*8.6,507,7.8,p.ink));
+    if (index < shown.length - 1) doc.moveTo(42,top+rowHeight-1).lineTo(553,top+rowHeight-1).lineWidth(.5).strokeColor(p.line).stroke();
+  });
+  if (hasMore) txt(doc,`+ ${comments.length - shown.length} more ${comments.length - shown.length === 1 ? 'note' : 'notes'} in the student profile`,42,792,510,7.2,p.muted);
 }
 
 function renderFitnessReportPage(doc, { student, test, previous = null, assessment = null, template = 'dark' }) {
@@ -119,58 +178,68 @@ function renderFitnessReportPage(doc, { student, test, previous = null, assessme
   doc.rect(0,0,W,H).fill(p.bg);
   motif(doc,p);
   doc.rect(0,0,W,6).fill(p.orange);
-  rect(doc,30,24,253,116,p.deep,p.deep,3);
-  txt(doc,'FITNESS REPORT',43,38,235,24,'#ffffff');
-  txt(doc,'KHAIMAH AL RIYADAH (MAROL)',44,74,225,10,'#ffffff');
-  doc.moveTo(44,98).lineTo(260,98).lineWidth(2).strokeColor(p.orange).stroke();
-  txt(doc,`TEST ${date(test.CreatedAt)}`,44,107,225,9,'#ffffff');
-  // The outlined identity blocks and photo placeholder follow the supplied SVG's composition.
-  rect(doc,298,24,72,116,p.paper,p.orange,3);
-  txt(doc,'PHOTO',305,73,59,10,p.muted,{align:'center'});
-  rect(doc,382,24,183,44,p.deep,p.orange,2);
-  nameLines(student.Name).forEach((line,index) => txt(doc,line,393,28+index*17,161,10.5,'#ffffff'));
-  rect(doc,382,75,183,28,p.deep,p.line,2);
-  txt(doc,`AGE ${a.ageYears ?? '-'}  |  ${short(student.Gender || '-',11)}`,392,82,160,10,'#ffffff');
-  rect(doc,382,110,87,30,p.deep,p.line,2);
-  rect(doc,477,110,88,30,p.deep,p.line,2);
-  txt(doc,`TR ${student.TR ?? '-'}`,389,118,73,9,'#ffffff');
-  txt(doc,short(student.Darajah || 'CLASS -',14),485,118,73,9,'#ffffff');
-  doc.rect(0,151,W,41).fill(p.orange);
-  txt(doc,`SCORE ${number(test.Total,0)}    GRADE ${short(test.Grade || '-',4)}`,30,162,244,13,p.deep);
-  txt(doc,`${short(test.BatchName || 'Unbatched',27)}  |  ${test.SubmittedBy === 'Trainer' ? 'Trainer test' : test.SubmittedBy === 'Student' ? 'Self test' : 'Legacy source'}`,279,165,284,9,p.deep,{align:'right'});
 
-  section(doc,'Fitness test',30,205,535,p);
+  // Identity follows the established report hierarchy: mark, photo, student.
+  rect(doc,30,21,239,123,p.deep,p.deep,3);
+  doc.image(LOGO,42,34,{fit:[63,75],align:'center',valign:'center'});
+  txt(doc,'FITNESS',111,37,150,20,'#ffffff',{bold:true});
+  txt(doc,'REPORT',111,62,150,20,'#ffffff',{bold:true});
+  doc.moveTo(111,92).lineTo(256,92).lineWidth(1.8).strokeColor(p.orange).stroke();
+  txt(doc,'KHAIMAH AL RIYADAH (MAROL)',111,99,151,7.8,'#ffffff');
+  txt(doc,`TEST ${date(test.CreatedAt)}`,111,119,151,8.2,'#ffffff');
+
+  rect(doc,278,21,104,123,p.paper,p.orange,3);
+  doc.save().fillColor('#e4edec').strokeColor(p.line).lineWidth(1);
+  doc.circle(330,61,13).fillAndStroke('#e4edec',p.line);
+  doc.path('M 297 112 C 299 91, 310 82, 330 82 C 350 82, 361 91, 363 112 Z').fillAndStroke('#e4edec',p.line);
+  doc.restore();
+  txt(doc,'PHOTO',289,124,82,7.8,'#4d6a70',{align:'center'});
+
+  rect(doc,391,21,174,49,p.deep,p.orange,2);
+  nameLines(student.Name).forEach((line,index) => txt(doc,line,401,26+index*13,154,9.5,'#ffffff'));
+  rect(doc,391,76,174,29,p.deep,p.line,2);
+  txt(doc,`AGE ${a.ageYears ?? '-'}  |  ${short(student.Gender || '-',11)}`,401,83,154,9,'#ffffff');
+  rect(doc,391,111,82,33,p.deep,p.line,2);
+  rect(doc,480,111,85,33,p.deep,p.line,2);
+  txt(doc,`TR ${student.TR ?? '-'}`,399,121,68,9,'#ffffff');
+  txt(doc,short(student.Darajah || 'CLASS -',14),488,121,69,9,'#ffffff');
+
+  doc.rect(0,154,W,38).fill(p.orange);
+  txt(doc,`SCORE ${number(test.Total,0)}    GRADE ${short(test.Grade || '-',4)}`,30,164,245,13,p.deep,{bold:true});
+  txt(doc,`${short(test.BatchName || 'Unbatched',27)}  |  ${test.SubmittedBy === 'Trainer' ? 'Trainer test' : test.SubmittedBy === 'Student' ? 'Self test' : 'Legacy source'}`,279,166,284,8.5,p.deep,{align:'right'});
+
+  section(doc,'Fitness test',30,201,535,p);
   const performance = [['SQUATS',test.Squats,'reps'],['SIT UPS',test.SitUps,'reps'],['PUSH UPS',test.PushUps,'reps'],['FLEXIBILITY',test.SitAndReach,'cm']];
   performance.forEach(([title,value,unit],i) => {
     const x = 30+i*136;
-    rect(doc,x,232,127,76,p.panel,p.line,2);
-    rect(doc,x+10,239,107,21,p.deep);
-    txt(doc,title,x+14,244,99,9,'#ffffff',{align:'center'});
-    performanceGlyph(doc,i,x+17,267,p);
-    txt(doc,number(value,title === 'FLEXIBILITY' ? 1 : 0),x+49,263,65,22,p.ink,{align:'right'});
-    txt(doc,unit,x+49,292,65,7,p.muted,{align:'right'});
+    rect(doc,x,228,127,83,p.panel,p.line,3);
+    rect(doc,x+8,234,111,18,p.deep);
+    txt(doc,title,x+12,238,103,8.2,'#ffffff',{align:'center',bold:true});
+    rect(doc,x+9,258,43,46,p.surface,p.surface,3);
+    performanceGlyph(doc,i,x+10,262,p);
+    txt(doc,number(value,title === 'FLEXIBILITY' ? 1 : 0),x+54,263,61,21,p.ink,{align:'right',bold:true});
+    txt(doc,unit,x+54,291,61,7,p.muted,{align:'right'});
   });
-  txt(doc,`STEP UP PULSE  ${number(test.StepUpPulseRate,0)} bpm`,30,314,535,8,p.muted);
+  txt(doc,`STEP UP PULSE  ${number(test.StepUpPulseRate,0)} bpm`,30,316,535,8,p.muted);
 
-  section(doc,'Four key vitals',30,336,330,p);
+  section(doc,'Four key vitals',30,333,330,p);
   const vitals = [['VO2Max','VO2 MAX'],['BMI','BMI'],['BodyFat','BODY FAT'],['BMR','BMR']];
-  vitals.forEach(([key,label],i) => vital(doc,key,label,a.metrics[key],30,363+i*87,330,p));
-  section(doc,'Body composition',373,336,192,p);
-  rect(doc,373,363,192,343,p.deep,p.line,2);
-  bodyFigure(doc,394,374,p);
-  measure(doc,'Height',test.Height,'cm',381,408,p);
-  measure(doc,'Neck',test.Neck,'cm',478,408,p,'right');
-  measure(doc,'Waist',test.Waist,'cm',381,493,p);
-  measure(doc,'Hips',test.Hips,'cm',478,493,p,'right');
-  measure(doc,'Weight',test.Weight,'kg',381,665,p);
+  vitals.forEach(([key,label],i) => vital(doc,key,label,a.metrics[key],30,359+i*76,330,p));
+  section(doc,'Body composition',373,333,192,p);
+  rect(doc,373,359,192,300,p.deep,p.line,2);
+  doc.save().translate(401,363).scale(.89);
+  bodyFigure(doc,0,0,p);
+  doc.restore();
+  measure(doc,'Height',test.Height,'cm',381,397,p);
+  measure(doc,'Neck',test.Neck,'cm',478,397,p,'right');
+  measure(doc,'Waist',test.Waist,'cm',381,480,p);
+  measure(doc,'Hips',test.Hips,'cm',478,480,p,'right');
+  measure(doc,'Weight',test.Weight,'kg',381,626,p);
 
-  rect(doc,0,721,W,121,p.orange);
-  txt(doc,'EVALUATOR FEEDBACK',30,733,280,10,p.deep);
-  const latest = test.comments?.[0];
-  if (latest) {
-    txt(doc,`${short(latest.CategoryName || 'General',20)}  |  ${short(latest.EvaluatorName || 'Evaluator',30)}  |  ${date(latest.DateEvaluated)}`,30,751,535,8,p.deep);
-    txt(doc,short(latest.CommentText,165),30,765,535,9,p.deep);
-  } else txt(doc,'Evaluator feedback will appear here after review.',30,753,535,9,p.deep);
+  evaluatorFeedback(doc,test.comments || [],p);
+  doc.rect(0,818,W,24).fill(p.orange);
+  txt(doc,'KHAIMAH AL RIYADAH  |  MAROL',30,824,290,7.2,p.deep,{bold:true});
+  txt(doc,`TR ${student.TR ?? '-'}  |  ${date(test.CreatedAt)}`,343,824,220,7.2,p.deep,{align:'right'});
 }
 
 function createReportDocument() {

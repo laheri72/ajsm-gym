@@ -1,6 +1,6 @@
 {
   "name": "ajsm-gym",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "> A project by **Raudat ul Ikhwaan**,  \r > under the University of **Al Jamea Tus Saifiyah**, Marol Campus.\r ### 🔹 Developed by\r   - Mulla Idris Bh Laheri\r      - Mulla Abizer Bh Dewas",
   "main": "server.js",
   "scripts": {
