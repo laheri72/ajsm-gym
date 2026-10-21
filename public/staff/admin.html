@@ -29,6 +29,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="/assets/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/admin-batches.css">
 </head>
 <body style="visibility: hidden;">
 <!-- Google Tag Manager (noscript) -->
@@ -252,66 +253,50 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </div>
 
-            <section class="card mt-4 p-3">
-                        <h2 class="h4">🩺 Evaluation Batch Management</h2>
-                        <p class="text-muted">
-                            Manage evaluation batches for your branch. Only one batch per gender can be "Active" at a time.
-                            New trainer-submitted tests will automatically be assigned to the "Active" batch.
-                        </p>
-                    
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <h4>Talabat Section Batches</h4>
-                                <div id="male-batch-controls" class="mb-3">
-                                    <form id="createMaleBatchForm" class="d-flex gap-2">
-                                        <input type="text" id="newMaleBatchName" class="form-control" placeholder="New Batch Name (e.g., 1446-Q1)" required>
-                                        <button type="submit" id="createMaleBatchBtn" class="btn btn-primary text-nowrap">Create & Activate</button>
-                                    </form>
-                                </div>
-                                <div style="overflow-x: auto;">
-                                    <table class="table table-striped table-bordered" id="maleBatchTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Batch Name</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="maleBatchTableBody">
-                                            </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                    
-                            <div class="col-lg-6">
-                                <h4>Talebaat Section Batches</h4>
-                                <div id="female-batch-controls" class="mb-3">
-                                    <form id="createFemaleBatchForm" class="d-flex gap-2">
-                                        <input type="text" id="newFemaleBatchName" class="form-control" placeholder="New Batch Name (e.g., 1446-Q1)" required>
-                                        <button type="submit" id="createFemaleBatchBtn" class="btn btn-primary text-nowrap">Create & Activate</button>
-                                    </form>
-                                </div>
-                                <div style="overflow-x: auto;">
-                                    <table class="table table-striped table-bordered" id="femaleBatchTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Batch Name</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="femaleBatchTableBody">
-                                            </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+            <section class="batch-manager" aria-labelledby="batch-manager-title">
+                <div class="batch-manager-heading">
+                    <div>
+                        <span class="batch-eyebrow">Evaluation operations</span>
+                        <h2 id="batch-manager-title">Batch management</h2>
+                        <p>Keep one active batch per section. Prepare the next batch as a locked draft, then activate it when the current batch is locked.</p>
+                    </div>
+                    <a class="btn btn-outline-primary" href="/fitness/cohort.html">View cohorts</a>
+                </div>
+                <p id="batch-management-status" class="batch-manager-status" role="status" aria-live="polite">Loading batches...</p>
+                <div class="batch-manager-grid">
+                    <article class="batch-section" data-gender="Male" aria-labelledby="male-batch-heading">
+                        <header class="batch-section-heading"><div><span class="batch-section-kicker">Talabat / Male</span><h3 id="male-batch-heading">Current batch</h3></div></header>
+                        <div id="maleActiveBatch" class="batch-active-card" aria-live="polite"></div>
+                        <form id="createMaleBatchForm" class="batch-create-form">
+                            <h4>Prepare a batch</h4>
+                            <label for="newMaleBatchName">Batch name</label>
+                            <input type="text" id="newMaleBatchName" class="form-control" maxlength="100" placeholder="e.g., Batch 1448_Test #2" required>
+                            <label for="maleBatchMode">Create as</label>
+                            <select id="maleBatchMode" class="form-select"><option value="locked">Locked draft</option><option value="active">Active batch</option></select>
+                            <button type="submit" id="createMaleBatchBtn" class="btn btn-primary">Create batch</button>
+                        </form>
+                        <div class="batch-history"><h4>Locked batches</h4><div id="maleBatchHistory" class="batch-history-list"></div></div>
+                    </article>
+                    <article class="batch-section" data-gender="Female" aria-labelledby="female-batch-heading">
+                        <header class="batch-section-heading"><div><span class="batch-section-kicker">Talebaat / Female</span><h3 id="female-batch-heading">Current batch</h3></div></header>
+                        <div id="femaleActiveBatch" class="batch-active-card" aria-live="polite"></div>
+                        <form id="createFemaleBatchForm" class="batch-create-form">
+                            <h4>Prepare a batch</h4>
+                            <label for="newFemaleBatchName">Batch name</label>
+                            <input type="text" id="newFemaleBatchName" class="form-control" maxlength="100" placeholder="e.g., Batch 1448_Test #2" required>
+                            <label for="femaleBatchMode">Create as</label>
+                            <select id="femaleBatchMode" class="form-select"><option value="locked">Locked draft</option><option value="active">Active batch</option></select>
+                            <button type="submit" id="createFemaleBatchBtn" class="btn btn-primary">Create batch</button>
+                        </form>
+                        <div class="batch-history"><h4>Locked batches</h4><div id="femaleBatchHistory" class="batch-history-list"></div></div>
+                    </article>
+                </div>
+            </section>
 
-            <section class="card mt-4 p-3">
-                        <h2 class="h4">📦 Unbatched Records Management</h2>
+            <section class="card mt-4 p-3 batch-unbatched-section">
+                        <h2 class="h4">Unbatched trainer tests</h2>
                         <p class="text-muted">
-                            These are records submitted by trainers while no batch was "Active." You must assign them to a **locked** batch to be evaluated.
+                            Assign these tests to a locked batch after review. A batch with assigned tests cannot later be activated as a draft.
                         </p>
                         <div class="row">
                             <div class="col-lg-6">

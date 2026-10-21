@@ -2,19 +2,30 @@
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const fmt = value => value == null || !Number.isFinite(Number(value)) ? '—' : Number(value).toFixed(1);
 const labels = { VO2Max:'VO₂ max', BMI:'BMI', BodyFat:'Body fat', BMR:'BMR' };
-let page = 1, last = null, role = null;
+let page = 1, last = null, role = null, lastAppliedParams = null, loadSequence = 0;
+
+function markFiltersDirty() {
+  if (!lastAppliedParams || new URLSearchParams(new FormData(form)).toString() === lastAppliedParams.toString()) return;
+  document.getElementById('bulk-download').disabled = true;
+  document.getElementById('bulk-status').textContent = 'Apply filters to update the PDF selection.';
+}
 
 async function load() {
   const params = new URLSearchParams(new FormData(form));
   params.set('page', String(page));
   if (!params.get('batchId')) return;
+  const currentLoad = ++loadSequence;
   const status = document.getElementById('cohort-status');
   status.textContent = 'Loading cohort…';
+  document.getElementById('bulk-download').disabled = true;
   try {
     const response = await fetch(`/api/fitness-cohorts?${params}`, { credentials:'include' });
     if (!response.ok) throw new Error('Cohort unavailable. Please try again.');
     const { data } = await response.json();
+    if (currentLoad !== loadSequence) return;
     last = data;
+    lastAppliedParams = new URLSearchParams(params);
+    lastAppliedParams.delete('page');
     status.textContent = `${data.cohortCount} students after filters · ${data.total} shown after metric range · ${data.batchSize} in the entire batch.`;
     document.getElementById('cohort-stats').innerHTML = Object.entries(data.metrics).map(([key,item]) => {
       const maxBar = Math.max(...item.distribution, 1);
@@ -27,9 +38,11 @@ async function load() {
     const selectedBatch = form.elements.batchId.value;
     const exportable = ['Staff','Admin'].includes(role) && selectedBatch !== 'unbatched';
     document.getElementById('bulk-actions').hidden = !exportable;
-    document.getElementById('bulk-download').disabled = !data.batchSize;
-    document.getElementById('bulk-download').textContent = `Download ${data.batchSize} reports as one PDF`;
-  } catch (error) { status.textContent = error.message; }
+    document.getElementById('bulk-download').disabled = !data.total;
+    document.getElementById('bulk-download').textContent = `Download ${data.total} ${data.total === 1 ? 'report' : 'reports'} as one PDF`;
+    document.getElementById('bulk-status').textContent = data.total ? 'Includes every matching student across all pages.' : 'No reports match these filters.';
+    markFiltersDirty();
+  } catch (error) { if (currentLoad === loadSequence) { last = null; lastAppliedParams = null; status.textContent = error.message; } }
 }
 
 async function loadDarajahs() {
@@ -43,18 +56,25 @@ async function loadDarajahs() {
 }
 
 async function downloadBatch() {
-  const id = form.elements.batchId.value;
-  if (!/^\d+$/.test(id) || !last?.batchSize) return;
+  const id = lastAppliedParams?.get('batchId');
+  if (!/^\d+$/.test(id || '') || !last?.total || document.getElementById('bulk-download').disabled) return;
   const button = document.getElementById('bulk-download');
   const status = document.getElementById('bulk-status');
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   status.dataset.loading = 'true';
-  status.textContent = `Preparing ${last.batchSize} individual one-page reports in a combined PDF…`;
+  status.textContent = `Preparing ${last.total} individual one-page reports in a combined PDF…`;
   try {
     const template = role === 'Admin' ? document.getElementById('bulk-template').value : 'dark';
-    const response = await fetch(`/api/fitness-cohorts/${encodeURIComponent(id)}/reports.pdf?template=${template}`, { credentials:'include' });
-    if (!response.ok) throw new Error('Could not generate the batch PDF. Please try again.');
+    const query = new URLSearchParams(lastAppliedParams);
+    query.delete('batchId');
+    query.set('template', template);
+    const response = await fetch(`/api/fitness-cohorts/${encodeURIComponent(id)}/reports.pdf?${query}`, { credentials:'include' });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || 'Could not generate the filtered PDF. Please try again.');
+    }
+    const reportCount = Number(response.headers.get('X-Report-Count')) || last.total;
     let blob;
     if (response.body?.getReader) {
       const reader = response.body.getReader(), chunks = [];
@@ -65,7 +85,7 @@ async function downloadBatch() {
         chunks.push(value);
         bytes += value.byteLength;
         if (Date.now() - lastUpdate > 150) {
-          status.textContent = `Receiving ${last.batchSize} reports… ${Math.round(bytes / 1024)} KB generated`;
+          status.textContent = `Receiving ${reportCount} reports… ${Math.round(bytes / 1024)} KB generated`;
           lastUpdate = Date.now();
         }
       }
@@ -79,13 +99,15 @@ async function downloadBatch() {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    status.textContent = `Downloaded ${last.batchSize} reports in one PDF.`;
+    status.textContent = `Downloaded ${reportCount} reports in one PDF.`;
   } catch (error) { status.textContent = error.message; }
-  finally { button.disabled = false; button.removeAttribute('aria-busy'); delete status.dataset.loading; }
+  finally { button.disabled = !last?.total; button.removeAttribute('aria-busy'); delete status.dataset.loading; markFiltersDirty(); }
 }
 
 form.addEventListener('submit', event => { event.preventDefault(); page = 1; load(); });
-form.elements.batchId.addEventListener('change', () => { page = 1; last = null; document.getElementById('bulk-download').disabled = true; load(); });
+form.addEventListener('input', markFiltersDirty);
+form.addEventListener('change', markFiltersDirty);
+form.elements.batchId.addEventListener('change', () => { page = 1; last = null; lastAppliedParams = null; document.getElementById('bulk-download').disabled = true; load(); });
 form.elements.gender.addEventListener('change', async () => { try { await loadDarajahs(); page = 1; load(); } catch (error) { document.getElementById('cohort-status').textContent = error.message; } });
 document.getElementById('bulk-download').addEventListener('click', downloadBatch);
 document.getElementById('prev-page').addEventListener('click', () => { if (page > 1) { page--; load(); } });

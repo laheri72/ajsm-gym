@@ -1,0 +1,61 @@
+.batch-manager {
+    margin-top: 1.5rem;
+    padding: clamp(1rem, 2.5vw, 1.75rem);
+    border: 1px solid #d9e8e3;
+    border-radius: 1.2rem;
+    background: #f7fbf9;
+    color: #203e38;
+}
+.batch-manager-heading, .batch-section-heading, .batch-active-top, .batch-history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+.batch-manager-heading { align-items: center; }
+.batch-manager h2, .batch-manager h3, .batch-manager h4 { margin: 0; color: #173e35; }
+.batch-manager h2 { font-size: clamp(1.35rem, 2.5vw, 1.8rem); font-weight: 700; }
+.batch-manager h3 { font-size: 1.13rem; font-weight: 700; }
+.batch-manager h4 { font-size: .95rem; font-weight: 700; }
+.batch-manager-heading p { max-width: 63ch; margin: .35rem 0 0; color: #526e66; font-size: .91rem; }
+.batch-eyebrow, .batch-section-kicker { display: block; color: #42776a; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.batch-manager-status { min-height: 1.5rem; margin: .85rem 0; color: #526e66; font-size: .86rem; }
+.batch-manager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.batch-section { min-width: 0; padding: 1.1rem; border: 1px solid #dce9e4; border-radius: 1rem; background: #fff; box-shadow: 0 8px 24px rgba(25, 73, 58, .05); }
+.batch-section-heading { padding-bottom: .8rem; border-bottom: 1px solid #e5eeea; }
+.batch-active-card { min-height: 10rem; padding: 1rem; margin: 1rem 0; border: 1px solid #a6d2bf; border-radius: .9rem; background: linear-gradient(135deg, #e9f7f0, #f9fdfb); }
+.batch-active-card.is-empty { border-style: dashed; background: #f7faf8; }
+.batch-active-name { margin: .45rem 0; font-size: 1.16rem; font-weight: 700; overflow-wrap: anywhere; }
+.batch-active-meta, .batch-history-meta { display: flex; flex-wrap: wrap; gap: .4rem; color: #526e66; font-size: .8rem; }
+.batch-chip { display: inline-flex; align-items: center; padding: .23rem .55rem; border: 1px solid #c9ddd4; border-radius: 999px; background: #fff; color: #315d4d; font-size: .75rem; font-weight: 600; }
+.batch-chip.is-active { border-color: #a7d9be; background: #dcf2e4; color: #155e38; }
+.batch-chip.is-locked { border-color: #d9e1e6; background: #f4f6f7; color: #4a5e67; }
+.batch-chip[title] { cursor: help; }
+.batch-actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .85rem; }
+.batch-actions .btn, .batch-create-form .btn { box-shadow: none; }
+.batch-create-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem .7rem; padding: 1rem; border: 1px solid #e0eae5; border-radius: .85rem; background: #fbfdfc; }
+.batch-create-form h4 { grid-column: 1 / -1; margin-bottom: .2rem; }
+.batch-create-form label { align-self: end; margin: 0; color: #45675c; font-size: .78rem; font-weight: 600; }
+.batch-create-form label:first-of-type, .batch-create-form input { grid-column: 1; }
+.batch-create-form label:nth-of-type(2), .batch-create-form select { grid-column: 2; }
+.batch-create-form .btn { grid-column: 1 / -1; justify-self: start; margin-top: .35rem; }
+.batch-create-form input, .batch-create-form select { min-height: 2.55rem; }
+.batch-history { margin-top: 1.1rem; }
+.batch-history h4 { margin-bottom: .6rem; }
+.batch-history-list { display: grid; gap: .55rem; }
+.batch-history-row { padding: .78rem; border: 1px solid #e1eae5; border-radius: .75rem; }
+.batch-history-name { font-weight: 600; overflow-wrap: anywhere; }
+.batch-history-meta { margin-top: .35rem; }
+.batch-history-row .batch-actions { margin: 0; flex-shrink: 0; }
+.batch-rename-form { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .65rem; }
+.batch-rename-form[hidden] { display: none; }
+.batch-rename-form input { flex: 1 1 12rem; min-width: 0; }
+.batch-empty { margin: .6rem 0; color: #607a70; font-size: .86rem; }
+.batch-manager :is(button, input, select, a):focus-visible { outline: 3px solid #158e7b; outline-offset: 2px; }
+@media (max-width: 930px) { .batch-manager-grid { grid-template-columns: 1fr; } }
+@media (max-width: 580px) {
+    .batch-manager-heading, .batch-history-row { flex-direction: column; }
+    .batch-create-form { grid-template-columns: 1fr; }
+    .batch-create-form label, .batch-create-form input, .batch-create-form select, .batch-create-form .btn { grid-column: 1 !important; }
+    .batch-history-row .batch-actions { width: 100%; }
+}

@@ -456,9 +456,13 @@ router.get('/api/admin/batches', isAdmin, async (req, res) => {
         const result = await pool.request()
             .input('Branch', sql.NVarChar(50), req.Branch)
             .query(`
-                SELECT * FROM EvaluationBatches
-                WHERE Branch = @Branch
-                ORDER BY Gender, IsActive DESC, CreatedAt DESC
+                SELECT B.BatchID, B.BatchName, B.Branch, B.Gender, B.IsActive, B.CreatedAt, B.CreatedBy,
+                    COUNT(R.TestLog) AS TestCount, COUNT(DISTINCT R.TR) AS StudentCount
+                FROM EvaluationBatches B
+                LEFT JOIN TestRecords R ON R.BatchID = B.BatchID AND R.SubmittedBy = 'Trainer'
+                WHERE B.Branch = @Branch
+                GROUP BY B.BatchID, B.BatchName, B.Branch, B.Gender, B.IsActive, B.CreatedAt, B.CreatedBy
+                ORDER BY B.Gender, B.IsActive DESC, B.CreatedAt DESC, B.BatchID DESC
             `);
         
         // Group the results by gender for the frontend
@@ -474,56 +478,102 @@ router.get('/api/admin/batches', isAdmin, async (req, res) => {
     }
 });
 
-/**
- * POST: Creates a new, active batch.
- * Enforces your rule: only one batch can be active at a time per section.
- */
-router.post('/api/admin/batches', isAdmin, async (req, res) => {
-    const { BatchName, Gender } = req.body;
+const batchError = (status, message) => Object.assign(new Error(message), { status });
+const validBatchName = value => typeof value === 'string' ? value.trim() : '';
 
-    if (!BatchName || !Gender) {
-        return res.status(400).json({ success: false, message: 'Batch Name and Gender are required.' });
-    }
-
+async function withBatchSection(branch, gender, action) {
     const transaction = new sql.Transaction(pool);
+    await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
     try {
-        await transaction.begin();
-        
-        // Rule 2 Check: See if an active batch already exists
-        const checkRequest = new sql.Request(transaction);
-        checkRequest.input('Branch', sql.NVarChar(50), req.Branch);
-        checkRequest.input('Gender', sql.NVarChar(10), Gender);
-        
-        const activeCheck = await checkRequest.query(`
-            SELECT 1 FROM EvaluationBatches
-            WHERE Branch = @Branch AND Gender = @Gender AND IsActive = 1
-        `);
-
-        if (activeCheck.recordset.length > 0) {
-            await transaction.rollback();
-            return res.status(400).json({ success: false, message: 'An active batch already exists for this section. You must lock it first.' });
-        }
-
-        // Create the new batch
-        const createRequest = new sql.Request(transaction);
-        createRequest.input('BatchName', sql.NVarChar(100), BatchName);
-        createRequest.input('Branch', sql.NVarChar(50), req.Branch);
-        createRequest.input('Gender', sql.NVarChar(10), Gender);
-        createRequest.input('CreatedBy', sql.NVarChar(50), req.Username);
-
-        await createRequest.query(`
-            INSERT INTO EvaluationBatches (BatchName, Branch, Gender, IsActive, CreatedBy)
-            VALUES (@BatchName, @Branch, @Gender, 1, @CreatedBy)
-        `);
-
+        const current = await new sql.Request(transaction)
+            .input('Branch', sql.NVarChar(50), branch)
+            .input('Gender', sql.NVarChar(10), gender)
+            .query(`SELECT BatchID, BatchName, IsActive FROM EvaluationBatches WITH (UPDLOCK, HOLDLOCK)
+                    WHERE Branch = @Branch AND Gender = @Gender`);
+        const result = await action(transaction, current.recordset);
         await transaction.commit();
-        res.status(201).json({ success: true, message: 'New batch created and set to active.' });
-
-    } catch (err) {
-        await transaction.rollback();
-        console.error('Error creating batch:', err);
-        res.status(500).json({ success: false, message: 'Failed to create batch.' });
+        return result;
+    } catch (error) {
+        await transaction.rollback().catch(() => {});
+        throw error;
     }
+}
+
+function batchResponseError(res, error, operation) {
+    if (error.status) return res.status(error.status).json({ success:false, message:error.message });
+    console.error(`Error ${operation} batch:`, error);
+    return res.status(500).json({ success:false, message:`Failed to ${operation} batch.` });
+}
+
+/** Create an active batch or a locked draft. Omitted activate preserves existing callers. */
+router.post('/api/admin/batches', isAdmin, async (req, res) => {
+    const BatchName = validBatchName(req.body.BatchName);
+    const Gender = req.body.Gender;
+    const activate = req.body.activate === undefined ? true : req.body.activate;
+    if (!BatchName || BatchName.length > 100 || !['Male','Female'].includes(Gender) || typeof activate !== 'boolean')
+        return res.status(400).json({ success:false, message:'Enter a batch name (1–100 characters), gender, and valid activation choice.' });
+    try {
+        await withBatchSection(req.Branch, Gender, async (transaction, batches) => {
+            if (batches.some(batch => batch.BatchName.trim().toLowerCase() === BatchName.toLowerCase()))
+                throw batchError(409, 'A batch with this name already exists for this section.');
+            if (activate && batches.some(batch => batch.IsActive))
+                throw batchError(409, 'Lock the current batch before activating another.');
+            await new sql.Request(transaction)
+                .input('BatchName', sql.NVarChar(100), BatchName)
+                .input('Branch', sql.NVarChar(50), req.Branch)
+                .input('Gender', sql.NVarChar(10), Gender)
+                .input('Activate', sql.Bit, activate)
+                .input('CreatedBy', sql.NVarChar(50), req.Username)
+                .query(`INSERT INTO EvaluationBatches (BatchName, Branch, Gender, IsActive, CreatedBy)
+                        VALUES (@BatchName, @Branch, @Gender, @Activate, @CreatedBy)`);
+        });
+        return res.status(201).json({ success:true, message:activate ? 'Active batch created.' : 'Locked draft created.' });
+    } catch (error) {
+        return batchResponseError(res, error, 'create');
+    }
+});
+
+router.patch('/api/admin/batches/:id', isAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    const BatchName = validBatchName(req.body.BatchName);
+    if (!Number.isSafeInteger(id) || id < 1 || !BatchName || BatchName.length > 100)
+        return res.status(400).json({ success:false, message:'Enter a valid batch and name (1–100 characters).' });
+    try {
+        const found = await pool.request().input('BatchID', sql.Int, id).input('Branch', sql.NVarChar(50), req.Branch)
+            .query('SELECT Gender FROM EvaluationBatches WHERE BatchID = @BatchID AND Branch = @Branch');
+        if (!found.recordset.length) return res.status(404).json({ success:false, message:'Batch not found in your branch.' });
+        await withBatchSection(req.Branch, found.recordset[0].Gender, async (transaction, batches) => {
+            if (!batches.some(batch => batch.BatchID === id)) throw batchError(404, 'Batch not found in your branch.');
+            if (batches.some(batch => batch.BatchID !== id && batch.BatchName.trim().toLowerCase() === BatchName.toLowerCase()))
+                throw batchError(409, 'A batch with this name already exists for this section.');
+            await new sql.Request(transaction).input('BatchID', sql.Int, id)
+                .input('Branch', sql.NVarChar(50), req.Branch).input('BatchName', sql.NVarChar(100), BatchName)
+                .query('UPDATE EvaluationBatches SET BatchName = @BatchName WHERE BatchID = @BatchID AND Branch = @Branch');
+        });
+        return res.json({ success:true, message:'Batch name updated.' });
+    } catch (error) { return batchResponseError(res, error, 'rename'); }
+});
+
+router.put('/api/admin/batches/:id/activate', isAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ success:false, message:'Invalid batch ID.' });
+    try {
+        const found = await pool.request().input('BatchID', sql.Int, id).input('Branch', sql.NVarChar(50), req.Branch)
+            .query('SELECT Gender FROM EvaluationBatches WHERE BatchID = @BatchID AND Branch = @Branch');
+        if (!found.recordset.length) return res.status(404).json({ success:false, message:'Batch not found in your branch.' });
+        await withBatchSection(req.Branch, found.recordset[0].Gender, async (transaction, batches) => {
+            const selected = batches.find(batch => batch.BatchID === id);
+            if (!selected) throw batchError(404, 'Batch not found in your branch.');
+            if (selected.IsActive) throw batchError(409, 'This batch is already active.');
+            if (batches.some(batch => batch.IsActive)) throw batchError(409, 'Lock the current batch before activating another.');
+            const existingTests = await new sql.Request(transaction).input('BatchID', sql.Int, id)
+                .query("SELECT TOP 1 TestLog FROM TestRecords WITH (UPDLOCK, HOLDLOCK) WHERE BatchID = @BatchID AND SubmittedBy = 'Trainer'");
+            if (existingTests.recordset.length) throw batchError(409, 'Only an empty locked draft can be activated.');
+            await new sql.Request(transaction).input('BatchID', sql.Int, id).input('Branch', sql.NVarChar(50), req.Branch)
+                .query('UPDATE EvaluationBatches SET IsActive = 1 WHERE BatchID = @BatchID AND Branch = @Branch AND IsActive = 0');
+        });
+        return res.json({ success:true, message:'Batch activated. New trainer tests will use it.' });
+    } catch (error) { return batchResponseError(res, error, 'activate'); }
 });
 
 /**
@@ -531,6 +581,7 @@ router.post('/api/admin/batches', isAdmin, async (req, res) => {
  */
 router.put('/api/admin/batches/:id/lock', isAdmin, async (req, res) => {
     const { id } = req.params; // BatchID
+    if (!/^\d+$/.test(id) || Number(id) < 1) return res.status(400).json({ success:false, message:'Invalid batch ID.' });
 
     try {
         const result = await pool.request()
@@ -539,11 +590,11 @@ router.put('/api/admin/batches/:id/lock', isAdmin, async (req, res) => {
             .query(`
                 UPDATE EvaluationBatches
                 SET IsActive = 0
-                WHERE BatchID = @BatchID AND Branch = @Branch
+                WHERE BatchID = @BatchID AND Branch = @Branch AND IsActive = 1
             `);
         
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ success: false, message: 'Batch not found or not in your branch.' });
+            return res.status(409).json({ success: false, message: 'Batch is already locked or is outside your branch.' });
         }
 
         res.json({ success: true, message: 'Batch has been locked.' });
@@ -592,23 +643,25 @@ router.get('/api/admin/unbatched-records', isAdmin, async (req, res) => {
 router.post('/api/admin/assign-unbatched', isAdmin, async (req, res) => {
     const { Gender, TargetBatchID } = req.body;
 
-    if (!Gender || !TargetBatchID) {
+    if (!['Male','Female'].includes(Gender) || !/^\d+$/.test(String(TargetBatchID || ''))) {
         return res.status(400).json({ success: false, message: 'Gender and TargetBatchID are required.' });
     }
 
     const transaction = new sql.Transaction(pool);
     try {
-        await transaction.begin();
+        await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
 
         // 1. Verify the target batch is valid (must be locked)
         const checkRequest = new sql.Request(transaction);
         checkRequest.input('TargetBatchID', sql.Int, TargetBatchID);
         checkRequest.input('Branch', sql.NVarChar(50), req.Branch);
+        checkRequest.input('Gender', sql.NVarChar(10), Gender);
 
         const batchCheck = await checkRequest.query(`
-            SELECT 1 FROM EvaluationBatches
+            SELECT 1 FROM EvaluationBatches WITH (UPDLOCK, HOLDLOCK)
             WHERE BatchID = @TargetBatchID 
               AND Branch = @Branch 
+              AND Gender = @Gender
               AND IsActive = 0
         `);
 

@@ -1,5 +1,6 @@
 node_modules
 dist
+migration-audit/
 .env
 *.zip
 *.sql

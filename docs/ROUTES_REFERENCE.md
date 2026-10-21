@@ -80,7 +80,7 @@ All profile routes require an authenticated session. A student can access only t
 | GET | `/api/fitness-cohorts/darajahs` | Staff/Admin/Trainer/Evaluator | Distinct scoped `TestMaster` Darajahs for the cohort dropdown, across all gym statuses. | `gender` (admin only, optional) |
 | GET | `/api/fitness-cohorts` | Staff/Admin/Trainer/Evaluator | Latest trainer test per student in a batch, batch size, four metric summaries and tie aware percentiles, filters, sort and pagination. | `batchId`, `q`, `gender` (admin), `darajah`, `grade`, `metric`, `min`, `max`, `sort`, `direction`, `page` |
 | GET | `/api/fitness-reports/:testLog.pdf` | Student or authorized staff role | Selected one-page test PDF without medical history; inline preview or attachment. Dark teal report is the default. | TestLog, `preview=1` (optional), `template=light` (admin only) |
-| GET | `/api/fitness-cohorts/:batchId/reports.pdf` | Staff/Admin | Combined PDF with one page per student's latest trainer test in the selected batch, ignoring cohort table filters. Dark teal report is the default. | BatchID, `template=light` (admin only) |
+| GET | `/api/fitness-cohorts/:batchId/reports.pdf` | Staff/Admin | Combined PDF with one page per matching student's latest trainer test, across all result pages. Returns `X-Report-Count`; dark teal is the default. | BatchID, cohort `q`, `gender` (admin), `darajah`, `grade`, `metric`, `min`, `max`, `sort`, `direction`; `template=light` (admin only) |
 
 Student self tests use a server enforced rolling seven day interval. A blocked POST returns HTTP 409 with `nextEligibleAt`. Gym APIs require `TestMaster.Status = 'Active'` and a non-null `JoinedAt`; fitness profile access only requires a master record. Initial student passwords must be changed before accessing other APIs.
 
@@ -115,7 +115,11 @@ High-level administrative and system configuration endpoints.
 | DELETE | `/api/admin/delete-user/:username` | Admin | Delete a user account from `PassBank`. | None |
 | PUT | `/api/admin/revoke-student/:tr` | Admin | Mark a student as 'Revoked' and clear their slot. | None |
 | PUT | `/api/admin/reset-testmaster-password/:tr` | Admin | Reset a student's password to their TR/ITS. | None |
-| POST | `/api/admin/batches` | Admin | Create a new active evaluation batch. | `{ BatchName, Gender }` |
+| GET | `/api/admin/batches` | Admin | Branch batches grouped by gender, with trainer test and student counts. | None |
+| POST | `/api/admin/batches` | Admin | Create an active batch or locked draft; omitted `activate` keeps active creation for older clients. | `{ BatchName, Gender, activate?: boolean }` |
+| PATCH | `/api/admin/batches/:id` | Admin | Rename an active or locked batch in the admin's branch. | `{ BatchName }` |
+| PUT | `/api/admin/batches/:id/lock` | Admin | Lock the active batch. | BatchID |
+| PUT | `/api/admin/batches/:id/activate` | Admin | Activate an empty locked draft when that section has no active batch. | BatchID |
 | GET | `/api/admin/evaluation-logs` | Admin | Audit log of all evaluator comments. | `?gender=Male` |
 | GET | `/api/admin/unbatched-records` | Admin | Count Trainer-submitted records waiting for a batch. | None |
 | POST | `/api/admin/assign-unbatched` | Admin | Assign unbatched records to a locked batch for evaluation. | `{ Gender, TargetBatchID }` |

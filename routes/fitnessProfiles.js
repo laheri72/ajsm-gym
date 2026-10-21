@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const sql = require('mssql');
 const { pool } = require('../utils/db');
-const { METRICS, summarizeMetric, percentile } = require('../utils/fitnessAnalytics');
+const { METRICS } = require('../utils/fitnessAnalytics');
+const { parseFilters, selectCohort, percentile } = require('../utils/fitnessCohortFilters');
 const { assessTests, assessTest, SOURCES } = require('../utils/fitnessAssessment');
 const { createReportDocument, renderFitnessReportPage } = require('../utils/fitnessReportPdf');
 
@@ -131,39 +132,15 @@ router.get('/api/fitness-cohorts', requireFitnessUser, requireStaffRole, async (
       FROM TestRecords R JOIN TestMaster TM ON TM.TR = R.TR
       WHERE ${where} AND R.SubmittedBy = 'Trainer' AND ${batch ? 'R.BatchID = @BatchID' : 'R.BatchID IS NULL'}
     ) SELECT * FROM Latest WHERE rn = 1`);
-    const filters = req.query;
-    const selectedMetric = METRICS.includes(filters.metric) ? filters.metric : 'VO2Max';
-    const min = filters.min === '' || filters.min === undefined ? null : Number(filters.min);
-    const max = filters.max === '' || filters.max === undefined ? null : Number(filters.max);
-    if ((min !== null && !Number.isFinite(min)) || (max !== null && !Number.isFinite(max)) ||
-      (min !== null && max !== null && min > max)) return res.status(400).json({ success: false, message: 'Invalid metric range.' });
-    const q = clean(filters.q).toLowerCase();
-    const filtered = result.recordset.filter(row =>
-      (!q || String(row.TR).startsWith(q) || row.Name.toLowerCase().includes(q)) &&
-      (!filters.gender || req.session.user.Role !== 'Admin' || row.Gender === filters.gender) &&
-      (!filters.darajah || row.Darajah === filters.darajah) &&
-      (!filters.grade || row.Grade === filters.grade));
-    const metrics = Object.fromEntries(METRICS.map(key => [key, summarizeMetric(filtered, key,
-      key === selectedMetric ? min : null, key === selectedMetric ? max : null)]));
-    const sorted = filtered.filter(row => {
-      const value = row[selectedMetric] == null ? NaN : Number(row[selectedMetric]);
-      return (min === null && max === null) || (Number.isFinite(value) && value > 0 &&
-        (min === null || value >= min) && (max === null || value <= max));
-    }).sort((a, b) => {
-      const field = METRICS.includes(filters.sort) ? filters.sort : 'CreatedAt';
-      const direction = filters.direction === 'asc' ? 1 : -1;
-      if (field === 'CreatedAt') return direction * (new Date(a.CreatedAt) - new Date(b.CreatedAt));
-      if (a[field] == null) return b[field] == null ? Number(a.TR) - Number(b.TR) : 1;
-      if (b[field] == null) return -1;
-      return direction * ((Number(a[field]) || 0) - (Number(b[field]) || 0));
-    });
-    const page = Math.max(1, int(filters.page) || 1), pageSize = 25;
+    const filters = parseFilters(req.query, req.session.user.Role);
+    const { cohortRows, metrics, sorted } = selectCohort(result.recordset, filters);
+    const page = Math.max(1, int(req.query.page) || 1), pageSize = 25;
     return res.json({ success: true, data: {
-      batchId: batch, batchSize:result.recordset.length, total: sorted.length, cohortCount: filtered.length, page, pageSize,
+      batchId: batch, batchSize:result.recordset.length, total: sorted.length, cohortCount: cohortRows.length, page, pageSize,
       metrics, rows: sorted.slice((page - 1) * pageSize, page * pageSize).map(row => ({ ...row,
-        percentiles: Object.fromEntries(METRICS.map(key => [key, percentile(filtered, key, row[key])])) }))
+        percentiles: Object.fromEntries(METRICS.map(key => [key, percentile(cohortRows, key, row[key])])) }))
     } });
-  } catch (error) { return next(error); }
+  } catch (error) { if (error.status === 400) return res.status(400).json({ success:false, message:error.message }); return next(error); }
 });
 router.get('/api/fitness-reports/:testLog.pdf', requireFitnessUser, async (req, res, next) => {
   try {
@@ -195,6 +172,7 @@ router.get('/api/fitness-cohorts/:batchId/reports.pdf', requireFitnessUser, (req
   try {
     const batchId = int(req.params.batchId);
     if (!batchId) return res.status(400).end();
+    const filters = parseFilters(req.query, req.session.user.Role);
     const template = req.query.template === 'light' && req.session.user.Role === 'Admin' ? 'light' : 'dark';
     if (req.query.template === 'light' && req.session.user.Role !== 'Admin') return res.status(403).end();
     const request = pool.request().input('BatchID', sql.Int, batchId);
@@ -215,7 +193,7 @@ router.get('/api/fitness-cohorts/:batchId/reports.pdf', requireFitnessUser, (req
     SELECT R.TestLog, R.TR, R.CreatedAt, R.BatchID, B.BatchName, R.SubmittedBy,
       R.Weight, R.Height, R.Waist, R.Hips, R.Neck, R.BMI, R.BodyFat, R.BMR, R.VO2Max, R.Total, R.Grade,
       A.PushUps, A.SitUps, A.Squats, A.SitAndReach, A.StepUpPulseRate,
-      TM.Name, TM.DOB, TM.Gender AS StudentGender, TM.Darajah,
+      TM.Name, TM.DOB, TM.Gender, TM.Gender AS StudentGender, TM.Darajah,
       P.VO2Max AS PriorVO2Max, P.BMI AS PriorBMI, P.BodyFat AS PriorBodyFat, P.BMR AS PriorBMR
     FROM Latest R JOIN TestMaster TM ON TM.TR = R.TR
     LEFT JOIN EvaluationBatches B ON B.BatchID = R.BatchID
@@ -223,8 +201,9 @@ router.get('/api/fitness-cohorts/:batchId/reports.pdf', requireFitnessUser, (req
     OUTER APPLY (SELECT TOP 1 VO2Max, BMI, BodyFat, BMR FROM TestRecords P
       WHERE P.TR = R.TR AND (P.CreatedAt < R.CreatedAt OR (P.CreatedAt = R.CreatedAt AND P.TestLog < R.TestLog))
       ORDER BY P.CreatedAt DESC, P.TestLog DESC) P
-    WHERE R.rn = 1 ORDER BY R.TR`);
-    if (!rows.recordset.length) return res.status(404).json({ success:false, message:'No trainer tests in this batch.' });
+    WHERE R.rn = 1`);
+    const selected = selectCohort(rows.recordset, filters).sorted;
+    if (!selected.length) return res.status(404).json({ success:false, message:'No reports match the applied filters.' });
     const comments = await scoped().query(`SELECT E.LogID, E.CommentText, E.DateEvaluated, C.CategoryName,
       V.Name AS EvaluatorName, V.Profession
       FROM Evaluations E JOIN TestRecords R ON R.TestLog = E.LogID
@@ -239,7 +218,7 @@ router.get('/api/fitness-cohorts/:batchId/reports.pdf', requireFitnessUser, (req
       if (!commentsByLog.has(comment.LogID)) commentsByLog.set(comment.LogID, []);
       commentsByLog.get(comment.LogID).push(comment);
     }
-    const reports = rows.recordset.map(row => {
+    const reports = selected.map(row => {
       const student = { TR:row.TR, Name:row.Name, DOB:row.DOB, Gender:row.StudentGender, Darajah:row.Darajah };
       const test = { ...row, comments:commentsByLog.get(row.TestLog) || [] };
       const previous = { VO2Max:row.PriorVO2Max, BMI:row.PriorBMI, BodyFat:row.PriorBodyFat, BMR:row.PriorBMR };
@@ -247,12 +226,13 @@ router.get('/api/fitness-cohorts/:batchId/reports.pdf', requireFitnessUser, (req
     });
     const doc = createReportDocument();
     res.set('Content-Type', 'application/pdf');
+    res.set('X-Report-Count', String(reports.length));
     res.set('Content-Disposition', `attachment; filename="fitness-batch-${batchId}-${template}.pdf"`);
     res.set('Cache-Control', 'private, no-store');
     doc.pipe(res);
     for (const report of reports) renderFitnessReportPage(doc, { ...report, template });
     doc.end();
-  } catch (error) { return next(error); }
+  } catch (error) { if (error.status === 400) return res.status(400).json({ success:false, message:error.message }); return next(error); }
 });
 
 module.exports = router;
