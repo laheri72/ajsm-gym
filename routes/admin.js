@@ -568,11 +568,23 @@ router.put('/api/admin/batches/:id/activate', isAdmin, async (req, res) => {
             if (batches.some(batch => batch.IsActive)) throw batchError(409, 'Lock the current batch before activating another.');
             const existingTests = await new sql.Request(transaction).input('BatchID', sql.Int, id)
                 .query("SELECT TOP 1 TestLog FROM TestRecords WITH (UPDLOCK, HOLDLOCK) WHERE BatchID = @BatchID AND SubmittedBy = 'Trainer'");
-            if (existingTests.recordset.length) throw batchError(409, 'Only an empty locked draft can be activated.');
-            await new sql.Request(transaction).input('BatchID', sql.Int, id).input('Branch', sql.NVarChar(50), req.Branch)
+            if (existingTests.recordset.length) {
+                const latestUsed = await new sql.Request(transaction)
+                    .input('Branch', sql.NVarChar(50), req.Branch)
+                    .input('Gender', sql.NVarChar(10), found.recordset[0].Gender)
+                    .query(`SELECT TOP (1) B.BatchID
+                            FROM EvaluationBatches B WITH (UPDLOCK, HOLDLOCK)
+                            WHERE B.Branch = @Branch AND B.Gender = @Gender AND B.IsActive = 0
+                              AND EXISTS (SELECT 1 FROM TestRecords R WHERE R.BatchID = B.BatchID AND R.SubmittedBy = 'Trainer')
+                            ORDER BY B.CreatedAt DESC, B.BatchID DESC`);
+                if (latestUsed.recordset[0]?.BatchID !== id)
+                    throw batchError(409, 'Only the latest batch with trainer tests can be reopened.');
+            }
+            const update = await new sql.Request(transaction).input('BatchID', sql.Int, id).input('Branch', sql.NVarChar(50), req.Branch)
                 .query('UPDATE EvaluationBatches SET IsActive = 1 WHERE BatchID = @BatchID AND Branch = @Branch AND IsActive = 0');
+            if (update.rowsAffected[0] !== 1) throw batchError(409, 'Batch status changed. Refresh and try again.');
         });
-        return res.json({ success:true, message:'Batch activated. New trainer tests will use it.' });
+        return res.json({ success:true, message:'Batch is active. New trainer tests will use it.' });
     } catch (error) { return batchResponseError(res, error, 'activate'); }
 });
 
@@ -580,28 +592,22 @@ router.put('/api/admin/batches/:id/activate', isAdmin, async (req, res) => {
  * PUT: Locks an active batch (sets IsActive = 0).
  */
 router.put('/api/admin/batches/:id/lock', isAdmin, async (req, res) => {
-    const { id } = req.params; // BatchID
-    if (!/^\d+$/.test(id) || Number(id) < 1) return res.status(400).json({ success:false, message:'Invalid batch ID.' });
-
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ success:false, message:'Invalid batch ID.' });
     try {
-        const result = await pool.request()
-            .input('BatchID', sql.Int, id)
-            .input('Branch', sql.NVarChar(50), req.Branch)
-            .query(`
-                UPDATE EvaluationBatches
-                SET IsActive = 0
-                WHERE BatchID = @BatchID AND Branch = @Branch AND IsActive = 1
-            `);
-        
-        if (result.rowsAffected[0] === 0) {
-            return res.status(409).json({ success: false, message: 'Batch is already locked or is outside your branch.' });
-        }
-
-        res.json({ success: true, message: 'Batch has been locked.' });
-    } catch (err) {
-        console.error('Error locking batch:', err);
-        res.status(500).json({ success: false, message: 'Failed to lock batch.' });
-    }
+        const found = await pool.request().input('BatchID', sql.Int, id).input('Branch', sql.NVarChar(50), req.Branch)
+            .query('SELECT Gender FROM EvaluationBatches WHERE BatchID = @BatchID AND Branch = @Branch');
+        if (!found.recordset.length) return res.status(404).json({ success:false, message:'Batch not found in your branch.' });
+        await withBatchSection(req.Branch, found.recordset[0].Gender, async (transaction, batches) => {
+            const selected = batches.find(batch => batch.BatchID === id);
+            if (!selected || !selected.IsActive) throw batchError(409, 'This batch is already locked.');
+            const result = await new sql.Request(transaction).input('BatchID', sql.Int, id)
+                .input('Branch', sql.NVarChar(50), req.Branch)
+                .query('UPDATE EvaluationBatches SET IsActive = 0 WHERE BatchID = @BatchID AND Branch = @Branch AND IsActive = 1');
+            if (result.rowsAffected[0] !== 1) throw batchError(409, 'Batch status changed. Refresh and try again.');
+        });
+        return res.json({ success:true, message:'Batch locked. The latest used batch can be reopened if needed.' });
+    } catch (error) { return batchResponseError(res, error, 'lock'); }
 });
 
 /**

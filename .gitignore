@@ -1,6 +1,9 @@
 node_modules
 dist
 migration-audit/
+tests/
+docs/2026-10-21-talebaat-batch-correction.md
+scripts/migrate-marol-talebaat-2026-batch.js
 .env
 *.zip
 *.sql

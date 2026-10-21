@@ -50,24 +50,27 @@ export function initAdminBatches() {
         activeEl.classList.toggle('is-empty', !active);
         if (active) {
             const created = createdLabel(active.CreatedAt);
-            activeEl.innerHTML = `<div class="batch-active-top"><span class="batch-chip is-active">Active</span><span class="batch-chip" title="${escapeHtml(created.exact)}">${escapeHtml(created.relative)}</span></div>
+            activeEl.innerHTML = `<div class="batch-active-top"><span class="batch-chip is-active">Active</span><span class="batch-chip" title="${escapeHtml(created.exact)}" aria-label="${escapeHtml(`${created.relative}; ${created.exact}`)}">${escapeHtml(created.relative)}</span></div>
                 <div class="batch-active-name">${escapeHtml(active.BatchName)}</div>
-                <div class="batch-active-meta"><span>Batch #${Number(active.BatchID)}</span><span>${Number(active.TestCount) || 0} trainer tests</span><span>${Number(active.StudentCount) || 0} students</span><span>${escapeHtml(created.exact)}</span></div>
+                <div class="batch-active-meta"><span>${Number(active.TestCount) || 0} trainer tests</span></div>
                 <div class="batch-actions"><button type="button" class="btn btn-sm btn-outline-primary" data-batch-action="rename" data-batch-id="${Number(active.BatchID)}">Rename</button>
                 <button type="button" class="btn btn-sm btn-outline-danger" data-batch-action="lock" data-batch-id="${Number(active.BatchID)}">Lock batch</button></div>${renameForm(active)}`;
         } else {
-            activeEl.innerHTML = '<span class="batch-chip is-locked">No active batch</span><p class="batch-empty">Trainer tests will remain unbatched until you activate a draft or create an active batch.</p>';
+            activeEl.innerHTML = '<span class="batch-chip is-locked">No active batch</span><p class="batch-empty">Reopen the latest used batch or activate a draft for new tests.</p>';
         }
         const mode = byId(section.mode);
         mode.querySelector('option[value="active"]').disabled = Boolean(active);
         mode.value = active ? 'locked' : 'active';
         const locked = list.filter(batch => !batch.IsActive);
+        const latestUsed = locked.find(batch => Number(batch.TestCount) > 0);
         byId(section.history).innerHTML = locked.length ? locked.map(batch => {
             const created = createdLabel(batch.CreatedAt);
             const canActivate = !active && Number(batch.TestCount) === 0;
+            const canReopen = !active && Number(batch.BatchID) === Number(latestUsed?.BatchID);
             return `<div class="batch-history-row"><div><div class="batch-history-name">${escapeHtml(batch.BatchName)}</div>
-                <div class="batch-history-meta"><span class="batch-chip is-locked">${Number(batch.TestCount) ? 'Locked' : 'Draft'}</span><span>Batch #${Number(batch.BatchID)}</span><span>${Number(batch.TestCount) || 0} tests</span><span title="${escapeHtml(created.exact)}">${escapeHtml(created.relative)}</span></div>
+                <div class="batch-history-meta"><span class="batch-chip is-locked">${Number(batch.TestCount) ? 'Locked' : 'Draft'}</span><span>${Number(batch.TestCount) || 0} tests</span><span title="${escapeHtml(created.exact)}" aria-label="${escapeHtml(`${created.relative}; ${created.exact}`)}">${escapeHtml(created.relative)}</span></div>
                 ${renameForm(batch)}</div><div class="batch-actions"><button type="button" class="btn btn-sm btn-outline-primary" data-batch-action="rename" data-batch-id="${Number(batch.BatchID)}">Rename</button>
+                ${canReopen ? `<button type="button" class="btn btn-sm btn-primary" data-batch-action="activate" data-batch-mode="reopen" data-batch-id="${Number(batch.BatchID)}">Reopen batch</button>` : ''}
                 ${canActivate ? `<button type="button" class="btn btn-sm btn-primary" data-batch-action="activate" data-batch-id="${Number(batch.BatchID)}">Activate</button>` : ''}</div></div>`;
         }).join('') : '<p class="batch-empty">No locked batches yet.</p>';
     }
@@ -98,7 +101,7 @@ export function initAdminBatches() {
                 renderSection(gender);
                 renderUnbatched(gender, unbatchedResult.data[gender]);
             }
-            status.textContent = 'Batch status is up to date.';
+            status.textContent = '';
         } catch (error) { if (run === loading) status.textContent = error.message; }
     }
 
@@ -144,10 +147,12 @@ export function initAdminBatches() {
         const rename = manager.querySelector(`.batch-rename-form[data-batch-id="${id}"]`);
         if (action === 'rename') { rename.hidden = false; rename.querySelector('input').focus(); return; }
         if (action === 'cancel-rename') { rename.hidden = true; return; }
+        const isReopen = button.dataset.batchMode === 'reopen';
         const prompt = action === 'lock'
-            ? `Lock ${batch.BatchName}? New trainer tests will remain unbatched until another batch is active.`
-            : `Activate ${batch.BatchName}? New trainer tests for ${labels[batch.Gender]} will use this batch.`;
-        const confirmed = await Swal.fire({ title:action === 'lock' ? 'Lock batch' : 'Activate draft', text:prompt, icon:'question', showCancelButton:true, confirmButtonText:action === 'lock' ? 'Lock batch' : 'Activate draft' });
+            ? `Lock ${batch.BatchName}? New trainer tests will remain unbatched. You can reopen the latest used batch while no other batch is active.`
+            : `${isReopen ? 'Reopen' : 'Activate'} ${batch.BatchName}? New trainer tests for ${labels[batch.Gender]} will use this batch.`;
+        const actionLabel = action === 'lock' ? 'Lock batch' : isReopen ? 'Reopen batch' : 'Activate draft';
+        const confirmed = await Swal.fire({ title:actionLabel, text:prompt, icon:'question', showCancelButton:true, confirmButtonText:actionLabel });
         if (!confirmed.isConfirmed) return;
         button.disabled = true;
         try {

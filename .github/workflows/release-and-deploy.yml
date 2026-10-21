@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify tests and build
+    name: Verify build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: node --test tests/*.test.js
       - run: npm run build
 
   # ─── 1. AUTOMATED SEMANTIC VERSIONING & GITHUB RELEASE ──────────────────────

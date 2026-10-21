@@ -119,7 +119,7 @@ High-level administrative and system configuration endpoints.
 | POST | `/api/admin/batches` | Admin | Create an active batch or locked draft; omitted `activate` keeps active creation for older clients. | `{ BatchName, Gender, activate?: boolean }` |
 | PATCH | `/api/admin/batches/:id` | Admin | Rename an active or locked batch in the admin's branch. | `{ BatchName }` |
 | PUT | `/api/admin/batches/:id/lock` | Admin | Lock the active batch. | BatchID |
-| PUT | `/api/admin/batches/:id/activate` | Admin | Activate an empty locked draft when that section has no active batch. | BatchID |
+| PUT | `/api/admin/batches/:id/activate` | Admin | Activate an empty locked draft or reopen the newest batch containing trainer tests, only when that branch and gender have no active batch. | BatchID |
 | GET | `/api/admin/evaluation-logs` | Admin | Audit log of all evaluator comments. | `?gender=Male` |
 | GET | `/api/admin/unbatched-records` | Admin | Count Trainer-submitted records waiting for a batch. | None |
 | POST | `/api/admin/assign-unbatched` | Admin | Assign unbatched records to a locked batch for evaluation. | `{ Gender, TargetBatchID }` |

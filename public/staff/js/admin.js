@@ -694,7 +694,7 @@ function buildLogDetailsHTML(r) {
  */
 async function loadEvaluators() {
     const tableBody = document.getElementById('evaluatorsTableBody');
-    tableBody.innerHTML = `<tr><td colspan="5" class="loader-cell"><div class="loader"></div></td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6" class="loader-cell"><div class="loader"></div></td></tr>`;
 
     try {
         const res = await fetch('/api/admin/evaluators', { credentials: 'include' });
@@ -704,7 +704,7 @@ async function loadEvaluators() {
         
         tableBody.innerHTML = ''; // Clear loader
         if (data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5">No evaluators found for this branch.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6">No evaluators found for this branch.</td></tr>';
             return;
         }
         
@@ -726,13 +726,13 @@ async function loadEvaluators() {
                             data-email="${evaluator.Email || ''}">
                         Edit
                     </button>
-                </t d>
+                </td>
             `;
         });
 
     } catch (err) {
         console.error('Error loading evaluators:', err);
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-danger">Failed to load evaluators.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-danger">Failed to load evaluators.</td></tr>';
     }
 }
 
