@@ -80,6 +80,9 @@ async function validateSessionInBackground() {
 
         // Store the user object from the session
         localStorage.setItem('staffUser', JSON.stringify(data.user));
+        if (typeof data.user.mustChangePassword === 'boolean') {
+            sessionStorage.setItem('isDefaultPassword', String(data.user.mustChangePassword));
+        }
 
     } catch (err) {
         console.error('Session validation failed:', err);

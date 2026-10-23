@@ -339,6 +339,31 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                                 </form>
                             </section>
 
+            <section class="card mt-4 p-3" aria-labelledby="staff-reset-heading">
+                <h2 id="staff-reset-heading">Reset Staff Password</h2>
+                <p class="text-muted">Reset a trainer, staff member, or evaluator in your branch to the temporary password <strong>jamea1446</strong>. Their open sessions will end and they must choose a new password at their next login.</p>
+                <form id="staffResetPasswordForm">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-7 col-lg-6">
+                            <label for="staffUsernameReset" class="form-label">Staff username</label>
+                            <input type="text" id="staffUsernameReset" class="form-control" list="staffResetAccounts" autocomplete="off" placeholder="Search by username" aria-describedby="staffResetAccountDetails" required disabled>
+                            <datalist id="staffResetAccounts"></datalist>
+                            <div id="staffResetAccountDetails" class="form-text" aria-live="polite"></div>
+                        </div>
+                        <div class="col-md-5 col-lg-4">
+                            <button type="submit" id="staffResetSubmit" class="btn btn-warning w-100" disabled>
+                                <span class="button-text">Reset Password</span>
+                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="d-flex align-items-center gap-2 mt-2">
+                    <span id="staffResetListStatus" class="text-muted small" role="status" aria-live="polite">Loading staff accounts...</span>
+                    <button type="button" id="staffResetListRetry" class="btn btn-sm btn-outline-secondary" hidden>Retry</button>
+                </div>
+            </section>
+
             <section class="card mt-4 p-3">
                                 <h2>🔒 Change Your Admin Password</h2>
                                 <form id="changeMyPasswordForm">
@@ -365,19 +390,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <h3 class="mb-4">Trainer Management</h3>
 
             <div class="table-container card p-3">
-                <table class="table table-striped" id="trainerTable">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Username</th>
-                            <th>Profession</th>
-                            <th>Contact</th>
-                            <th>Email</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0" id="trainerTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Profession</th>
+                                <th>Contact</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
 
             <hr />

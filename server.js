@@ -24,6 +24,7 @@ const staffRoutes = require('./routes/staff.js');
 const gamificationRoutes = require('./routes/gamification.js');
 const { cache } = require('./utils/cache.js');
 const { requireStudentPasswordChange, requireGymMembership } = require('./middleware/studentAccess.js');
+const { requireStaffPasswordChange } = require('./middleware/staffPasswordChange.js');
 
 const port = Number(process.env.PORT) || 10000;
 
@@ -78,6 +79,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api', requireStudentPasswordChange);
+app.use('/api', requireStaffPasswordChange);
 app.use('/api', requireGymMembership(pool, sql));
 
 

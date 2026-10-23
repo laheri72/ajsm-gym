@@ -221,7 +221,8 @@ router.post('/api/trainer-login', loginLimiter, validateBody(schemas.staffLogin)
             Username: user.Username,
             Branch: user.Branch,
             Gender: user.Gender,
-            Role: user.Role
+            Role: user.Role,
+            mustChangePassword: Boolean(user.IsDefaultPassword)
         });
 
         return res.json({
@@ -274,7 +275,8 @@ router.post('/api/staff-login', loginLimiter, validateBody(schemas.staffLogin), 
             Username: user.Username, 
             Branch: user.Branch, 
             Gender: user.Gender, 
-            Role: user.Role 
+            Role: user.Role,
+            mustChangePassword: Boolean(user.IsDefaultPassword)
         };
         
         let isProfileComplete = true; // Assume true for Staff/Admin
@@ -328,15 +330,27 @@ router.put('/api/staff/set-initial-password', validateBody(schemas.setPassword),
     if (!req.session.user || !req.session.user.Username) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
+    if (!req.session.user.mustChangePassword) {
+        return res.status(403).json({ success: false, message: 'This account does not require a temporary password change.' });
+    }
     const { Username } = req.session.user;
     const { newPassword } = req.body;
 
+    if (newPassword === 'jamea1446') {
+        return res.status(400).json({ success: false, message: 'Choose a password other than the temporary password.' });
+    }
+
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await pool.request()
+        const result = await pool.request()
             .input('Username', sql.NVarChar, Username)
             .input('HashedPassword', sql.NVarChar, hashedPassword)
-            .query('UPDATE PassBank SET Password = @HashedPassword, IsDefaultPassword = 0 WHERE Username = @Username');
+            .query('UPDATE PassBank SET Password = @HashedPassword, IsDefaultPassword = 0 WHERE Username = @Username AND IsDefaultPassword = 1');
+        if (result.rowsAffected[0] !== 1) {
+            return res.status(409).json({ success: false, message: 'This temporary password has already been changed. Sign in again.' });
+        }
+        req.session.user.mustChangePassword = false;
+        if (req.session.user.Role === 'Trainer') req.session.user.deferTrainerProfilePrompt = true;
         
         res.json({ success: true, message: 'Password updated successfully!' });
     } catch (err) {

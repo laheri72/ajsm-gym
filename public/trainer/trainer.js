@@ -265,14 +265,20 @@ async function validateTrainerSession() {
             return null;
         }
 
+        if (sessionData.user.mustChangePassword) {
+            currentUser = sessionData.user;
+            localStorage.setItem('staffUser', JSON.stringify(currentUser));
+            return currentUser;
+        }
+
         // Then get detailed trainer profile
         const profileRes = await fetch('/api/trainer/profile', { credentials: 'include' });
         const profileData = await profileRes.json();
 
         if (profileData.success && profileData.user) {
-            currentUser = profileData.user;
-            localStorage.setItem("staffUser", JSON.stringify(profileData.user));
-            return profileData.user;
+            currentUser = { ...sessionData.user, ...profileData.user, mustChangePassword: false };
+            localStorage.setItem("staffUser", JSON.stringify(currentUser));
+            return currentUser;
         } else {
             currentUser = sessionData.user;
             localStorage.setItem("staffUser", JSON.stringify(sessionData.user));
@@ -906,16 +912,16 @@ function renderEditProfilePage() {
 
             <form id="editProfileForm" class="form-layout">
                 <label>Name</label>
-                <input type="text" id="editName" class="glass-input" value="${user.Name || ''}" required>
+                <input type="text" id="editName" class="glass-input" value="${user.Name || ''}" maxlength="50" required>
 
                 <label>Profession</label>
-                <input type="text" id="editProfession" class="glass-input" value="${user.Profession || ''}" placeholder="Fitness Trainer / Sports / Yoga / etc." required>
+                <input type="text" id="editProfession" class="glass-input" value="${user.Profession || ''}" maxlength="30" placeholder="Fitness Trainer / Sports / Yoga / etc." required>
 
                 <label>Contact</label>
-                <input type="text" id="editContact" class="glass-input" value="${user.Contact || ''}" placeholder="+91xxxxxxxxxx">
+                <input type="text" id="editContact" class="glass-input" value="${user.Contact || ''}" maxlength="30" placeholder="+91xxxxxxxxxx" required>
 
                 <label>Email</label>
-                <input type="email" id="editEmail" class="glass-input" value="${user.Email || ''}" placeholder="example@gmail.com">
+                <input type="email" id="editEmail" class="glass-input" value="${user.Email || ''}" maxlength="40" placeholder="example@gmail.com">
 
                 <button type="submit" class="save-btn">
                     <span>Save Changes</span>
@@ -945,38 +951,26 @@ async function updateTrainerProfile(event) {
         didOpen: () => Swal.showLoading()
     });
 
-    const res = await fetch('/api/trainer/profile', {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-        Swal.fire({
-            icon: "success",
-            title: "Profile Updated",
-            toast: true,
-            timer: 2000,
-            position: "top-end",
-            showConfirmButton: false
+    try {
+        const res = await fetch('/api/trainer/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Profile update failed.');
 
-        // Update local values immediately
         currentUser.Name = payload.Name;
         currentUser.Profession = payload.Profession;
         currentUser.Contact = payload.Contact;
         currentUser.Email = payload.Email;
         currentUser.isProfileComplete = !!(payload.Name && payload.Contact);
         localStorage.setItem("staffUser", JSON.stringify(currentUser));
-
-        // Refresh displayed name on Home page immediately
-        const welcomeNameDisplay = document.getElementById("welcomeNameDisplay");
-        if (welcomeNameDisplay) welcomeNameDisplay.innerText = payload.Name;
-
-    } else {
-        Swal.fire("Error", data.message || "Profile update failed.", "error");
+        elements.navLinks.forEach(link => link.classList.toggle('active', link.dataset.page === 'home'));
+        renderHomePage();
+        Swal.fire({ icon: 'success', title: 'Profile updated', toast: true, timer: 2000, position: 'top-end', showConfirmButton: false });
+    } catch (error) {
+        Swal.fire('Error', error.message || 'Profile update failed.', 'error');
     }
 }
 
@@ -2154,6 +2148,8 @@ function handleInitialPasswordSet() {
                 modal.hide();
             }
             sessionStorage.removeItem('isDefaultPassword');
+            const refreshedUser = await validateTrainerSession();
+            if (refreshedUser) openInitialTrainerPage();
         } catch (err) {
             Swal.fire('Error', err.message, 'error');
         } finally {
@@ -2179,21 +2175,39 @@ elements.navLinks.forEach(link => {
     });
 });
 
+function openInitialTrainerPage() {
+    const preselectedTR = new URLSearchParams(location.search).get('testTR');
+    if (preselectedTR && /^\d+$/.test(preselectedTR)) {
+        elements.navLinks.forEach(link => link.classList.toggle('active', link.dataset.page === 'test'));
+        renderFitnessTestPage(preselectedTR);
+    } else renderHomePage();
+    initProfileModalListeners();
+    if (currentUser?.isProfileComplete === false && !currentUser.deferTrainerProfilePrompt && sessionStorage.getItem('trainerProfilePromptShown') !== 'true') {
+        sessionStorage.setItem('trainerProfilePromptShown', 'true');
+        Swal.fire({
+            title: 'Complete your trainer profile',
+            text: 'Add your name and contact details so your dashboard and staff records identify you correctly.',
+            icon: 'info',
+            confirmButtonText: 'Add my details',
+            showCancelButton: true,
+            cancelButtonText: 'Remind me next login'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            elements.navLinks.forEach(link => link.classList.toggle('active', link.dataset.page === 'menu'));
+            renderEditProfilePage();
+            document.getElementById('editName')?.focus();
+        });
+    }
+}
+
 // --- Initial Load ---
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await validateTrainerSession();
     if (user) {
         document.body.classList.remove('dark-mode');
         localStorage.setItem('darkMode', 'false');
-        const preselectedTR = new URLSearchParams(location.search).get('testTR');
-        if (preselectedTR && /^\d+$/.test(preselectedTR)) {
-            elements.navLinks.forEach(link => link.classList.toggle('active', link.dataset.page === 'test'));
-            renderFitnessTestPage(preselectedTR);
-        } else renderHomePage();
-        initProfileModalListeners();
-
         const isDef = sessionStorage.getItem('isDefaultPassword');
-        const isDefault = isDef === 'true' || isDef === '1' || isDef === 1 || isDef === true || user.IsDefaultPassword === 1 || user.IsDefaultPassword === true || user.IsDefaultPassword === '1' || user.IsDefaultPassword === 'true';
+        const isDefault = user.mustChangePassword === true || (user.mustChangePassword === undefined && (isDef === 'true' || isDef === '1' || user.IsDefaultPassword === 1 || user.IsDefaultPassword === true));
 
         if (isDefault) {
             const modalEl = document.getElementById('forcePasswordChangeModal');
@@ -2205,7 +2219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 modal.show();
                 handleInitialPasswordSet();
             }
-        }
+        } else openInitialTrainerPage();
     }
 });
 

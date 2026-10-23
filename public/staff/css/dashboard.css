@@ -2113,6 +2113,21 @@ body.nav-open .nav-overlay {
     display: block;
 }
 
+#trainerTable .trainer-group-row > th {
+    background: #eef6f2;
+    color: #174c3b;
+    font-weight: 700;
+    padding: 0.7rem 0.8rem;
+    border-top: 1px solid #d8e9df;
+}
+
+#trainerTable .trainer-group-count {
+    float: right;
+    color: #567267;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
 /* =========================================================
    LEADERBOARD STYLES (MATCHING STUDENT DASHBOARD)
    ========================================================= */

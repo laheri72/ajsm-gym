@@ -83,13 +83,65 @@ router.get('/api/admin/users/:branch', async (req, res, next) => {
     }
     // --- End Security Check ---
 
-    const branch = req.params.branch;
+    const branch = req.session.user.Branch;
+    if (!branch || req.params.branch !== branch) {
+        return res.status(403).json({ success: false, message: 'You can only view users in your own branch.' });
+    }
     try {
         const result = await pool.request() 
             .input('branch', sql.NVarChar(50), branch)
             .query(`SELECT Username, Gender, Role FROM PassBank WHERE Branch = @branch`);
         res.json(result.recordset);
     } catch (err) {
+        next(err);
+    }
+});
+
+router.put('/api/admin/users/:username/reset-password', async (req, res, next) => {
+    const admin = req.session?.user;
+    if (!admin || admin.Role !== 'Admin' || !admin.Branch || !admin.Username) {
+        return res.status(403).json({ success: false, message: 'Admin access required.' });
+    }
+
+    const username = req.params.username;
+    if (!username || username.length > 50 || /[\x00-\x1F\x7F]/.test(username)) {
+        return res.status(400).json({ success: false, message: 'Invalid username.' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    try {
+        const hashedPassword = await bcrypt.hash('jamea1446', 10);
+        await transaction.begin();
+        const update = await new sql.Request(transaction)
+            .input('Username', sql.NVarChar(50), username)
+            .input('Branch', sql.NVarChar(50), admin.Branch)
+            .input('AdminUsername', sql.NVarChar(50), admin.Username)
+            .input('Password', sql.NVarChar(100), hashedPassword)
+            .query(`
+                UPDATE PassBank
+                SET Password = @Password, IsDefaultPassword = 1
+                OUTPUT INSERTED.UserID
+                WHERE Username = @Username AND Branch = @Branch
+                  AND Username <> @AdminUsername
+                  AND Role IN ('Trainer', 'Staff', 'Evaluator')
+            `);
+
+        if (update.recordset.length !== 1) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: 'Eligible account not found in your branch.' });
+        }
+
+        await new sql.Request(transaction)
+            .input('UserID', sql.Int, update.recordset[0].UserID)
+            .query(`
+                DELETE FROM [sessions]
+                WHERE TRY_CONVERT(INT, JSON_VALUE([session], '$.user.UserID')) = @UserID
+            `);
+        await transaction.commit();
+
+        res.json({ success: true, message: `${username} can now sign in with the temporary password and must change it.` });
+    } catch (err) {
+        if (transaction.active) await transaction.rollback();
         next(err);
     }
 });
@@ -926,10 +978,10 @@ router.get("/api/admin/trainers", isAdmin, async (req, res) => {
                     P.Username,
                     P.Gender,
                     P.Branch
-                FROM Trainers T
-                JOIN PassBank P ON T.UserID = P.UserID
+                FROM PassBank P
+                LEFT JOIN Trainers T ON T.UserID = P.UserID
                 WHERE P.Branch = @Branch AND P.Role = 'Trainer'
-                ORDER BY T.Name ASC
+                ORDER BY COALESCE(NULLIF(LTRIM(RTRIM(T.Name)), ''), P.Username) ASC
             `);
 
         res.json({ success: true, data: result.recordset });

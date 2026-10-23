@@ -110,6 +110,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if (data.success && data.user) {
           localStorage.setItem("staffUser", JSON.stringify(data.user));
           sessionStorage.setItem("isDefaultPassword", data.isDefaultPassword);
+          sessionStorage.removeItem('trainerProfilePromptShown');
 
           Toast.fire({ icon: "success", title: "✅ Login successful" });
 

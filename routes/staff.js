@@ -5514,7 +5514,7 @@ router.get('/api/trainer/profile', isTrainer, async (req, res) => {
         }
 
         const trainer = result.recordset[0];
-        const isProfileComplete = !!(trainer.Name && trainer.Contact);
+        const isProfileComplete = !!(String(trainer.Name || '').trim() && String(trainer.Contact || '').trim());
 
         res.json({ 
             success: true, 
@@ -5532,24 +5532,45 @@ router.get('/api/trainer/profile', isTrainer, async (req, res) => {
 
 
 router.put('/api/trainer/profile', isTrainer, async (req, res) => {
-    const { Name, Profession, Contact, Email } = req.body;
+    const { Name, Profession, Contact, Email } = req.body || {};
+    const profile = {
+        Name: String(Name || '').trim(),
+        Profession: String(Profession || '').trim(),
+        Contact: String(Contact || '').trim(),
+        Email: String(Email || '').trim()
+    };
+    if (!profile.Name || profile.Name.length > 50 || !profile.Profession || profile.Profession.length > 30 || !profile.Contact || profile.Contact.length > 30 || profile.Email.length > 40) {
+        return res.status(400).json({ success: false, message: 'Enter a name, profession, and contact within the allowed field lengths.' });
+    }
 
+    const transaction = new sql.Transaction(pool);
     try {
-        await pool.request()
+        await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+        await new sql.Request(transaction)
             .input("UserID", sql.Int, req.UserID)
-            .input("Name", sql.NVarChar, Name)
-            .input("Profession", sql.NVarChar, Profession)
-            .input("Contact", sql.NVarChar, Contact)
-            .input("Email", sql.NVarChar, Email)
+            .input("Name", sql.NVarChar(50), profile.Name)
+            .input("Profession", sql.NVarChar(30), profile.Profession)
+            .input("Contact", sql.NVarChar(30), profile.Contact)
+            .input("Email", sql.NVarChar(40), profile.Email)
             .query(`
-                UPDATE Trainers 
-                SET Name = @Name, Profession = @Profession, Contact = @Contact, Email = @Email
-                WHERE UserID = @UserID
+                IF EXISTS (SELECT 1 FROM Trainers WITH (UPDLOCK, HOLDLOCK) WHERE UserID = @UserID)
+                BEGIN
+                    UPDATE Trainers
+                    SET Name = @Name, Profession = @Profession, Contact = @Contact, Email = @Email
+                    WHERE UserID = @UserID;
+                END
+                ELSE
+                BEGIN
+                    INSERT INTO Trainers (UserID, Name, Profession, Contact, Email)
+                    VALUES (@UserID, @Name, @Profession, @Contact, @Email);
+                END
             `);
+        await transaction.commit();
 
         res.json({ success: true, message: "Profile updated successfully." });
 
     } catch (err) {
+        if (transaction.active) await transaction.rollback();
         console.error("Error updating trainer profile:", err);
         res.status(500).json({ success: false, message: "Failed to update profile." });
     }

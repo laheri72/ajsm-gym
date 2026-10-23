@@ -11,7 +11,7 @@ Endpoints for user login, logout, and initial password setup.
 | POST | `/api/trainer-login` | Trainer | Log in using Username and password. | `{ username, password }` |
 | POST | `/api/staff-login` | Staff/Admin | Log in using Username and password. | `{ username, password }` |
 | POST | `/api/student/set-initial-password` | Student | Force password change for first-time login. | `{ newPassword }` |
-| PUT | `/api/staff/set-initial-password` | Staff/Trainer | Force password change for first-time login. | `{ newPassword }` |
+| PUT | `/api/staff/set-initial-password` | Staff/Trainer/Evaluator/Admin | Replace a temporary staff password before other staff APIs become available. The replacement cannot be `jamea1446`. | `{ newPassword }` |
 | GET | `/api/session-user` | All | Get the current logged-in user profile from the session. | None |
 | GET | `/api/student-session` | Student | Get a detailed student session profile with fitness data. | None |
 | POST | `/api/logout` | All | Destroy the current session and log out. | None |
@@ -110,7 +110,9 @@ High-level administrative and system configuration endpoints.
 
 | Method | Endpoint | Role | Purpose | Input |
 | :--- | :--- | :--- | :--- | :--- |
-| GET | `/api/admin/users/:branch` | Admin | Fetch all users (Staff, Trainers, Evaluators) for a branch. | None |
+| GET | `/api/admin/users/:branch` | Admin | Fetch users only when `:branch` matches the admin's session branch. | None |
+| GET | `/api/admin/trainers` | Admin | List every trainer account in the admin's branch, including accounts awaiting a profile name. | None |
+| PUT | `/api/admin/users/:username/reset-password` | Admin | Reset a Trainer, Staff, or Evaluator in the admin's own branch to the temporary password, require a password change, and end their open sessions. Admin accounts cannot be targets. | None |
 | POST | `/api/admin/add-user` | Admin | Create a new system user account. | `{ username, gender, role, branch }` |
 | DELETE | `/api/admin/delete-user/:username` | Admin | Delete a user account from `PassBank`. | None |
 | PUT | `/api/admin/revoke-student/:tr` | Admin | Mark a student as 'Revoked' and clear their slot. | None |

@@ -275,6 +275,118 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    const staffResetForm = document.getElementById('staffResetPasswordForm');
+    if (staffResetForm) {
+        const usernameInput = document.getElementById('staffUsernameReset');
+        const accountOptions = document.getElementById('staffResetAccounts');
+        const accountDetails = document.getElementById('staffResetAccountDetails');
+        const listStatus = document.getElementById('staffResetListStatus');
+        const retryButton = document.getElementById('staffResetListRetry');
+        const submitButton = document.getElementById('staffResetSubmit');
+        const spinner = submitButton.querySelector('.spinner-border');
+        const buttonText = submitButton.querySelector('.button-text');
+        let accounts = new Map();
+        let loading = false;
+        let resetting = false;
+
+        function updateSelection() {
+            const account = accounts.get(usernameInput.value.trim());
+            accountDetails.textContent = account ? `${account.Role} · ${account.Gender}` :
+                (usernameInput.value.trim() ? 'Select a username from your branch.' : '');
+            submitButton.disabled = loading || resetting || !account;
+        }
+
+        async function loadStaffAccounts() {
+            if (loading || resetting) return;
+            loading = true;
+            usernameInput.disabled = true;
+            listStatus.textContent = 'Loading staff accounts...';
+            retryButton.hidden = true;
+            updateSelection();
+
+            try {
+                const sessionResponse = await fetch('/api/session-user', { credentials: 'include' });
+                if (!sessionResponse.ok) throw new Error('Could not verify your admin session.');
+                const sessionData = await sessionResponse.json();
+                const sessionUser = sessionData.user;
+                if (!sessionData.success || sessionUser?.Role !== 'Admin' || !sessionUser.Branch) {
+                    throw new Error('Admin access is required to load staff accounts.');
+                }
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(sessionUser.Branch)}`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Could not load staff accounts.');
+                const rows = await response.json();
+                if (!Array.isArray(rows)) throw new Error('Could not load staff accounts.');
+
+                accounts = new Map(rows
+                    .filter(row => ['Trainer', 'Staff', 'Evaluator'].includes(row.Role) && row.Username !== sessionUser.Username)
+                    .map(row => [row.Username, row]));
+                accountOptions.replaceChildren(...Array.from(accounts.values(), account => {
+                    const option = document.createElement('option');
+                    option.value = account.Username;
+                    option.label = `${account.Role} · ${account.Gender}`;
+                    return option;
+                }));
+                usernameInput.disabled = false;
+                listStatus.textContent = `${accounts.size} eligible accounts in ${sessionUser.Branch}.`;
+            } catch (error) {
+                accounts.clear();
+                accountOptions.replaceChildren();
+                listStatus.textContent = error.message;
+                retryButton.hidden = false;
+            } finally {
+                loading = false;
+                updateSelection();
+            }
+        }
+
+        usernameInput.addEventListener('input', updateSelection);
+        retryButton.addEventListener('click', loadStaffAccounts);
+        document.getElementById('security-tab')?.addEventListener('shown.bs.tab', loadStaffAccounts);
+        loadStaffAccounts();
+
+        staffResetForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const username = usernameInput.value.trim();
+            const account = accounts.get(username);
+            if (!account) {
+                accountDetails.textContent = 'Select an eligible username from your branch.';
+                return;
+            }
+
+            const confirmation = await Swal.fire({
+                title: `Reset ${username}'s password?`,
+                text: `${account.Role} · ${account.Gender}. Their open sessions will end. They will sign in with jamea1446 and choose a new password.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Reset password'
+            });
+            if (!confirmation.isConfirmed) return;
+
+            resetting = true;
+            usernameInput.disabled = true;
+            buttonText.classList.add('d-none');
+            spinner.classList.remove('d-none');
+            updateSelection();
+            try {
+                const response = await fetch(`/api/admin/users/${encodeURIComponent(username)}/reset-password`, {
+                    method: 'PUT', credentials: 'include'
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Password reset failed.');
+                usernameInput.value = '';
+                await Swal.fire('Password reset', data.message, 'success');
+            } catch (error) {
+                await Swal.fire('Reset failed', error.message, 'error');
+            } finally {
+                resetting = false;
+                usernameInput.disabled = false;
+                buttonText.classList.remove('d-none');
+                spinner.classList.add('d-none');
+                updateSelection();
+            }
+        });
+    }
+
     // --- TRAINER LOGS DRAWER LOGIC ---
 
     function openTrainerLogsDrawer(trainerId, trainerName) {
@@ -1228,32 +1340,66 @@ async function loadTrainers() {
         const res = await fetch('/api/admin/trainers');
         const result = await res.json();
         
-        if (!result.success || result.data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6">No trainers found.</td></tr>`;
-            return;
+        if (!res.ok || !result.success || !Array.isArray(result.data)) {
+            throw new Error(result.message || 'Failed to load trainers.');
         }
+        tbody.replaceChildren();
+        const groups = [
+            { label: 'Talabat (Male)', trainers: result.data.filter(t => t.Gender === 'Male') },
+            { label: 'Talebaat (Female)', trainers: result.data.filter(t => t.Gender === 'Female') }
+        ];
+        const otherTrainers = result.data.filter(t => !['Male', 'Female'].includes(t.Gender));
+        if (otherTrainers.length) groups.push({ label: 'Other / unspecified', trainers: otherTrainers });
 
-        tbody.innerHTML = '';
-        result.data.forEach(t => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${t.Name || 'N/A'}</td>
-                <td>${t.Username}</td>
-                <td>${t.Profession || '-'}</td>
-                <td>${t.Contact || '-'}</td>
-                <td>${t.Email || '-'}</td>
-                <td>
-                    <button 
-                        class="btn btn-sm btn-primary view-trainer-logs-btn" 
-                        data-id="${t.TrainerID}"
-                        data-name="${t.Name || t.Username}"
-                    >
-                        <i class="fas fa-list"></i> Logs
-                    </button>
-                </td>
-            `;
+        groups.forEach(({ label, trainers }) => {
+            const groupRow = document.createElement('tr');
+            groupRow.className = 'trainer-group-row';
+            const groupHeading = document.createElement('th');
+            groupHeading.colSpan = 6;
+            groupHeading.textContent = label;
+            const count = document.createElement('span');
+            count.className = 'trainer-group-count';
+            count.textContent = `${trainers.length} ${trainers.length === 1 ? 'trainer' : 'trainers'}`;
+            groupHeading.appendChild(count);
+            groupRow.appendChild(groupHeading);
+            tbody.appendChild(groupRow);
 
-            tbody.appendChild(row);
+            if (!trainers.length) {
+                const emptyRow = document.createElement('tr');
+                const emptyCell = emptyRow.insertCell();
+                emptyCell.colSpan = 6;
+                emptyCell.className = 'text-muted small';
+                emptyCell.textContent = 'No trainers in this group.';
+                tbody.appendChild(emptyRow);
+            }
+
+            trainers.forEach(t => {
+                const row = document.createElement('tr');
+                const name = String(t.Name || '').trim();
+                const nameCell = row.insertCell();
+                nameCell.textContent = name || t.Username;
+                if (!name) {
+                    const pending = document.createElement('small');
+                    pending.className = 'd-block text-muted';
+                    pending.textContent = 'Name pending';
+                    nameCell.appendChild(pending);
+                }
+                [t.Username, t.Profession || '-', t.Contact || '-', t.Email || '-'].forEach(value => {
+                    row.insertCell().textContent = value;
+                });
+                const actionCell = row.insertCell();
+                const logsButton = document.createElement('button');
+                logsButton.type = 'button';
+                logsButton.className = 'btn btn-sm btn-primary view-trainer-logs-btn';
+                logsButton.disabled = !t.TrainerID;
+                logsButton.title = t.TrainerID ? 'View trainer logs' : 'Trainer must save their profile first';
+                if (t.TrainerID) logsButton.dataset.id = t.TrainerID;
+                logsButton.dataset.name = name || t.Username;
+                logsButton.innerHTML = '<i class="fas fa-list" aria-hidden="true"></i> Logs';
+                actionCell.appendChild(logsButton);
+
+                tbody.appendChild(row);
+            });
         });
 
     } catch (err) {
