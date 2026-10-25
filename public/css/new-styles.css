@@ -10,7 +10,8 @@ html, body {
     font-family: 'Poppins', sans-serif;
     background-color: #0c0a1a; /* Fallback color */
     color: #fff;
-    overflow: hidden; /* Prevents scrolling on desktop */
+    /* overflow-x allows scrolling on all viewports */
+    overflow-x: hidden;
 }
 
 /* FULL-SCREEN CONTAINER */
@@ -101,6 +102,8 @@ html, body {
 
 .login-btn {
     position: relative;
+    display: inline-block; /* works for both <a> and <button> */
+    text-decoration: none;
     width: 120px;
     height: 120px;
     border: none;

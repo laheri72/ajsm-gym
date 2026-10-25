@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "start": "node server.js",
-    "build": "vite build"
+    "build": "vite build",
+    "check:seo": "node scripts/check-seo.js",
+    "test:routing": "node scripts/test-routing.js"
   },
   "repository": {
     "type": "git",

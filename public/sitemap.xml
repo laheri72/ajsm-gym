@@ -1,23 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://ajsm-gym.onrender.com/</loc>
-    <lastmod>2026-06-03</lastmod>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://ajsm-gym.onrender.com/blog</loc>
-    <lastmod>2026-06-03</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ajsm-gym.onrender.com/logins/staff-login</loc>
-    <lastmod>2026-06-03</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://ajsm-gym.onrender.com/logins/trainer-login</loc>
-    <lastmod>2026-06-03</lastmod>
-    <priority>0.5</priority>
-  </url>
+  <url><loc>https://ajsm-gym.onrender.com/</loc></url>
+  <url><loc>https://ajsm-gym.onrender.com/logins/talabat-login.html</loc></url>
+  <url><loc>https://ajsm-gym.onrender.com/logins/staff-login.html</loc></url>
+  <url><loc>https://ajsm-gym.onrender.com/logins/trainer-login.html</loc></url>
+  <url><loc>https://ajsm-gym.onrender.com/blog</loc></url>
+  <url><loc>https://ajsm-gym.onrender.com/privacy</loc></url>
+  <url><loc>https://ajsm-gym.onrender.com/terms</loc></url>
 </urlset>

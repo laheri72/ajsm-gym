@@ -23,6 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: npm run check:seo
 
   # ─── 1. AUTOMATED SEMANTIC VERSIONING & GITHUB RELEASE ──────────────────────
   release:

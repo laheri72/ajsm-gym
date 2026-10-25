@@ -12,153 +12,46 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <meta charset="UTF-8">
   <meta name="google-site-verification" content="aEX-Qv4w-Z8UNv112On3uyUl0666uGB6BizBm5acj7E" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Khaima al-Riyada Gym - Marol Branch. Official gym management system for Raudat ul Ikhwaan students. Track fitness, manage workouts, and earn achievements.">
-  <meta name="keywords" content="Khaima al-Riyada, Gym, Marol, Raudat ul Ikhwaan, Fitness Tracker, Workout Planner, Al Jamea Tus Saifiyah">
+  <title>Jamea Gym Marol – FitTracker | Khaima al-Riyada</title>
+  <meta name="description" content="FitTracker for Jamea Gym at Al Jamea Tus Saifiyah, Marol. Access student, staff and trainer logins, track attendance, and follow your fitness progress.">
   <meta name="author" content="Laheri72">
-  
+  <link rel="canonical" href="https://ajsm-gym.onrender.com/">
+
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ajsm-gym.onrender.com/">
-  <meta property="og:title" content="Khaima al-Riyada Gym - Marol Branch">
-  <meta property="og:description" content="Official gym management system for Raudat ul Ikhwaan students. Track fitness, manage workouts, and earn achievements.">
+  <meta property="og:title" content="Jamea Gym Marol – FitTracker | Khaima al-Riyada">
+  <meta property="og:description" content="FitTracker for Jamea Gym at Al Jamea Tus Saifiyah, Marol. Access student, staff and trainer logins, track attendance, and follow your fitness progress.">
   <meta property="og:image" content="https://ajsm-gym.onrender.com/images/optimized/logo.webp">
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://ajsm-gym.onrender.com/">
-  <meta property="twitter:title" content="Khaima al-Riyada Gym - Marol Branch">
-  <meta property="twitter:description" content="Official gym management system for Raudat ul Ikhwaan students. Track fitness, manage workouts, and earn achievements.">
+  <meta property="twitter:title" content="Jamea Gym Marol – FitTracker | Khaima al-Riyada">
+  <meta property="twitter:description" content="FitTracker for Jamea Gym at Al Jamea Tus Saifiyah, Marol. Access student, staff and trainer logins, track attendance, and follow your fitness progress.">
   <meta property="twitter:image" content="https://ajsm-gym.onrender.com/images/optimized/logo.webp">
 
+  <!-- WebSite JSON-LD for Google site-name feature -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Jamea Gym FitTracker",
+    "alternateName": ["FitTracker", "Khaima al-Riyada FitTracker"],
+    "url": "https://ajsm-gym.onrender.com/"
+  }
+  </script>
+
   <link rel="icon" href="images/favicon.png" type="image/png">
-  <title>Khaima al-Riyada Gym Website</title>
 
-  <!-- Preload optimized background for faster LCP -->
-  <link rel="preload" as="image" href="/images/optimized/background_intro.webp">
+  <!-- Preload hero background for faster LCP -->
+  <link rel="preload" as="image" href="/images/optimized/background_home.webp">
 
-  <style>
-    body,
-    html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      font-family: "Oswald", sans-serif;
-      scroll-behavior: smooth;
-    }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-    /* BACKGROUND */
-    .background-container {
-      width: 100%;
-      height: 100vh;
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background-image: url('/images/optimized/background_intro.webp');
-      background-size: cover;
-      background-position: center;
-    }
-
-    .text-overlay {
-      position: absolute;
-      top: 50px;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      z-index: 20;
-      width: 90%;
-      transition: opacity 1s ease, transform 1s ease;
-    }
-
-    .title h1 {
-      font-size: 3rem;
-      font-weight: bold;
-      color: white;
-      margin: 0;
-      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-    }
-
-    .tagline {
-      margin-top: 10px;
-      font-size: 1.5rem;
-      color: #eee;
-      opacity: 0;
-      animation: fadeInTagline 1.5s ease 1s forwards;
-    }
-
-    .gym-splash {
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 10;
-      transition: opacity 1s ease;
-      opacity: 1;
-    }
-
-    .gym-splash.fade-out {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .image-container {
-      display: flex;
-      align-items: center;
-      gap: 30px;
-      transition: transform 1s ease, opacity 1s ease;
-    }
-
-    .logo-image {
-      width: 150px;
-      opacity: 0;
-      animation: logo-animation 1.5s ease forwards;
-    }
-
-    .fade-elements {
-      opacity: 0;
-      transform: scale(1.2);
-    }
-
-    .skip-button {
-      position: absolute;
-      bottom: 30px;
-      right: 30px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid #fff;
-      color: #fff;
-      padding: 10px 20px;
-      cursor: pointer;
-      border-radius: 30px;
-      backdrop-filter: blur(5px);
-      transition: background 0.3s ease;
-      z-index: 100;
-    }
-
-    .skip-button:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
-
-    @keyframes logo-animation {
-      from {
-        opacity: 0;
-        transform: scale(0.5);
-      }
-
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes fadeInTagline {
-      to {
-        opacity: 1;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/new-styles.css">
 </head>
 
 <body>
@@ -167,37 +60,76 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
-  <div class="background-container"></div>
+    <div class="container"
+        style="background-image: linear-gradient(rgba(12,10,26,0.7), rgba(12,10,26,0.85)), url('/images/optimized/background_home.webp');">
+        <div class="content-wrapper">
 
-  <div class="text-overlay" id="textOverlay">
-    <div class="title">
-      <h1>Welcome to FitTracker</h1>
+            <div class="info-section">
+                <h1 class="main-title">Jamea Gym, Marol — FitTracker</h1>
+                <h2 class="subtitle">Track Your Fitness Journey</h2>
+                <hr class="title-divider">
+
+                <!-- Rotating motivational quotes -->
+                <div class="slideshow-container">
+                    <div class="quote-slide fade"><q>The only bad workout is the one that didn't happen.</q></div>
+                    <div class="quote-slide fade"><q>Discipline is choosing between what you want now and what you want
+                            most.</q></div>
+                    <div class="quote-slide fade"><q>Success starts with self-discipline.</q></div>
+                </div>
+
+                <!-- Brief app description for search and JS-disabled visitors -->
+                <p class="app-description" style="margin-top:30px;font-size:0.95rem;color:#ccc;line-height:1.7;">
+                  FitTracker supports gym attendance, workout logging and fitness progress at Khaima al-Riyada,
+                  Al Jamea Tus Saifiyah, Marol. Students, staff and trainers can use their respective login pages
+                  to access the tools available to their role.
+                </p>
+            </div>
+
+            <div class="login-section">
+                <div class="login-buttons">
+
+                    <!-- Student Login – anchor link for crawlability -->
+                    <a class="login-btn" href="/logins/talabat-login.html">
+                        <span class="login-btn-label">Student Login</span>
+                        <picture>
+                            <source srcset="/images/optimized/student.webp" type="image/webp">
+                            <img src="/images/stu_logo.jpg" width="160" height="160" class="login-btn-icon"
+                                loading="lazy" alt="Student Login – Jamea Gym FitTracker">
+                        </picture>
+                    </a>
+
+                    <!-- Trainer Login – anchor link for crawlability -->
+                    <a class="login-btn" href="/logins/trainer-login.html">
+                        <span class="login-btn-label">Trainer Login</span>
+                        <picture>
+                            <source srcset="/images/optimized/trainer.webp" type="image/webp">
+                            <img src="/images/OIP.jpeg" width="160" height="160" class="login-btn-icon" loading="lazy"
+                                alt="Trainer Login – Jamea Gym FitTracker">
+                        </picture>
+                    </a>
+
+                    <!-- Staff Login – anchor link for crawlability -->
+                    <a class="login-btn" href="/logins/staff-login.html">
+                        <span class="login-btn-label">Staff Login</span>
+                        <picture>
+                            <source srcset="/images/optimized/staff.webp" type="image/webp">
+                            <img src="/images/staff-logo.jpeg" width="160" height="160" class="login-btn-icon"
+                                loading="lazy" alt="Staff Login – Jamea Gym FitTracker">
+                        </picture>
+                    </a>
+                </div>
+
+                <p class="university-name">Khaima al-Riyada — Al Jamea Tus Saifiyah, Marol</p>
+                <div class="legal-links" style="margin-top: 20px; font-size: 0.8rem; opacity: 0.7;">
+                    <a href="/terms" style="color: white; text-decoration: none; margin: 0 10px;">Terms</a>
+                    <a href="/privacy" style="color: white; text-decoration: none; margin: 0 10px;">Privacy</a>
+                    <a href="/blog" style="color: white; text-decoration: none; margin: 0 10px;">Blog</a>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="tagline">Strength • Discipline • Power</div>
-  </div>
 
-  <div class="gym-splash" id="splash">
-    <div class="image-container" id="imageContainer">
-      <picture>
-        <source srcset="/images/optimized/logo.webp" type="image/webp">
-        <img src="images/Unted.png" alt="University Logo" class="logo-image" id="utedImage" loading="lazy">
-      </picture>
-    </div>
-    <button class="skip-button" onclick="skipIntro()">Skip Intro</button>
-  </div>
-
-  <script>
-    const autoRedirect = setTimeout(startTransition, 4000);
-    function skipIntro() { clearTimeout(autoRedirect); startTransition(); }
-
-    function startTransition() {
-      document.getElementById('splash').classList.add('fade-out');
-      document.getElementById('imageContainer').classList.add('fade-elements');
-      document.getElementById('textOverlay').classList.add('fade-elements');
-      setTimeout(() => { window.location.href = "homepage.html"; }, 1000);
-    }
-  </script>
-
+    <script type="module" src="/js/new-site.js"></script>
 </body>
 
 </html>

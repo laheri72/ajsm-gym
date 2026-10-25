@@ -38,6 +38,83 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ─────────────────────────────────────────────────────────────────
+// SEO: Explicit content-type for sitemap.xml and robots.txt so they
+// are never served as text/html regardless of static-file middleware.
+// ─────────────────────────────────────────────────────────────────
+app.get('/sitemap.xml', (req, res) => {
+  const file = path.join(__dirname, 'dist', 'sitemap.xml');
+  if (fs.existsSync(file)) {
+    res.type('application/xml').sendFile(file);
+  } else {
+    res.status(404).send('sitemap.xml not found — rebuild required');
+  }
+});
+
+app.get('/robots.txt', (req, res) => {
+  const file = path.join(__dirname, 'dist', 'robots.txt');
+  if (fs.existsSync(file)) {
+    res.type('text/plain').sendFile(file);
+  } else {
+    res.status(404).send('robots.txt not found — rebuild required');
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// SEO: 301 redirects for duplicate/alias public URLs.
+// Must appear BEFORE express.static so redirects fire first.
+// Preserves query strings; does NOT touch POSTs, APIs, or dashboards.
+// ─────────────────────────────────────────────────────────────────
+function seoRedirect(from, to) {
+  app.get(from, (req, res) => {
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect(301, to + qs);
+  });
+}
+
+// Homepage aliases → /
+seoRedirect('/index',        '/');
+seoRedirect('/index.html',   '/');
+seoRedirect('/homepage',     '/');
+seoRedirect('/homepage.html','/' );
+
+// Blog alias
+seoRedirect('/blog.html', '/blog');
+
+// Legal page aliases
+seoRedirect('/privacy.html', '/privacy');
+seoRedirect('/terms.html',   '/terms');
+
+// Login extensionless → canonical .html
+seoRedirect('/logins/talabat-login', '/logins/talabat-login.html');
+seoRedirect('/logins/staff-login',   '/logins/staff-login.html');
+seoRedirect('/logins/trainer-login', '/logins/trainer-login.html');
+
+// ─────────────────────────────────────────────────────────────────
+// SEO: X-Robots-Tag: noindex for dashboard/app shell paths.
+// Covers both .html and extensionless variants.
+// Does NOT affect public pages, logins, blog, privacy, terms, or APIs.
+// IMPORTANT: noindex is NOT access control; auth middleware is preserved below.
+// ─────────────────────────────────────────────────────────────────
+const NOINDEX_PREFIXES = [
+  '/student/',
+  '/staff/',
+  '/trainer/',
+  '/fitness/',
+];
+
+app.use((req, res, next) => {
+  const p = req.path;
+  if (NOINDEX_PREFIXES.some(prefix => p.startsWith(prefix))) {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  next();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Static file serving (dist directory built by Vite)
+// ─────────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get('/api/version', (req, res) => {
@@ -118,7 +195,7 @@ app.get('*', (req, res) => {
     }
     
     // 3. If it's neither a directory nor a file, send a 404 Not Found error.
-    res.status(404).sendFile(path.join(__dirname, 'dist/Forbidden.html')); // Or a custom 404 page
+    res.status(404).sendFile(path.join(__dirname, 'dist/Forbidden.html')); // Custom 404 page
 });
 
 // Catch-all safe global error middleware
@@ -141,8 +218,8 @@ app.use((err, req, res, next) => {
 
 connectDB().then(() => {
         app.listen(port, '0.0.0.0', () => {
-            // console.log('✅ Connected to SQL Server!');
-            // console.log(`🚀 Server is running on http://localhost:${port}`);
+            // console.log('✅ Connected to SQL Server!')
+            // console.log(`🚀 Server is running on http://localhost:${port}`)
         });
     })
     .catch(err => {

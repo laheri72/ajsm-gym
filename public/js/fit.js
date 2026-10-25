@@ -1567,7 +1567,7 @@ function clearFitnessResults() {
                         await Promise.all(cacheNames.map(name => caches.delete(name)));
                     }
 
-                    window.location.replace(`../homepage.html?logout=${Date.now()}`);
+                    window.location.replace(`/?logout=${Date.now()}`);
                 } else {
                     alert('Logout failed.');
                 }

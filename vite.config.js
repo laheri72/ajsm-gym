@@ -12,7 +12,9 @@ export default defineConfig({
         { src: 'images', dest: '' },
         { src: 'gifs', dest: '' },
         { src: 'assets', dest: '' },
-        { src: 'js', dest: '' }
+        { src: 'js', dest: '' },
+        { src: 'sitemap.xml', dest: '' },
+        { src: 'robots.txt', dest: '' }
       ]
     })
   ],

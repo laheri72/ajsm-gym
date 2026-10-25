@@ -32,24 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000); // Change quote every 5 seconds
     }
 
-    /**
-     * Sets up navigation for all login buttons using a single event listener.
-     * This is more efficient than adding a listener to each button.
-     */
-    function initNavigation() {
-        const loginContainer = document.querySelector('.login-buttons');
-        if (!loginContainer) return; // Exit if the container isn't on the page
-
-        loginContainer.addEventListener('click', (event) => {
-            // Find the closest button element that was clicked
-            const button = event.target.closest('.login-btn');
-            
-            // Check if a button was clicked and if it has a data-href attribute
-            if (button && button.dataset.href) {
-                window.location.href = button.dataset.href;
-            }
-        });
-    }
+    // Navigation: login cards are now <a> anchor links; no JS navigation interception needed.
 
     /**
      * Handles the submission of the attendance form using localStorage.
@@ -92,6 +75,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize all modules
     initSlideshow();
-    initNavigation();
     initAttendanceForm(); // This will run but do nothing if the form is not on the current page.
 });

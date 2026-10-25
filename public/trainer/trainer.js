@@ -2001,7 +2001,7 @@ function initMenuListeners() {
             const data = await res.json();
             if (data.success) {
                 localStorage.clear();
-                window.location.href = '../homepage.html';
+                window.location.href = '/';
             } else {
                 throw new Error(data.message || 'Logout failed');
             }

@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(() => {
                         localStorage.removeItem('staffUser');
                         sessionStorage.clear(); // Clear all session storage
-                        window.location.href = '../homepage.html';
+                        window.location.href = '/';
                     }).catch(err => console.error('Logout failed:', err));
             });
         }
