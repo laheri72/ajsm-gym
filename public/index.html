@@ -45,7 +45,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <link rel="icon" href="images/favicon.png" type="image/png">
 
   <!-- Preload hero background for faster LCP -->
-  <link rel="preload" as="image" href="/images/optimized/background_home.webp">
+  <link rel="preload" as="image" href="/images/optimized/background_intro.webp">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,36 +61,55 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
     <div class="container"
-        style="background-image: linear-gradient(rgba(12,10,26,0.7), rgba(12,10,26,0.85)), url('/images/optimized/background_home.webp');">
+        style="background-image: linear-gradient(rgba(12,10,26,0.72), rgba(12,10,26,0.88)), url('/images/optimized/background_intro.webp');">
         <div class="content-wrapper">
 
+            <!-- LEFT / HERO SECTION -->
             <div class="info-section">
-                <h1 class="main-title">Jamea Gym, Marol — FitTracker</h1>
-                <h2 class="subtitle">Track Your Fitness Journey</h2>
-                <hr class="title-divider">
+                <!-- 1. Brand Crest & Institutional Tagline -->
+                <div class="brand-hero">
+                    <div class="brand-crest-row">
+                        <picture>
+                            <source srcset="/images/optimized/logo.webp" type="image/webp">
+                            <img src="/images/Unted.png" alt="Al Jamea Tus Saifiyah - Khaima al-Riyada Crest" class="brand-logo" width="76" height="76" loading="eager">
+                        </picture>
+                        <div class="brand-text-block">
+                            <span class="brand-institution">Khaima al-Riyada</span>
+                            <span class="brand-tagline">Strength • Discipline • Power</span>
+                        </div>
+                    </div>
 
-                <!-- Rotating motivational quotes -->
-                <div class="slideshow-container">
-                    <div class="quote-slide fade"><q>The only bad workout is the one that didn't happen.</q></div>
-                    <div class="quote-slide fade"><q>Discipline is choosing between what you want now and what you want
-                            most.</q></div>
-                    <div class="quote-slide fade"><q>Success starts with self-discipline.</q></div>
+                    <h1 class="main-title">Jamea Gym, Marol — FitTracker</h1>
+                    <p class="subtitle">Official Fitness &amp; Attendance Portal</p>
+                    <hr class="title-divider">
                 </div>
 
-                <!-- Brief app description for search and JS-disabled visitors -->
-                <p class="app-description" style="margin-top:30px;font-size:0.95rem;color:#ccc;line-height:1.7;">
-                  FitTracker supports gym attendance, workout logging and fitness progress at Khaima al-Riyada,
-                  Al Jamea Tus Saifiyah, Marol. Students, staff and trainers can use their respective login pages
-                  to access the tools available to their role.
-                </p>
+                <!-- 2. Motivational Quotes & Campus Description (Flows below logins on mobile) -->
+                <div class="campus-details">
+                    <div class="slideshow-container">
+                        <div class="quote-slide is-active"><q>The only bad workout is the one that didn't happen.</q></div>
+                        <div class="quote-slide"><q>Discipline is choosing between what you want now and what you want most.</q></div>
+                        <div class="quote-slide"><q>Success starts with self-discipline.</q></div>
+                    </div>
+
+                    <p class="app-description">
+                      FitTracker supports gym attendance, workout logging, and fitness progress at Khaima al-Riyada,
+                      Al Jamea Tus Saifiyah, Marol. Students, staff, and trainers can access their respective portals below.
+                    </p>
+                </div>
             </div>
 
+            <!-- RIGHT / LOGIN PORTAL (Displayed Front & Center on Mobile) -->
             <div class="login-section">
-                <div class="login-buttons">
+                <div class="login-portal-header">
+                    <h2 class="portal-heading">Select Your Portal</h2>
+                    <p class="portal-subheading">Sign in with your verified credentials</p>
+                </div>
 
-                    <!-- Student Login – anchor link for crawlability -->
-                    <a class="login-btn" href="/logins/talabat-login.html">
-                        <span class="login-btn-label">Student Login</span>
+                <div class="login-buttons">
+                    <!-- Student Login -->
+                    <a class="login-btn" href="/logins/talabat-login.html" aria-label="Student Login Portal">
+                        <span class="login-btn-label">Student</span>
                         <picture>
                             <source srcset="/images/optimized/student.webp" type="image/webp">
                             <img src="/images/stu_logo.jpg" width="160" height="160" class="login-btn-icon"
@@ -98,9 +117,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </picture>
                     </a>
 
-                    <!-- Trainer Login – anchor link for crawlability -->
-                    <a class="login-btn" href="/logins/trainer-login.html">
-                        <span class="login-btn-label">Trainer Login</span>
+                    <!-- Trainer Login -->
+                    <a class="login-btn" href="/logins/trainer-login.html" aria-label="Trainer Login Portal">
+                        <span class="login-btn-label">Trainer</span>
                         <picture>
                             <source srcset="/images/optimized/trainer.webp" type="image/webp">
                             <img src="/images/OIP.jpeg" width="160" height="160" class="login-btn-icon" loading="lazy"
@@ -108,9 +127,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </picture>
                     </a>
 
-                    <!-- Staff Login – anchor link for crawlability -->
-                    <a class="login-btn" href="/logins/staff-login.html">
-                        <span class="login-btn-label">Staff Login</span>
+                    <!-- Staff Login -->
+                    <a class="login-btn" href="/logins/staff-login.html" aria-label="Staff Login Portal">
+                        <span class="login-btn-label">Staff</span>
                         <picture>
                             <source srcset="/images/optimized/staff.webp" type="image/webp">
                             <img src="/images/staff-logo.jpeg" width="160" height="160" class="login-btn-icon"
@@ -119,13 +138,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     </a>
                 </div>
 
-                <p class="university-name">Khaima al-Riyada — Al Jamea Tus Saifiyah, Marol</p>
-                <div class="legal-links" style="margin-top: 20px; font-size: 0.8rem; opacity: 0.7;">
-                    <a href="/terms" style="color: white; text-decoration: none; margin: 0 10px;">Terms</a>
-                    <a href="/privacy" style="color: white; text-decoration: none; margin: 0 10px;">Privacy</a>
-                    <a href="/blog" style="color: white; text-decoration: none; margin: 0 10px;">Blog</a>
+                <p class="university-name">Al Jamea Tus Saifiyah — Marol Campus</p>
+                <div class="legal-links">
+                    <a href="/terms">Terms</a>
+                    <a href="/privacy">Privacy</a>
+                    <a href="/blog">Blog</a>
                 </div>
             </div>
+
         </div>
     </div>
 

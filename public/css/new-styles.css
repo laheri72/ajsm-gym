@@ -6,217 +6,439 @@
 }
 
 html, body {
-    height: 100%;
+    min-height: 100%;
     font-family: 'Poppins', sans-serif;
-    background-color: #0c0a1a; /* Fallback color */
+    background-color: #0c0a1a;
     color: #fff;
-    /* overflow-x allows scrolling on all viewports */
     overflow-x: hidden;
 }
 
-/* FULL-SCREEN CONTAINER */
+/* FULL-SCREEN HERO CONTAINER */
 .container {
     width: 100%;
-    height: 100vh;
-    padding: 40px;
+    min-height: 100vh;
+    padding: 40px 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: linear-gradient(rgba(12, 10, 26, 0.7), rgba(12, 10, 26, 0.85)), url('../images/gym final.jpg');
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
 .content-wrapper {
     width: 100%;
-    max-width: 1400px;
+    max-width: 1260px;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 56px;
+    align-items: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LEFT PANEL: BRAND & INSTITUTION HERO
+   ═══════════════════════════════════════════════════════════════ */
+.info-section {
+    display: flex;
+    flex-direction: column;
+    animation: fadeInFromLeft 0.8s ease-out;
+}
+
+.brand-hero {
+    margin-bottom: 24px;
+}
+
+.brand-crest-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 60px;
+    gap: 16px;
+    margin-bottom: 18px;
 }
 
-/* LEFT SIDE: INFO SECTION */
-.info-section {
-    flex-basis: 50%;
-    animation: fadeInFromLeft 1s ease-out;
+.brand-logo {
+    width: 76px;
+    height: 76px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 14px rgba(0, 255, 234, 0.3));
+    transition: transform 0.3s ease;
 }
 
-.main-title {
-    font-size: 4rem;
-    font-weight: 700;
-    letter-spacing: 4px;
+.brand-logo:hover {
+    transform: scale(1.05);
+}
+
+.brand-text-block {
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-institution {
+    font-size: 0.82rem;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
-    background: linear-gradient(90deg, #00FFEA, #9B59B6);
+    color: #00FFEA;
+    font-weight: 600;
+}
+
+.brand-tagline {
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: #eee;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+}
+
+/* Fluid, balanced main title */
+.main-title {
+    font-size: clamp(2rem, 3.4vw, 3rem);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    line-height: 1.15;
+    background: linear-gradient(90deg, #00FFEA 10%, #C38BFC 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 3px 3px 15px rgba(0, 255, 234, 0.2);
+    text-shadow: 2px 2px 14px rgba(0, 255, 234, 0.2);
 }
 
 .subtitle {
-    font-size: 1.5rem;
-    font-weight: 300;
-    color: #eee;
-    margin-bottom: 20px;
+    font-size: clamp(0.95rem, 1.3vw, 1.15rem);
+    font-weight: 400;
+    color: #d1d5db;
+    margin-top: 8px;
+    margin-bottom: 16px;
 }
 
 .title-divider {
     border: none;
     height: 2px;
-    width: 100px;
+    width: 80px;
     background: linear-gradient(90deg, #00FFEA, transparent);
-    margin-bottom: 30px;
+    margin-bottom: 24px;
+}
+
+/* Refined, compact quote badge */
+.slideshow-container {
+    background: rgba(0, 255, 234, 0.05);
+    border-left: 3px solid #00FFEA;
+    border-radius: 0 10px 10px 0;
+    padding: 12px 18px;
+    margin-bottom: 18px;
+    backdrop-filter: blur(8px);
 }
 
 .slideshow-container .quote-slide q {
-    font-size: 1.8rem;
+    font-size: clamp(0.92rem, 1.1vw, 1.08rem);
     font-style: italic;
     font-weight: 300;
-    line-height: 1.6;
-    color: #ccc;
-    border-left: 3px solid #00FFEA;
-    padding-left: 20px;
+    line-height: 1.5;
+    color: #e5e7eb;
 }
 
-/* RIGHT SIDE: LOGIN SECTION (GLASS PANEL) */
+.app-description {
+    font-size: 0.92rem;
+    color: #9ca3af;
+    line-height: 1.65;
+    max-width: 580px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RIGHT PANEL: LOGIN ACCESS TERMINAL (GLASS PANEL)
+   ═══════════════════════════════════════════════════════════════ */
 .login-section {
-    flex-basis: 45%;
-    padding: 40px;
-    background: rgba(22, 22, 38, 0.4);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    animation: fadeInFromRight 1s ease-out;
+    padding: 36px 30px;
+    background: rgba(22, 22, 38, 0.55);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    animation: fadeInFromRight 0.8s ease-out;
+}
+
+.login-portal-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.portal-heading {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.portal-subheading {
+    font-size: 0.85rem;
+    color: #9ca3af;
 }
 
 .login-buttons {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 30px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
     justify-items: center;
     width: 100%;
 }
 
 .login-btn {
     position: relative;
-    display: inline-block; /* works for both <a> and <button> */
-    text-decoration: none;
-    width: 120px;
-    height: 120px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    width: 105px;
+    height: 105px;
     border: none;
     background: none;
     padding: 0;
     cursor: pointer;
-    transition: transform 0.3s ease;
+    text-decoration: none;
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .login-btn-icon {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 16px;
+    border-radius: 18px;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
     transition: all 0.3s ease;
 }
 
 .login-btn-label {
     position: absolute;
-    bottom: -28px;
+    bottom: -26px;
     left: 50%;
     transform: translateX(-50%);
     color: #fff;
     font-weight: 600;
-    font-size: 14px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 4px 10px;
-    border-radius: 20px;
-    width: max-content;
-    transition: opacity 0.3s ease;
+    font-size: 13px;
+    background: rgba(12, 10, 26, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3px 12px;
+    border-radius: 16px;
+    white-space: nowrap;
+    transition: all 0.3s ease;
 }
 
 .login-btn:hover {
-    transform: translateY(-8px);
+    transform: translateY(-6px);
+}
+
+.login-btn:hover .login-btn-icon {
+    border-color: #00FFEA;
+    box-shadow: 0 6px 20px rgba(0, 255, 234, 0.3);
+}
+
+.login-btn:hover .login-btn-label {
+    background: #00FFEA;
+    color: #0c0a1a;
+    font-weight: 700;
 }
 
 .university-name {
     text-align: center;
-    margin-top: 40px;
-    font-size: 0.9rem;
-    color: #aaa;
+    margin-top: 42px;
+    font-size: 0.82rem;
+    color: #9ca3af;
+    letter-spacing: 0.5px;
 }
 
-/* ✨ NEW PROFESSIONAL "LIVE" INDICATOR ✨ */
-.login-btn.live-test::before {
-    content: 'LIVE';
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: #e91e63;
-    color: white;
-    font-size: 11px;
-    font-weight: bold;
-    padding: 3px 8px;
-    border-radius: 10px;
-    z-index: 2;
-    box-shadow: 0 0 10px #e91e63;
+.legal-links {
+    margin-top: 14px;
+    font-size: 0.8rem;
+    text-align: center;
 }
 
-.login-btn.live-test .login-btn-icon {
-    border: 2px solid transparent;
-    animation: pulseBorder 2s infinite;
+.legal-links a {
+    color: #9ca3af;
+    text-decoration: none;
+    margin: 0 10px;
+    transition: color 0.2s ease;
 }
 
-@keyframes pulseBorder {
-    0% { box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.7); }
-    70% { box-shadow: 0 0 10px 15px rgba(233, 30, 99, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(233, 30, 99, 0); }
+.legal-links a:hover {
+    color: #00FFEA;
 }
 
-/* ANIMATIONS */
+/* ═══════════════════════════════════════════════════════════════
+   SLIDESHOW FADE ANIMATION
+   ═══════════════════════════════════════════════════════════════ */
+.quote-slide {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out;
+}
+
+.quote-slide.is-active {
+    display: block;
+    opacity: 1;
+}
+
+/* KEYFRAME ANIMATIONS */
 @keyframes fadeInFromLeft {
-    from { opacity: 0; transform: translateX(-30px); }
+    from { opacity: 0; transform: translateX(-24px); }
     to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fadeInFromRight {
-    from { opacity: 0; transform: translateX(30px); }
+    from { opacity: 0; transform: translateX(24px); }
     to { opacity: 1; transform: translateX(0); }
 }
 
-/* RESPONSIVE STYLES FOR MOBILE */
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS (<= 900px): ZERO-SCROLL LOGIN EXPERIENCE
+   ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
-    body {
-        overflow-y: auto; /* Allow scrolling on mobile */
-    }
     .container {
-        height: auto;
-        min-height: 100vh;
-        padding: 20px;
+        padding: 16px 12px 32px;
+        align-items: flex-start;
     }
+
     .content-wrapper {
+        display: flex;
         flex-direction: column;
+        gap: 14px;
         text-align: center;
+        max-width: 480px;
+        margin: 0 auto;
     }
+
+    /* Uses display:contents to bring login-section directly beneath brand-hero */
+    .info-section {
+        display: contents;
+    }
+
+    /* 1. Brand Hero at Top */
+    .brand-hero {
+        order: 1;
+        margin-bottom: 0;
+    }
+
+    .brand-crest-row {
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .brand-logo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .brand-text-block {
+        text-align: left;
+    }
+
+    .brand-institution {
+        font-size: 0.76rem;
+    }
+
+    .brand-tagline {
+        font-size: 0.9rem;
+    }
+
+    .main-title {
+        font-size: 1.65rem;
+        letter-spacing: 1px;
+    }
+
+    .subtitle {
+        font-size: 0.88rem;
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+
     .title-divider {
-        margin: 20px auto;
+        margin: 8px auto 12px;
+        width: 60px;
     }
+
+    /* 2. Login Cards: Front and Center ABOVE THE FOLD */
     .login-section {
+        order: 2;
         width: 100%;
-        max-width: 500px;
+        padding: 22px 16px 18px;
+        border-radius: 20px;
+        margin-top: 2px;
+    }
+
+    .login-portal-header {
+        margin-bottom: 20px;
+    }
+
+    .portal-heading {
+        font-size: 1.15rem;
+    }
+
+    .portal-subheading {
+        font-size: 0.78rem;
+    }
+
+    .login-buttons {
+        gap: 12px;
+    }
+
+    .login-btn {
+        width: 86px;
+        height: 86px;
+    }
+
+    .login-btn-icon {
+        border-radius: 14px;
+    }
+
+    .login-btn-label {
+        font-size: 11px;
+        bottom: -22px;
+        padding: 2px 9px;
+    }
+
+    .university-name {
+        margin-top: 32px;
+        font-size: 0.78rem;
+    }
+
+    /* 3. Quotes & App Description Flow Below Logins */
+    .campus-details {
+        order: 3;
+        margin-top: 10px;
+        padding: 0 8px;
+    }
+
+    .slideshow-container {
+        padding: 10px 14px;
+        margin-bottom: 12px;
+    }
+
+    .slideshow-container .quote-slide q {
+        font-size: 0.88rem;
+    }
+
+    .app-description {
+        font-size: 0.82rem;
+        line-height: 1.55;
     }
 }
 
-/* Add this to your new-styles.css */
-
-.quote-slide {
-    display: none; /* Hide slides by default */
-    opacity: 0;
-    transition: opacity 0.75s ease-in-out;
+/* Extra small mobile adjustments (<= 360px) */
+@media (max-width: 360px) {
+    .login-btn {
+        width: 76px;
+        height: 76px;
+    }
+    .main-title {
+        font-size: 1.45rem;
+    }
 }
 
-.quote-slide.is-active {
-    display: block; /* Show the active slide */
-    opacity: 1;
+/* ACCESSIBILITY: RESPECT USER REDUCED MOTION PREFERENCES */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
