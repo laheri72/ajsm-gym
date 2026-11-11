@@ -1,3 +1,4 @@
+import { loadWidget } from './load-state.mjs';
 import { studentTR } from './state.js';
 
 /* ================================================================
@@ -13,13 +14,14 @@ export function loadHallOfFameData() {
 /**
  * Fetches and renders the main achievement leaderboard.
  */
-async function loadAchievementLeaderboard() {
+async function loadAchievementLeaderboard(refresh = false) {
+    return loadWidget('achievement-leaderboard', document.getElementById('achievementLeaderboardList'), async () => {
     const listElement = document.getElementById('achievementLeaderboardList');
     if (!listElement) return;
-    listElement.innerHTML = '<li class="loading">Loading Leaderboard...</li>';
-    try {
+
         const res = await fetch('/api/achievements/leaderboard', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error("Could not load achievements.");
         
         if (result.success && result.data && result.data.length > 0) {
             listElement.innerHTML = '';
@@ -79,10 +81,8 @@ async function loadAchievementLeaderboard() {
         } else {
             listElement.innerHTML = '<li class="loading">No leaderboard data available yet.</li>';
         }
-    } catch (err) {
-        console.error("Could not load achievement leaderboard:", err);
-        listElement.innerHTML = '<li class="loading">Error loading leaderboard.</li>';
-    }
+
+    }, { refresh: refresh, label: 'achievement leaderboard' });
 }
 
 function escapeHtml(value) {
@@ -98,13 +98,14 @@ function escapeHtml(value) {
 /**
  * Fetches and renders the student's earned achievements.
  */
-async function loadStudentAchievements() {
+async function loadStudentAchievements(refresh = false) {
+    return loadWidget('student-achievements', document.getElementById('achievementsGrid'), async () => {
     const gridElement = document.getElementById('achievementsGrid');
     if (!gridElement) return;
-    gridElement.innerHTML = '<div class="loading">Loading your achievements...</div>';
-    try {
+
         const res = await fetch('/api/student/achievements', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error("Could not load achievements.");
 
         if (result.success && result.data && result.data.length > 0) {
             gridElement.innerHTML = '';
@@ -134,19 +135,19 @@ async function loadStudentAchievements() {
         } else {
             gridElement.innerHTML = '<div class="loading">You haven\'t earned any badges yet. Keep going!</div>';
         }
-    } catch (err) {
-        console.error("Could not load student achievements:", err);
-        gridElement.innerHTML = '<div class="loading">Error loading your achievements.</div>';
-    }
+
+    }, { refresh: refresh, label: 'earned badges' });
 }
 
 /**
  * Fetches and renders the live progress towards unearned achievements.
  */
-async function loadAchievementProgress() {
-    try {
+async function loadAchievementProgress(refresh = false) {
+    return loadWidget('achievement-progress', document.getElementById('tab-progress'), async () => {
+
         const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error("Could not load achievements.");
 
         if (result.success && result.data) {
             const progress = result.data;
@@ -223,9 +224,8 @@ async function loadAchievementProgress() {
                 }
             }
         }
-    } catch (err) {
-        console.error("Could not load achievement progress:", err);
-    }
+
+    }, { refresh: refresh, label: 'achievement progress' });
 }
 
 /**
@@ -253,11 +253,14 @@ function showBadgeUnlockAnimation(badge) {
    🧭 Hall of Fame Sub-Tabs (same logic as Analysis)
 ================================================================ */
 
+let hallTabsBound = false;
 export function initHallOfFameTabs() {
+  if (hallTabsBound) return;
   const tabLinks = document.querySelectorAll('#fame-low .tab-link');
   const tabPanes = document.querySelectorAll('#fame-low .tab-pane');
 
   if (!tabLinks.length) return;
+  hallTabsBound = true;
 
   tabLinks.forEach(link => {
     link.addEventListener('click', () => {

@@ -1,3 +1,4 @@
+import { loadWidget, fetchJSON } from './load-state.mjs';
 /**
  * 🏋️ ENHANCED FITNESS MODULE
  * Handles Fitness Test, Evaluations, Medical History, and Activity Logs.
@@ -16,14 +17,12 @@ let fitnessListenersReady = false;
 /**
  * Initializes the fitness module
  */
-export async function initializeFitness() {
+export async function initializeFitness(refresh = false) {
     if (!fitnessListenersReady) {
         setupEventListeners();
         fitnessListenersReady = true;
     }
-    const host = document.getElementById('student-fitness-profile');
-    if (host) host.innerHTML = '<div class="fp-loading" role="status" aria-label="Loading fitness profile"><div class="fp-loading-line wide"></div><div class="fp-loading-line"></div><div class="fp-loading-cards"><span></span><span></span><span></span><span></span></div><p>Loading your fitness profile and test history…</p></div>';
-    await loadFitnessData();
+    return loadFitnessData(refresh);
 }
 
 function setupEventListeners() {
@@ -57,7 +56,7 @@ function setupEventListeners() {
                 document.getElementById('medical-view').style.display = 'block';
                 document.getElementById('medical-view').classList.add('animate__animated', 'animate__fadeIn');
                 document.getElementById('editMedicalBtn').style.display = 'block';
-                loadMedicalHistory();
+                loadMedicalHistory(true);
             }, 300);
         });
     }
@@ -97,37 +96,26 @@ export function showFitnessTab(tabId) {
     if (tabId === 'evaluations') loadMyEvaluations();
 }
 
-async function loadFitnessData() {
-    const host = document.getElementById('student-fitness-profile');
-    const profileLoad = mountFitnessProfile(host, { embedded: true });
-    try {
-        const res = await fetch(`/api/testmaster/me`, { credentials: 'include' });
-        if (!res.ok) throw new Error('Could not load your fitness data.');
-        
-        const student = await res.json();
-        if (student && student.Name) {
+function loadProfile(refresh = false) {
+    return loadWidget('fitness-profile', document.getElementById('student-fitness-profile'), async () => {
+        await mountFitnessProfile(document.getElementById('student-fitness-profile'), { embedded: true, throwOnError: true });
+    }, { refresh, label: 'fitness profile' });
+}
+
+async function loadFitnessData(refresh = false) {
+    return Promise.all([
+        loadProfile(refresh),
+        loadWidget('fitness-student', document.getElementById('testForm'), async () => {
+            const student = await fetchJSON('/api/testmaster/me');
+            if (!student?.Name) throw new Error('Student details unavailable.');
             studentData = student;
             calculateAge(student.DOB);
-            
             const genderSelect = document.querySelector('#testForm [name="Gender"]');
-            if (genderSelect && student.Gender) {
-                genderSelect.value = student.Gender.toLowerCase();
-            }
-        }
-
-        await Promise.allSettled([
-            loadTestHistory(),
-            loadMedicalHistory(),
-            loadActivityTable()
-        ]);
-        await profileLoad;
-        updateFormProgress();
-    } catch (err) {
-        console.error("Failed to load fitness data", err);
-        await profileLoad;
-        const form = document.getElementById('testForm');
-        if (form) form.insertAdjacentHTML('afterbegin', '<p class="fp-empty" role="alert">The test form could not load your student details. Reload the page before submitting a new test.</p>');
-    }
+            if (genderSelect && student.Gender) genderSelect.value = student.Gender.toLowerCase();
+            updateFormProgress();
+        }, { refresh, label: 'fitness test details' }),
+        loadTestHistory(refresh), loadMedicalHistory(refresh), loadActivityTable(refresh)
+    ]);
 }
 
 function calculateAge(dob) {
@@ -316,8 +304,9 @@ export async function saveRecord() {
                 timer: 3000
             });
             
-            await loadTestHistory();
-            await mountFitnessProfile(document.getElementById('student-fitness-profile'), { embedded: true });
+            await loadTestHistory(true);
+            await loadActivityTable(true);
+            await loadProfile(true);
             document.getElementById("reportSection").classList.add("hidden");
             document.getElementById('testForm').reset();
             updateFormProgress();
@@ -329,30 +318,34 @@ export async function saveRecord() {
     }
 }
 
-async function loadTestHistory() {
-    try {
+async function loadTestHistory(refresh = false) {
+    return loadWidget('fitness-test-history', document.getElementById('historyTable'), async () => {
+
         const res = await fetch(`/api/testrecords/me`, { credentials: 'include' });
-        historyData = await res.json();
+        if (!res.ok) throw new Error("Could not load fitness test history.");
+        const records = await res.json();
+        if (!Array.isArray(records)) throw new Error("Invalid fitness test history.");
+        historyData = records;
         
         const latest = Array.isArray(historyData) ? historyData[0] : null;
         const latestSelf = Array.isArray(historyData) ? historyData.find(record => record.SubmittedBy === 'Student') : null;
         const previous = (Array.isArray(historyData) && historyData.length > 1) ? historyData[1] : null;
         renderSnapshot(latest, previous);
+        initializeHistoryTable();
 
         const saveBtn = document.getElementById('saveBtn');
         const saveWarning = document.getElementById('saveWarning');
         const nextEligibleAt = latestSelf ? new Date(latestSelf.CreatedAt).getTime() + 7 * 86400000 : 0;
         const blocked = nextEligibleAt > Date.now();
         clearTimeout(cooldownTimer);
-        if (blocked) cooldownTimer = setTimeout(loadTestHistory, Math.min(2147483647, nextEligibleAt - Date.now() + 1000));
+        if (blocked) cooldownTimer = setTimeout(() => loadTestHistory(true), Math.min(2147483647, nextEligibleAt - Date.now() + 1000));
         if (saveBtn) saveBtn.style.display = blocked ? 'none' : '';
         if (saveWarning) {
             saveWarning.textContent = blocked ? `Next self test: ${new Date(nextEligibleAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST.` : '';
             saveWarning.style.display = blocked ? 'block' : 'none';
         }
-    } catch (err) {
-        console.error("History load failed", err);
-    }
+
+    }, { refresh, label: 'fitness test history' });
 }
 
 function formatDeltaBadge(diff, unit = '', isLowerBetter = false) {
@@ -443,13 +436,16 @@ function renderSnapshot(record, previous = null) {
     `;
 }
 
-async function loadMedicalHistory() {
+async function loadMedicalHistory(refresh = false) {
+    return loadWidget('medical-history', document.getElementById('medical-view'), async () => {
     const viewDiv = document.getElementById('medical-view');
     if (!viewDiv) return;
 
-    try {
+
         const res = await fetch('/api/medical-history/me', { credentials: 'include' });
-        const { data } = await res.json();
+        const result = await res.json();
+        if (!res.ok || result.success === false) throw new Error('Could not load medical history.');
+        const { data } = result;
 
         if (data) {
             document.getElementById('medAllergies').value = data.Allergies || '';
@@ -482,7 +478,8 @@ async function loadMedicalHistory() {
         } else {
             viewDiv.innerHTML = '<div class="alert alert-light text-center border-dashed">No medical history recorded. Click edit to add your health details.</div>';
         }
-    } catch (err) { console.error(err); }
+
+    }, { refresh, label: 'medical history' });
 }
 
 async function handleMedicalSave() {
@@ -507,7 +504,7 @@ async function handleMedicalSave() {
         });
         if (res.ok) {
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Medical history saved!', timer: 2000, showConfirmButton: false });
-            await loadMedicalHistory();
+            await loadMedicalHistory(true);
             document.getElementById('cancelMedicalBtn').click();
         }
     } catch (err) { 
@@ -518,14 +515,15 @@ async function handleMedicalSave() {
     }
 }
 
-async function loadMyEvaluations() {
+async function loadMyEvaluations(refresh = false) {
+    return loadWidget('fitness-evaluations', document.getElementById('evaluation-accordion-container'), async () => {
     const container = document.getElementById('evaluation-accordion-container');
     if (!container) return;
 
-    try {
-        container.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Retrieving expert feedback...</p></div>';
+
         const res = await fetch('/api/evaluations/me', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error('Could not load evaluations.');
         
         if (!result.data || result.data.length === 0) {
             container.innerHTML = '<div class="alert alert-info text-center">No evaluations from trainers or doctors yet.</div>';
@@ -562,18 +560,19 @@ async function loadMyEvaluations() {
                 `).join('')}
             </div>
         `;
-    } catch (err) { 
-        container.innerHTML = '<div class="alert alert-danger">Error loading evaluations.</div>';
-    }
+
+    }, { refresh, label: 'evaluations' });
 }
 
-async function loadActivityTable() {
+async function loadActivityTable(refresh = false) {
+    return loadWidget('fitness-activity', document.getElementById('activity-card'), async () => {
     const container = document.getElementById('activity-card');
     if (!container) return;
 
-    try {
+
         const res = await fetch('/api/testactivity/me', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error('Could not load activity history.');
         if (result.success && result.data.length) {
             container.innerHTML = `
                 <h4 class="mb-3 mt-4"><i class="bi bi-lightning-charge"></i> Activity History</h4>
@@ -599,7 +598,8 @@ async function loadActivityTable() {
         } else {
             container.innerHTML = '';
         }
-    } catch (err) { console.error(err); }
+
+    }, { refresh, label: 'fitness activity history' });
 }
 
 function initializeHistoryTable() {
@@ -607,15 +607,18 @@ function initializeHistoryTable() {
         historyDataTable.clear().rows.add(historyData).draw();
         return;
     }
-    if (!historyData.length) return;
+    if (!historyData.length) {
+        document.querySelector("#historyTable tbody").innerHTML = '<tr><td colspan="4">No fitness tests recorded yet.</td></tr>';
+        return;
+    }
 
     historyDataTable = $('#historyTable').DataTable({
         data: historyData,
         columns: [
             { data: 'CreatedAt', render: d => `<span class="fw-bold">${new Date(d).toLocaleDateString('en-GB')}</span>` },
-            { data: 'BMI', render: d => `<span>${parseFloat(d).toFixed(1)}</span>` },
-            { data: 'Total', render: d => `<span class="text-primary fw-bold">${d.toFixed(1)}</span>` },
-            { data: 'Grade', render: d => `<span class="badge rounded-pill ${d.includes('A') ? 'bg-success' : 'bg-primary'}">${d}</span>` }
+            { data: 'BMI', render: d => `<span>${d == null ? '—' : Number(d).toFixed(1)}</span>` },
+            { data: 'Total', render: d => `<span class="text-primary fw-bold">${d == null ? '—' : Number(d).toFixed(1)}</span>` },
+            { data: 'Grade', render: d => `<span class="badge rounded-pill ${String(d || '').includes('A') ? 'bg-success' : 'bg-primary'}">${String(d || '—').replace(/[&<>"']/g, '')}</span>` }
         ],
         responsive: true,
         order: [[0, 'desc']],

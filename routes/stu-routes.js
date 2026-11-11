@@ -6,6 +6,7 @@ const sql = require('mssql');
 const moment = require('moment-timezone'); // This file needs moment
 const { cacheMiddleware, cache } = require('../utils/cache.js');
 const { getStudentStatusHistory } = require('../utils/studentStatusAudit.js');
+const { summarizeDurations, studentStatusSummary } = require('../utils/studentDashboard.js');
 
 // Gym operations are separate from the fitness profile available to every
 // TestMaster student. Check current database state, not the login-time session.
@@ -765,6 +766,7 @@ async function getPlannerInsights(TR) {
         generatedAt: new Date().toISOString(),
         weekdayHistory,
         durationBaseline,
+        durationSummary: summarizeDurations(durationsRes.recordset),
         consistency: {
             weeklyAdherence,
             daysSinceLastWorkout
@@ -1428,7 +1430,7 @@ router.get(
 
 router.get(
   '/api/student/planner/insights',
-  cacheMiddleware(req => `planner_insights_${req.session.user?.TR}`, 120),
+  cacheMiddleware(req => `planner_insights_v2_${req.session.user?.TR}`, 120),
   async (req, res) => {
     try {
       if (!req.session.user?.TR) {
@@ -1459,7 +1461,7 @@ router.post('/api/save-workout-plan', async (req, res) => {
     });
 
     cache.del(`workout_${TR}`);
-    cache.del(`planner_insights_${TR}`);
+    cache.del(`planner_insights_v2_${TR}`);
 
     res.json({
       success: true,
@@ -1606,7 +1608,7 @@ router.post('/api/student/apply-last-week', async (req, res) => {
     });
 
     cache.del(`workout_${TR}`);
-    cache.del(`planner_insights_${TR}`);
+    cache.del(`planner_insights_v2_${TR}`);
 
     res.json({ success: true, currentWeekID, data: planByDay });
   } catch (err) {
@@ -1652,7 +1654,7 @@ router.post('/api/student/planner/v2/autofill', async (req, res) => {
     });
 
     cache.del(`workout_${TR}`);
-    cache.del(`planner_insights_${TR}`);
+    cache.del(`planner_insights_v2_${TR}`);
 
     res.json({ success: true, currentWeekID, data: planByDay });
   } catch (err) {
@@ -1704,7 +1706,7 @@ router.post('/api/student/planner/v2/complete-item', async (req, res) => {
     }
 
     await transaction.commit();
-    cache.del(`planner_insights_${TR}`);
+    cache.del(`planner_insights_v2_${TR}`);
 
     res.json({ success: true, planID, bodyPart });
   } catch (err) {
@@ -1857,7 +1859,7 @@ router.get(
 // NEW: Fetches ONLY data for the "Session History" tab
 router.get(
   '/api/student/analytics/history',
-  cacheMiddleware(req => `analytics_history_${req.session.user?.TR}`, 180),
+  cacheMiddleware(req => `analytics_history_student_v2_${req.session.user?.TR}`, 180),
   async (req, res) => {
     if (!req.session.user || !req.session.user.TR) {
         return res.status(401).json({ success: false, message: 'Unauthorized.' });
@@ -1881,7 +1883,7 @@ router.get(
             success: true,
             data: {
                 history: historyResult.recordset,
-                statusHistory
+                statusHistory: studentStatusSummary(statusHistory)
             }
         });
 
@@ -2854,7 +2856,7 @@ router.post('/api/student/log-performance', async (req, res) => {
 
         // 4. Bust caches
         cache.del(`workout_${TR}`);
-        cache.del(`planner_insights_${TR}`);
+        cache.del(`planner_insights_v2_${TR}`);
 
         res.json({
             success: true,

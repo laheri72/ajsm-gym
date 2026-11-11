@@ -213,7 +213,10 @@ function initTipsTabs() {
 }
 
 
+let tipsReady = false;
 export function loadTipsSection() {
+  if (tipsReady) return;
+  tipsReady = true;
   initTipsTabs();
 
   // --- Ensure correct default tab ---

@@ -258,11 +258,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <span class="metric-value" id="planner-adherence-value">--%</span>
         </div>
         <div class="coach-metric">
-          <span class="metric-label">Streak</span>
+          <span class="metric-label">Days since last workout</span>
           <span class="metric-value" id="planner-streak-value">--</span>
         </div>
         <div class="coach-metric">
-          <span class="metric-label">Avg Session</span>
+          <span class="metric-label">Average credited session <small>(last 8 weeks)</small></span>
           <span class="metric-value" id="planner-duration-value">-- min</span>
         </div>
         <div class="coach-metric">
@@ -326,7 +326,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
               <div class="weight-bmi-grid">
                 <div class="stat-item">
-                  <span class="stat-label">Current Weight</span>
+                  <span class="stat-label">Latest logged weight</span>
                   <div class="weight-display">
                     <span id="stat-current-weight">--</span>
                     <span class="kg-label">kg</span>
@@ -598,9 +598,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <div id="overview" class="tab-pane active">
             <div class="analytics-grid">
               <div class="analytics-widget stat-card">
-                <h3>Your Average Session
+                <h3>Average credited session &mdash; all time
                   <span class="info-icon" data-bs-toggle="tooltip"
-                    title="This is your average workout duration, calculated from all your completed gym sessions.">
+                    title="Arithmetic average of recorded positive credited minutes across all your gym sessions. Automatic checkout may credit less than elapsed time.">
                     <i class="bi bi-info-circle-fill"></i>
                   </span>
                 </h3>
@@ -619,9 +619,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               </div>
             </div>
             <div class="analytics-widget">
-              <h3>Your Weeks in Hours
+              <h3>Weekly credited hours
                 <span class="info-icon" data-bs-toggle="tooltip"
-                  title="This bar chart displays the total hours you've spent in the gym each week.">
+                  title="Total credited hours for each of the latest eight attendance weeks.">
                   <i class="bi bi-info-circle-fill"></i>
                 </span>
               </h3>
@@ -671,11 +671,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="analytics-widget">
               <h3>Your Session History
                 <span class="info-icon" data-bs-toggle="tooltip"
-                  title="A detailed record of your gym visits, including check-in, check-out, and total duration.">
+                  title="Check-in, recorded checkout, elapsed time, and credited minutes for your recent completed visits.">
                   <i class="bi bi-info-circle-fill"></i>
                 </span>
               </h3>
-              <p>A log of your recent gym visits.</p>
+              <p class="dashboard-explanation">Elapsed time comes from check-in and checkout timestamps; credited minutes count toward your totals. Automatic checkout records a checkout at 60 minutes and credits 30 minutes. Historical records do not identify the checkout method.</p>
               <div class="table-responsive">
                 <table id="sessionHistoryTable" class="table table-striped table-bordered" style="width:100%">
                   <thead>
@@ -683,7 +683,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                       <th>Date</th>
                       <th>Check-in</th>
                       <th>Check-out</th>
-                      <th>Duration (min)</th>
+                      <th>Elapsed (min)</th>
+                      <th>Credited (min)</th>
                     </tr>
                   </thead>
                   <tbody id="sessionHistoryBody"></tbody>
@@ -691,9 +692,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
               </div>
             </div>
             <div class="analytics-widget">
-              <h3>Your Activation History
+              <h3>Your Membership History
                 <span class="info-icon" data-bs-toggle="tooltip"
-                  title="A record of when your gym account was activated or deactivated.">
+                  title="Dates of your gym status and slot changes.">
                   <i class="bi bi-info-circle-fill"></i>
                 </span>
               </h3>
@@ -706,9 +707,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                       <th>Action</th>
                       <th>From</th>
                       <th>To</th>
-                      <th>By Role</th>
                       <th>Previous Slot</th>
-                      <th>Reason</th>
+                      <th>New Slot</th>
                     </tr>
                   </thead>
                   <tbody id="statusHistoryBody"></tbody>

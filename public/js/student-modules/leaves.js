@@ -1,3 +1,4 @@
+import { loadWidget } from './load-state.mjs';
 import { 
     allLeaveRequests, leaveHistoryTable, 
     setAllLeaveRequests, setLeaveHistoryTable 
@@ -136,7 +137,8 @@ export function initLeaveUX() {
  * Main function to fetch all leave data for the student.
  */
 export async function loadLeaveData(refresh = false) {
-    try {
+    return loadWidget('leaves', document.getElementById('leaveStatusTable'), async () => {
+
         const url = refresh 
             ? `/api/student/leaves?fresh=${Date.now()}`
             : `/api/student/leaves`;
@@ -147,6 +149,7 @@ export async function loadLeaveData(refresh = false) {
         });
 
         const data = await res.json();
+        if (!res.ok || !data.success) throw new Error("Could not load leave requests.");
 
         if (data.success) {
             const allRequests = data.currentMonthRequests.concat(data.historyRequests);
@@ -161,9 +164,8 @@ export async function loadLeaveData(refresh = false) {
         } else {
             Swal.fire('Error', 'Could not load your leave data.', 'error');
         }
-    } catch (err) {
-        console.error('Error fetching leave data:', err);
-    }
+
+    }, { refresh: refresh, label: 'leave requests' });
 }
 
 

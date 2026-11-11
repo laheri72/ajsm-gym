@@ -2,16 +2,11 @@ import { loadHallOfFameData } from './hallOfFame.js';
 import { loadLeaveData } from './leaves.js';
 import { loadOverviewAnalytics, loadWorkoutConsistency } from './analysis.js'; 
 import { loadTipsSection } from './tips.js';
-import { loadWeightLogHistory, loadFitnessProgress } from './progression.js';
-
-// Cache flags to prevent redundant API calls
-let cache = {
-    fame: false,
-    leaves: false,
-    analysis: false,
-    fitness: false,
-    tips: false
-};
+import { loadWeightLogHistory, loadFitnessProgress, loadCurrentWeightStat } from './progression.js';
+import { initializeFitness, showFitnessTab } from './fitness.js';
+import { loadAttendanceHero } from './attendance.js';
+import { loadWeeklyPlan, loadPlannerInsights, exerciseModule } from './planner.js';
+import { loadDashboardStats } from './dashboard.js';
 
 /**
  * Programmatically switches the dashboard view to a specific section.
@@ -46,47 +41,33 @@ export function navigateToSection(targetSectionId, fitnessTab = 'overview') {
     });
 
     // Trigger data loading for the new section if needed
-    if (targetSectionId === 'fame-low' && !cache.fame) {
+    if (targetSectionId === 'fame-low') {
         loadHallOfFameData();
-        cache.fame = true;
     }
-    if (targetSectionId === 'leaves-low' && !cache.leaves) {
+    if (targetSectionId === 'leaves-low') {
         loadLeaveData();
-        cache.leaves = true;
     }
     if (targetSectionId === 'logs-low') {
-        if (!cache.analysis) {
-            loadOverviewAnalytics();
-            loadWorkoutConsistency();
-            cache.analysis = true;
-        }
+        loadOverviewAnalytics();
+        loadWorkoutConsistency();
         loadWeightLogHistory();     // ⬅️ Always reload from cache or fresh
         loadFitnessProgress(); 
     }
     if (targetSectionId === 'fitness-low') {
-        import('./fitness.js').then(mod => {
-            if (!cache.fitness) {
-                cache.fitness = true;
-                mod.initializeFitness().catch(console.error);
-            }
-            mod.showFitnessTab(fitnessTab);
-        });
+        initializeFitness();
+        showFitnessTab(fitnessTab);
     }
     if (targetSectionId === 'attendance-low') {
-        import('./attendance.js').then(mod => {
-            mod.loadAttendanceHero();
-        });
+        loadAttendanceHero(true);
     }
-    if (targetSectionId === 'tips-low' && !cache.tips) {
-        try {
-            loadTipsSection();
-            import('./planner.js').then(mod => {
-                mod.exerciseModule.renderWorkoutList();
-            });
-            cache.tips = true;
-        } catch (err) {
-            console.error('Error initializing tips section:', err);
-        }
+    if (targetSectionId === 'planner-low') {
+        loadDashboardStats();
+        loadWeeklyPlan();
+        loadPlannerInsights();
+    }
+    if (targetSectionId === 'tips-low') {
+        loadTipsSection();
+        exerciseModule.renderWorkoutList();
     }
 }
 
@@ -120,7 +101,7 @@ export function routeFromHash() {
     navigateToSection(targetSectionId, fitnessTab);
 
     if (subTab && targetSectionId !== 'fitness-low') {
-        const tabLink = document.querySelector(`.tab-nav .tab-link[data-tab="${subTab}"]`);
+        const tabLink = document.querySelector(`#${targetSectionId} .tab-nav .tab-link[data-tab="${subTab}"]`);
         if (tabLink) {
             tabLink.click();
         }
@@ -128,10 +109,8 @@ export function routeFromHash() {
 
     // 🔥 When user opens the progression tab, always reload weight logs fresh
     if (subTab === 'progression') {
-        import('./progression.js').then(mod => {
-            mod.loadWeightLogHistory(true);
-            mod.loadFitnessProgress();
-            mod.loadCurrentWeightStat(true);
-        });
+        loadWeightLogHistory(true);
+        loadFitnessProgress();
+        loadCurrentWeightStat(true);
     }
 }

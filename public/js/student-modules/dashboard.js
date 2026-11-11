@@ -1,20 +1,19 @@
+import { loadWidget, attendanceExplanation } from './load-state.mjs';
+
 /**
  * Fetches and displays key stats for the "Today" dashboard,
  * like the consistency streak.
  */
-export async function loadDashboardStats() {
+export async function loadDashboardStats(refresh = false) {
+    loadAttendanceSnapshot(refresh);
+    return loadWidget('dashboard-streak', document.getElementById('stat-current-streak'), async () => {
     bindAttendanceSnapshotDetails();
-    loadAttendanceSnapshot();
 
-    // Inject skeleton loaders for stats
-    const currentStreakEl = document.getElementById('stat-current-streak');
-    const bestStreakEl = document.getElementById('stat-best-streak');
-    if (currentStreakEl) currentStreakEl.innerHTML = '<div class="skeleton skeleton-text short mx-auto mt-1" style="height: 1.5rem;"></div>';
-    if (bestStreakEl) bestStreakEl.innerHTML = '<div class="skeleton skeleton-text medium mx-auto mt-1"></div>';
 
-    try {
+
         const res = await fetch('/api/student/achievements/progress', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error("Could not load workout streak.");
 
         if (result.success) {
             const progress = result.data;
@@ -48,9 +47,8 @@ export async function loadDashboardStats() {
                  motivationText.textContent = "Start a new streak today!";
             }
         }
-    } catch (err) {
-        console.error("Could not load dashboard stats:", err);
-    }
+
+    }, { refresh, label: 'workout streak' });
 }
 
 let attendanceSnapshotDetailsBound = false;
@@ -193,7 +191,13 @@ async function openAttendanceDetailModal(type) {
         const subtitleEl = document.getElementById('attendanceDetailModalSubtitle');
         const bodyEl = document.getElementById('attendanceDetailBody');
         if (subtitleEl) subtitleEl.textContent = 'Unable to load records.';
-        if (bodyEl) bodyEl.innerHTML = '<tr><td class="text-center text-danger py-4">Unable to load records right now.</td></tr>';
+        if (bodyEl) {
+            bodyEl.innerHTML = '<tr><td class="text-center py-4">Unable to load records right now. </td></tr>';
+            const retry = document.createElement('button');
+            retry.type = 'button'; retry.className = 'btn btn-sm btn-outline-secondary'; retry.textContent = 'Retry';
+            retry.addEventListener('click', () => openAttendanceDetailModal(type));
+            bodyEl.firstElementChild.firstElementChild.append(retry);
+        }
     }
 }
 
@@ -224,7 +228,7 @@ function setSnapshotCounts({ present = '--', absent = '--', onLeave = '--' }) {
 function setSnapshotRate(rate) {
     const rateEl = document.getElementById('snapshotAttendanceRate');
     const fillEl = document.getElementById('snapshotRateFill');
-    const hasRate = Number.isFinite(Number(rate));
+    const hasRate = rate !== null && rate !== undefined && Number.isFinite(Number(rate));
     const safeRate = hasRate ? Math.max(0, Math.min(Number(rate), 100)) : 0;
 
     if (rateEl) rateEl.textContent = hasRate ? `${Number(rate).toFixed(1)}%` : '--%';
@@ -237,7 +241,8 @@ function formatSnapshotDate(value) {
     return parsed.isValid() ? parsed.format('MMM D, YYYY') : '';
 }
 
-export async function loadAttendanceSnapshot() {
+export async function loadAttendanceSnapshot(refresh = false) {
+    return loadWidget('attendance-snapshot', document.getElementById('attendanceSnapshotCard'), async () => {
     const card = document.getElementById('attendanceSnapshotCard');
     if (!card) return;
 
@@ -245,7 +250,7 @@ export async function loadAttendanceSnapshot() {
     setSnapshotRate(null);
     setSnapshotStatus('Loading your attendance summary...');
 
-    try {
+
         const res = await fetch('/api/student/attendance-summary/me', { credentials: 'include' });
         const result = await res.json();
 
@@ -277,12 +282,7 @@ export async function loadAttendanceSnapshot() {
             return;
         }
 
-        const expectedLabel = data.expectedDays === 1 ? 'expected day' : 'expected days';
-        setSnapshotStatus(`${data.expectedDays} ${expectedLabel} counted.`);
-    } catch (err) {
-        console.error('Could not load attendance snapshot:', err);
-        setSnapshotCounts({ present: 0, absent: 0, onLeave: 0 });
-        setSnapshotRate(null);
-        setSnapshotStatus('Unable to load attendance summary right now.', 'error');
-    }
+        setSnapshotStatus(attendanceExplanation(data));
+
+    }, { refresh, label: 'attendance summary' });
 }

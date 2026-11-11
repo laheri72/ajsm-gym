@@ -1,3 +1,4 @@
+import { loadWidget } from './load-state.mjs';
 import { exerciseDatabase } from './data.js';
 import { setPlannerDirty, studentFeatureFlags } from './state.js';
 
@@ -404,17 +405,12 @@ function updateCoachStrip() {
   const weekly = plannerInsights?.consistency?.weeklyAdherence || [];
   const latest = weekly.length ? weekly[weekly.length - 1] : null;
   const adherenceValue = latest ? `${latest.adherencePct}%` : '--%';
-  const streakValue = plannerInsights?.consistency?.daysSinceLastWorkout ?? '--';
+  const streakValue = plannerInsights?.consistency?.daysSinceLastWorkout;
   const focus = Object.entries(plannerInsights?.recommendations?.bodyPartBalance || {})
     .sort((a, b) => b[1] - a[1])[0]?.[0] || '--';
 
-  const durations = plannerInsights?.durationBaseline || {};
-  const values = Object.values(durations)
-    .map((d) => Number(d.median || 0))
-    .filter((n) => n > 0);
-  const avgDuration = values.length
-    ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
-    : null;
+  const summary = plannerInsights?.durationSummary;
+  const avgDuration = summary?.averageMinutes == null ? null : Math.round(summary.averageMinutes);
 
   const adherenceEl = document.getElementById('planner-adherence-value');
   const streakEl = document.getElementById('planner-streak-value');
@@ -422,8 +418,11 @@ function updateCoachStrip() {
   const focusEl = document.getElementById('planner-focus-value');
 
   if (adherenceEl) adherenceEl.textContent = adherenceValue;
-  if (streakEl) streakEl.textContent = streakValue === null ? '--' : `${streakValue}d`;
-  if (durationEl) durationEl.textContent = avgDuration ? `${avgDuration} min` : '-- min';
+  if (streakEl) streakEl.textContent = streakValue == null ? 'No workouts yet' : `${streakValue}d`;
+  if (durationEl) {
+    durationEl.textContent = avgDuration === null ? 'No recent sessions' : `${avgDuration} min`;
+    durationEl.title = `${summary?.sessionCount || 0} sessions with credited minutes in the last 8 weeks`;
+  }
   if (focusEl) focusEl.textContent = focus;
 }
 
@@ -773,7 +772,8 @@ export async function applyLastWeeksPlan() {
     }
 
     localStorage.removeItem(DRAFT_KEY);
-    await loadWeeklyPlan();
+    await loadWeeklyPlan(true);
+    await loadPlannerInsights(true);
     Swal.fire({ icon: 'success', title: 'Applied', text: 'Previous week plan copied.', timer: 1500, showConfirmButton: false });
   } catch (err) {
     console.error('Apply last week error:', err);
@@ -798,7 +798,8 @@ export async function autoFillWeek() {
     if (!res.ok || !data.success) throw new Error(data.message || 'Failed to auto-fill week.');
 
     localStorage.removeItem(DRAFT_KEY);
-    await loadWeeklyPlan();
+    await loadWeeklyPlan(true);
+    await loadPlannerInsights(true);
     markPlannerSaved();
     Swal.fire({ icon: 'success', title: 'Auto-filled', text: 'Week filled using your workout history.', timer: 1600, showConfirmButton: false });
   } catch (err) {
@@ -854,7 +855,8 @@ export async function applyLastCompletedMonday() {
     if (!res.ok || !data.success) throw new Error(data.message || 'Failed to apply Monday template.');
 
     localStorage.removeItem(DRAFT_KEY);
-    await loadWeeklyPlan();
+    await loadWeeklyPlan(true);
+    await loadPlannerInsights(true);
     markPlannerSaved();
     Swal.fire({ icon: 'success', title: 'Applied', text: 'Latest completed Monday pattern applied.' });
   } catch (err) {
@@ -887,24 +889,13 @@ export async function smartFillToday() {
   });
 }
 
-export async function loadWeeklyPlan() {
+export async function loadWeeklyPlan(refresh = false) {
+    return loadWidget('weekly-plan', document.getElementById('plannerGlanceContainer'), async () => {
   bindPlannerEvents();
   applyPlannerFeatureGate();
 
-  // Inject skeleton loaders to provide immediate visual feedback
-  document.querySelectorAll('.structured-day-card').forEach(card => {
-    const listEl = card.querySelector('[data-role="items"]');
-    const emptyEl = card.querySelector('.planner-empty-text');
-    if (listEl) {
-      listEl.innerHTML = `
-        <li class="planner-item-row"><div class="skeleton skeleton-text medium my-1" style="width: 60%"></div></li>
-        <li class="planner-item-row"><div class="skeleton skeleton-text short my-1" style="width: 40%"></div></li>
-      `;
-    }
-    if (emptyEl) emptyEl.style.display = 'none';
-  });
 
-  try {
+
     const res = await fetch('/api/student/workout-plan', {
       method: 'GET',
       credentials: 'include'
@@ -942,18 +933,17 @@ export async function loadWeeklyPlan() {
       applyLastBtn.style.display = hasAnyPlanContent() ? 'none' : 'inline-block';
     }
 
-    await fetchPlannerInsights();
-  } catch (err) {
-    console.error('Error loading workout plan:', err);
-  }
+    loadPlannerInsights();
+
+    }, { refresh, label: 'workout plan' });
 }
 
-export async function loadPlannerInsights() {
-  try {
+export async function loadPlannerInsights(refresh = false) {
+    return loadWidget('planner-insights', document.getElementById('planner-coach-strip'), async () => {
+
     await fetchPlannerInsights();
-  } catch (err) {
-    console.error('Error loading planner insights:', err);
-  }
+
+    }, { refresh, label: 'planner insights' });
 }
 
 export function initializePlannerInteractions() {
@@ -986,17 +976,18 @@ export const exerciseModule = (() => {
     if (_exerciseData) return _exerciseData;
     const res = await fetch('/api/exercises');
     const json = await res.json();
-    if (!json.success) throw new Error('Failed to load exercises');
+    if (!res.ok || !json.success) throw new Error('Failed to load exercises');
     _exerciseData = json.data;
     return _exerciseData;
   }
 
-  async function renderWorkoutList() {
+  async function renderWorkoutList(refresh = false) {
+    return loadWidget('exercise-library', document.getElementById('workoutAccordion'), async () => {
     const accordion = document.getElementById('workoutAccordion');
     const spinner   = document.getElementById('exerciseListLoading');
     if (!accordion) return;
+    if (spinner) spinner.style.display = 'none';
 
-    try {
       const data = await fetchExercises();
       if (spinner) spinner.style.display = 'none';
 
@@ -1110,10 +1101,7 @@ export const exerciseModule = (() => {
         });
       });
 
-    } catch (err) {
-      console.error('renderWorkoutList error:', err);
-      if (spinner) spinner.innerHTML = '<p class="text-danger">Failed to load exercises.</p>';
-    }
+    }, { refresh, label: 'exercise library' });
   }
 
   // --------------------------------------------------------

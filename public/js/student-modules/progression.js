@@ -1,3 +1,4 @@
+import { loadWidget } from './load-state.mjs';
 import {
     studentHeight, fitnessProgressChart,
     setStudentHeight, setFitnessProgressChart,
@@ -50,7 +51,7 @@ export async function handleWeightLogSubmit(e) {
 
         // Force fresh load after POST
         await loadWeightLogHistory(true);
-        await loadFitnessProgress();
+        await loadFitnessProgress(true);
         await loadCurrentWeightStat(true);
 
     } catch (err) {
@@ -68,8 +69,8 @@ export async function handleWeightLogSubmit(e) {
  * Uses memoized cache unless refresh=true.
  */
 export async function loadWeightLogHistory(refresh = false) {
+    return loadWidget('weight-history', document.getElementById('weightHistoryBody')?.closest('table'), async () => {
     const tbody = document.getElementById('weightHistoryBody');
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Loading...</td></tr>';
 
     // If NOT refresh and we already have cached data, use it
     if (!refresh && cachedWeightHistory) {
@@ -81,21 +82,20 @@ export async function loadWeightLogHistory(refresh = false) {
         ? `/api/student/weight-history?fresh=${Date.now()}`
         : `/api/student/weight-history`;
 
-    try {
+
         const weightRes = await fetch(url, {
             credentials: 'include',
             cache: refresh ? 'no-store' : 'no-cache'
         });
 
         const result = await weightRes.json();
-        if (!result.success) throw new Error(result.message);
+        if (!weightRes.ok || !result.success) throw new Error(result.message || 'Could not load weight logs.');
 
         setCachedWeightHistory(result.data);
         renderweightTable(result.data);
 
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Error: ${err.message}</td></tr>`;
-    }
+
+    }, { refresh: refresh, label: 'weight logs' });
 }
 
 /**
@@ -159,7 +159,7 @@ export function handleWeightLogDelete(e) {
             setCachedWeightHistory(null);
 
             await loadWeightLogHistory(true);
-            await loadFitnessProgress();
+            await loadFitnessProgress(true);
             await loadCurrentWeightStat(true);
 
         } catch (err) {
@@ -173,6 +173,7 @@ export function handleWeightLogDelete(e) {
  * Reuses memoized history — only fetches fresh when refresh=true
  */
 export async function loadCurrentWeightStat(refresh = false) {
+    return loadWidget('logged-weight', document.getElementById('stat-current-weight'), async () => {
     const weightEl = document.getElementById('stat-current-weight');
     const dateEl = document.getElementById('stat-weight-date');
     const motivationLink = document.getElementById('log-weight-shortcut');
@@ -182,7 +183,7 @@ export async function loadCurrentWeightStat(refresh = false) {
 
     let history = cachedWeightHistory;
 
-    try {
+
         // If refresh=true OR no cache → Fetch fresh
         if (refresh || !history) {
             const url = refresh
@@ -195,6 +196,7 @@ export async function loadCurrentWeightStat(refresh = false) {
             });
 
             const weightResult = await weightRes.json();
+            if (!weightRes.ok || !weightResult.success) throw new Error("Could not load weight logs.");
             if (weightResult.success) {
                 history = weightResult.data;
                 setCachedWeightHistory(history);
@@ -210,7 +212,7 @@ export async function loadCurrentWeightStat(refresh = false) {
             currentWeight = recentLog.Weight;
 
             weightEl.textContent = currentWeight.toFixed(1);
-            dateEl.textContent = `Logged: ${recentLog.FormattedDate}`;
+            dateEl.textContent = `Personal log · ${recentLog.FormattedDate}`;
             motivationLink.textContent = "Great job! Keep logging to see your trend.";
         } else {
             weightEl.textContent = '--';
@@ -247,13 +249,8 @@ export async function loadCurrentWeightStat(refresh = false) {
             document.getElementById('add-height-btn').addEventListener('click', handleSetHeight);
         }
 
-    } catch (err) {
-        console.error('Error loading current weight stat:', err);
-        weightEl.textContent = 'Error';
-        dateEl.textContent = 'Could not load data';
-        bmiArea.innerHTML = '<span class="bmi-value-loading">Error</span>';
-        motivationLink.textContent = 'Click here to log weight';
-    }
+
+    }, { refresh: refresh, label: 'latest logged weight' });
 }
 
 /**
@@ -299,10 +296,12 @@ export async function handleSetHeight() {
 /**
  * Load progression chart
  */
-export async function loadFitnessProgress() {
-    try {
+export async function loadFitnessProgress(refresh = false) {
+    return loadWidget('fitness-progress', document.getElementById('fitnessChartWrapper'), async () => {
+
         const res = await fetch('/api/student/fitness-test-history', { credentials: 'include' });
         const result = await res.json();
+        if (!res.ok || !result.success) throw new Error('Could not load progression.');
 
         const chartWrapper = document.getElementById('fitnessChartWrapper');
         const canvasElement = document.getElementById('fitnessProgressChart');
@@ -323,7 +322,7 @@ export async function loadFitnessProgress() {
             const bodyFatData = result.data.map(d => d.BodyFat);
 
             const ctx = canvasElement.getContext('2d');
-            if (fitnessProgressChart) fitnessProgressChart.destroy();
+            if (fitnessProgressChart) { fitnessProgressChart.destroy(); setFitnessProgressChart(null); }
 
             const newChart = new Chart(ctx, {
                 type: 'line',
@@ -362,20 +361,6 @@ export async function loadFitnessProgress() {
                 messageElement.textContent = 'Log your weight or take a fitness test to start tracking your progression.';
             }
         }
-    } catch (err) {
-        console.error('Failed to load fitness progress:', err);
-        const chartWrapper = document.getElementById('fitnessChartWrapper');
-        const canvasElement = document.getElementById('fitnessProgressChart');
-        if (canvasElement) canvasElement.style.display = 'none';
 
-        if (chartWrapper) {
-            let messageElement = chartWrapper.querySelector('p');
-            if (!messageElement) {
-                messageElement = document.createElement('p');
-                chartWrapper.appendChild(messageElement);
-            }
-            messageElement.style.display = 'block';
-            messageElement.textContent = 'Could not load progression data.';
-        }
-    }
+    }, { refresh: refresh, label: 'fitness progression' });
 }

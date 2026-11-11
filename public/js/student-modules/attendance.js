@@ -1,3 +1,4 @@
+import { loadWidget, attendanceExplanation } from './load-state.mjs';
 import { 
     flatpickrInstance, cachedStudentWeeks, 
     setFlatpickrInstance, setCachedStudentWeeks 
@@ -86,7 +87,11 @@ export function loadAttendance(selectedWeekId) {
       })
       .catch(err => {
           console.error('Failed to load student attendance:', err);
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading data: ${err.message}.</td></tr>`;
+          tbody.innerHTML = '<tr><td colspan="8" class="text-center">Unable to load this attendance week.</td></tr>';
+          const retry = document.createElement('button');
+          retry.type = 'button'; retry.className = 'btn btn-sm btn-outline-secondary'; retry.textContent = 'Retry';
+          retry.addEventListener('click', () => loadAttendance(selectedWeekId));
+          tbody.firstElementChild.firstElementChild.append(retry);
       });
 }
 
@@ -117,6 +122,9 @@ export async function initializeWeekPicker() {
             throw new Error(data.message || 'Could not fetch eligible weeks.');
         }
 
+        document.getElementById('attendance-weeks-retry')?.remove();
+        weekPickerInput.disabled = false;
+        flatpickrInstance?.destroy();
         setCachedStudentWeeks(data.weeks || []);
 
         if (cachedStudentWeeks.length === 0) {
@@ -161,16 +169,17 @@ export async function initializeWeekPicker() {
 
     } catch (err) {
         console.error('Failed to initialize week picker:', err);
-        weekPickerInput.placeholder = "Error loading weeks.";
-        weekPickerInput.disabled = true;
-        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Could not load week data.' });
+        weekPickerInput.placeholder = 'Unable to load weeks.';
+        weekPickerInput.disabled = false;
+        showAttendanceRetry(weekPickerInput, initializeWeekPicker, 'Unable to load attendance weeks.');
     }
 }
 
 /**
  * Loads and renders the Overall Attendance Hero card at the top of the Attendance tab.
  */
-export async function loadAttendanceHero() {
+export async function loadAttendanceHero(refresh = false) {
+    return loadWidget('attendance-hero', document.getElementById('attendanceHeroCard'), async () => {
     const heroCard = document.getElementById('attendanceHeroCard');
     if (!heroCard) return;
 
@@ -184,7 +193,7 @@ export async function loadAttendanceHero() {
     const statusTextEl = document.getElementById('attendanceHeroStatusText');
     const pillEl = document.getElementById('attendanceHeroRatingPill');
 
-    try {
+
         const res = await fetch('/api/student/attendance-summary/me', { credentials: 'include' });
         const result = await res.json();
 
@@ -198,7 +207,7 @@ export async function loadAttendanceHero() {
         const onLeave = Number(data.onLeave || 0);
         const expected = Number(data.expectedDays || 0);
         const rate = Number(data.attendanceRate);
-        const hasRate = Number.isFinite(rate);
+        const hasRate = data.attendanceRate !== null && data.attendanceRate !== undefined && Number.isFinite(rate);
         const safeRate = hasRate ? Math.max(0, Math.min(rate, 100)) : 0;
 
         if (presentEl) presentEl.textContent = present;
@@ -237,13 +246,10 @@ export async function loadAttendanceHero() {
 
         if (subtitleEl && data.joinedAt) {
             const joinedStr = moment(data.joinedAt).format('MMM D, YYYY');
-            subtitleEl.textContent = `Member since ${joinedStr} • ${expected} total sessions evaluated`;
+            subtitleEl.textContent = `Member since ${joinedStr}. ${attendanceExplanation(data)}`;
         }
-    } catch (err) {
-        console.error('Error loading attendance hero:', err);
-        if (rateEl) rateEl.textContent = '--%';
-        if (statusTextEl) statusTextEl.textContent = 'Summary Unavailable';
-    }
+
+    }, { refresh, label: 'attendance summary' });
 }
 
 /**
@@ -271,4 +277,14 @@ function findAndLoadAttendanceForDate(selectedDate, setPickerValue = false) {
     } else {
         clearAttendanceTable("Selected date is outside available attendance weeks.");
     }
+}
+function showAttendanceRetry(anchor, retryLoad, message) {
+    document.getElementById('attendance-weeks-retry')?.remove();
+    const notice = document.createElement('div');
+    notice.id = 'attendance-weeks-retry'; notice.className = 'dashboard-load-state is-error'; notice.setAttribute('role', 'alert');
+    notice.textContent = message + ' ';
+    const retry = document.createElement('button');
+    retry.type = 'button'; retry.className = 'btn btn-sm btn-outline-secondary'; retry.textContent = 'Retry';
+    retry.addEventListener('click', () => { notice.remove(); retryLoad(); });
+    notice.append(retry); anchor.parentElement.after(notice);
 }

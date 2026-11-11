@@ -4,6 +4,34 @@ html {
     /* Default is 16px. This value makes the entire UI about 12% smaller. */
     font-size: 14px; 
 }
+
+.dashboard-load-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    margin: .75rem 0;
+    font-size: .9rem;
+    color: inherit;
+}
+
+.dashboard-load-state.is-error {
+    padding: .65rem .8rem;
+    border-inline-start: 3px solid #b45309;
+    background: rgba(180, 83, 9, .08);
+}
+
+.dashboard-explanation {
+    font-size: .9rem;
+    line-height: 1.6;
+    color: inherit;
+    opacity: .8;
+}
+
+[data-theme="dark"] .dashboard-load-state.is-error {
+    border-color: #f6b56b;
+    background: rgba(246, 181, 107, .1);
+}
 * {
     box-sizing: border-box;
 }

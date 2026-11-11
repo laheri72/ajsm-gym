@@ -29,18 +29,20 @@ Endpoints for student progress, weight tracking, and workout analytics.
 | DELETE | `/api/student/log-weight/:id` | Student | Delete a specific weight log by its ID. | None |
 | POST | `/api/student/set-height` | Student | Update the student's height (stored in `TestMaster`). | `{ heightInCm }` |
 | GET | `/api/student/fitness-test-history` | Student | Combined history from `TestRecords` and `WeightTracking`. | None |
-| GET | `/api/student/analytics/overview` | Student | Average workout duration and weekly total hours. | None |
-| GET | `/api/student/analytics/history` | Student | Recent session history (timestamps and duration). | None |
+| GET | `/api/student/analytics/overview` | Student | All-time arithmetic average of positive credited session minutes (`average`, null when unavailable), plus credited hours for the latest eight attendance weeks (`weekly`). | None |
+| GET | `/api/student/analytics/history` | Student | Recent completed sessions (`history`: timestamps and credited minutes), plus student-facing membership changes (`statusHistory`). Elapsed time is calculated from timestamps; checkout method is not recorded. | None |
 | GET | `/api/student/workout-calendar` | Student | 6-month workout consistency dates for heatmap. | None |
 | POST | `/api/student/set-goal` | Student | Update student's fitness goal in `TestMaster`. | `{ goal }` |
 
 ## 📅 Workout Planner (V2) & Logs (`routes/stu-routes.js` & `routes/staff.js`)
+
+The student analytics history response allowlists only `ChangedAt`, `ActionType`, `PreviousStatus`, `NewStatus`, `PreviousSlotName`, and `NewSlotName` in each `statusHistory` entry. Internal staff identities, reasons, identifiers, and scope snapshots remain excluded. Its server cache uses the `analytics_history_student_v2_` prefix; planner insights use `planner_insights_v2_`.
 Endpoints for managing weekly workout schedules and daily exercise logs.
 All planner data is stored in the normalized V2 tables (`WorkoutPrograms → WorkoutWeeks → WorkoutDays → PlannedExercises`). The legacy `WorkoutPlan` table has been dropped.
 
 | Method | Endpoint | Role | Purpose | Input |
 | :--- | :--- | :--- | :--- | :--- |
-| GET | `/api/student/planner/insights` | Student | Fetch planner intelligence (weekday history, duration baseline, adherence counts from V2 `WorkoutDays`). | None |
+| GET | `/api/student/planner/insights` | Student | Fetch planner intelligence, including weekday duration baselines and `durationSummary: { averageMinutes, sessionCount }` over the rolling last eight weeks. The summary weights each positive-duration attendance record equally; an empty dataset returns null/0. | None |
 | POST | `/api/save-workout-plan` | Student | Save weekly plan → writes to `WorkoutPrograms/WorkoutWeeks/WorkoutDays/PlannedExercises`. Exercises resolved via `Exercises` table. | `{ schemaVersion, days: { Monday..Sunday } }` |
 | GET | `/api/student/workout-plan` | Student | Fetch current week planner from V2 tables as structured day plans + insight summary. | None |
 | POST | `/api/student/apply-last-week` | Student | Copy previous week V2 plan to current week, or fallback to autofill if no prior plan. | None |

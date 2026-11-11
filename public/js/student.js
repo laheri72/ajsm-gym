@@ -145,13 +145,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Analytics Tabs ---
-    document.querySelector('.tab-nav')?.addEventListener('click', (e) => {
+    document.querySelector('#logs-low .tab-nav')?.addEventListener('click', (e) => {
         if (!e.target.matches('.tab-link')) return;
 
         const tabId = e.target.dataset.tab;
-        document.querySelectorAll('.tab-nav .tab-link').forEach(link => link.classList.remove('active'));
+        document.querySelectorAll('#logs-low .tab-nav .tab-link').forEach(link => link.classList.remove('active'));
         e.target.classList.add('active');
-        document.querySelectorAll('.tab-pane').forEach(pane => {
+        document.querySelectorAll('#logs-low .tab-pane').forEach(pane => {
             pane.classList.toggle('active', pane.id === tabId);
         });
 
@@ -159,6 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabId === 'logs') { loadStudentPlans(); loadTrainingAnalytics(); }
         if (tabId === 'history') { loadHistoryAnalytics(); }
         if (tabId === 'overview') { loadOverviewAnalytics(); loadWorkoutConsistency(); }
+        if (tabId === 'progression') { loadWeightLogHistory(); loadFitnessProgress(); }
+        const hash = `#logs&tab=${tabId}`;
+        if (window.location.hash !== hash) window.location.hash = hash;
     });
 
     // --- Keyboard Shortcuts ---
